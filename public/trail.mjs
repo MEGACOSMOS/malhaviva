@@ -542,7 +542,34 @@ TrailController.prototype.rayHitsTrail = function(trail, camPos) {
     return false;
 };
 
+/**
+ * Mostra ou esconde os trilhos tracejados. Os tracinhos são agrupados num
+ * punhado de desenhos, que existem à parte das entidades originais, por isso
+ * é preciso esconder ambos.
+ *
+ * @param {boolean} visivel - Se os trilhos devem aparecer.
+ */
+TrailController.prototype.setTrailsVisible = function(visivel) {
+    this._trailsVisible = visivel;
+    if (this.trailRoot) this.trailRoot.enabled = visivel;
+
+    const batcher = this.app.batcher;
+    if (batcher && this._batchGroupId !== undefined && this._batchGroupId !== null) {
+        for (const batch of batcher._batchList) {
+            if (batch.batchGroupId === this._batchGroupId && batch.meshInstance) {
+                batch.meshInstance.visible = visivel;
+            }
+        }
+    }
+
+    if (!visivel) {
+        for (const trail of this.trailRenderData) this.setTrailHoverState(trail, false);
+        this.updateGlobalCursor(false, []);
+    }
+};
+
 TrailController.prototype.checkHover = function(x, y) {
+    if (this._trailsVisible === false) return;
     if (!this.entity.camera || !this.trailRenderData) return;
 
     this.entity.camera.screenToWorld(x, y, this.entity.camera.nearClip, this.ray.origin);
@@ -646,6 +673,9 @@ TrailController.prototype.handleInteraction = function(x, y) {
         }
         return;
     }
+
+    // Trilhos escondidos nao devem responder a cliques
+    if (this._trailsVisible === false) return;
 
     // Normal Mode: Check if trail was clicked
     if (!this.entity.camera || !this.trailRenderData) return;

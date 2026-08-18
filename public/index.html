@@ -736,7 +736,7 @@
         <pc-asset id="camera-controls-script" src="./camera-controls.mjs?v=6" type="script"></pc-asset>
         <pc-asset id="camera-coords-script" src="./coords.mjs?v=5" type="script"></pc-asset>
         <pc-asset id="annotations-script" src="./annotations.mjs?v=10" type="script"></pc-asset>
-        <pc-asset id="trail-script" src="./trail.mjs?v=6" type="script"></pc-asset>
+        <pc-asset id="trail-script" src="./trail.mjs?v=7" type="script"></pc-asset>
         <pc-asset id="image-particles-script" src="./image-particles.mjs?v=12" type="script"></pc-asset>
         <pc-asset id="ground-fireflies-script" src="./ground-fireflies.mjs?v=4" type="script"></pc-asset>
 
@@ -797,11 +797,8 @@
         // Quanto maior, mais para dentro do mapa começa a difusão.
         const LARGURA_DESVANECIMENTO = 90;
 
-        // Onde a câmara pára, medido para dentro da borda do terreno. Está
-        // ligado ao desvanecimento: a meio da difusão o mapa está a cerca de
-        // metade da opacidade, e é aí que faz sentido parar — mais para fora
-        // a câmara ficaria sobre terreno já dissolvido.
-        const PARAGEM_DENTRO_DA_BORDA = LARGURA_DESVANECIMENTO / 2;
+        // Até onde a câmara pode passar para lá da última casa, em metros.
+        const TOLERANCIA_FORA_DO_MAPA = 15;
 
         /**
          * Mede o mapa uma única vez e usa essa medida para as duas coisas que
@@ -894,10 +891,11 @@
 
                 if (!controls) return;
 
-                // A câmara só anda onde o mapa ainda está sólido
-                const paragem = PARAGEM_DENTRO_DA_BORDA / RESOLUCAO_LIMITE;
+                // A câmara pode passar um pouco para lá da última casa
+                const fora = distanciaAte(terreno, colunas, linhas, true);
+                const tolerancia = TOLERANCIA_FORA_DO_MAPA / RESOLUCAO_LIMITE;
                 const permitido = new Uint8Array(total);
-                for (let k = 0; k < total; k++) permitido[k] = dentro[k] >= paragem ? 1 : 0;
+                for (let k = 0; k < total; k++) permitido[k] = fora[k] <= tolerancia ? 1 : 0;
                 preencherBuracos(permitido, colunas, linhas);
 
                 // Distância de qualquer ponto à zona onde a câmara pode andar
@@ -1272,6 +1270,15 @@ void modifySplatColor(vec3 center, inout vec4 color) {
                 document.querySelectorAll(`.annotation-marker[data-tipo="${tipo}"]`)
                     .forEach(el => { el.style.display = caixa.checked ? '' : 'none'; });
             });
+
+            // As rotas 360º incluem os trilhos tracejados desenhados no chão
+            const caixa360 = document.getElementById('anot-360');
+            const pcApp = document.querySelector('pc-app');
+            const camera = pcApp && pcApp.app && pcApp.app.root.findByName('camera');
+            const trilhos = camera && camera.script && camera.script.trailController;
+            if (caixa360 && trilhos && trilhos.setTrailsVisible) {
+                trilhos.setTrailsVisible(caixa360.checked);
+            }
         }
 
         tiposDeAnotacao.forEach(({ id, chave }) => {
