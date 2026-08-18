@@ -869,9 +869,9 @@ AnnotationController.prototype.openVideoModal = function(sources, title) {
 // Markers shrink with distance so a far one never reads as bigger than a near
 // one. The curve is a smooth falloff between MARKER_SCALE_MIN and _MAX with no
 // clamping anywhere, so the size never jumps as the camera moves.
-const MARKER_SCALE_MIN = 0.45;
-const MARKER_SCALE_MAX = 1.6;
-const MARKER_SCALE_FALLOFF = 70;
+const MARKER_SCALE_MIN = 0.25;
+const MARKER_SCALE_MAX = 1.7;
+const MARKER_SCALE_FALLOFF = 75;
 
 AnnotationController.prototype.update = function(dt) {
     const camera = this.entity.camera;
