@@ -114,19 +114,8 @@ AnnotationController.prototype.initialize = function() {
             align-items: center;
             justify-content: center;
         }
-        .marker-dot::after {
-            content: '';
-            position: absolute;
-            top: -4px; left: -4px; right: -4px; bottom: -4px;
-            border-radius: 0;
-            border: 2px solid #10b981;
-            animation: pulse-ring 2s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
-        }
         .marker-dot.is-360 {
             background-color: #ff0000;
-        }
-        .marker-dot.is-360::after {
-            border-color: #ff0000;
         }
         .marker-label {
             background-color: #05050a;
