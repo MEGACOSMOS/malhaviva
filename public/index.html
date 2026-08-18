@@ -929,8 +929,14 @@
             }
         }
 
-        // Ao longo de quantos metros o terreno se desvanece junto às bordas
-        const LARGURA_DESVANECIMENTO = 140;
+        // Ao longo de quantos metros o terreno se desvanece junto às bordas.
+        // Quanto maior, mais cedo (mais para dentro do mapa) começa a difusão.
+        const LARGURA_DESVANECIMENTO = 300;
+
+        // Quanto o contorno é empurrado para fora do terreno real. Perto de 1
+        // nada se perde mas a difusão fica fraca; perto de 0 a orla chega a
+        // desaparecer por completo, que é o que dá o aspeto esfumado.
+        const FOLGA_DO_CONTORNO = 0.3;
 
         /**
          * Faz o mapa desvanecer-se junto às bordas em vez de acabar a direito.
@@ -983,8 +989,9 @@
                 B[k] = (k === 0 ? 0 : 2) * sb / DIRECOES;
             }
 
-            // Empurra a curva para fora até envolver todo o terreno real, para
-            // que o desvanecimento nunca corte parte do bairro.
+            // Empurra a curva para fora do terreno real, mas só em parte: assim
+            // a orla do mapa chega a desvanecer-se por completo em vez de
+            // acabar ainda visível.
             let folga = 0;
             for (let i = 0; i < DIRECOES; i++) {
                 const th = (i + 0.5) / DIRECOES * Math.PI * 2;
@@ -992,7 +999,7 @@
                 for (let k = 1; k <= ONDAS; k++) ajuste += A[k] * Math.cos(k * th) + B[k] * Math.sin(k * th);
                 folga = Math.max(folga, raio[i] - ajuste);
             }
-            A[0] += folga;
+            A[0] += folga * FOLGA_DO_CONTORNO;
 
             const termos = [];
             for (let k = 1; k <= ONDAS; k++) {
