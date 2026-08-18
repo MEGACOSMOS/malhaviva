@@ -1,0 +1,8 @@
+{
+  "name": "obj-converter",
+  "version": "1.0.0",
+  "private": true,
+  "dependencies": {
+    "obj2gltf": "^4.1.0"
+  }
+}

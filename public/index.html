@@ -1,0 +1,1076 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bairro de Penajóia — Malha Viva</title>
+    <meta name="description" content="Exploração 3D interativa do Bairro de Penajóia através de Gaussian Splatting. Projeto Malha Viva.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- PlayCanvas Web Components (versões fixas para estabilidade em produção) -->
+    <script type="importmap">
+        {
+            "imports": {
+                "playcanvas": "https://cdn.jsdelivr.net/npm/playcanvas@2.21.4/build/playcanvas.mjs",
+                "@playcanvas/web-components": "https://cdn.jsdelivr.net/npm/@playcanvas/web-components@0.15.0/dist/pwc.mjs"
+            }
+        }
+    </script>
+    <script type="module">import '@playcanvas/web-components';</script>
+
+    <style>
+        *, *::before, *::after {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --color-bg: #05050a;
+            --color-surface: #12121c;
+            --color-surface-hover: #1c1c2a;
+            --color-text: #ffffff;
+            --color-text-muted: rgba(255, 255, 255, 0.7);
+            --color-accent: #ffffff;
+            --color-accent-glow: rgba(255, 255, 255, 0.3);
+            --color-border: rgba(255, 255, 255, 0.06);
+            --font-main: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            --radius: 12px;
+            --radius-sm: 8px;
+        }
+
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: var(--color-bg);
+            font-family: var(--font-main);
+            color: var(--color-text);
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        /* ─── PlayCanvas App fills viewport ─── */
+        pc-app {
+            display: block;
+            width: 100%;
+            height: 100%;
+            filter: saturate(90%);
+        }
+
+        /* ─── Loading Overlay ─── */
+        #loading-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: var(--color-bg);
+            transition: opacity 0.8s cubic-bezier(0.4, 0, 0.2, 1), visibility 0.8s;
+        }
+
+        #loading-overlay.hidden {
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+        }
+
+        .loading-content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 28px;
+        }
+
+        .loading-logo {
+            font-size: 1.6rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            color: var(--color-accent);
+        }
+
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid var(--color-border);
+            border-top-color: var(--color-accent);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            font-size: 0.85rem;
+            font-weight: 400;
+            color: var(--color-text-muted);
+            letter-spacing: 0.04em;
+        }
+
+        /* ─── Header ─── */
+        #header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px 24px;
+            background: transparent;
+            pointer-events: none;
+            opacity: 0;
+            transform: translateY(-8px);
+            transition: opacity 0.6s ease, transform 0.6s ease;
+        }
+
+        #header.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        #header > * {
+            pointer-events: auto;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+
+        .brand-text {
+            display: flex;
+            flex-direction: column;
+            gap: 1px;
+        }
+
+        .brand-name {
+            font-size: 1.2rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            color: var(--color-accent);
+        }
+
+        .brand-subtitle {
+            font-size: 0.7rem;
+            color: var(--color-text-muted);
+            font-weight: 400;
+            letter-spacing: 0.02em;
+        }
+
+
+
+        /* ─── Coordinates Info ─── */
+        #coordinates-info {
+            position: fixed;
+            top: 80px;
+            left: 24px;
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            padding: 12px 16px;
+            background: linear-gradient(to bottom, rgba(255,255,255,0.05), transparent), #05050a;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 0;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+            opacity: 0;
+            transform: translateX(-10px);
+            transition: opacity 0.6s ease 0.3s, transform 0.6s ease 0.3s;
+            font-family: monospace;
+            font-size: 0.8rem;
+            pointer-events: none;
+        }
+
+        #coordinates-info.visible {
+            opacity: 1;
+            transform: translateX(0);
+        }
+
+        /* ─── Camera Info ─── */
+        #camera-info {
+            position: fixed;
+            top: 205px;
+            left: 24px;
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            padding: 12px 16px;
+            background: linear-gradient(to bottom, rgba(255,255,255,0.05), transparent), #05050a;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 0;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+            opacity: 0;
+            transform: translateX(-10px);
+            transition: opacity 0.6s ease 0.3s, transform 0.6s ease 0.3s;
+            font-family: monospace;
+            font-size: 0.8rem;
+            pointer-events: none;
+        }
+
+        #camera-info.visible {
+            opacity: 1;
+            transform: translateX(0);
+        }
+
+        /* ─── FPS Info ─── */
+        #fps-info {
+            position: fixed;
+            top: 24px;
+            right: 24px;
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            background: linear-gradient(to bottom, rgba(255,255,255,0.05), transparent), #05050a;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 0;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+            opacity: 0;
+            transform: translateY(-10px);
+            transition: opacity 0.6s ease, transform 0.6s ease;
+            font-family: monospace;
+            font-size: 0.9rem;
+            pointer-events: none;
+            color: var(--color-text);
+        }
+
+        #fps-info.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        
+        .fps-value {
+            color: #10b981;
+            font-weight: 700;
+        }
+
+        .coord-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            min-width: 90px;
+            color: var(--color-text);
+        }
+
+        .coord-label {
+            color: var(--color-accent);
+            font-weight: 700;
+            margin-right: 12px;
+        }
+
+        /* ─── Responsive ─── */
+        @media (max-width: 640px) {
+            #header {
+                padding: 12px 16px;
+            }
+        }
+
+        /* ─── Settings ─── */
+        .settings {
+            position: relative;
+        }
+        
+        #settings-btn, #dev-btn, #help-btn {
+            background: #05050a;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            color: var(--color-text);
+            width: 40px;
+            height: 40px;
+            border-radius: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-decoration: none;
+        }
+        
+        #settings-btn:hover, #dev-btn:hover,
+        #help-btn:hover {
+            background: rgba(255, 255, 255, 0.1) !important;
+            color: var(--color-accent);
+        }
+        
+        #settings-menu, #dev-menu {
+            position: absolute;
+            top: 50px;
+            right: 0;
+            background: linear-gradient(to bottom, rgba(255,255,255,0.05), transparent), #05050a;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 0;
+            padding: 16px;
+            width: 260px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+            transition: opacity 0.2s, transform 0.2s;
+            transform-origin: top right;
+            pointer-events: none;
+            opacity: 0;
+            transform: scale(0.95);
+        }
+        
+        #settings-menu.open, #dev-menu.open {
+            pointer-events: auto;
+            opacity: 1;
+            transform: scale(1);
+        }
+        
+        .settings-title {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--color-text-muted);
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        
+        .settings-options {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .settings-radio {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.85rem;
+            cursor: pointer;
+        }
+        
+        .settings-radio input {
+            accent-color: #05050a;
+            width: 16px;
+            height: 16px;
+            cursor: pointer;
+        }
+
+
+
+        /* ─── Camera Stuck Popup ─── */
+        #camera-stuck-popup {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 500;
+            background: linear-gradient(to bottom, rgba(255,255,255,0.05), transparent), #05050a;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+            border-radius: 0;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 16px;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+            text-align: center;
+        }
+
+        #camera-stuck-popup.visible {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .stuck-text {
+            font-size: 1rem;
+            font-weight: 500;
+            color: var(--color-text);
+        }
+        
+        .stuck-subtext {
+            font-size: 0.8rem;
+            color: var(--color-text-muted);
+            margin-bottom: 8px;
+        }
+
+        #recenter-btn {
+            background: #05050a;
+            color: #fff;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            padding: 10px 20px;
+            border-radius: 0;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+            transition: background 0.2s ease, transform 0.1s;
+        }
+
+        #recenter-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+        #recenter-btn:active {
+            transform: scale(0.95);
+        }
+
+        /* ─── Filter Panel ─── */
+        #filter-panel {
+            position: fixed;
+            top: 60px;
+            right: 16px;
+            width: 280px;
+            background: linear-gradient(to bottom, rgba(255,255,255,0.05), transparent), #05050a;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+            z-index: 1050;
+            padding: 20px;
+            display: none;
+            font-family: var(--font-main);
+        }
+        #filter-panel.visible {
+            display: block;
+        }
+        .filter-title {
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: #fff;
+            margin-bottom: 16px;
+        }
+        .filter-row {
+            margin-bottom: 14px;
+        }
+        .filter-row label {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.75rem;
+            color: rgba(255,255,255,0.7);
+            margin-bottom: 6px;
+        }
+        .filter-row label span.filter-val {
+            color: #fff;
+            font-weight: 600;
+            font-variant-numeric: tabular-nums;
+        }
+        .filter-row input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 100%;
+            height: 4px;
+            background: rgba(255,255,255,0.15);
+            outline: none;
+            border-radius: 0;
+        }
+        .filter-row input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 14px;
+            height: 14px;
+            background: #fff;
+            border-radius: 0;
+            cursor: pointer;
+        }
+        .filter-row input[type="range"]::-moz-range-thumb {
+            width: 14px;
+            height: 14px;
+            background: #fff;
+            border: none;
+            border-radius: 0;
+            cursor: pointer;
+        }
+        .filter-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 16px;
+        }
+        .filter-actions button {
+            flex: 1;
+            padding: 8px 0;
+            border: 1px solid rgba(255,255,255,0.15);
+            background: transparent;
+            color: #fff;
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            cursor: pointer;
+            font-family: var(--font-main);
+            transition: background 0.15s;
+        }
+        .filter-actions button:hover {
+            background: rgba(255,255,255,0.05);
+        }
+
+        /* ─── Vignette Overlay ─── */
+        #vignette-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+            background: radial-gradient(
+                ellipse at center,
+                transparent 45%,
+                rgba(5, 5, 10, 0.3) 65%,
+                rgba(5, 5, 10, 0.7) 80%,
+                rgba(5, 5, 10, 0.95) 95%,
+                #05050a 100%
+            );
+        }
+    </style>
+</head>
+<body>
+    <!-- Vignette Overlay -->
+    <div id="vignette-overlay"></div>
+
+    <div id="debug-error" style="position:fixed; top:10px; left:10px; right:10px; color:#ff4444; z-index:9999; background:rgba(0,0,0,0.9); padding:15px; display:none; border: 1px solid red; font-family: monospace; white-space: pre-wrap;"></div>
+    <script>
+        window.addEventListener('error', function(e) {
+            document.getElementById('debug-error').style.display = 'block';
+            document.getElementById('debug-error').innerText += '[Error] ' + (e.message || e.error) + '\n';
+        });
+        window.addEventListener('unhandledrejection', function(e) {
+            const errorMsg = e.reason && e.reason.message ? e.reason.message : (e.reason ? e.reason.toString() : '');
+            if (errorMsg.includes('WebGL not supported')) {
+                const overlay = document.getElementById('loading-overlay');
+                if (overlay) {
+                    overlay.innerHTML = `
+                        <div class="loading-content" style="max-width: 400px; text-align: center; padding: 20px;">
+                            <div style="color: #ef4444; margin-bottom: 16px;">
+                                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                                    <line x1="12" y1="9" x2="12" y2="13"></line>
+                                    <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                                </svg>
+                            </div>
+                            <div class="loading-logo" style="font-size: 24px; margin-bottom: 12px; animation: none; filter: none;">Aceleração Gráfica Necessária</div>
+                            <div class="loading-text" style="line-height: 1.5; opacity: 0.9; text-transform: none; letter-spacing: normal;">O seu dispositivo ou navegador não suporta WebGL.<br><br>Por favor, certifique-se que tem a aceleração por hardware (hardware acceleration) ativada nas definições do seu navegador, ou tente aceder num dispositivo mais recente.</div>
+                        </div>
+                    `;
+                    return; // Previne o debug error no ecrã
+                }
+            }
+            
+            document.getElementById('debug-error').style.display = 'block';
+            document.getElementById('debug-error').innerText += '[Promise Rejection] ' + (e.reason && e.reason.stack ? e.reason.stack : e.reason) + '\n';
+        });
+    </script>
+
+    <!-- Camera Stuck Popup -->
+    <div id="camera-stuck-popup">
+        <div class="stuck-text">A câmara atingiu o limite da simulação.</div>
+        <div class="stuck-subtext">Estás muito longe do centro.</div>
+        <button id="recenter-btn">Recentrar Câmara</button>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div id="loading-overlay">
+        <div class="loading-content">
+            <div class="loading-logo">Malha Viva</div>
+            <div class="loading-spinner"></div>
+            <div class="loading-text">A carregar modelo 3D…</div>
+        </div>
+    </div>
+
+    <!-- Filter Panel -->
+    <div id="filter-panel">
+        <div class="filter-title">Filtro Visual</div>
+        <div class="filter-row">
+            <label>Saturação <span class="filter-val" id="val-saturate">90%</span></label>
+            <input type="range" id="filter-saturate" min="0" max="200" value="90">
+        </div>
+        <div class="filter-row">
+            <label>Brilho <span class="filter-val" id="val-brightness">100%</span></label>
+            <input type="range" id="filter-brightness" min="0" max="200" value="100">
+        </div>
+        <div class="filter-row">
+            <label>Contraste <span class="filter-val" id="val-contrast">100%</span></label>
+            <input type="range" id="filter-contrast" min="0" max="200" value="100">
+        </div>
+        <div class="filter-row">
+            <label>Matiz <span class="filter-val" id="val-hue">0°</span></label>
+            <input type="range" id="filter-hue" min="0" max="360" value="0">
+        </div>
+        <div class="filter-row">
+            <label>Sépia <span class="filter-val" id="val-sepia">0%</span></label>
+            <input type="range" id="filter-sepia" min="0" max="100" value="0">
+        </div>
+        <div class="filter-actions">
+            <button id="filter-reset">Repor</button>
+            <button id="filter-apply">Aplicar</button>
+        </div>
+    </div>
+
+    <!-- Header -->
+    <div id="header">
+        <div class="brand">
+            <div class="brand-text">
+                <span class="brand-name">Malha Viva</span>
+            </div>
+        </div>
+        
+        <div style="display: flex; align-items: center; gap: 8px;">
+            <div class="settings" id="dev-menu-container">
+                <button id="dev-btn" title="Menu de Desenvolvedor">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="16 18 22 12 16 6"></polyline>
+                        <polyline points="8 6 2 12 8 18"></polyline>
+                    </svg>
+                </button>
+                <div id="dev-menu" class="hidden">
+                    <div class="settings-title">Menu de Desenvolvedor</div>
+                    <div class="settings-options">
+                        <label class="settings-radio">
+                            <input type="checkbox" id="dev-trail-edit">
+                            <span>Modo Edição de Trilha</span>
+                        </label>
+                        <label class="settings-radio">
+                            <input type="checkbox" id="dev-filter">
+                            <span>Painel Filtro Visual</span>
+                        </label>
+                        <label class="settings-radio">
+                            <input type="checkbox" id="dev-cursor-coord">
+                            <span>Posição do Cursor</span>
+                        </label>
+                        <label class="settings-radio">
+                            <input type="checkbox" id="dev-camera-coord">
+                            <span>Posição da Câmara</span>
+                        </label>
+                        <label class="settings-radio">
+                            <input type="checkbox" id="dev-fps">
+                            <span>Mostrar FPS</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <a href="/controlos.html" id="help-btn" title="Controlos do Mapa">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+                    <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                </svg>
+            </a>
+        <div class="settings">
+            <button id="settings-btn" title="Configurações de Qualidade">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="3"></circle>
+                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                </svg>
+            </button>
+            <div id="settings-menu" class="hidden">
+                <div class="settings-title">Qualidade Gráfica</div>
+                <div class="settings-options">
+                    <label class="settings-radio">
+                        <input type="radio" name="quality" value="auto" id="radio-auto">
+                        <span>Automático (Recomendado)</span>
+                    </label>
+                    <label class="settings-radio">
+                        <input type="radio" name="quality" value="high" id="radio-high">
+                        <span>Alto (Detalhe Máximo)</span>
+                    </label>
+                    <label class="settings-radio">
+                        <input type="radio" name="quality" value="med" id="radio-med">
+                        <span>Médio (Equilibrado)</span>
+                    </label>
+                    <label class="settings-radio">
+                        <input type="radio" name="quality" value="low" id="radio-low">
+                        <span>Baixo (Mais Performance)</span>
+                    </label>
+                </div>
+            </div>
+        </div>
+        </div>
+    </div>
+
+    <!-- Coordinates Info -->
+    <div id="coordinates-info">
+        <div class="coord-item"><span class="coord-label" title="Rato X">X</span> <span id="coord-x">0.00</span></div>
+        <div class="coord-item"><span class="coord-label" title="Rato Y">Y</span> <span id="coord-y">0.00</span></div>
+        <div class="coord-item"><span class="coord-label" title="Rato Z">Z</span> <span id="coord-z">0.00</span></div>
+    </div>
+
+    <!-- Camera Info -->
+    <div id="camera-info">
+        <div class="coord-item"><span class="coord-label" title="Câmara X">Cam X</span> <span id="cam-x">0.00</span></div>
+        <div class="coord-item"><span class="coord-label" title="Câmara Y">Cam Y</span> <span id="cam-y">0.00</span></div>
+        <div class="coord-item"><span class="coord-label" title="Câmara Z">Cam Z</span> <span id="cam-z">0.00</span></div>
+        <div class="coord-item"><span class="coord-label" title="Pitch (Tilt)">Tilt</span> <span id="cam-pitch">0.0°</span></div>
+        <div class="coord-item"><span class="coord-label" title="Yaw (Pan)">Pan</span> <span id="cam-yaw">0.0°</span></div>
+    </div>
+
+    <!-- FPS Info -->
+    <div id="fps-info">
+        <span class="coord-label">FPS</span> <span id="fps-value" class="fps-value">0</span>
+    </div>
+
+    <!-- PlayCanvas Application -->
+    <pc-app id="main-app" antialias="true" high-resolution="true">
+
+        <!-- Assets -->
+        <pc-asset id="splat-scene" src="splat/lod-meta.json" type="gsplat"></pc-asset>
+        <pc-asset id="camera-controls-script" src="./camera-controls.mjs" type="script"></pc-asset>
+        <pc-asset id="camera-coords-script" src="./coords.mjs?v=4" type="script"></pc-asset>
+        <pc-asset id="annotations-script" src="./annotations.mjs?v=4" type="script"></pc-asset>
+        <pc-asset id="trail-script" src="./trail.mjs?v=4" type="script"></pc-asset>
+        <pc-asset id="image-particles-script" src="./image-particles.mjs?v=9" type="script"></pc-asset>
+        <pc-asset id="ground-fireflies-script" src="./ground-fireflies.mjs?v=1" type="script"></pc-asset>
+
+        <!-- Scene -->
+        <pc-scene>
+
+            <!-- Camera -->
+            <pc-entity name="camera" position="-144.27 63.28 129.01" rotation="-24.6 -30 0">
+                <pc-camera
+                    clear-color="0.02 0.02 0.04 1"
+                    far-clip="50000"
+                    near-clip="0.1"
+                    fov="60">
+                </pc-camera>
+                <pc-scripts>
+                    <pc-script name="cameraControls" move-speed="50" move-fast-speed="130" move-slow-speed="15" pitch-range="-89.9, 89.9" zoom-range="0.01, 800" max-distance="800"></pc-script>
+                    <pc-script name="cameraCoordinates"></pc-script>
+                    <pc-script name="annotationController"></pc-script>
+                    <pc-script name="trailController"></pc-script>
+                </pc-scripts>
+            </pc-entity>
+
+            <!-- Gaussian Splat Entity (Rotated to fix Y-axis) -->
+            <pc-entity name="gsplat-scene" rotation="180 0 0">
+                <pc-gsplat asset="splat-scene"></pc-gsplat>
+            </pc-entity>
+
+            <!-- Ground Fireflies (Constellation) -->
+            <pc-entity name="groundFireflies" position="0 0 0" rotation="0 0 0" scale="1 1 1">
+                <pc-scripts>
+                    <pc-script name="groundFireflies" json-url="./ground_fireflies.json?v=1" particle-size="0.7"></pc-script>
+                </pc-scripts>
+            </pc-entity>
+
+
+
+            <!-- Image Particles (Drawn Bridge) -->
+            <pc-entity name="imagePlane" position="1263 0 -3368" rotation="0 336 0" scale="4.7 4.7 4.7">
+                <pc-scripts>
+                    <pc-script name="imageParticles" image-url="./bridge_drawing.png" width="600" particle-density="0.5" particle-size="1.0" threshold="50"></pc-script>
+                </pc-scripts>
+            </pc-entity>
+
+        </pc-scene>
+    </pc-app>
+
+    <script type="module">
+        import { whenReady } from '@playcanvas/web-components';
+
+        // Wait for the PlayCanvas app to be ready, then hide the loading overlay
+        const overlay = document.getElementById('loading-overlay');
+        const header = document.getElementById('header');
+
+        // Quality Management
+        function detectTier() {
+            const isMobileUA = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+            const isSmallScreen = window.matchMedia("(max-width: 768px)").matches;
+            const isTouch = (navigator.maxTouchPoints > 0) || (navigator.msMaxTouchPoints > 0);
+            
+            const isMobile = isMobileUA || (isSmallScreen && isTouch);
+            if (isMobile) return 'low';
+            
+            const cores = navigator.hardwareConcurrency || 4;
+            if (cores <= 6) return 'med';
+            
+            return 'high';
+        }
+
+        let savedQuality = localStorage.getItem('quality') || 'auto';
+
+        const actualQuality = savedQuality === 'auto' ? detectTier() : savedQuality;
+        window.actualQuality = actualQuality; // Export for use in other scripts
+        const isHigh = actualQuality === 'high';
+        const isMed = actualQuality === 'med';
+        const isLow = actualQuality === 'low';
+        
+        // Setup initial UI states
+        document.getElementById('radio-auto').checked = (savedQuality === 'auto');
+        document.getElementById('radio-high').checked = (savedQuality === 'high');
+        document.getElementById('radio-med').checked = (savedQuality === 'med');
+        document.getElementById('radio-low').checked = (savedQuality === 'low');
+        
+        // Setup initial PlayCanvas attributes before initialization
+        const pcAppEl = document.getElementById('main-app');
+        if (!isHigh) {
+            pcAppEl.setAttribute('antialias', 'false');
+            pcAppEl.setAttribute('high-resolution', 'false');
+            
+            // Carrega o Splat específico e optimizado para performance (Médio e Baixo)
+            const splatAsset = document.getElementById('splat-scene');
+            if (splatAsset) {
+                splatAsset.setAttribute('src', 'splat_perf/lod-meta.json');
+            }
+        }
+
+        function showUI() {
+            overlay.classList.add('hidden');
+            header.classList.add('visible');
+            
+            // Adjust SOG LOD settings and apply performance budgets
+            try {
+                const pcApp = document.querySelector('pc-app');
+                const app = pcApp && pcApp.app;
+
+                // --- Reduce rendering resolution on mobile (Nível Baixo) ---
+                if (isLow && app && app.graphicsDevice) {
+                    app.graphicsDevice.maxPixelRatio = 1;
+                    
+                    // Remove ALL fireflies to maximize performance in Low mode
+                    if (app.root) {
+                        ['imagePlane', 'groundFireflies'].forEach(name => {
+                            const e = app.root.findByName(name);
+                            if (e) e.destroy();
+                        });
+                    }
+                }
+
+                // --- 3D Fog removed (may cause LOD issues with GSplat) ---
+
+                // --- Adjust far clip based on quality, but keep it huge for the background elements ---
+                if (isLow || isMed) {
+                    const cameraEntity = app && app.root && app.root.findByName('camera');
+                    if (cameraEntity && cameraEntity.camera) {
+                        cameraEntity.camera.farClip = isLow ? 10000 : 25000;
+                    }
+                }
+
+                // --- Per-asset LOD tuning ---
+                const splatEl = document.querySelector('pc-entity[name="gsplat-scene"]');
+                if (splatEl && splatEl.entity && splatEl.entity.gsplat) {
+                    if (isHigh) {
+                        splatEl.entity.gsplat.lodBaseDistance = 300; 
+                        splatEl.entity.gsplat.lodMultiplier = 3; 
+                    } else if (isMed) {
+                        splatEl.entity.gsplat.lodBaseDistance = 100; 
+                        splatEl.entity.gsplat.lodMultiplier = 3; 
+                        // Sem limite duro de memoria no nível Médio
+                    } else { // isLow
+                        splatEl.entity.gsplat.lodBaseDistance = 20; 
+                        splatEl.entity.gsplat.lodMultiplier = 8; 
+                        splatEl.entity.gsplat.splatBudget = 2000000; 
+                    }
+                }
+            } catch(e) {
+                console.warn("Performance setup error:", e);
+            }
+        }
+
+        function setQuality(mode) {
+            if (mode === savedQuality) return;
+            localStorage.setItem('quality', mode);
+            // Reload the page to recreate the WebGL context with new antialias settings
+            window.location.reload();
+        }
+
+        // Settings Menu Logic
+        const settingsBtn = document.getElementById('settings-btn');
+        const settingsMenu = document.getElementById('settings-menu');
+        const qualityInputs = document.querySelectorAll('input[name="quality"]');
+
+        settingsBtn.addEventListener('click', () => {
+            settingsMenu.classList.toggle('open');
+            if (devMenu) devMenu.classList.remove('open'); // Close dev menu if open
+        });
+
+        // Developer Menu Logic
+        const devBtn = document.getElementById('dev-btn');
+        const devMenu = document.getElementById('dev-menu');
+        
+        devBtn.addEventListener('click', () => {
+            devMenu.classList.toggle('open');
+            if (settingsMenu) settingsMenu.classList.remove('open'); // Close settings menu if open
+        });
+
+        // Dev Menu Toggles
+        const devFilterToggle = document.getElementById('dev-filter');
+        const filterPanel = document.getElementById('filter-panel');
+        devFilterToggle.addEventListener('change', (e) => {
+            if (e.target.checked) {
+                filterPanel.classList.add('visible');
+            } else {
+                filterPanel.classList.remove('visible');
+            }
+        });
+
+        const devCursorToggle = document.getElementById('dev-cursor-coord');
+        const cursorInfo = document.getElementById('coordinates-info');
+        devCursorToggle.addEventListener('change', (e) => {
+            if (e.target.checked) {
+                cursorInfo.classList.add('visible');
+            } else {
+                cursorInfo.classList.remove('visible');
+            }
+        });
+
+        const devCameraToggle = document.getElementById('dev-camera-coord');
+        const cameraInfo = document.getElementById('camera-info');
+        devCameraToggle.addEventListener('change', (e) => {
+            if (e.target.checked) {
+                cameraInfo.classList.add('visible');
+            } else {
+                cameraInfo.classList.remove('visible');
+            }
+        });
+
+        // FPS Logic
+        const devFpsToggle = document.getElementById('dev-fps');
+        const fpsInfo = document.getElementById('fps-info');
+        const fpsValue = document.getElementById('fps-value');
+        let fpsFrames = 0;
+        let fpsLastTime = performance.now();
+
+        const updateFPS = () => {
+            if (!devFpsToggle.checked) return;
+            const now = performance.now();
+            fpsFrames++;
+            if (now >= fpsLastTime + 1000) {
+                fpsValue.innerText = Math.round((fpsFrames * 1000) / (now - fpsLastTime));
+                fpsFrames = 0;
+                fpsLastTime = now;
+            }
+            requestAnimationFrame(updateFPS);
+        };
+
+        devFpsToggle.addEventListener('change', (e) => {
+            if (e.target.checked) {
+                fpsInfo.classList.add('visible');
+                fpsFrames = 0;
+                fpsLastTime = performance.now();
+                requestAnimationFrame(updateFPS);
+            } else {
+                fpsInfo.classList.remove('visible');
+            }
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!settingsBtn.contains(e.target) && !settingsMenu.contains(e.target)) {
+                settingsMenu.classList.remove('open');
+            }
+            if (!devBtn.contains(e.target) && !devMenu.contains(e.target) && !filterPanel.contains(e.target)) {
+                devMenu.classList.remove('open');
+            }
+        });
+
+        qualityInputs.forEach(input => {
+            input.addEventListener('change', (e) => {
+                setQuality(e.target.value);
+            });
+        });
+
+        // Espera pelo arranque real do motor 3D (método oficial dos web components),
+        // com um limite de segurança de 15 segundos caso algo falhe.
+        let uiShown = false;
+        const showUIOnce = () => {
+            if (uiShown) return;
+            uiShown = true;
+            showUI();
+        };
+
+        whenReady('pc-app').then(() => {
+            // Give a bit more time for the first chunks to load
+            setTimeout(showUIOnce, 2000);
+        });
+
+        setTimeout(showUIOnce, 15000);
+
+
+
+        // Camera Boundary Popup Logic
+        const stuckPopup = document.getElementById('camera-stuck-popup');
+        const recenterBtn = document.getElementById('recenter-btn');
+
+        window.addEventListener('cameraBoundaryHit', () => {
+            stuckPopup.classList.add('visible');
+        });
+
+        window.addEventListener('cameraBoundaryLeft', () => {
+            stuckPopup.classList.remove('visible');
+        });
+
+        recenterBtn.addEventListener('click', () => {
+            stuckPopup.classList.remove('visible');
+            const pcApp = document.querySelector('pc-app');
+            if (pcApp && pcApp.app) {
+                const cameraEntity = pcApp.app.root.findByName('camera');
+                if (cameraEntity && cameraEntity.script && cameraEntity.script.cameraControls) {
+                    const startPos = cameraEntity.getPosition().clone().set(-168.13, 49.94, 141.22);
+                    const origin = cameraEntity.getPosition().clone().set(0, 0, 0);
+                    cameraEntity.script.cameraControls.reset(origin, startPos);
+                }
+            }
+        });
+    </script>
+
+    <!-- Filter Panel Logic -->
+    <script>
+    (function() {
+        const filterBtn = document.getElementById('filter-btn');
+        const filterPanel = document.getElementById('filter-panel');
+        const pcAppEl = document.querySelector('pc-app');
+
+        const sliders = {
+            saturate:   { el: document.getElementById('filter-saturate'),   valEl: document.getElementById('val-saturate'),   unit: '%', def: 90 },
+            brightness: { el: document.getElementById('filter-brightness'), valEl: document.getElementById('val-brightness'), unit: '%', def: 100 },
+            contrast:   { el: document.getElementById('filter-contrast'),   valEl: document.getElementById('val-contrast'),   unit: '%', def: 100 },
+            hue:        { el: document.getElementById('filter-hue'),        valEl: document.getElementById('val-hue'),        unit: '°', def: 0 },
+            sepia:      { el: document.getElementById('filter-sepia'),      valEl: document.getElementById('val-sepia'),      unit: '%', def: 0 },
+        };
+
+        function buildFilter() {
+            const s = sliders.saturate.el.value;
+            const b = sliders.brightness.el.value;
+            const c = sliders.contrast.el.value;
+            const h = sliders.hue.el.value;
+            const sp = sliders.sepia.el.value;
+            return `saturate(${s}%) brightness(${b}%) contrast(${c}%) hue-rotate(${h}deg) sepia(${sp}%)`;
+        }
+
+        function applyFilter() {
+            if (pcAppEl) pcAppEl.style.filter = buildFilter();
+        }
+
+        function updateLabels() {
+            Object.values(sliders).forEach(s => {
+                s.valEl.innerText = s.el.value + s.unit;
+            });
+        }
+
+        Object.values(sliders).forEach(s => {
+            s.el.addEventListener('input', () => {
+                updateLabels();
+                applyFilter();
+            });
+        });
+
+        document.getElementById('filter-reset').addEventListener('click', () => {
+            for (const key in sliders) {
+                sliders[key].el.value = sliders[key].def;
+            }
+            updateLabels();
+            if (pcAppEl) pcAppEl.style.filter = 'none';
+        });
+
+        // Apply button (close panel and keep filter)
+        document.getElementById('filter-apply').addEventListener('click', () => {
+            applyFilter();
+            filterPanel.classList.remove('visible');
+        });
+    })();
+    </script>
+
+</body>
+</html>

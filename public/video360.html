@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>360 Video Player</title>
+    <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
+    <script>
+        AFRAME.registerComponent('fix-seam', {
+            init: function () {
+                this.el.addEventListener('materialtextureloaded', () => {
+                    const mesh = this.el.getObject3D('mesh');
+                    if (mesh && mesh.material && mesh.material.map) {
+                        mesh.material.map.wrapS = THREE.RepeatWrapping;
+                        mesh.material.map.needsUpdate = true;
+                    }
+                });
+            }
+        });
+    </script>
+    <style>
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #05050a; overflow: hidden; font-family: sans-serif; }
+        
+        body.hide-cursor, body.hide-cursor * {
+            cursor: none !important;
+        }
+
+        /* ─── Play Initial Overlay ─── */
+        #play-overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: transparent; z-index: 2000;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+        }
+        #play-btn-initial {
+            background: #10b981; color: white; border: none; padding: 15px 40px; border-radius: 30px;
+            font-size: 1.2rem; font-weight: bold; cursor: pointer; transition: transform 0.2s;
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4);
+            display: flex; align-items: center; gap: 10px;
+        }
+        #play-btn-initial:hover { transform: scale(1.05); }
+        .spinner {
+            width: 30px; height: 30px; border: 3px solid rgba(255,255,255,0.3);
+            border-top-color: #fff; border-radius: 50%; animation: spin 1s linear infinite;
+            display: none;
+        }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+
+        /* ─── Custom UI Overlay ─── */
+        #ui-layer {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 1000; pointer-events: none;
+        }
+        
+        /* --- Big Play Button --- */
+        .big-play-btn {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.6);
+            border-radius: 50%;
+            width: 70px; height: 70px;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer;
+            color: white;
+            opacity: 0;
+            transition: opacity 0.2s, transform 0.2s;
+            pointer-events: none;
+        }
+        #ui-layer.paused .big-play-btn {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        #ui-layer.paused .big-play-btn:hover {
+            transform: translate(-50%, -50%) scale(1.1);
+            color: #10b981;
+        }
+
+        /* --- Controls Bar --- */
+        .video-controls {
+            position: absolute;
+            bottom: 0; left: 0; right: 0;
+            background: linear-gradient(transparent, rgba(0,0,0,0.9));
+            padding: 30px 15px 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+        .video-controls.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        .progress-container {
+            width: 100%;
+            height: 6px;
+            background: rgba(255,255,255,0.2);
+            cursor: pointer;
+            border-radius: 3px;
+            position: relative;
+        }
+        .progress-filled {
+            height: 100%;
+            background: #10b981;
+            width: 0%;
+            border-radius: 3px;
+            pointer-events: none;
+            transition: width 0.1s linear;
+        }
+        .controls-main {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .controls-left, .controls-right {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        .player-btn {
+            background: none;
+            border: none;
+            color: white;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0.8;
+            transition: 0.2s ease;
+            padding: 0;
+        }
+        .player-btn:hover {
+            opacity: 1;
+            color: #10b981;
+            transform: scale(1.1);
+        }
+        .time-display {
+            color: white;
+            font-size: 0.85rem;
+            font-variant-numeric: tabular-nums;
+        }
+        
+        /* Volume Slider */
+        .volume-container {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            overflow: hidden;
+            width: 32px;
+            transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .volume-container:hover, .volume-container.active {
+            width: 140px;
+        }
+        .volume-slider-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            opacity: 0;
+            transform: translateX(-10px);
+            transition: all 0.3s ease;
+            pointer-events: none;
+        }
+        .volume-container:hover .volume-slider-wrapper, .volume-container.active .volume-slider-wrapper {
+            opacity: 1;
+            transform: translateX(0);
+            pointer-events: auto;
+        }
+        .volume-slider {
+            -webkit-appearance: none;
+            width: 60px;
+            height: 4px;
+            background: rgba(255,255,255,0.3);
+            border-radius: 2px;
+            outline: none;
+            cursor: pointer;
+        }
+        .volume-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #10b981;
+            cursor: pointer;
+            transition: transform 0.1s;
+        }
+        .volume-slider::-webkit-slider-thumb:hover {
+            transform: scale(1.3);
+        }
+        .volume-percentage {
+            color: white;
+            font-size: 0.75rem;
+            min-width: 32px;
+            font-variant-numeric: tabular-nums;
+        }
+
+    </style>
+</head>
+<body>
+    <!-- Initial Load Overlay -->
+    <div id="play-overlay">
+        <button id="play-btn-initial">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+            Iniciar Vídeo 360º
+        </button>
+        <div class="spinner" id="spinner"></div>
+    </div>
+
+    <!-- Custom Controls Overlay -->
+    <div id="ui-layer" class="paused">
+        <!-- Big Play Button -->
+        <div class="big-play-btn" id="big-play-btn">
+            <svg width="36" height="36" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+        </div>
+        
+        <!-- Controls Bar -->
+        <div class="video-controls" id="video-controls">
+            <div class="progress-container" id="progress-container">
+                <div class="progress-filled" id="progress-filled"></div>
+            </div>
+            
+            <div class="controls-main">
+                <div class="controls-left">
+                    <button class="player-btn" id="play-pause-btn">
+                        <!-- Default icon: Play -->
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                    </button>
+                    
+                    <div class="volume-container" id="volume-container">
+                        <button class="player-btn" id="volume-btn">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
+                        </button>
+                        <div class="volume-slider-wrapper">
+                            <input type="range" class="volume-slider" id="volume-slider" min="0" max="3" step="0.05" value="1">
+                            <div class="volume-percentage" id="volume-percentage">100%</div>
+                        </div>
+                    </div>
+                    
+                    <div class="time-display" id="time-display">0:00 / 0:00</div>
+                </div>
+                
+                <div class="controls-right">
+                    <button class="player-btn" id="fullscreen-btn">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- A-Frame 360 Engine -->
+    <a-scene loading-screen="enabled: false" vr-mode-ui="enabled: false">
+        <a-assets>
+            <!-- Video dynamically injected -->
+        </a-assets>
+        <!-- look-controls: reverseMouseDrag allows natural drag-to-look -->
+        <a-entity id="camera" camera look-controls="reverseMouseDrag: true"></a-entity>
+    </a-scene>
+
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        let src = urlParams.get('src') || "https://pub-0a409b596f304409941ca1f88f3b593b.r2.dev/Esvarena%20-%20360%20-%20A.mp4";
+
+        // DOM Elements
+        const overlay = document.getElementById('play-overlay');
+        const playBtnInitial = document.getElementById('play-btn-initial');
+        const spinner = document.getElementById('spinner');
+        const uiLayer = document.getElementById('ui-layer');
+        const videoControls = document.getElementById('video-controls');
+        const bigPlayBtn = document.getElementById('big-play-btn');
+        const playPauseBtn = document.getElementById('play-pause-btn');
+        const progressContainer = document.getElementById('progress-container');
+        const progressFilled = document.getElementById('progress-filled');
+        const timeDisplay = document.getElementById('time-display');
+        const volumeBtn = document.getElementById('volume-btn');
+        const volumeSlider = document.getElementById('volume-slider');
+        const volumePercentage = document.getElementById('volume-percentage');
+        const fullscreenBtn = document.getElementById('fullscreen-btn');
+        
+        const scene = document.querySelector('a-scene');
+        const assets = document.querySelector('a-assets');
+
+        // Create Video Element
+        const video = document.createElement('video');
+        video.id = 'video360';
+        video.crossOrigin = 'anonymous';
+        video.playsInline = true;
+        video.webkitPlaysinline = true;
+        video.loop = true;
+        video.preload = 'auto';
+        video.src = src;
+        assets.appendChild(video);
+
+        // Create Sphere mapped to video
+        const videosphere = document.createElement('a-videosphere');
+        videosphere.setAttribute('src', '#video360');
+        videosphere.setAttribute('rotation', '0 180 0'); // Seam placed directly behind the user
+        videosphere.setAttribute('segments-width', '128');
+        videosphere.setAttribute('segments-height', '64');
+        videosphere.setAttribute('fix-seam', '');
+        scene.appendChild(videosphere);
+
+        // --- Video Logic ---
+        
+        const formatTime = (seconds) => {
+            if (isNaN(seconds)) return "0:00";
+            const m = Math.floor(seconds / 60);
+            const s = Math.floor(seconds % 60);
+            return `${m}:${s < 10 ? '0' : ''}${s}`;
+        };
+
+        const playIcon = '<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>';
+        const pauseIcon = '<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>';
+        const volHighIcon = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>';
+        const volMutedIcon = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><line x1="23" y1="9" x2="17" y2="15"></line><line x1="17" y1="9" x2="23" y2="15"></line></svg>';
+
+        // Web Audio API for >100% Volume
+        let audioCtx;
+        let gainNode;
+        let mediaSource;
+        let isMuted = false;
+        let currentVolume = 1;
+
+        const initAudio = () => {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                mediaSource = audioCtx.createMediaElementSource(video);
+                gainNode = audioCtx.createGain();
+                mediaSource.connect(gainNode);
+                gainNode.connect(audioCtx.destination);
+                gainNode.gain.value = currentVolume;
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        };
+
+        const togglePlay = () => {
+            if (video.paused) {
+                video.play();
+            } else {
+                video.pause();
+            }
+        };
+
+        // Event Listeners
+        playBtnInitial.addEventListener('click', () => {
+            playBtnInitial.style.display = 'none';
+            spinner.style.display = 'block';
+            
+            video.play().then(() => {
+                overlay.style.display = 'none';
+                uiLayer.classList.remove('paused');
+                initAudio();
+                showControls();
+            }).catch(e => {
+                console.error(e);
+                alert("Erro ao reproduzir vídeo. Tente novamente.");
+                playBtnInitial.style.display = 'flex';
+                spinner.style.display = 'none';
+            });
+        });
+
+        playPauseBtn.addEventListener('click', togglePlay);
+        bigPlayBtn.addEventListener('click', togglePlay);
+        
+        video.addEventListener('play', () => {
+            playPauseBtn.innerHTML = pauseIcon;
+            uiLayer.classList.remove('paused');
+            if(audioCtx) initAudio();
+        });
+
+        video.addEventListener('pause', () => {
+            playPauseBtn.innerHTML = playIcon;
+            uiLayer.classList.add('paused');
+        });
+
+        video.addEventListener('timeupdate', () => {
+            const percent = (video.currentTime / video.duration) * 100;
+            progressFilled.style.width = `${percent}%`;
+            timeDisplay.innerText = `${formatTime(video.currentTime)} / ${formatTime(video.duration)}`;
+        });
+
+        video.addEventListener('loadedmetadata', () => {
+            timeDisplay.innerText = `${formatTime(video.currentTime)} / ${formatTime(video.duration)}`;
+        });
+
+        progressContainer.addEventListener('click', (e) => {
+            const rect = progressContainer.getBoundingClientRect();
+            const pos = (e.clientX - rect.left) / rect.width;
+            video.currentTime = pos * video.duration;
+        });
+
+        // Volume
+        volumeSlider.addEventListener('input', (e) => {
+            currentVolume = parseFloat(e.target.value);
+            if (gainNode) gainNode.gain.value = currentVolume;
+            volumePercentage.innerText = Math.round(currentVolume * 100) + '%';
+            
+            if (currentVolume === 0) {
+                volumeBtn.innerHTML = volMutedIcon;
+                isMuted = true;
+            } else {
+                volumeBtn.innerHTML = volHighIcon;
+                isMuted = false;
+            }
+        });
+
+        volumeBtn.addEventListener('click', () => {
+            if (isMuted) {
+                currentVolume = parseFloat(volumeSlider.value) || 1;
+                if (currentVolume === 0) { currentVolume = 1; volumeSlider.value = 1; }
+                if (gainNode) gainNode.gain.value = currentVolume;
+                volumePercentage.innerText = Math.round(currentVolume * 100) + '%';
+                volumeBtn.innerHTML = volHighIcon;
+                isMuted = false;
+            } else {
+                if (gainNode) gainNode.gain.value = 0;
+                volumePercentage.innerText = '0%';
+                volumeBtn.innerHTML = volMutedIcon;
+                isMuted = true;
+            }
+        });
+
+        // Fullscreen
+        fullscreenBtn.addEventListener('click', () => {
+            if (!document.fullscreenElement) {
+                document.body.requestFullscreen().catch(err => console.log(err));
+            } else {
+                document.exitFullscreen();
+            }
+        });
+
+        // Auto-hide controls logic
+        let controlsTimeout;
+        const showControls = () => {
+            videoControls.classList.add('active');
+            document.body.classList.remove('hide-cursor');
+            clearTimeout(controlsTimeout);
+            
+            controlsTimeout = setTimeout(() => {
+                if (!video.paused) {
+                    videoControls.classList.remove('active');
+                    document.body.classList.add('hide-cursor');
+                }
+            }, 5000);
+        };
+
+        // Listen for mouse movement anywhere to show controls
+        window.addEventListener('mousemove', showControls);
+        window.addEventListener('click', showControls);
+        window.addEventListener('touchstart', showControls);
+        
+        // Click on 360 video canvas to toggle Play/Pause (avoid triggering on drag)
+        let mousedownPos = {x:0, y:0};
+        window.addEventListener('mousedown', (e) => {
+            mousedownPos = {x: e.clientX, y: e.clientY};
+        });
+        window.addEventListener('touchstart', (e) => {
+            if (e.touches.length > 0) {
+                mousedownPos = {x: e.touches[0].clientX, y: e.touches[0].clientY};
+            }
+        });
+        
+        const handleInteractionEnd = (clientX, clientY, target) => {
+            if (target.closest('.video-controls') || target.closest('#play-overlay') || target.closest('.big-play-btn')) return;
+            
+            const dx = clientX - mousedownPos.x;
+            const dy = clientY - mousedownPos.y;
+            const dist = Math.sqrt(dx*dx + dy*dy);
+            
+            if (dist < 10 && target.tagName.toLowerCase() === 'canvas') {
+                togglePlay();
+            }
+        };
+
+        window.addEventListener('mouseup', (e) => {
+            handleInteractionEnd(e.clientX, e.clientY, e.target);
+        });
+        window.addEventListener('touchend', (e) => {
+            if (e.changedTouches.length > 0) {
+                handleInteractionEnd(e.changedTouches[0].clientX, e.changedTouches[0].clientY, e.target);
+            }
+        });
+        
+        // Always show controls when paused
+        video.addEventListener('pause', () => {
+            clearTimeout(controlsTimeout);
+            videoControls.classList.add('active');
+            document.body.classList.remove('hide-cursor');
+        });
+        
+    </script>
+</body>
+</html>
