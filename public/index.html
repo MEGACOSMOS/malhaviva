@@ -720,7 +720,7 @@
 
         <!-- Assets -->
         <pc-asset id="splat-scene" src="splat/lod-meta.json" type="gsplat"></pc-asset>
-        <pc-asset id="camera-controls-script" src="./camera-controls.mjs?v=3" type="script"></pc-asset>
+        <pc-asset id="camera-controls-script" src="./camera-controls.mjs?v=5" type="script"></pc-asset>
         <pc-asset id="camera-coords-script" src="./coords.mjs?v=5" type="script"></pc-asset>
         <pc-asset id="annotations-script" src="./annotations.mjs?v=4" type="script"></pc-asset>
         <pc-asset id="trail-script" src="./trail.mjs?v=5" type="script"></pc-asset>
@@ -774,9 +774,16 @@
         import { whenReady } from '@playcanvas/web-components';
         import { Vec3 } from 'playcanvas';
 
+        // Quanto se pode voar para lá da última casa, em metros. A vista
+        // inicial fica mais longe do que isto, por isso o limite só passa a
+        // valer depois de a câmara entrar na zona mapeada (ver setPlayArea).
+        const MARGEM_FORA_DO_MAPA = 5;
+        const RESOLUCAO_LIMITE = 4;
+
         /**
-         * Impede a câmara de sair da área do mapa. Os contornos são lidos do
-         * próprio ficheiro do modelo, por isso acompanham o mapa se este mudar.
+         * Impede a câmara de sair da zona mapeada. O bairro não tem forma
+         * retangular, por isso o limite é desenhado a partir das zonas onde o
+         * modelo tem mesmo terreno, e não de uma caixa à volta de tudo.
          * Só o plano horizontal é limitado — a altura mantém os limites de
          * sempre, para a vista inicial de cima continuar a funcionar.
          */
@@ -784,34 +791,126 @@
             try {
                 const src = document.getElementById('splat-scene').getAttribute('src');
                 const meta = await (await fetch(src)).json();
-                const bound = meta && meta.tree && meta.tree.bound;
-                if (!bound) return;
+                if (!meta || !meta.tree) return;
 
                 const splat = app.root.findByName('gsplat-scene');
                 const camera = app.root.findByName('camera');
                 const controls = camera && camera.script && camera.script.cameraControls;
                 if (!splat || !controls) return;
 
-                // O mapa está rodado, por isso os cantos são convertidos para
-                // coordenadas do mundo antes de formarem a área permitida.
+                // O modelo divide-se numa árvore de zonas; as pontas dessa
+                // árvore dizem onde há terreno de facto.
+                const zonas = [];
+                (function recolher(no) {
+                    if (!no.children || no.children.length === 0) {
+                        if (no.bound) zonas.push(no.bound);
+                        return;
+                    }
+                    no.children.forEach(recolher);
+                })(meta.tree);
+                if (zonas.length === 0) return;
+
+                // O mapa está rodado, por isso cada zona é convertida para
+                // coordenadas do mundo e reduzida à sua planta (X e Z).
                 app.root.syncHierarchy();
                 const matrix = splat.getWorldTransform();
                 const corner = new Vec3();
-                const min = new Vec3(Infinity, Infinity, Infinity);
-                const max = new Vec3(-Infinity, -Infinity, -Infinity);
+                let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
 
-                for (let i = 0; i < 8; i++) {
-                    corner.set(
-                        i & 1 ? bound.max[0] : bound.min[0],
-                        i & 2 ? bound.max[1] : bound.min[1],
-                        i & 4 ? bound.max[2] : bound.min[2]
-                    );
-                    matrix.transformPoint(corner, corner);
-                    min.set(Math.min(min.x, corner.x), Math.min(min.y, corner.y), Math.min(min.z, corner.z));
-                    max.set(Math.max(max.x, corner.x), Math.max(max.y, corner.y), Math.max(max.z, corner.z));
+                const plantas = zonas.map((b) => {
+                    let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity;
+                    for (let i = 0; i < 8; i++) {
+                        corner.set(
+                            i & 1 ? b.max[0] : b.min[0],
+                            i & 2 ? b.max[1] : b.min[1],
+                            i & 4 ? b.max[2] : b.min[2]
+                        );
+                        matrix.transformPoint(corner, corner);
+                        x0 = Math.min(x0, corner.x); x1 = Math.max(x1, corner.x);
+                        z0 = Math.min(z0, corner.z); z1 = Math.max(z1, corner.z);
+                    }
+                    minX = Math.min(minX, x0); maxX = Math.max(maxX, x1);
+                    minZ = Math.min(minZ, z0); maxZ = Math.max(maxZ, z1);
+                    return { x0, x1, z0, z1 };
+                });
+
+                // Grelha com folga para caber a margem à volta do terreno
+                const folga = Math.ceil(MARGEM_FORA_DO_MAPA / RESOLUCAO_LIMITE) + 2;
+                const colunas = Math.ceil((maxX - minX) / RESOLUCAO_LIMITE) + folga * 2;
+                const linhas = Math.ceil((maxZ - minZ) / RESOLUCAO_LIMITE) + folga * 2;
+                const origemX = minX - folga * RESOLUCAO_LIMITE;
+                const origemZ = minZ - folga * RESOLUCAO_LIMITE;
+
+                const distancia = new Float32Array(colunas * linhas).fill(1e9);
+                for (const p of plantas) {
+                    const a = Math.floor((p.x0 - origemX) / RESOLUCAO_LIMITE);
+                    const b = Math.floor((p.x1 - origemX) / RESOLUCAO_LIMITE);
+                    const c = Math.floor((p.z0 - origemZ) / RESOLUCAO_LIMITE);
+                    const d = Math.floor((p.z1 - origemZ) / RESOLUCAO_LIMITE);
+                    for (let j = c; j <= d; j++) {
+                        for (let i = a; i <= b; i++) distancia[j * colunas + i] = 0;
+                    }
                 }
 
-                controls.setWorldBounds(min, max);
+                // Distância de cada ponto ao terreno mais próximo, em duas
+                // passagens (ida e volta) sobre a grelha.
+                const DIAGONAL = Math.SQRT2;
+                for (let j = 0; j < linhas; j++) {
+                    for (let i = 0; i < colunas; i++) {
+                        const k = j * colunas + i;
+                        let d = distancia[k];
+                        if (i > 0) d = Math.min(d, distancia[k - 1] + 1);
+                        if (j > 0) d = Math.min(d, distancia[k - colunas] + 1);
+                        if (i > 0 && j > 0) d = Math.min(d, distancia[k - colunas - 1] + DIAGONAL);
+                        if (i < colunas - 1 && j > 0) d = Math.min(d, distancia[k - colunas + 1] + DIAGONAL);
+                        distancia[k] = d;
+                    }
+                }
+                for (let j = linhas - 1; j >= 0; j--) {
+                    for (let i = colunas - 1; i >= 0; i--) {
+                        const k = j * colunas + i;
+                        let d = distancia[k];
+                        if (i < colunas - 1) d = Math.min(d, distancia[k + 1] + 1);
+                        if (j < linhas - 1) d = Math.min(d, distancia[k + colunas] + 1);
+                        if (i < colunas - 1 && j < linhas - 1) d = Math.min(d, distancia[k + colunas + 1] + DIAGONAL);
+                        if (i > 0 && j < linhas - 1) d = Math.min(d, distancia[k + colunas - 1] + DIAGONAL);
+                        distancia[k] = d;
+                    }
+                }
+
+                const limite = MARGEM_FORA_DO_MAPA / RESOLUCAO_LIMITE;
+                const permitido = new Uint8Array(colunas * linhas);
+                for (let k = 0; k < permitido.length; k++) {
+                    permitido[k] = distancia[k] <= limite ? 1 : 0;
+                }
+
+                // Um pátio ou uma clareira sem pontos no modelo abriria um
+                // buraco no meio do bairro e prendia lá a câmara. Tudo o que
+                // esteja rodeado por terreno passa também a ser permitido.
+                const exterior = new Uint8Array(colunas * linhas);
+                const porVer = [0];
+                exterior[0] = 1;
+                while (porVer.length > 0) {
+                    const k = porVer.pop();
+                    const i = k % colunas;
+                    const j = (k - i) / colunas;
+                    if (i > 0) { const n = k - 1; if (!exterior[n] && !permitido[n]) { exterior[n] = 1; porVer.push(n); } }
+                    if (i < colunas - 1) { const n = k + 1; if (!exterior[n] && !permitido[n]) { exterior[n] = 1; porVer.push(n); } }
+                    if (j > 0) { const n = k - colunas; if (!exterior[n] && !permitido[n]) { exterior[n] = 1; porVer.push(n); } }
+                    if (j < linhas - 1) { const n = k + colunas; if (!exterior[n] && !permitido[n]) { exterior[n] = 1; porVer.push(n); } }
+                }
+                for (let k = 0; k < permitido.length; k++) {
+                    if (!permitido[k] && !exterior[k]) permitido[k] = 1;
+                }
+
+                controls.setPlayArea({
+                    contains(x, z) {
+                        const i = Math.floor((x - origemX) / RESOLUCAO_LIMITE);
+                        const j = Math.floor((z - origemZ) / RESOLUCAO_LIMITE);
+                        if (i < 0 || j < 0 || i >= colunas || j >= linhas) return false;
+                        return permitido[j * colunas + i] === 1;
+                    }
+                });
             } catch (e) {
                 console.warn('Não foi possível ler os contornos do mapa:', e);
             }
@@ -1072,7 +1171,8 @@
                 const cameraEntity = pcApp.app.root.findByName('camera');
                 const controls = cameraEntity && cameraEntity.script && cameraEntity.script.cameraControls;
                 if (controls) {
-                    controls.recenter(new Vec3(-168.13, 49.94, 141.22), new Vec3(0, 0, 0));
+                    // Devolve exatamente a vista de abertura
+                    controls.recenter(new Vec3(-144.27, 63.28, 129.01), new Vec3(0, 0, 0));
                 }
             }
         });

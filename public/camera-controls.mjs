@@ -484,12 +484,13 @@ class CameraControls extends Script {
     maxDistance = 800;
 
     /**
-     * Horizontal play area, in world units, taken from the map's own footprint.
-     * While unset, the older spherical `maxDistance` limit is used instead.
+     * Where the camera is allowed to be, horizontally. Follows the shape of the
+     * mapped terrain rather than a rectangle around it. While unset, the older
+     * spherical `maxDistance` limit is used instead.
      *
-     * @type {{minX: number, maxX: number, minZ: number, maxZ: number}|null}
+     * @type {{contains: (x: number, z: number) => boolean}|null}
      */
-    _worldBounds = null;
+    _playArea = null;
 
     /**
      * The limit only engages once the camera has been inside the play area at
@@ -499,21 +500,19 @@ class CameraControls extends Script {
      */
     _boundsArmed = false;
 
+    /** @type {number} @private */
+    _lastInsideX = 0;
+
+    /** @type {number} @private */
+    _lastInsideZ = 0;
+
     /**
-     * Restricts the camera to the map's footprint. Pass the world-space extents
-     * of the splat; `margin` widens (positive) or tightens (negative) the area.
+     * Restricts the camera to the shape of the mapped terrain.
      *
-     * @param {{x: number, z: number}} min - Minimum world corner.
-     * @param {{x: number, z: number}} max - Maximum world corner.
-     * @param {number} [margin] - Extra room outside the footprint.
+     * @param {{contains: (x: number, z: number) => boolean}} area - Play area test.
      */
-    setWorldBounds(min, max, margin = 0) {
-        this._worldBounds = {
-            minX: Math.min(min.x, max.x) - margin,
-            maxX: Math.max(min.x, max.x) + margin,
-            minZ: Math.min(min.z, max.z) - margin,
-            maxZ: Math.max(min.z, max.z) + margin
-        };
+    setPlayArea(area) {
+        this._playArea = area;
         this._boundsArmed = false;
     }
 
@@ -787,10 +786,15 @@ class CameraControls extends Script {
      * Places the camera at a known viewpoint looking at `focus`, whichever
      * control mode is active. Used to get out of a corner of the map.
      *
+     * The play area is disarmed so the viewpoint can sit outside the mapped
+     * terrain, exactly as the opening view does; it re-engages as soon as the
+     * camera flies back in.
+     *
      * @param {Vec3} position - Where to put the camera.
      * @param {Vec3} focus - The point to look towards.
      */
     recenter(position, focus) {
+        this._boundsArmed = false;
         this._pose.look(position, focus);
         this._controller.attach(this._pose, false);
     }
@@ -1107,37 +1111,44 @@ class CameraControls extends Script {
         let isAtBoundary = false;
         const EDGE_EPS = 0.01;
 
-        if (this._worldBounds) {
-            // Keep the camera over the map's own footprint.
-            const b = this._worldBounds;
+        if (this._playArea) {
+            const area = this._playArea;
             const pos = this._pose.position;
 
             // Arm only once the camera is inside, so a start position outside
-            // the footprint is left alone instead of being snapped in.
-            if (!this._boundsArmed &&
-                pos.x >= b.minX && pos.x <= b.maxX &&
-                pos.z >= b.minZ && pos.z <= b.maxZ) {
+            // the terrain is left alone instead of being snapped in.
+            if (!this._boundsArmed && area.contains(pos.x, pos.z)) {
                 this._boundsArmed = true;
+                this._lastInsideX = pos.x;
+                this._lastInsideZ = pos.z;
             }
 
             if (this._boundsArmed) {
-                const clampedX = math.clamp(pos.x, b.minX, b.maxX);
-                const clampedZ = math.clamp(pos.z, b.minZ, b.maxZ);
+                if (area.contains(pos.x, pos.z)) {
+                    this._lastInsideX = pos.x;
+                    this._lastInsideZ = pos.z;
+                } else {
+                    // Give back only the axis that left the terrain, so the
+                    // camera slides along the edge instead of stopping dead.
+                    if (area.contains(pos.x, this._lastInsideZ)) {
+                        pos.z = this._lastInsideZ;
+                    } else if (area.contains(this._lastInsideX, pos.z)) {
+                        pos.x = this._lastInsideX;
+                    } else {
+                        pos.x = this._lastInsideX;
+                        pos.z = this._lastInsideZ;
+                    }
 
-                if (clampedX !== pos.x || clampedZ !== pos.z) {
-                    pos.x = clampedX;
-                    pos.z = clampedZ;
+                    isAtBoundary = true;
+                    this._lastInsideX = pos.x;
+                    this._lastInsideZ = pos.z;
+
                     if (this._mode === 'orbit') {
                         const focus = this._pose.getFocus(tmpV2).clone();
                         this._pose.look(this._pose.position, focus);
                         this._controller.attach(this._pose, false);
                     }
                 }
-
-                // Stays true while resting against an edge, not just on impact
-                isAtBoundary =
-                    Math.abs(pos.x - b.minX) < EDGE_EPS || Math.abs(pos.x - b.maxX) < EDGE_EPS ||
-                    Math.abs(pos.z - b.minZ) < EDGE_EPS || Math.abs(pos.z - b.maxZ) < EDGE_EPS;
             }
         } else if (this.maxDistance > 0 && this._pose.position.length() >= this.maxDistance - EDGE_EPS) {
             // Fallback until the map footprint is known
