@@ -95,6 +95,14 @@ AnnotationController.prototype.initialize = function() {
     style.textContent = `
         .annotation-marker {
             will-change: transform, opacity;
+            /* Transformar a partir do canto: sem isto o navegador usa o centro
+               do bloco e a posição volta a depender do tamanho. */
+            transform-origin: 0 0;
+            /* O ícone fica centrado sobre a etiqueta, para o marcador poder
+               ser ancorado pelo ícone e não pelo conjunto. */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
         }
         .annotation-marker:hover .marker-dot, .annotation-marker.force-hover .marker-dot,
         .annotation-marker:hover .marker-label, .annotation-marker.force-hover .marker-label {
@@ -874,6 +882,10 @@ const MARKER_SCALE_MIN = 0.34;
 const MARKER_SCALE_MAX = 2.3;
 const MARKER_SCALE_FALLOFF = 75;
 
+// Metade da altura do ícone (.marker-dot tem 32px): é por aqui que o marcador
+// se agarra ao ponto do mapa.
+const MARKER_DOT_HALF = 16;
+
 AnnotationController.prototype.update = function(dt) {
     const camera = this.entity.camera;
     if (!camera) return;
@@ -921,14 +933,15 @@ AnnotationController.prototype.update = function(dt) {
                 el.style.pointerEvents = 'auto';
                 ann._visible = true;
             }
-            // Scale sits between the two translates so the marker grows and
-            // shrinks about its own centre and stays pinned to its position.
+            // O marcador é ancorado pelo centro do ícone, e não pelo centro do
+            // conjunto ícone + etiqueta. Assim o ponto no mapa não se desloca
+            // quando o marcador muda de tamanho com a distância.
             const distance = dir.length();
             const scale = MARKER_SCALE_MIN + (MARKER_SCALE_MAX - MARKER_SCALE_MIN) *
                 (MARKER_SCALE_FALLOFF / (MARKER_SCALE_FALLOFF + distance));
 
             // Use translate3d to stay on the GPU compositor layer (no layout/reflow)
-            el.style.transform = `translate3d(${screenPos.x}px, ${screenPos.y}px, 0) scale(${scale.toFixed(3)}) translate(-50%, -50%)`;
+            el.style.transform = `translate3d(${screenPos.x}px, ${screenPos.y}px, 0) scale(${scale.toFixed(3)}) translate(-50%, ${-MARKER_DOT_HALF}px)`;
         }
     }
 };
