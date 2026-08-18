@@ -41,23 +41,19 @@ GroundFireflies.prototype.initialize = function() {
         mat.useLighting = false;
         mat.update();
 
-        // Setup static batching for performance (merges draw calls)
+        // Merge every particle into a handful of draw calls. Cheap enough for
+        // any quality level, so the per-frame culling below is only a fallback
+        // for when batching is unavailable.
         var batchGroupId = null;
-        const isLowQuality = typeof window !== 'undefined' && window.actualQuality === 'low';
-        
-        if (!isLowQuality) {
-            try {
-                if (self.app.batcher) {
-                    var bg = self.app.batcher.addGroup('fireflies', false, 500);
-                    batchGroupId = bg.id;
-                    console.log('[FullSplat] Static BatchGroup created, id:', batchGroupId);
-                }
-            } catch(e) {
-                console.warn('[FullSplat] Batching not available, falling back:', e);
+        try {
+            if (self.app.batcher) {
+                var bg = self.app.batcher.addGroup('fireflies', false, 500);
+                batchGroupId = bg.id;
             }
-        } else {
-            console.log('[FullSplat] Low quality mode: Batching disabled in favor of aggressive Frustum Culling');
+        } catch(e) {
+            console.warn('[FullSplat] Batching not available, falling back:', e);
         }
+        self._batched = batchGroupId !== null;
 
         // Use all points (spatial grid already limited the count)
         var maxPts = data.length;
@@ -127,9 +123,8 @@ GroundFireflies.prototype.initialize = function() {
 };
 
 GroundFireflies.prototype.update = function(dt) {
-    const isLowQuality = typeof window !== 'undefined' && window.actualQuality === 'low';
-    
-    if (isLowQuality && this.pointEntities && this.pointEntities.length > 0) {
+    // Batched particles are already cheap; only cull by hand without batching
+    if (!this._batched && this.pointEntities && this.pointEntities.length > 0) {
         // Initialize frustum object once
         if (!this.frustum) {
             this.frustum = new pc.Frustum();

@@ -22,22 +22,19 @@ ImageParticles.prototype.initialize = function() {
     mat.useLighting = false;
     mat.update();
 
-    // Setup static batching for performance
+    // Merge every particle into a handful of draw calls. Cheap enough for any
+    // quality level, so the per-frame culling below is only a fallback for
+    // when batching is unavailable.
     var batchGroupId = null;
-    const isLowQuality = typeof window !== 'undefined' && window.actualQuality === 'low';
-    
-    if (!isLowQuality) {
-        try {
-            if (this.app.batcher) {
-                var bg = this.app.batcher.addGroup('imageParticles', false, 500);
-                batchGroupId = bg.id;
-            }
-        } catch(e) {
-            console.warn('[ImageParticles] Batching not available:', e);
+    try {
+        if (this.app.batcher) {
+            var bg = this.app.batcher.addGroup('imageParticles', false, 500);
+            batchGroupId = bg.id;
         }
-    } else {
-        console.log('[ImageParticles] Low quality mode: Batching disabled in favor of aggressive Frustum Culling');
+    } catch(e) {
+        console.warn('[ImageParticles] Batching not available:', e);
     }
+    this._batched = batchGroupId !== null;
 
     const img = new Image();
     img.crossOrigin = "Anonymous";
@@ -143,9 +140,8 @@ ImageParticles.prototype.initialize = function() {
 };
 
 ImageParticles.prototype.update = function(dt) {
-    const isLowQuality = typeof window !== 'undefined' && window.actualQuality === 'low';
-    
-    if (isLowQuality && this.particles && this.particles.length > 0) {
+    // Batched particles are already cheap; only cull by hand without batching
+    if (!this._batched && this.particles && this.particles.length > 0) {
         // Initialize frustum object once
         if (!this.frustum) {
             this.frustum = new pc.Frustum();
