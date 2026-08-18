@@ -866,6 +866,13 @@ AnnotationController.prototype.openVideoModal = function(sources, title) {
     if (gsplat) gsplat.enabled = false;
 };
 
+// Markers shrink with distance so a far one never reads as bigger than a near
+// one. The curve is a smooth falloff between MARKER_SCALE_MIN and _MAX with no
+// clamping anywhere, so the size never jumps as the camera moves.
+const MARKER_SCALE_MIN = 0.45;
+const MARKER_SCALE_MAX = 1.6;
+const MARKER_SCALE_FALLOFF = 70;
+
 AnnotationController.prototype.update = function(dt) {
     const camera = this.entity.camera;
     if (!camera) return;
@@ -913,8 +920,14 @@ AnnotationController.prototype.update = function(dt) {
                 el.style.pointerEvents = 'auto';
                 ann._visible = true;
             }
+            // Scale sits between the two translates so the marker grows and
+            // shrinks about its own centre and stays pinned to its position.
+            const distance = dir.length();
+            const scale = MARKER_SCALE_MIN + (MARKER_SCALE_MAX - MARKER_SCALE_MIN) *
+                (MARKER_SCALE_FALLOFF / (MARKER_SCALE_FALLOFF + distance));
+
             // Use translate3d to stay on the GPU compositor layer (no layout/reflow)
-            el.style.transform = `translate3d(${screenPos.x}px, ${screenPos.y}px, 0) translate(-50%, -50%)`;
+            el.style.transform = `translate3d(${screenPos.x}px, ${screenPos.y}px, 0) scale(${scale.toFixed(3)}) translate(-50%, -50%)`;
         }
     }
 };
