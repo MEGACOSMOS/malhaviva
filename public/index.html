@@ -690,6 +690,18 @@
                         <span>Baixo (Mais Performance)</span>
                     </label>
                 </div>
+
+                <div class="settings-title" style="margin-top: 18px;">Anotações</div>
+                <div class="settings-options">
+                    <label class="settings-radio">
+                        <input type="checkbox" id="anot-testemunhos" checked>
+                        <span>Testemunhos</span>
+                    </label>
+                    <label class="settings-radio">
+                        <input type="checkbox" id="anot-360" checked>
+                        <span>Rotas 360º</span>
+                    </label>
+                </div>
             </div>
         </div>
         </div>
@@ -723,8 +735,8 @@
         <pc-asset id="splat-scene" src="splat/lod-meta.json" type="gsplat"></pc-asset>
         <pc-asset id="camera-controls-script" src="./camera-controls.mjs?v=6" type="script"></pc-asset>
         <pc-asset id="camera-coords-script" src="./coords.mjs?v=5" type="script"></pc-asset>
-        <pc-asset id="annotations-script" src="./annotations.mjs?v=7" type="script"></pc-asset>
-        <pc-asset id="trail-script" src="./trail.mjs?v=5" type="script"></pc-asset>
+        <pc-asset id="annotations-script" src="./annotations.mjs?v=8" type="script"></pc-asset>
+        <pc-asset id="trail-script" src="./trail.mjs?v=6" type="script"></pc-asset>
         <pc-asset id="image-particles-script" src="./image-particles.mjs?v=12" type="script"></pc-asset>
         <pc-asset id="ground-fireflies-script" src="./ground-fireflies.mjs?v=4" type="script"></pc-asset>
 
@@ -979,6 +991,10 @@
          * está perto da orla.
          */
         function aplicarBordasSuaves(app, splat, grelha) {
+            // No nivel Baixo fica desligado: poupa o trabalho extra por cada
+            // ponto do mapa e a imagem de bordas que o acompanha.
+            if (window.actualQuality === 'low') return;
+
             const comp = splat && splat.gsplat;
             if (!comp || !comp.setWorkBufferModifier) return;
 
@@ -1086,6 +1102,9 @@ void modifySplatColor(vec3 center, inout vec4 color) {
         function showUI() {
             overlay.classList.add('hidden');
             header.classList.add('visible');
+
+            // Aplica a escolha guardada de que anotações mostrar
+            aplicarVisibilidadeAnotacoes();
             
             // Adjust SOG LOD settings and apply performance budgets
             try {
@@ -1236,6 +1255,32 @@ void modifySplatColor(vec3 center, inout vec4 color) {
         qualityInputs.forEach(input => {
             input.addEventListener('change', (e) => {
                 setQuality(e.target.value);
+            });
+        });
+
+        // --- Anotações: ligar/desligar cada tipo ---
+        // A escolha fica guardada, por isso mantém-se entre visitas.
+        const tiposDeAnotacao = [
+            { id: 'anot-testemunhos', tipo: 'testemunho', chave: 'anot-testemunhos' },
+            { id: 'anot-360', tipo: '360', chave: 'anot-360' }
+        ];
+
+        function aplicarVisibilidadeAnotacoes() {
+            tiposDeAnotacao.forEach(({ id, tipo }) => {
+                const caixa = document.getElementById(id);
+                if (!caixa) return;
+                document.querySelectorAll(`.annotation-marker[data-tipo="${tipo}"]`)
+                    .forEach(el => { el.style.display = caixa.checked ? '' : 'none'; });
+            });
+        }
+
+        tiposDeAnotacao.forEach(({ id, chave }) => {
+            const caixa = document.getElementById(id);
+            if (!caixa) return;
+            caixa.checked = localStorage.getItem(chave) !== 'off';
+            caixa.addEventListener('change', () => {
+                localStorage.setItem(chave, caixa.checked ? 'on' : 'off');
+                aplicarVisibilidadeAnotacoes();
             });
         });
 

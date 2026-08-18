@@ -421,20 +421,23 @@ TrailController.prototype.distRaySegment = function(rayOrigin, rayDir, p1, p2) {
     return this._tmpDP.length();
 };
 
+// Painéis e botões sobrepostos ao mapa. Um clique num deles não deve chegar
+// à cena 3D, senão mexer nas definições abre vídeos sem querer.
+const UI_POR_CIMA = '#header, #settings-menu, #dev-menu, #filter-panel, #camera-stuck-popup, #trail-edit-ui, .annotation-marker';
+
+TrailController.prototype.cliqueEmUI = function(e) {
+    const alvo = e && e.event && e.event.target;
+    return !!(alvo && alvo.closest && alvo.closest(UI_POR_CIMA));
+};
+
 TrailController.prototype.onMouseDown = function(e) {
     if (e.button !== pc.MOUSEBUTTON_LEFT) return;
-    if (e.event && e.event.target && e.event.target.closest) {
-        if (e.event.target.closest('#trail-edit-ui')) return;
-        if (e.event.target.closest('.annotation-marker')) return;
-    }
+    if (this.cliqueEmUI(e)) return;
     this.handleInteraction(e.x, e.y);
 };
 
 TrailController.prototype.onTouchStart = function(e) {
-    if (e.event && e.event.target && e.event.target.closest) {
-        if (e.event.target.closest('#trail-edit-ui')) return;
-        if (e.event.target.closest('.annotation-marker')) return;
-    }
+    if (this.cliqueEmUI(e)) return;
     if (e.touches.length > 0) {
         this.handleInteraction(e.touches[0].x, e.touches[0].y);
     }

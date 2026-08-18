@@ -356,6 +356,7 @@ AnnotationController.prototype.initialize = function() {
     this.annotations.forEach(ann => {
         const el = document.createElement('div');
         el.className = 'annotation-marker';
+        el.dataset.tipo = ann.is360 ? '360' : 'testemunho';
         if (ann.label === "Esvarena") el.classList.add('esvarena-marker');
         if (ann.trailIndex !== undefined) el.dataset.trailIndex = ann.trailIndex;
         
@@ -869,8 +870,8 @@ AnnotationController.prototype.openVideoModal = function(sources, title) {
 // Markers shrink with distance so a far one never reads as bigger than a near
 // one. The curve is a smooth falloff between MARKER_SCALE_MIN and _MAX with no
 // clamping anywhere, so the size never jumps as the camera moves.
-const MARKER_SCALE_MIN = 0.25;
-const MARKER_SCALE_MAX = 1.7;
+const MARKER_SCALE_MIN = 0.34;
+const MARKER_SCALE_MAX = 2.3;
 const MARKER_SCALE_FALLOFF = 75;
 
 AnnotationController.prototype.update = function(dt) {
