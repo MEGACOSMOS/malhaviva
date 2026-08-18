@@ -191,6 +191,20 @@ TrailController.prototype.rebuildTrail = function() {
         allPaths.push(this.editPoints);
     }
 
+    // Agrupa todos os tracinhos num punhado de desenhos em vez de centenas.
+    // O grupo é criado uma única vez e reutilizado em reconstruções.
+    let batchGroupId = this._batchGroupId ?? null;
+    if (batchGroupId === null && this.app.batcher) {
+        try {
+            batchGroupId = this.app.batcher.addGroup('trails', false, 100).id;
+            this._batchGroupId = batchGroupId;
+        } catch (e) {
+            console.warn('[Trail] Batching indisponível:', e);
+        }
+    }
+
+    const tmpLook = new pc.Vec3();
+
     for (const pts of allPaths) {
         const material = new pc.StandardMaterial();
         material.diffuse = this.dashColor;
@@ -208,9 +222,10 @@ TrailController.prototype.rebuildTrail = function() {
             dashCenters: [],
             pivots: [],
             segments: [],
-            isHovered: false,
-            scaleMult: 1.0,
-            scaleVel: 0.0
+            chunks: [],          // esferas envolventes para descartar zonas sem as testar
+            boundsCenter: new pc.Vec3(),
+            boundsRadius: 0,
+            isHovered: false
         };
         if (pts.length < 2) continue;
         
@@ -262,27 +277,73 @@ TrailController.prototype.rebuildTrail = function() {
             const centerPos = new pc.Vec3().copy(seg.dir).mulScalar(dashCenterDist).add(seg.p1);
             centerPos.y += this.verticalOffset;
             
-            const pivot = new pc.Entity('dash-pivot');
-            pivot.setPosition(centerPos);
-            const lookPos = new pc.Vec3().copy(centerPos).add(seg.dir);
-            pivot.lookAt(lookPos);
-
+            // Um tracinho = uma entidade (a rotação do trilho e a do molde
+            // são combinadas em vez de usar uma entidade-pai extra)
             const dash = new pc.Entity('dash');
             dash.addComponent('render', {
                 type: 'box',
                 material: material,
-                castShadows: false
+                castShadows: false,
+                receiveShadows: false
             });
-            dash.setLocalEulerAngles(90, 0, 0);
+            this.trailRoot.addChild(dash);
+            dash.setPosition(centerPos);
+            dash.lookAt(tmpLook.copy(centerPos).add(seg.dir));
+            dash.rotateLocal(90, 0, 0);
             dash.setLocalScale(this.dashWidth, this.dashLength, this.dashThickness);
-            pivot.addChild(dash);
-            this.trailRoot.addChild(pivot);
-            trail.pivots.push(pivot);
+
+            if (batchGroupId !== null) {
+                dash.render.batchGroupId = batchGroupId;
+            }
+
+            trail.pivots.push(dash);
             trail.dashCenters.push(centerPos.clone());
-            
+
         }
+
+        this.buildTrailBounds(trail);
         this.trailRenderData.push(trail);
     }
+
+    if (batchGroupId !== null && this.app.batcher) {
+        this.app.batcher.markGroupDirty(batchGroupId);
+    }
+};
+
+/**
+ * Agrupa os segmentos em blocos com esfera envolvente. Ao passar o rato, um
+ * bloco inteiro pode ser descartado com um teste barato, em vez de se medir
+ * a distância a cada um dos seus segmentos.
+ */
+TrailController.prototype.buildTrailBounds = function(trail) {
+    const CHUNK = 24;
+    trail.chunks = [];
+
+    const segs = trail.segments;
+    if (segs.length === 0) return;
+
+    for (let s = 0; s < segs.length; s += CHUNK) {
+        const end = Math.min(s + CHUNK, segs.length);
+        const center = new pc.Vec3();
+        for (let k = s; k < end; k++) center.add(segs[k].a);
+        center.add(segs[end - 1].b);
+        center.mulScalar(1 / (end - s + 1));
+
+        let radius = 0;
+        for (let k = s; k < end; k++) {
+            radius = Math.max(radius, center.distance(segs[k].a), center.distance(segs[k].b));
+        }
+        trail.chunks.push({ start: s, end: end, center: center, radius: radius });
+    }
+
+    // Esfera envolvente de toda a trilha, para rejeitar a trilha inteira de uma vez
+    const all = new pc.Vec3();
+    for (const c of trail.chunks) all.add(c.center);
+    all.mulScalar(1 / trail.chunks.length);
+    let r = 0;
+    for (const c of trail.chunks) r = Math.max(r, all.distance(c.center) + c.radius);
+    trail.boundsCenter = all;
+    trail.boundsRadius = r;
 };
 
 TrailController.prototype.getCatmullRomPoint = function(t, p0, p1, p2, p3) {
@@ -399,9 +460,20 @@ TrailController.prototype.onMouseMove = function(e) {
             this.setTrailHoverState(this.trailRenderData[i], shouldHover);
         }
         this.updateGlobalCursor(false, []);
+        this._hoverPending = false;
         return;
     }
-    this.checkHover(e.x, e.y);
+    this.queueHoverCheck(e.x, e.y);
+};
+
+/**
+ * Um rato pode enviar centenas de eventos por segundo. Guardamos apenas a
+ * última posição e testamos uma só vez por imagem desenhada.
+ */
+TrailController.prototype.queueHoverCheck = function(x, y) {
+    this._hoverX = x;
+    this._hoverY = y;
+    this._hoverPending = true;
 };
 
 TrailController.prototype.onTouchMove = function(e) {
@@ -413,39 +485,75 @@ TrailController.prototype.onTouchMove = function(e) {
         return;
     }
     if (e.touches.length > 0) {
-        this.checkHover(e.touches[0].x, e.touches[0].y);
+        this.queueHoverCheck(e.touches[0].x, e.touches[0].y);
     }
+};
+
+/**
+ * Distância do raio a um ponto — teste barato usado para rejeitar blocos
+ * inteiros antes de se medir segmento a segmento.
+ */
+TrailController.prototype.distRayPoint = function(rayOrigin, rayDir, point) {
+    if (!this._tmpRP) this._tmpRP = new pc.Vec3();
+    const oc = this._tmpRP.sub2(point, rayOrigin);
+    const t = oc.dot(rayDir);
+    if (t <= 0) return oc.length();
+    return Math.sqrt(Math.max(0, oc.lengthSq() - t * t));
+};
+
+/**
+ * Devolve true se o raio passa suficientemente perto da trilha para contar
+ * como toque. Descarta primeiro a trilha inteira, depois bloco a bloco, e só
+ * mede os segmentos dos blocos que sobrevivem.
+ */
+TrailController.prototype.rayHitsTrail = function(trail, camPos) {
+    if (trail.segments.length === 0) return false;
+
+    const origin = this.ray.origin;
+    const dir = this.ray.direction;
+
+    // Margem de tolerância: cresce com a distância à câmara, tal como antes.
+    const thresholdAt = (dist) => Math.max(this.clickDistanceThreshold, dist * 0.03);
+
+    // 1) Rejeitar a trilha inteira
+    const trailCamDist = camPos.distance(trail.boundsCenter) + trail.boundsRadius;
+    if (this.distRayPoint(origin, dir, trail.boundsCenter) > trail.boundsRadius + thresholdAt(trailCamDist)) {
+        return false;
+    }
+
+    // 2) Percorrer apenas os blocos que o raio atravessa
+    for (let c = 0; c < trail.chunks.length; c++) {
+        const chunk = trail.chunks[c];
+        const chunkCamDist = camPos.distance(chunk.center) + chunk.radius;
+        const tol = thresholdAt(chunkCamDist);
+
+        if (this.distRayPoint(origin, dir, chunk.center) > chunk.radius + tol) continue;
+
+        for (let k = chunk.start; k < chunk.end; k++) {
+            const seg = trail.segments[k];
+            const dist = this.distRaySegment(origin, dir, seg.a, seg.b);
+            if (dist < thresholdAt(camPos.distance(seg.a))) return true;
+        }
+    }
+
+    return false;
 };
 
 TrailController.prototype.checkHover = function(x, y) {
     if (!this.entity.camera || !this.trailRenderData) return;
-    
+
     this.entity.camera.screenToWorld(x, y, this.entity.camera.nearClip, this.ray.origin);
     this.entity.camera.screenToWorld(x, y, this.entity.camera.farClip, this.ray.direction);
     this.ray.direction.sub(this.ray.origin).normalize();
 
+    const camPos = this.entity.getPosition();
     let anyHovered = false;
-    let hoveredTrailIndices = [];
+    const hoveredTrailIndices = [];
 
     for (let i = 0; i < this.trailRenderData.length; i++) {
         const trail = this.trailRenderData[i];
-        let minDistance = Infinity;
-        let closestSeg = null;
-        for (const seg of trail.segments) {
-            const dist = this.distRaySegment(this.ray.origin, this.ray.direction, seg.a, seg.b);
-            if (dist < minDistance) {
-                minDistance = dist;
-                closestSeg = seg;
-            }
-        }
+        const isHovered = this.rayHitsTrail(trail, camPos);
 
-        let isHovered = false;
-        if (closestSeg) {
-            const camDist = this.entity.getPosition().distance(closestSeg.a);
-            const dynamicThreshold = Math.max(this.clickDistanceThreshold, camDist * 0.03);
-            isHovered = minDistance < dynamicThreshold;
-        }
-        
         if (isHovered) {
             anyHovered = true;
             hoveredTrailIndices.push(i);
@@ -511,29 +619,9 @@ TrailController.prototype.updateGlobalCursor = function(anyHovered, hoveredTrail
 };
 
 TrailController.prototype.postUpdate = function(dt) {
-    if (!this.entity.camera || !this.trailRenderData) return;
-
-    const camPos = this.entity.getPosition();
-    if (!this._screenPos) this._screenPos = new pc.Vec3();
-    const screenPos = this._screenPos;
-
-    for (let t = 0; t < this.trailRenderData.length; t++) {
-        const trail = this.trailRenderData[t];
-        const targetScale = trail.isHovered ? 1.15 : 1.0;
-        trail.scaleMult = pc.math.lerp(trail.scaleMult, targetScale, Math.min(dt * 15.0, 1));
-
-        const scale = Math.max(0.1, trail.scaleMult);
-        if (Math.abs((trail._lastScale || 0) - scale) > 0.001) {
-            for (let p = 0; p < trail.pivots.length; p++) {
-                const pivot = trail.pivots[p];
-                if (pivot.children.length > 0) {
-                    pivot.children[0].setLocalScale(this.dashWidth * scale, this.dashLength, this.dashThickness * scale);
-                }
-            }
-            trail._lastScale = scale;
-        }
-
-    }
+    if (!this._hoverPending) return;
+    this._hoverPending = false;
+    this.checkHover(this._hoverX, this._hoverY);
 };
 
 TrailController.prototype.handleInteraction = function(x, y) {
@@ -563,33 +651,16 @@ TrailController.prototype.handleInteraction = function(x, y) {
     this.entity.camera.screenToWorld(x, y, this.entity.camera.farClip, this.ray.direction);
     this.ray.direction.sub(this.ray.origin).normalize();
 
-    let clicked = false;
+    const camPos = this.entity.getPosition();
     let clickedTrailIndex = -1;
     for (let i = 0; i < this.trailRenderData.length; i++) {
-        const trail = this.trailRenderData[i];
-        let minDistance = Infinity;
-        let closestSeg = null;
-
-        for (const seg of trail.segments) {
-            const dist = this.distRaySegment(this.ray.origin, this.ray.direction, seg.a, seg.b);
-            if (dist < minDistance) {
-                minDistance = dist;
-                closestSeg = seg;
-            }
-        }
-
-        if (closestSeg) {
-            const camDist = this.entity.getPosition().distance(closestSeg.a);
-            const dynamicThreshold = Math.max(this.clickDistanceThreshold, camDist * 0.03);
-            if (minDistance < dynamicThreshold) {
-                clicked = true;
-                clickedTrailIndex = i;
-                break;
-            }
+        if (this.rayHitsTrail(this.trailRenderData[i], camPos)) {
+            clickedTrailIndex = i;
+            break;
         }
     }
 
-    if (clicked) {
+    if (clickedTrailIndex !== -1) {
         this.showPopup360(clickedTrailIndex);
     }
 };

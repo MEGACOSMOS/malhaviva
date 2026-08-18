@@ -89,12 +89,7 @@ GroundFireflies.prototype.initialize = function() {
                 e.render.meshInstances[0].material = mat;
                 e.setLocalPosition(x, y, z);
                 self.entity.addChild(e);
-                
-                // Apply batch group if available
-                if (batchGroupId !== null) {
-                    try { e.render.batchGroupId = batchGroupId; } catch(err) {}
-                }
-                
+
                 window.pickableParticles = window.pickableParticles || [];
                 window.pickableParticles.push(e);
                 
@@ -111,6 +106,12 @@ GroundFireflies.prototype.initialize = function() {
             if (i < data.length && count < maxPts) {
                 setTimeout(createBatch, 10); // yield to browser
             } else {
+                // Só no fim: agrupar tudo de uma vez (evita reagrupar a cada lote criado)
+                if (batchGroupId !== null) {
+                    for (const p of self.pointEntities) {
+                        try { p.entity.render.batchGroupId = batchGroupId; } catch (err) {}
+                    }
+                }
                 console.log('[FullSplat] Done! Created ' + count + ' particles (box geometry + batching)');
             }
         }

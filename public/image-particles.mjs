@@ -105,12 +105,7 @@ ImageParticles.prototype.initialize = function() {
                 
                 e.setPosition(rx, ry, rz);
                 self2.entity.addChild(e);
-                
-                // Apply batch group if available
-                if (batchGroupId !== null) {
-                    try { e.render.batchGroupId = batchGroupId; } catch(err) {}
-                }
-                
+
                 window.pickableParticles = window.pickableParticles || [];
                 window.pickableParticles.push(e);
                 
@@ -125,6 +120,12 @@ ImageParticles.prototype.initialize = function() {
             if (i < validPixels.length) {
                 setTimeout(createBatch, 10);
             } else {
+                // Só no fim: agrupar tudo de uma vez (evita reagrupar a cada lote criado)
+                if (batchGroupId !== null) {
+                    for (const p of self2.particles) {
+                        try { p.entity.render.batchGroupId = batchGroupId; } catch (err) {}
+                    }
+                }
                 console.log('[ImageParticles] Done! Created ' + validPixels.length + ' particles (box + batching)');
             }
         }

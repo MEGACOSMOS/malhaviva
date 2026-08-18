@@ -723,9 +723,9 @@
         <pc-asset id="camera-controls-script" src="./camera-controls.mjs" type="script"></pc-asset>
         <pc-asset id="camera-coords-script" src="./coords.mjs?v=5" type="script"></pc-asset>
         <pc-asset id="annotations-script" src="./annotations.mjs?v=4" type="script"></pc-asset>
-        <pc-asset id="trail-script" src="./trail.mjs?v=4" type="script"></pc-asset>
-        <pc-asset id="image-particles-script" src="./image-particles.mjs?v=10" type="script"></pc-asset>
-        <pc-asset id="ground-fireflies-script" src="./ground-fireflies.mjs?v=2" type="script"></pc-asset>
+        <pc-asset id="trail-script" src="./trail.mjs?v=5" type="script"></pc-asset>
+        <pc-asset id="image-particles-script" src="./image-particles.mjs?v=11" type="script"></pc-asset>
+        <pc-asset id="ground-fireflies-script" src="./ground-fireflies.mjs?v=3" type="script"></pc-asset>
 
         <!-- Scene -->
         <pc-scene>
@@ -739,7 +739,7 @@
                     fov="60">
                 </pc-camera>
                 <pc-scripts>
-                    <pc-script name="cameraControls" move-speed="50" move-fast-speed="130" move-slow-speed="15" pitch-range="-89.9, 89.9" zoom-range="0.01, 800" max-distance="800"></pc-script>
+                    <pc-script name="cameraControls" move-speed="50" move-fast-speed="130" move-slow-speed="15" pitch-range="-89.9 89.9" zoom-range="0.01 800" max-distance="800"></pc-script>
                     <pc-script name="cameraCoordinates"></pc-script>
                     <pc-script name="annotationController"></pc-script>
                     <pc-script name="trailController"></pc-script>
@@ -989,7 +989,16 @@
             showUI();
         };
 
-        whenReady('pc-app').then(() => {
+        whenReady('pc-app').then(({ app }) => {
+            // Junta os milhares de objetos pequenos (pirilampos, tracinhos das
+            // rotas) num punhado de desenhos. Este motor não corre este passo
+            // sozinho, por isso é acionado aqui a cada imagem — só faz trabalho
+            // quando há objetos novos por agrupar.
+            app.on('prerender', () => {
+                app.root.syncHierarchy();
+                app.batcher.updateAll();
+            });
+
             // Give a bit more time for the first chunks to load
             setTimeout(showUIOnce, 2000);
         });
