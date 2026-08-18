@@ -778,16 +778,24 @@
             PIXELFORMAT_RGBA8, FILTER_LINEAR, ADDRESS_CLAMP_TO_EDGE
         } from 'playcanvas';
 
-        // Quanto se pode voar para lá da última casa, em metros. A vista
-        // inicial fica mais longe do que isto, por isso o limite só passa a
-        // valer depois de a câmara entrar na zona mapeada (ver setPlayArea).
-        const MARGEM_FORA_DO_MAPA = 5;
+        // Resolução da grelha usada para medir o mapa, em metros.
         const RESOLUCAO_LIMITE = 4;
 
+        // Ao longo de quantos metros o terreno se desvanece junto à borda.
+        // Quanto maior, mais para dentro do mapa começa a difusão.
+        const LARGURA_DESVANECIMENTO = 90;
+
+        // Onde a câmara pára, medido para dentro da borda do terreno. Está
+        // ligado ao desvanecimento: a meio da difusão o mapa está a cerca de
+        // metade da opacidade, e é aí que faz sentido parar — mais para fora
+        // a câmara ficaria sobre terreno já dissolvido.
+        const PARAGEM_DENTRO_DA_BORDA = LARGURA_DESVANECIMENTO / 2;
+
         /**
-         * Impede a câmara de sair da zona mapeada. O bairro não tem forma
-         * retangular, por isso o limite é desenhado a partir das zonas onde o
-         * modelo tem mesmo terreno, e não de uma caixa à volta de tudo.
+         * Mede o mapa uma única vez e usa essa medida para as duas coisas que
+         * dependem da forma do bairro: o desvanecimento das bordas e o limite
+         * de onde a câmara pode andar.
+         *
          * Só o plano horizontal é limitado — a altura mantém os limites de
          * sempre, para a vista inicial de cima continuar a funcionar.
          */
@@ -800,7 +808,7 @@
                 const splat = app.root.findByName('gsplat-scene');
                 const camera = app.root.findByName('camera');
                 const controls = camera && camera.script && camera.script.cameraControls;
-                if (!splat || !controls) return;
+                if (!splat) return;
 
                 // O modelo divide-se numa árvore de zonas; as pontas dessa
                 // árvore dizem onde há terreno de facto.
@@ -838,155 +846,148 @@
                     return { x0, x1, z0, z1 };
                 });
 
-                // Grelha com folga larga: além da margem, tem de conseguir
-                // medir distâncias maiores, para saber onde está a vista de
-                // abertura (que fica mais afastada do que a margem).
-                const folga = Math.ceil(80 / RESOLUCAO_LIMITE) + 2;
+                // Grelha com folga larga: além do mapa, tem de conseguir medir
+                // distâncias maiores, para saber onde está a vista de abertura.
+                const folga = Math.ceil(160 / RESOLUCAO_LIMITE) + 2;
                 const colunas = Math.ceil((maxX - minX) / RESOLUCAO_LIMITE) + folga * 2;
                 const linhas = Math.ceil((maxZ - minZ) / RESOLUCAO_LIMITE) + folga * 2;
                 const origemX = minX - folga * RESOLUCAO_LIMITE;
                 const origemZ = minZ - folga * RESOLUCAO_LIMITE;
+                const total = colunas * linhas;
 
-                const distancia = new Float32Array(colunas * linhas).fill(1e9);
+                // Marca as células que têm terreno
+                const terreno = new Uint8Array(total);
                 for (const p of plantas) {
                     const a = Math.floor((p.x0 - origemX) / RESOLUCAO_LIMITE);
                     const b = Math.floor((p.x1 - origemX) / RESOLUCAO_LIMITE);
                     const c = Math.floor((p.z0 - origemZ) / RESOLUCAO_LIMITE);
                     const d = Math.floor((p.z1 - origemZ) / RESOLUCAO_LIMITE);
                     for (let j = c; j <= d; j++) {
-                        for (let i = a; i <= b; i++) distancia[j * colunas + i] = 0;
+                        for (let i = a; i <= b; i++) terreno[j * colunas + i] = 1;
                     }
                 }
 
-                // Distância de cada ponto ao terreno mais próximo, em duas
-                // passagens (ida e volta) sobre a grelha.
-                const DIAGONAL = Math.SQRT2;
-                for (let j = 0; j < linhas; j++) {
-                    for (let i = 0; i < colunas; i++) {
-                        const k = j * colunas + i;
-                        let d = distancia[k];
-                        if (i > 0) d = Math.min(d, distancia[k - 1] + 1);
-                        if (j > 0) d = Math.min(d, distancia[k - colunas] + 1);
-                        if (i > 0 && j > 0) d = Math.min(d, distancia[k - colunas - 1] + DIAGONAL);
-                        if (i < colunas - 1 && j > 0) d = Math.min(d, distancia[k - colunas + 1] + DIAGONAL);
-                        distancia[k] = d;
-                    }
-                }
-                for (let j = linhas - 1; j >= 0; j--) {
-                    for (let i = colunas - 1; i >= 0; i--) {
-                        const k = j * colunas + i;
-                        let d = distancia[k];
-                        if (i < colunas - 1) d = Math.min(d, distancia[k + 1] + 1);
-                        if (j < linhas - 1) d = Math.min(d, distancia[k + colunas] + 1);
-                        if (i < colunas - 1 && j < linhas - 1) d = Math.min(d, distancia[k + colunas + 1] + DIAGONAL);
-                        if (i > 0 && j < linhas - 1) d = Math.min(d, distancia[k + colunas - 1] + DIAGONAL);
-                        distancia[k] = d;
-                    }
-                }
+                // Um pátio ou clareira sem pontos no modelo abriria um buraco
+                // no meio do bairro. Tudo o que esteja rodeado por terreno
+                // passa a contar como terreno.
+                preencherBuracos(terreno, colunas, linhas);
 
-                const limite = MARGEM_FORA_DO_MAPA / RESOLUCAO_LIMITE;
-                const permitido = new Uint8Array(colunas * linhas);
-                for (let k = 0; k < permitido.length; k++) {
-                    permitido[k] = distancia[k] <= limite ? 1 : 0;
-                }
+                // Profundidade de cada ponto para dentro do terreno
+                const dentro = distanciaAte(terreno, colunas, linhas, false);
 
-                // Um pátio ou uma clareira sem pontos no modelo abriria um
-                // buraco no meio do bairro e prendia lá a câmara. Tudo o que
-                // esteja rodeado por terreno passa também a ser permitido.
-                const exterior = new Uint8Array(colunas * linhas);
-                const porVer = [0];
-                exterior[0] = 1;
-                while (porVer.length > 0) {
-                    const k = porVer.pop();
-                    const i = k % colunas;
-                    const j = (k - i) / colunas;
-                    if (i > 0) { const n = k - 1; if (!exterior[n] && !permitido[n]) { exterior[n] = 1; porVer.push(n); } }
-                    if (i < colunas - 1) { const n = k + 1; if (!exterior[n] && !permitido[n]) { exterior[n] = 1; porVer.push(n); } }
-                    if (j > 0) { const n = k - colunas; if (!exterior[n] && !permitido[n]) { exterior[n] = 1; porVer.push(n); } }
-                    if (j < linhas - 1) { const n = k + colunas; if (!exterior[n] && !permitido[n]) { exterior[n] = 1; porVer.push(n); } }
-                }
-                for (let k = 0; k < permitido.length; k++) {
-                    if (!permitido[k] && !exterior[k]) permitido[k] = 1;
-                }
-
-                controls.setPlayArea({
-                    // Dentro da zona onde se pode andar (terreno + margem)
-                    contains(x, z) {
-                        const i = Math.floor((x - origemX) / RESOLUCAO_LIMITE);
-                        const j = Math.floor((z - origemZ) / RESOLUCAO_LIMITE);
-                        if (i < 0 || j < 0 || i >= colunas || j >= linhas) return false;
-                        return permitido[j * colunas + i] === 1;
-                    },
-                    // A que distância do terreno mapeado está este ponto
-                    distanceTo(x, z) {
-                        const i = Math.floor((x - origemX) / RESOLUCAO_LIMITE);
-                        const j = Math.floor((z - origemZ) / RESOLUCAO_LIMITE);
-                        if (i < 0 || j < 0 || i >= colunas || j >= linhas) return Infinity;
-                        return distancia[j * colunas + i] * RESOLUCAO_LIMITE;
-                    }
+                // Bordas suaves usam essa profundidade tal como está
+                aplicarBordasSuaves(app, splat, {
+                    dentro, colunas, linhas, origemX, origemZ, celula: RESOLUCAO_LIMITE
                 });
 
-                aplicarBordasSuaves(app, splat, {
-                    permitido, colunas, linhas, origemX, origemZ, celula: RESOLUCAO_LIMITE
+                if (!controls) return;
+
+                // A câmara só anda onde o mapa ainda está sólido
+                const paragem = PARAGEM_DENTRO_DA_BORDA / RESOLUCAO_LIMITE;
+                const permitido = new Uint8Array(total);
+                for (let k = 0; k < total; k++) permitido[k] = dentro[k] >= paragem ? 1 : 0;
+                preencherBuracos(permitido, colunas, linhas);
+
+                // Distância de qualquer ponto à zona onde a câmara pode andar
+                const distanciaAoPermitido = distanciaAte(permitido, colunas, linhas, true);
+
+                const indice = (x, z) => {
+                    const i = Math.floor((x - origemX) / RESOLUCAO_LIMITE);
+                    const j = Math.floor((z - origemZ) / RESOLUCAO_LIMITE);
+                    if (i < 0 || j < 0 || i >= colunas || j >= linhas) return -1;
+                    return j * colunas + i;
+                };
+
+                controls.setPlayArea({
+                    // Dentro da zona onde a câmara pode andar
+                    contains(x, z) {
+                        const k = indice(x, z);
+                        return k >= 0 && permitido[k] === 1;
+                    },
+                    // A que distância está dessa zona
+                    distanceTo(x, z) {
+                        const k = indice(x, z);
+                        if (k < 0) return Infinity;
+                        return distanciaAoPermitido[k] * RESOLUCAO_LIMITE;
+                    }
                 });
             } catch (e) {
                 console.warn('Não foi possível ler os contornos do mapa:', e);
             }
         }
 
-        // Ao longo de quantos metros o terreno se desvanece junto à borda.
-        // Quanto maior, mais para dentro do mapa começa a difusão.
-        const LARGURA_DESVANECIMENTO = 90;
+        /** Marca como cheio tudo o que esteja rodeado por células cheias. */
+        function preencherBuracos(celulas, colunas, linhas) {
+            const exterior = new Uint8Array(celulas.length);
+            const porVer = [0];
+            exterior[0] = 1;
+            while (porVer.length > 0) {
+                const k = porVer.pop();
+                const i = k % colunas;
+                const j = (k - i) / colunas;
+                if (i > 0) { const n = k - 1; if (!exterior[n] && !celulas[n]) { exterior[n] = 1; porVer.push(n); } }
+                if (i < colunas - 1) { const n = k + 1; if (!exterior[n] && !celulas[n]) { exterior[n] = 1; porVer.push(n); } }
+                if (j > 0) { const n = k - colunas; if (!exterior[n] && !celulas[n]) { exterior[n] = 1; porVer.push(n); } }
+                if (j < linhas - 1) { const n = k + colunas; if (!exterior[n] && !celulas[n]) { exterior[n] = 1; porVer.push(n); } }
+            }
+            for (let k = 0; k < celulas.length; k++) {
+                if (!celulas[k] && !exterior[k]) celulas[k] = 1;
+            }
+        }
 
         /**
-         * Faz o mapa desvanecer-se junto às bordas em vez de acabar a direito.
-         *
-         * O contorno segue a forma real do bairro: mede-se, para cada ponto da
-         * grelha, a que distância está da borda mais próxima, e essa medida é
-         * entregue ao programa gráfico como uma pequena imagem. Cada ponto do
-         * mapa consulta-a e esbate-se conforme está perto da orla.
+         * Distância de cada célula da grelha ao conjunto marcado, em células.
+         * Com `porFora`, mede de fora até ao conjunto; sem, mede a profundidade
+         * dentro do próprio conjunto. Duas passagens, ida e volta.
          */
-        function aplicarBordasSuaves(app, splat, grelha) {
-            const comp = splat && splat.gsplat;
-            if (!comp || !comp.setWorkBufferModifier) return;
-
-            const { permitido, colunas, linhas, origemX, origemZ, celula } = grelha;
-            const total = colunas * linhas;
-
-            // Distância de cada célula com terreno à borda mais próxima,
-            // calculada em duas passagens (ida e volta) sobre a grelha.
+        function distanciaAte(celulas, colunas, linhas, porFora) {
             const DIAGONAL = Math.SQRT2;
-            const profundidade = new Float32Array(total);
-            for (let k = 0; k < total; k++) profundidade[k] = permitido[k] ? 1e9 : 0;
-
+            const d = new Float32Array(celulas.length);
+            for (let k = 0; k < d.length; k++) {
+                const cheio = celulas[k] === 1;
+                d[k] = (porFora ? cheio : !cheio) ? 0 : 1e9;
+            }
             for (let j = 0; j < linhas; j++) {
                 for (let i = 0; i < colunas; i++) {
                     const k = j * colunas + i;
-                    let d = profundidade[k];
-                    if (i > 0) d = Math.min(d, profundidade[k - 1] + 1);
-                    if (j > 0) d = Math.min(d, profundidade[k - colunas] + 1);
-                    if (i > 0 && j > 0) d = Math.min(d, profundidade[k - colunas - 1] + DIAGONAL);
-                    if (i < colunas - 1 && j > 0) d = Math.min(d, profundidade[k - colunas + 1] + DIAGONAL);
-                    profundidade[k] = d;
+                    let v = d[k];
+                    if (i > 0) v = Math.min(v, d[k - 1] + 1);
+                    if (j > 0) v = Math.min(v, d[k - colunas] + 1);
+                    if (i > 0 && j > 0) v = Math.min(v, d[k - colunas - 1] + DIAGONAL);
+                    if (i < colunas - 1 && j > 0) v = Math.min(v, d[k - colunas + 1] + DIAGONAL);
+                    d[k] = v;
                 }
             }
             for (let j = linhas - 1; j >= 0; j--) {
                 for (let i = colunas - 1; i >= 0; i--) {
                     const k = j * colunas + i;
-                    let d = profundidade[k];
-                    if (i < colunas - 1) d = Math.min(d, profundidade[k + 1] + 1);
-                    if (j < linhas - 1) d = Math.min(d, profundidade[k + colunas] + 1);
-                    if (i < colunas - 1 && j < linhas - 1) d = Math.min(d, profundidade[k + colunas + 1] + DIAGONAL);
-                    if (i > 0 && j < linhas - 1) d = Math.min(d, profundidade[k + colunas - 1] + DIAGONAL);
-                    profundidade[k] = d;
+                    let v = d[k];
+                    if (i < colunas - 1) v = Math.min(v, d[k + 1] + 1);
+                    if (j < linhas - 1) v = Math.min(v, d[k + colunas] + 1);
+                    if (i < colunas - 1 && j < linhas - 1) v = Math.min(v, d[k + colunas + 1] + DIAGONAL);
+                    if (i > 0 && j < linhas - 1) v = Math.min(v, d[k + colunas - 1] + DIAGONAL);
+                    d[k] = v;
                 }
             }
+            return d;
+        }
 
-            // A medida é guardada como imagem: 0 na borda, cheio a partir da
-            // largura de desvanecimento para dentro.
+        /**
+         * Faz o mapa desvanecer-se junto às bordas em vez de acabar a direito.
+         * A medida de profundidade é entregue ao programa gráfico como uma
+         * pequena imagem; cada ponto do mapa consulta-a e esbate-se conforme
+         * está perto da orla.
+         */
+        function aplicarBordasSuaves(app, splat, grelha) {
+            const comp = splat && splat.gsplat;
+            if (!comp || !comp.setWorkBufferModifier) return;
+
+            const { dentro, colunas, linhas, origemX, origemZ, celula } = grelha;
+            const total = colunas * linhas;
+
             const pixeis = new Uint8Array(total * 4);
             for (let k = 0; k < total; k++) {
-                const metros = profundidade[k] * celula;
+                const metros = dentro[k] * celula;
                 const v = Math.round(255 * Math.min(1, metros / LARGURA_DESVANECIMENTO));
                 const p = k * 4;
                 pixeis[p] = v; pixeis[p + 1] = v; pixeis[p + 2] = v; pixeis[p + 3] = 255;
