@@ -569,8 +569,8 @@
 
     <!-- Camera Stuck Popup -->
     <div id="camera-stuck-popup">
-        <div class="stuck-text">A câmara atingiu o limite da simulação.</div>
-        <div class="stuck-subtext">Estás muito longe do centro.</div>
+        <div class="stuck-text">Chegaste ao limite do mapa.</div>
+        <div class="stuck-subtext">Não há terreno para lá desta zona.</div>
         <button id="recenter-btn">Recentrar Câmara</button>
     </div>
 
@@ -720,7 +720,7 @@
 
         <!-- Assets -->
         <pc-asset id="splat-scene" src="splat/lod-meta.json" type="gsplat"></pc-asset>
-        <pc-asset id="camera-controls-script" src="./camera-controls.mjs" type="script"></pc-asset>
+        <pc-asset id="camera-controls-script" src="./camera-controls.mjs?v=3" type="script"></pc-asset>
         <pc-asset id="camera-coords-script" src="./coords.mjs?v=5" type="script"></pc-asset>
         <pc-asset id="annotations-script" src="./annotations.mjs?v=4" type="script"></pc-asset>
         <pc-asset id="trail-script" src="./trail.mjs?v=5" type="script"></pc-asset>
@@ -772,6 +772,50 @@
 
     <script type="module">
         import { whenReady } from '@playcanvas/web-components';
+        import { Vec3 } from 'playcanvas';
+
+        /**
+         * Impede a câmara de sair da área do mapa. Os contornos são lidos do
+         * próprio ficheiro do modelo, por isso acompanham o mapa se este mudar.
+         * Só o plano horizontal é limitado — a altura mantém os limites de
+         * sempre, para a vista inicial de cima continuar a funcionar.
+         */
+        async function aplicarLimitesDoMapa(app) {
+            try {
+                const src = document.getElementById('splat-scene').getAttribute('src');
+                const meta = await (await fetch(src)).json();
+                const bound = meta && meta.tree && meta.tree.bound;
+                if (!bound) return;
+
+                const splat = app.root.findByName('gsplat-scene');
+                const camera = app.root.findByName('camera');
+                const controls = camera && camera.script && camera.script.cameraControls;
+                if (!splat || !controls) return;
+
+                // O mapa está rodado, por isso os cantos são convertidos para
+                // coordenadas do mundo antes de formarem a área permitida.
+                app.root.syncHierarchy();
+                const matrix = splat.getWorldTransform();
+                const corner = new Vec3();
+                const min = new Vec3(Infinity, Infinity, Infinity);
+                const max = new Vec3(-Infinity, -Infinity, -Infinity);
+
+                for (let i = 0; i < 8; i++) {
+                    corner.set(
+                        i & 1 ? bound.max[0] : bound.min[0],
+                        i & 2 ? bound.max[1] : bound.min[1],
+                        i & 4 ? bound.max[2] : bound.min[2]
+                    );
+                    matrix.transformPoint(corner, corner);
+                    min.set(Math.min(min.x, corner.x), Math.min(min.y, corner.y), Math.min(min.z, corner.z));
+                    max.set(Math.max(max.x, corner.x), Math.max(max.y, corner.y), Math.max(max.z, corner.z));
+                }
+
+                controls.setWorldBounds(min, max);
+            } catch (e) {
+                console.warn('Não foi possível ler os contornos do mapa:', e);
+            }
+        }
 
         // Wait for the PlayCanvas app to be ready, then hide the loading overlay
         const overlay = document.getElementById('loading-overlay');
@@ -999,6 +1043,8 @@
                 app.batcher.updateAll();
             });
 
+            aplicarLimitesDoMapa(app);
+
             // Give a bit more time for the first chunks to load
             setTimeout(showUIOnce, 2000);
         });
@@ -1024,10 +1070,9 @@
             const pcApp = document.querySelector('pc-app');
             if (pcApp && pcApp.app) {
                 const cameraEntity = pcApp.app.root.findByName('camera');
-                if (cameraEntity && cameraEntity.script && cameraEntity.script.cameraControls) {
-                    const startPos = cameraEntity.getPosition().clone().set(-168.13, 49.94, 141.22);
-                    const origin = cameraEntity.getPosition().clone().set(0, 0, 0);
-                    cameraEntity.script.cameraControls.reset(origin, startPos);
+                const controls = cameraEntity && cameraEntity.script && cameraEntity.script.cameraControls;
+                if (controls) {
+                    controls.recenter(new Vec3(-168.13, 49.94, 141.22), new Vec3(0, 0, 0));
                 }
             }
         });
