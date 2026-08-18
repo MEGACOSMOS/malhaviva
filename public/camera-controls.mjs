@@ -488,17 +488,29 @@ class CameraControls extends Script {
      * mapped terrain rather than a rectangle around it. While unset, the older
      * spherical `maxDistance` limit is used instead.
      *
-     * @type {{contains: (x: number, z: number) => boolean}|null}
+     * @type {{contains: (x: number, z: number) => boolean,
+     *         distanceTo: (x: number, z: number) => number}|null}
      */
     _playArea = null;
 
     /**
-     * The limit only engages once the camera has been inside the play area at
-     * least once, so a start position outside it is never yanked inwards.
+     * The play area proper only engages once the camera has reached it. Until
+     * then the camera is held at whatever distance it opened at, so a start
+     * position outside the terrain keeps working without letting the camera
+     * drift off into empty space.
      *
      * @type {boolean}
      */
     _boundsArmed = false;
+
+    /**
+     * How far from the terrain the camera may sit before it first arrives.
+     * Measured from the opening viewpoint. Null until the first frame.
+     *
+     * @type {number|null}
+     * @private
+     */
+    _entryLimit = null;
 
     /** @type {number} @private */
     _lastInsideX = 0;
@@ -506,14 +518,33 @@ class CameraControls extends Script {
     /** @type {number} @private */
     _lastInsideZ = 0;
 
+    /** @type {boolean} @private */
+    _lastInsideValid = false;
+
     /**
      * Restricts the camera to the shape of the mapped terrain.
      *
-     * @param {{contains: (x: number, z: number) => boolean}} area - Play area test.
+     * @param {{contains: (x: number, z: number) => boolean,
+     *          distanceTo: (x: number, z: number) => number}} area - Play area.
      */
     setPlayArea(area) {
         this._playArea = area;
         this._boundsArmed = false;
+        this._entryLimit = null;
+        this._lastInsideValid = false;
+    }
+
+    /**
+     * @param {number} x - World X.
+     * @param {number} z - World Z.
+     * @returns {boolean} Whether the camera may stand here.
+     * @private
+     */
+    _positionAllowed(x, z) {
+        if (this._boundsArmed) {
+            return this._playArea.contains(x, z);
+        }
+        return this._playArea.distanceTo(x, z) <= this._entryLimit;
     }
 
     /**
@@ -795,6 +826,8 @@ class CameraControls extends Script {
      */
     recenter(position, focus) {
         this._boundsArmed = false;
+        this._entryLimit = null;
+        this._lastInsideValid = false;
         this._pose.look(position, focus);
         this._controller.attach(this._pose, false);
     }
@@ -1115,39 +1148,43 @@ class CameraControls extends Script {
             const area = this._playArea;
             const pos = this._pose.position;
 
-            // Arm only once the camera is inside, so a start position outside
-            // the terrain is left alone instead of being snapped in.
-            if (!this._boundsArmed && area.contains(pos.x, pos.z)) {
-                this._boundsArmed = true;
-                this._lastInsideX = pos.x;
-                this._lastInsideZ = pos.z;
+            // Opening frame: remember how far out the view starts, so the
+            // camera can hold that viewpoint yet never retreat beyond it.
+            if (this._entryLimit === null) {
+                const startDistance = area.distanceTo(pos.x, pos.z);
+                this._entryLimit = isFinite(startDistance) ? startDistance : 0;
             }
 
-            if (this._boundsArmed) {
-                if (area.contains(pos.x, pos.z)) {
-                    this._lastInsideX = pos.x;
-                    this._lastInsideZ = pos.z;
+            // Once the camera reaches the terrain, the tighter limit takes over
+            // for good.
+            if (!this._boundsArmed && area.contains(pos.x, pos.z)) {
+                this._boundsArmed = true;
+            }
+
+            if (this._positionAllowed(pos.x, pos.z)) {
+                this._lastInsideX = pos.x;
+                this._lastInsideZ = pos.z;
+                this._lastInsideValid = true;
+            } else if (this._lastInsideValid) {
+                // Give back only the axis that left the area, so the camera
+                // slides along the edge instead of stopping dead.
+                if (this._positionAllowed(pos.x, this._lastInsideZ)) {
+                    pos.z = this._lastInsideZ;
+                } else if (this._positionAllowed(this._lastInsideX, pos.z)) {
+                    pos.x = this._lastInsideX;
                 } else {
-                    // Give back only the axis that left the terrain, so the
-                    // camera slides along the edge instead of stopping dead.
-                    if (area.contains(pos.x, this._lastInsideZ)) {
-                        pos.z = this._lastInsideZ;
-                    } else if (area.contains(this._lastInsideX, pos.z)) {
-                        pos.x = this._lastInsideX;
-                    } else {
-                        pos.x = this._lastInsideX;
-                        pos.z = this._lastInsideZ;
-                    }
+                    pos.x = this._lastInsideX;
+                    pos.z = this._lastInsideZ;
+                }
 
-                    isAtBoundary = true;
-                    this._lastInsideX = pos.x;
-                    this._lastInsideZ = pos.z;
+                isAtBoundary = true;
+                this._lastInsideX = pos.x;
+                this._lastInsideZ = pos.z;
 
-                    if (this._mode === 'orbit') {
-                        const focus = this._pose.getFocus(tmpV2).clone();
-                        this._pose.look(this._pose.position, focus);
-                        this._controller.attach(this._pose, false);
-                    }
+                if (this._mode === 'orbit') {
+                    const focus = this._pose.getFocus(tmpV2).clone();
+                    this._pose.look(this._pose.position, focus);
+                    this._controller.attach(this._pose, false);
                 }
             }
         } else if (this.maxDistance > 0 && this._pose.position.length() >= this.maxDistance - EDGE_EPS) {

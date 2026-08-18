@@ -720,7 +720,7 @@
 
         <!-- Assets -->
         <pc-asset id="splat-scene" src="splat/lod-meta.json" type="gsplat"></pc-asset>
-        <pc-asset id="camera-controls-script" src="./camera-controls.mjs?v=5" type="script"></pc-asset>
+        <pc-asset id="camera-controls-script" src="./camera-controls.mjs?v=6" type="script"></pc-asset>
         <pc-asset id="camera-coords-script" src="./coords.mjs?v=5" type="script"></pc-asset>
         <pc-asset id="annotations-script" src="./annotations.mjs?v=5" type="script"></pc-asset>
         <pc-asset id="trail-script" src="./trail.mjs?v=5" type="script"></pc-asset>
@@ -834,8 +834,10 @@
                     return { x0, x1, z0, z1 };
                 });
 
-                // Grelha com folga para caber a margem à volta do terreno
-                const folga = Math.ceil(MARGEM_FORA_DO_MAPA / RESOLUCAO_LIMITE) + 2;
+                // Grelha com folga larga: além da margem, tem de conseguir
+                // medir distâncias maiores, para saber onde está a vista de
+                // abertura (que fica mais afastada do que a margem).
+                const folga = Math.ceil(80 / RESOLUCAO_LIMITE) + 2;
                 const colunas = Math.ceil((maxX - minX) / RESOLUCAO_LIMITE) + folga * 2;
                 const linhas = Math.ceil((maxZ - minZ) / RESOLUCAO_LIMITE) + folga * 2;
                 const origemX = minX - folga * RESOLUCAO_LIMITE;
@@ -904,11 +906,19 @@
                 }
 
                 controls.setPlayArea({
+                    // Dentro da zona onde se pode andar (terreno + margem)
                     contains(x, z) {
                         const i = Math.floor((x - origemX) / RESOLUCAO_LIMITE);
                         const j = Math.floor((z - origemZ) / RESOLUCAO_LIMITE);
                         if (i < 0 || j < 0 || i >= colunas || j >= linhas) return false;
                         return permitido[j * colunas + i] === 1;
+                    },
+                    // A que distância do terreno mapeado está este ponto
+                    distanceTo(x, z) {
+                        const i = Math.floor((x - origemX) / RESOLUCAO_LIMITE);
+                        const j = Math.floor((z - origemZ) / RESOLUCAO_LIMITE);
+                        if (i < 0 || j < 0 || i >= colunas || j >= linhas) return Infinity;
+                        return distancia[j * colunas + i] * RESOLUCAO_LIMITE;
                     }
                 });
             } catch (e) {
