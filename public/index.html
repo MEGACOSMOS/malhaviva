@@ -773,7 +773,10 @@
 
     <script type="module">
         import { whenReady } from '@playcanvas/web-components';
-        import { Vec3 } from 'playcanvas';
+        import {
+            Vec3, Texture,
+            PIXELFORMAT_RGBA8, FILTER_LINEAR, ADDRESS_CLAMP_TO_EDGE
+        } from 'playcanvas';
 
         // Quanto se pode voar para lá da última casa, em metros. A vista
         // inicial fica mais longe do que isto, por isso o limite só passa a
@@ -923,112 +926,111 @@
                     }
                 });
 
-                aplicarBordasSuaves(splat, plantas);
+                aplicarBordasSuaves(app, splat, {
+                    permitido, colunas, linhas, origemX, origemZ, celula: RESOLUCAO_LIMITE
+                });
             } catch (e) {
                 console.warn('Não foi possível ler os contornos do mapa:', e);
             }
         }
 
-        // Ao longo de quantos metros o terreno se desvanece junto às bordas.
-        // Quanto maior, mais cedo (mais para dentro do mapa) começa a difusão.
-        const LARGURA_DESVANECIMENTO = 300;
-
-        // Quanto o contorno é empurrado para fora do terreno real. Perto de 1
-        // nada se perde mas a difusão fica fraca; perto de 0 a orla chega a
-        // desaparecer por completo, que é o que dá o aspeto esfumado.
-        const FOLGA_DO_CONTORNO = 0.3;
+        // Ao longo de quantos metros o terreno se desvanece junto à borda.
+        // Quanto maior, mais para dentro do mapa começa a difusão.
+        const LARGURA_DESVANECIMENTO = 90;
 
         /**
          * Faz o mapa desvanecer-se junto às bordas em vez de acabar a direito.
-         * O contorno do bairro é descrito por uma curva suave (uma soma de
-         * ondas em torno do centro), que é depois escrita diretamente no
-         * pequeno programa gráfico que desenha cada ponto do mapa.
+         *
+         * O contorno segue a forma real do bairro: mede-se, para cada ponto da
+         * grelha, a que distância está da borda mais próxima, e essa medida é
+         * entregue ao programa gráfico como uma pequena imagem. Cada ponto do
+         * mapa consulta-a e esbate-se conforme está perto da orla.
          */
-        function aplicarBordasSuaves(splat, plantas) {
+        function aplicarBordasSuaves(app, splat, grelha) {
             const comp = splat && splat.gsplat;
             if (!comp || !comp.setWorkBufferModifier) return;
 
-            // Cantos de cada zona com terreno, vistos de cima
-            const pontos = [];
-            for (const p of plantas) {
-                pontos.push([p.x0, p.z0], [p.x1, p.z0], [p.x0, p.z1], [p.x1, p.z1]);
-            }
-            if (pontos.length === 0) return;
+            const { permitido, colunas, linhas, origemX, origemZ, celula } = grelha;
+            const total = colunas * linhas;
 
-            let cx = 0, cz = 0;
-            for (const [x, z] of pontos) { cx += x; cz += z; }
-            cx /= pontos.length; cz /= pontos.length;
+            // Distância de cada célula com terreno à borda mais próxima,
+            // calculada em duas passagens (ida e volta) sobre a grelha.
+            const DIAGONAL = Math.SQRT2;
+            const profundidade = new Float32Array(total);
+            for (let k = 0; k < total; k++) profundidade[k] = permitido[k] ? 1e9 : 0;
 
-            // Distância máxima do centro ao terreno, em 180 direções
-            const DIRECOES = 180;
-            const raio = new Float64Array(DIRECOES);
-            for (const [x, z] of pontos) {
-                const dx = x - cx, dz = z - cz;
-                let ang = Math.atan2(dz, dx);
-                if (ang < 0) ang += Math.PI * 2;
-                const i = Math.min(DIRECOES - 1, Math.floor(ang / (Math.PI * 2) * DIRECOES));
-                const r = Math.hypot(dx, dz);
-                if (r > raio[i]) raio[i] = r;
-            }
-            for (let i = 0; i < DIRECOES; i++) {
-                if (raio[i] === 0) raio[i] = raio[(i + DIRECOES - 1) % DIRECOES] || raio[(i + 1) % DIRECOES];
-            }
-
-            // Aproxima esse contorno por uma soma de ondas (fica naturalmente suave)
-            const ONDAS = 12;
-            const A = new Float64Array(ONDAS + 1);
-            const B = new Float64Array(ONDAS + 1);
-            for (let k = 0; k <= ONDAS; k++) {
-                let sa = 0, sb = 0;
-                for (let i = 0; i < DIRECOES; i++) {
-                    const th = (i + 0.5) / DIRECOES * Math.PI * 2;
-                    sa += raio[i] * Math.cos(k * th);
-                    sb += raio[i] * Math.sin(k * th);
+            for (let j = 0; j < linhas; j++) {
+                for (let i = 0; i < colunas; i++) {
+                    const k = j * colunas + i;
+                    let d = profundidade[k];
+                    if (i > 0) d = Math.min(d, profundidade[k - 1] + 1);
+                    if (j > 0) d = Math.min(d, profundidade[k - colunas] + 1);
+                    if (i > 0 && j > 0) d = Math.min(d, profundidade[k - colunas - 1] + DIAGONAL);
+                    if (i < colunas - 1 && j > 0) d = Math.min(d, profundidade[k - colunas + 1] + DIAGONAL);
+                    profundidade[k] = d;
                 }
-                A[k] = (k === 0 ? 1 : 2) * sa / DIRECOES;
-                B[k] = (k === 0 ? 0 : 2) * sb / DIRECOES;
+            }
+            for (let j = linhas - 1; j >= 0; j--) {
+                for (let i = colunas - 1; i >= 0; i--) {
+                    const k = j * colunas + i;
+                    let d = profundidade[k];
+                    if (i < colunas - 1) d = Math.min(d, profundidade[k + 1] + 1);
+                    if (j < linhas - 1) d = Math.min(d, profundidade[k + colunas] + 1);
+                    if (i < colunas - 1 && j < linhas - 1) d = Math.min(d, profundidade[k + colunas + 1] + DIAGONAL);
+                    if (i > 0 && j < linhas - 1) d = Math.min(d, profundidade[k + colunas - 1] + DIAGONAL);
+                    profundidade[k] = d;
+                }
             }
 
-            // Empurra a curva para fora do terreno real, mas só em parte: assim
-            // a orla do mapa chega a desvanecer-se por completo em vez de
-            // acabar ainda visível.
-            let folga = 0;
-            for (let i = 0; i < DIRECOES; i++) {
-                const th = (i + 0.5) / DIRECOES * Math.PI * 2;
-                let ajuste = A[0];
-                for (let k = 1; k <= ONDAS; k++) ajuste += A[k] * Math.cos(k * th) + B[k] * Math.sin(k * th);
-                folga = Math.max(folga, raio[i] - ajuste);
+            // A medida é guardada como imagem: 0 na borda, cheio a partir da
+            // largura de desvanecimento para dentro.
+            const pixeis = new Uint8Array(total * 4);
+            for (let k = 0; k < total; k++) {
+                const metros = profundidade[k] * celula;
+                const v = Math.round(255 * Math.min(1, metros / LARGURA_DESVANECIMENTO));
+                const p = k * 4;
+                pixeis[p] = v; pixeis[p + 1] = v; pixeis[p + 2] = v; pixeis[p + 3] = 255;
             }
-            A[0] += folga * FOLGA_DO_CONTORNO;
 
-            const termos = [];
-            for (let k = 1; k <= ONDAS; k++) {
-                termos.push(`${A[k].toFixed(4)}*cos(${k}.0*ang) + ${B[k].toFixed(4)}*sin(${k}.0*ang)`);
-            }
-            const curva = `${A[0].toFixed(4)} + ${termos.join(' + ')}`;
+            const textura = new Texture(app.graphicsDevice, {
+                name: 'mapaBordas',
+                width: colunas,
+                height: linhas,
+                format: PIXELFORMAT_RGBA8,
+                minFilter: FILTER_LINEAR,
+                magFilter: FILTER_LINEAR,
+                addressU: ADDRESS_CLAMP_TO_EDGE,
+                addressV: ADDRESS_CLAMP_TO_EDGE,
+                mipmaps: false
+            });
+            textura.lock().set(pixeis);
+            textura.unlock();
+            comp.setParameter('uMapaBordas', textura);
+
+            const larguraMundo = (colunas * celula).toFixed(3);
+            const alturaMundo = (linhas * celula).toFixed(3);
+            const ox = origemX.toFixed(3);
+            const oz = origemZ.toFixed(3);
 
             const wgsl = `
+var uMapaBordas: texture_2d<f32>;
+var uMapaBordasSampler: sampler;
 fn modifySplatCenter(center: ptr<function, vec3f>) {}
 fn modifySplatRotationScale(originalCenter: vec3f, modifiedCenter: vec3f, rotation: ptr<function, vec4f>, scale: ptr<function, vec3f>) {}
 fn modifySplatColor(center: vec3f, color: ptr<function, vec4f>) {
-    let dx = center.x - (${cx.toFixed(3)});
-    let dz = center.z - (${cz.toFixed(3)});
-    let ang = atan2(dz, dx);
-    let edge = ${curva};
-    let r = sqrt(dx * dx + dz * dz);
-    (*color).a = (*color).a * (1.0 - smoothstep(edge - ${LARGURA_DESVANECIMENTO}.0, edge, r));
+    let uv = vec2f((center.x - (${ox})) / ${larguraMundo}, (center.z - (${oz})) / ${alturaMundo});
+    let d = textureSampleLevel(uMapaBordas, uMapaBordasSampler, uv, 0.0).r;
+    (*color).a = (*color).a * smoothstep(0.0, 1.0, d);
 }`;
 
             const glsl = `
+uniform sampler2D uMapaBordas;
 void modifySplatCenter(inout vec3 center) {}
 void modifySplatRotationScale(vec3 originalCenter, vec3 modifiedCenter, inout vec4 rotation, inout vec3 scale) {}
 void modifySplatColor(vec3 center, inout vec4 color) {
-    float dx = center.x - (${cx.toFixed(3)});
-    float dz = center.z - (${cz.toFixed(3)});
-    float ang = atan(dz, dx);
-    float edge = ${curva};
-    float r = sqrt(dx * dx + dz * dz);
-    color.a = color.a * (1.0 - smoothstep(edge - ${LARGURA_DESVANECIMENTO}.0, edge, r));
+    vec2 uv = vec2((center.x - (${ox})) / ${larguraMundo}, (center.z - (${oz})) / ${alturaMundo});
+    float d = texture(uMapaBordas, uv).r;
+    color.a = color.a * smoothstep(0.0, 1.0, d);
 }`;
 
             comp.setWorkBufferModifier({ wgsl: wgsl, glsl: glsl });
