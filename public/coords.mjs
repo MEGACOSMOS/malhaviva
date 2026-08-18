@@ -21,7 +21,7 @@ CameraCoordinates.prototype.initialize = function() {
         castShadows: false
     });
     this.cursor.setLocalScale(2, 0.2, 2);
-    
+
     const material = new pc.StandardMaterial();
     material.diffuse = new pc.Color(1, 0, 0);
     material.emissive = new pc.Color(1, 0, 0);
@@ -29,22 +29,40 @@ CameraCoordinates.prototype.initialize = function() {
     material.opacity = 0.6;
     material.depthWrite = false;
     material.update();
-    
+
     this.cursor.render.meshInstances[0].material = material;
+    this.cursor.enabled = false; // hidden until a dev mode needs it
     this.app.root.addChild(this.cursor);
 
     this.mousePos = new pc.Vec2();
     this.isMouseMoved = false;
 
-    // Enable GSplat ID tracking for picking
-    if (this.app.scene.gsplat) {
-        this.app.scene.gsplat.enableIds = true;
-    }
-    
-    // Create Picker with Depth Support (true)
-    const canvas = this.app.graphicsDevice.canvas;
+    // Picking (GPU depth picker + raycasts) re-renders the scene on every mouse
+    // move, so it stays fully off unless a dev tool that needs it is enabled:
+    // "Posição do Cursor" or "Modo Edição de Trilha".
+    this.pickingActive = false;
+    this.cameraInfoActive = false;
     this.pickScale = 0.5; // Half resolution for performance
-    this.picker = new pc.Picker(this.app, canvas.clientWidth * this.pickScale, canvas.clientHeight * this.pickScale, true);
+    this.picker = null;   // created lazily on first activation
+
+    const devCursorToggle = document.getElementById('dev-cursor-coord');
+    const devTrailToggle = document.getElementById('dev-trail-edit');
+    const devCameraToggle = document.getElementById('dev-camera-coord');
+
+    const refreshPicking = () => {
+        const active = !!((devCursorToggle && devCursorToggle.checked) ||
+                          (devTrailToggle && devTrailToggle.checked));
+        this.setPickingActive(active);
+    };
+    if (devCursorToggle) devCursorToggle.addEventListener('change', refreshPicking);
+    if (devTrailToggle) devTrailToggle.addEventListener('change', refreshPicking);
+    if (devCameraToggle) {
+        this.cameraInfoActive = devCameraToggle.checked;
+        devCameraToggle.addEventListener('change', () => {
+            this.cameraInfoActive = devCameraToggle.checked;
+        });
+    }
+    refreshPicking();
 
     const onMouseMove = (e) => {
         this.mousePos.set(e.x, e.y);
@@ -68,11 +86,27 @@ CameraCoordinates.prototype.initialize = function() {
     this.hitPosition = new pc.Vec3();
 };
 
+CameraCoordinates.prototype.setPickingActive = function(active) {
+    if (active === this.pickingActive) return;
+    this.pickingActive = active;
+    this.cursor.enabled = active;
+
+    // GSplat ID tracking adds per-frame cost, so it only runs while picking is on
+    if (this.app.scene.gsplat) {
+        this.app.scene.gsplat.enableIds = active;
+    }
+
+    if (active && !this.picker) {
+        const canvas = this.app.graphicsDevice.canvas;
+        this.picker = new pc.Picker(this.app, canvas.clientWidth * this.pickScale, canvas.clientHeight * this.pickScale, true);
+    }
+};
+
 CameraCoordinates.prototype.update = function(dt) {
     if (!this.entity.camera || !this.cursor) return;
 
-    // --- Update Camera Info UI ---
-    if (this.camX && this.camY && this.camZ && this.camPitch && this.camYaw) {
+    // --- Update Camera Info UI (only while the dev panel is visible) ---
+    if (this.cameraInfoActive && this.camX && this.camY && this.camZ && this.camPitch && this.camYaw) {
         const pos = this.entity.getPosition();
         const rot = this.entity.getEulerAngles();
         this.camX.textContent = pos.x.toFixed(2);
@@ -82,7 +116,7 @@ CameraCoordinates.prototype.update = function(dt) {
         this.camYaw.textContent = rot.y.toFixed(1) + '°';
     }
 
-    if (!this.isMouseMoved || this.picking) return;
+    if (!this.pickingActive || !this.picker || !this.isMouseMoved || this.picking) return;
 
     const canvas = this.app.graphicsDevice.canvas;
     const w = Math.floor(canvas.clientWidth * this.pickScale);

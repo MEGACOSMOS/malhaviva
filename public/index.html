@@ -18,6 +18,9 @@
             }
         }
     </script>
+    <!-- Descarrega o motor e os componentes em paralelo (evita fila de espera) -->
+    <link rel="modulepreload" href="https://cdn.jsdelivr.net/npm/playcanvas@2.21.4/build/playcanvas.mjs">
+    <link rel="modulepreload" href="https://cdn.jsdelivr.net/npm/@playcanvas/web-components@0.15.0/dist/pwc.mjs">
     <script type="module">import '@playcanvas/web-components';</script>
 
     <style>
@@ -718,11 +721,11 @@
         <!-- Assets -->
         <pc-asset id="splat-scene" src="splat/lod-meta.json" type="gsplat"></pc-asset>
         <pc-asset id="camera-controls-script" src="./camera-controls.mjs" type="script"></pc-asset>
-        <pc-asset id="camera-coords-script" src="./coords.mjs?v=4" type="script"></pc-asset>
+        <pc-asset id="camera-coords-script" src="./coords.mjs?v=5" type="script"></pc-asset>
         <pc-asset id="annotations-script" src="./annotations.mjs?v=4" type="script"></pc-asset>
         <pc-asset id="trail-script" src="./trail.mjs?v=4" type="script"></pc-asset>
-        <pc-asset id="image-particles-script" src="./image-particles.mjs?v=9" type="script"></pc-asset>
-        <pc-asset id="ground-fireflies-script" src="./ground-fireflies.mjs?v=1" type="script"></pc-asset>
+        <pc-asset id="image-particles-script" src="./image-particles.mjs?v=10" type="script"></pc-asset>
+        <pc-asset id="ground-fireflies-script" src="./ground-fireflies.mjs?v=2" type="script"></pc-asset>
 
         <!-- Scene -->
         <pc-scene>
@@ -824,6 +827,12 @@
             try {
                 const pcApp = document.querySelector('pc-app');
                 const app = pcApp && pcApp.app;
+
+                // --- Limita a densidade de pixels a 2x no nível Alto: acima disso
+                //     não há ganho visível de nitidez, só custo de renderização ---
+                if (isHigh && app && app.graphicsDevice) {
+                    app.graphicsDevice.maxPixelRatio = Math.min(window.devicePixelRatio, 2);
+                }
 
                 // --- Reduce rendering resolution on mobile (Nível Baixo) ---
                 if (isLow && app && app.graphicsDevice) {

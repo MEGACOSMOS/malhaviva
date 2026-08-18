@@ -12,8 +12,8 @@ GroundFireflies.prototype.initialize = function() {
     var self = this;
 
     var xhr = new XMLHttpRequest();
-    var cacheBuster = '?v=' + Date.now();
-    xhr.open('GET', this.jsonUrl + cacheBuster, true);
+    // O URL já traz versão (?v=N) vinda do index.html, por isso o ficheiro pode ser cacheado
+    xhr.open('GET', this.jsonUrl, true);
     xhr.onload = function() {
         if (xhr.status !== 200) {
             console.error('[FullSplat] Failed to load JSON, status:', xhr.status);
@@ -134,8 +134,9 @@ GroundFireflies.prototype.update = function(dt) {
             this.frustum = new pc.Frustum();
         }
         
-        // Get camera
-        const cameraEntity = this.app.root.findByName('camera');
+        // Get camera (cached — a procura na hierarquia é cara por frame)
+        if (!this._cameraEntity) this._cameraEntity = this.app.root.findByName('camera');
+        const cameraEntity = this._cameraEntity;
         if (cameraEntity && cameraEntity.camera) {
             const camera = cameraEntity.camera;
             this.frustum.setFromMat4(camera.projectionMatrix, camera.viewMatrix);

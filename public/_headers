@@ -1,0 +1,16 @@
+# Cache dos dados pesados do modelo 3D e média:
+# frescos durante 1 dia; até 7 dias servidos do cache enquanto revalidam em segundo plano.
+/splat/*
+  Cache-Control: public, max-age=86400, stale-while-revalidate=604800
+
+/splat_perf/*
+  Cache-Control: public, max-age=86400, stale-while-revalidate=604800
+
+/videos/*
+  Cache-Control: public, max-age=86400, stale-while-revalidate=604800
+
+/bridge_drawing.png
+  Cache-Control: public, max-age=86400, stale-while-revalidate=604800
+
+/ground_fireflies.json
+  Cache-Control: public, max-age=86400, stale-while-revalidate=604800
