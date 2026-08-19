@@ -729,7 +729,7 @@
     </div>
 
     <!-- PlayCanvas Application -->
-    <pc-app id="main-app" antialias="true" high-resolution="true">
+    <pc-app id="main-app" antialias="true" max-pixel-ratio="2">
 
         <!-- Assets -->
         <pc-asset id="splat-scene" src="splat/lod-meta.json" type="gsplat"></pc-asset>
@@ -808,7 +808,18 @@
                 var motor = document.getElementById('main-app');
                 if (motor) {
                     motor.setAttribute('antialias', 'false');
-                    motor.setAttribute('high-resolution', 'false');
+
+                    // Um ponto do modelo por cada ponto do ecrã. Num
+                    // telemóvel isto é já um terço dos pontos que ele tem,
+                    // e é a maior poupança que há sem tocar na imagem.
+                    // Em ecrãs grandes desce ainda mais, para o trabalho
+                    // não crescer com o tamanho do ecrã.
+                    var densidade = 1;
+                    if (nivel === 'low') {
+                        var pontosDoEcra = Math.max(1, window.innerWidth * window.innerHeight);
+                        densidade = Math.min(1, Math.sqrt(900000 / pontosDoEcra));
+                    }
+                    motor.setAttribute('max-pixel-ratio', densidade.toFixed(3));
                 }
                 // Nos níveis Médio e Baixo entra o modelo do bairro já
                 // aligeirado de origem.
@@ -1142,12 +1153,24 @@ void modifySplatColor(vec3 center, inout vec4 color) {
                     app.graphicsDevice.maxPixelRatio = Math.min(window.devicePixelRatio, 2);
                 }
 
-                // --- Reduce rendering resolution on mobile (Nível Baixo) ---
+                // --- Nível Baixo: menos pixéis para desenhar ---
                 // A ponte e os pirilampos deixaram de ser apagados aqui: agora
                 // que são agrupados num punhado de desenhos, cabem em todos os
                 // níveis de qualidade e fazem parte do cenário à volta.
-                if (isLow && app && app.graphicsDevice) {
-                    app.graphicsDevice.maxPixelRatio = 1;
+                //
+                // Um telemóvel desenha à medida do ecrã (um ponto por ponto),
+                // o que já é bem menos do que os dois ou três pontos por
+                // ponto que ele tem. Em ecrãs grandes — um tablet deitado,
+                // por exemplo — nem isso chega, e há um tecto de pontos para
+                // o trabalho não crescer com o tamanho do ecrã.
+                if (!isHigh && app && app.graphicsDevice) {
+                    let densidade = 1;
+                    if (isLow) {
+                        const pontosDoEcra = Math.max(1, window.innerWidth * window.innerHeight);
+                        const TECTO_DE_PONTOS = 900000;
+                        densidade = Math.min(1, Math.sqrt(TECTO_DE_PONTOS / pontosDoEcra));
+                    }
+                    app.graphicsDevice.maxPixelRatio = densidade;
                 }
 
                 // --- 3D Fog removed (may cause LOD issues with GSplat) ---
@@ -1185,7 +1208,31 @@ void modifySplatColor(vec3 center, inout vec4 color) {
                     // a imagem começar a arrastar.
                     if (app && app.scene && app.scene.gsplat) {
                         if (isMed) app.scene.gsplat.splatBudget = 1200000;
-                        else if (isLow) app.scene.gsplat.splatBudget = 900000;
+                        else if (isLow) app.scene.gsplat.splatBudget = 500000;
+                    }
+
+                    // --- Nível Baixo: poupar onde não se dá por isso ---
+                    //
+                    // Num telemóvel o que custa não é tanto o número de
+                    // manchas do modelo, é a quantidade de vezes que cada
+                    // ponto do ecrã é pintado por manchas transparentes
+                    // sobrepostas. Estas três afinações atacam exactamente
+                    // isso, e todas elas deitam fora manchas que quase não
+                    // se vêem:
+                    //
+                    //  - manchas com menos de três pontos de raio no ecrã
+                    //    são pó, e o pó só serve para pintar por cima;
+                    //  - manchas que mal contribuem para a cor final saem
+                    //    da conta;
+                    //  - e, fora do meio do ecrã, essa exigência aumenta a
+                    //    pouco e pouco. Ao centro nada muda; é nos cantos,
+                    //    onde a atenção não está, que se poupa.
+                    if (isLow && app && app.scene && app.scene.gsplat) {
+                        const g = app.scene.gsplat;
+                        g.minPixelSize = 3;
+                        g.minContribution = 5;
+                        g.foveationCenter = 0.4;
+                        g.foveationStrength = 10;
                     }
                 }
             } catch(e) {
