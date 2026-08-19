@@ -36,10 +36,9 @@ export function rotuloOriginal(nome) {
 
 // Versões que ainda não foram carregadas para a nuvem. Enquanto estiverem
 // aqui, não aparecem no menu — assim ninguém escolhe uma qualidade que
-// depois não abre.
-const POR_CARREGAR = {
-    'Esvarena - 360 - B': ['1440p', '720p']
-};
+// depois não abre. De momento estão todas lá; a lista fica para quando
+// entrar um vídeo novo que ainda só tenha algumas versões prontas.
+const POR_CARREGAR = {};
 
 /**
  * As resoluções que existem mesmo de um vídeo.

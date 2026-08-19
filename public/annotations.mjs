@@ -1,5 +1,5 @@
 import * as pc from 'playcanvas';
-import { fontesDeVideo, resolucaoDeArranque } from './videos.mjs?v=3';
+import { fontesDeVideo, resolucaoDeArranque } from './videos.mjs?v=4';
 
 export const AnnotationController = pc.createScript('annotationController');
 
