@@ -305,7 +305,8 @@
     </a-scene>
 
     <script type="module">
-        import { fontesDeVideo, resolucaoDeArranque } from './videos.mjs?v=4';
+        import { fontesDeVideo } from './videos.mjs?v=5';
+        import { criarGestorDeQualidade, limiteDeTexturaDoAparelho } from './qualidade-video.mjs?v=8';
 
         const urlParams = new URLSearchParams(window.location.search);
 
@@ -314,11 +315,6 @@
         const nome = urlParams.get('nome') || 'Esvarena - 360 - A';
         const enderecoDirecto = urlParams.get('src');
         const fontes = enderecoDirecto ? { 'Original': enderecoDirecto } : fontesDeVideo(nome);
-        const resolucoes = Object.keys(fontes);
-
-        let resolucaoAtual = resolucaoDeArranque(resolucoes);
-        if (!fontes[resolucaoAtual]) resolucaoAtual = resolucoes[0];
-        const src = fontes[resolucaoAtual];
 
         // DOM Elements
         const overlay = document.getElementById('play-overlay');
@@ -349,7 +345,6 @@
         video.webkitPlaysinline = true;
         video.loop = true;
         video.preload = 'auto';
-        video.src = src;
         assets.appendChild(video);
 
         // Create Sphere mapped to video
@@ -398,7 +393,9 @@
 
         const togglePlay = () => {
             if (video.paused) {
-                video.play();
+                // Se entretanto a versão do vídeo trocar, este pedido é
+                // cancelado pelo navegador — não é um erro que interesse.
+                video.play().catch(() => {});
             } else {
                 video.pause();
             }
@@ -494,44 +491,61 @@
 
         // --- Menu das resoluções ---
 
-        const trocarResolucao = (resolucao) => {
-            if (resolucao === resolucaoAtual || !fontes[resolucao]) return;
-
-            // Guarda o sítio onde ia e repõe-no assim que a nova versão
-            // diz quanto tempo tem.
-            const momento = video.currentTime;
-            const estavaAPausa = video.paused;
-
-            resolucaoAtual = resolucao;
-            video.src = fontes[resolucao];
-            video.addEventListener('loadedmetadata', () => {
-                video.currentTime = momento;
-                if (!estavaAPausa) {
-                    video.play().catch(e => console.log(e));
-                }
-            }, { once: true });
-
-            Array.from(qualityMenu.children).forEach((b) => {
-                b.classList.toggle('active', b.dataset.resolucao === resolucao);
-            });
-            qualityMenu.classList.remove('show');
-        };
-
-        resolucoes.forEach((resolucao) => {
-            const btn = document.createElement('button');
-            btn.className = 'quality-btn';
-            btn.dataset.resolucao = resolucao;
-            btn.innerText = resolucao;
-            if (resolucao === resolucaoAtual) btn.classList.add('active');
-            btn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                trocarResolucao(resolucao);
-            });
-            qualityMenu.appendChild(btn);
+        // Quem decide é o gestor: começa pelo que a ligação aguenta e vai
+        // corrigindo sozinho. Aqui só se pergunta ainda à placa gráfica
+        // que tamanho de imagem consegue mostrar, porque uma rota 360º é
+        // aberta como uma imagem inteira à volta do observador.
+        const gestor = criarGestorDeQualidade({
+            video,
+            fontes,
+            nome,
+            moldura: document.body,
+            limiteDeTextura: limiteDeTexturaDoAparelho(),
+            aoMudar: (resolucao, modo) => marcarEscolha(resolucao, modo)
         });
 
+        let botaoAutomatico = null;
+
+        function marcarEscolha(resolucao, modo) {
+            if (botaoAutomatico) {
+                botaoAutomatico.innerText = modo === 'auto' ?
+                    `Automático · ${resolucao}` : 'Automático';
+            }
+            Array.from(qualityMenu.children).forEach((b) => {
+                const eAutomatico = b.dataset.modo === 'auto';
+                const escolhido = modo === 'auto' ? eAutomatico : b.dataset.resolucao === resolucao;
+                b.classList.toggle('active', escolhido);
+            });
+        }
+
+        function criarBotao(texto, aoClicar) {
+            const btn = document.createElement('button');
+            btn.className = 'quality-btn';
+            btn.innerText = texto;
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                aoClicar();
+                qualityMenu.classList.remove('show');
+            });
+            qualityMenu.appendChild(btn);
+            return btn;
+        }
+
+        botaoAutomatico = criarBotao('Automático', () => gestor.automatico());
+        botaoAutomatico.dataset.modo = 'auto';
+
+        Object.keys(fontes).forEach((resolucao) => {
+            const btn = criarBotao(resolucao, () => gestor.fixar(resolucao));
+            btn.dataset.resolucao = resolucao;
+        });
+
+        gestor.arrancar();
+
+        // Deixa o gestor à mão para diagnóstico a partir da consola.
+        window.gestorDeQualidade = gestor;
+
         // Com uma só versão não há nada para escolher: o botão desaparece.
-        if (resolucoes.length < 2) {
+        if (Object.keys(fontes).length < 2) {
             document.getElementById('quality-container').style.display = 'none';
         }
 

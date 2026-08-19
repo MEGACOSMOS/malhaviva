@@ -34,6 +34,65 @@ export function rotuloOriginal(nome) {
     return VIDEOS_360.includes(nome) ? ROTULO_ORIGINAL_360 : ROTULO_ORIGINAL;
 }
 
+/**
+ * Se um vídeo é uma rota 360º (uma imagem que dá a volta ao observador).
+ *
+ * @param {string} nome - Nome do vídeo.
+ * @returns {boolean} Verdadeiro nas rotas.
+ */
+export function e360(nome) {
+    return VIDEOS_360.includes(nome);
+}
+
+/**
+ * Se um rótulo corresponde à versão original de um vídeo.
+ *
+ * @param {string} nome - Nome do vídeo.
+ * @param {string} resolucao - O rótulo a testar.
+ * @returns {boolean} Verdadeiro se for o original.
+ */
+export function eOriginal(nome, resolucao) {
+    return resolucao === rotuloOriginal(nome);
+}
+
+// Quantas linhas tem cada versão. É por aqui que se sabe se uma versão é
+// mais nítida do que o ecrã consegue mostrar — nesse caso só gastaria
+// dados sem se ver diferença.
+const ALTURAS = { '1440p': 1440, '1080p': 1080, '720p': 720, '480p': 480 };
+
+/**
+ * Quantas linhas tem uma versão de um vídeo.
+ *
+ * @param {string} nome - Nome do vídeo.
+ * @param {string} resolucao - Rótulo da versão.
+ * @returns {number} Altura em pontos.
+ */
+export function alturaDe(nome, resolucao) {
+    if (eOriginal(nome, resolucao)) return e360(nome) ? 3840 : 2160;
+    return ALTURAS[resolucao] || 0;
+}
+
+// Quantos megabits por segundo é preciso conseguir descarregar para cada
+// versão correr sem parar. São valores medidos nos ficheiros verdadeiros,
+// arredondados para cima — as rotas 360º pesam bastante mais porque a
+// imagem cobre tudo à volta.
+const DEBITOS = {
+    entrevista: { '480p': 0.3, '720p': 0.7, '1080p': 1.8, '1440p': 8, original: 48 },
+    rota360: { '480p': 0.9, '720p': 2.4, '1080p': 7, '1440p': 19, original: 46 }
+};
+
+/**
+ * Quanto pesa, por segundo, uma versão de um vídeo.
+ *
+ * @param {string} nome - Nome do vídeo.
+ * @param {string} resolucao - Rótulo da versão.
+ * @returns {number} Megabits por segundo.
+ */
+export function debitoDe(nome, resolucao) {
+    const tabela = e360(nome) ? DEBITOS.rota360 : DEBITOS.entrevista;
+    return eOriginal(nome, resolucao) ? tabela.original : (tabela[resolucao] || 0);
+}
+
 // Versões que ainda não foram carregadas para a nuvem. Enquanto estiverem
 // aqui, não aparecem no menu — assim ninguém escolhe uma qualidade que
 // depois não abre. De momento estão todas lá; a lista fica para quando
@@ -76,51 +135,4 @@ export function fontesDeVideo(nome) {
         fontes[r] = enderecoDe(nome, r);
     });
     return fontes;
-}
-
-/**
- * Que resolução deve começar a tocar, conforme o equipamento e a escolha
- * de qualidade guardada nas definições do site.
- *
- * O 1440p e o original nunca arrancam sozinhos: são ficheiros muito
- * pesados, ficam reservados para quem os escolher de propósito.
- *
- * @param {string[]} disponiveis - Resoluções deste vídeo.
- * @returns {string} A resolução por onde começar.
- */
-export function resolucaoDeArranque(disponiveis) {
-    const lista = disponiveis && disponiveis.length ? disponiveis : RESOLUCOES.slice();
-
-    let qualidade = null;
-    try {
-        qualidade = localStorage.getItem('quality');
-    } catch (e) {
-        qualidade = null;
-    }
-    if (!qualidade || qualidade === 'auto') {
-        qualidade = detetarEquipamento();
-    }
-
-    const preferidas = qualidade === 'low' ? ['480p', '720p', '1080p', '1440p'] :
-        qualidade === 'med' ? ['720p', '1080p', '480p', '1440p'] :
-            ['1080p', '720p', '1440p', '480p'];
-
-    // Se nada disto existir, fica-se pela mais leve que houver — nunca
-    // pelo original, que é o primeiro da lista.
-    return preferidas.find(r => lista.includes(r)) || lista[lista.length - 1];
-}
-
-/**
- * Adivinha a força do equipamento, com as mesmas regras do resto do site.
- *
- * @returns {string} 'low', 'med' ou 'high'.
- */
-function detetarEquipamento() {
-    const telemovel = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-    const ecraPequeno = window.matchMedia('(max-width: 768px)').matches;
-    const toque = (navigator.maxTouchPoints > 0) || (navigator.msMaxTouchPoints > 0);
-    if (telemovel || (ecraPequeno && toque)) return 'low';
-
-    const nucleos = navigator.hardwareConcurrency || 4;
-    return nucleos <= 6 ? 'med' : 'high';
 }

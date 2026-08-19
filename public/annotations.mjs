@@ -1,5 +1,6 @@
 import * as pc from 'playcanvas';
-import { fontesDeVideo, resolucaoDeArranque } from './videos.mjs?v=4';
+import { fontesDeVideo } from './videos.mjs?v=5';
+import { criarGestorDeQualidade } from './qualidade-video.mjs?v=8';
 
 export const AnnotationController = pc.createScript('annotationController');
 
@@ -29,43 +30,43 @@ AnnotationController.prototype.initialize = function() {
         {
             position: new pc.Vec3(36.16, 2.49, 50.48),
             label: "Dulce",
-            videoSrc: fontesDeVideo("Dulce"),
+            video: "Dulce",
             element: null
         },
         {
             position: new pc.Vec3(-67.03, -1.70, -64.40),
             label: "Luna",
-            videoSrc: fontesDeVideo("Luna"),
+            video: "Luna",
             element: null
         },
         {
             position: new pc.Vec3(-85.42, -7.76, -26.34),
             label: "Sofia",
-            videoSrc: fontesDeVideo("Sofia"),
+            video: "Sofia",
             element: null
         },
         {
             position: new pc.Vec3(-38.38, 1.47, -64.20),
             label: "Frei",
-            videoSrc: fontesDeVideo("Frei"),
+            video: "Frei",
             element: null
         },
         {
             position: new pc.Vec3(94.09, 1.82, 31.41),
             label: "Edson",
-            videoSrc: fontesDeVideo("Edson"),
+            video: "Edson",
             element: null
         },
         {
             position: new pc.Vec3(-91.98, -5.48, -53.98),
             label: "Edmilson",
-            videoSrc: fontesDeVideo("Edmilson"),
+            video: "Edmilson",
             element: null
         },
         {
             position: new pc.Vec3(31.12, 4.32, -92.28),
             label: "Carlos",
-            videoSrc: fontesDeVideo("Carlos"),
+            video: "Carlos",
             element: null
         }
     ];
@@ -381,7 +382,7 @@ AnnotationController.prototype.initialize = function() {
                     this.entity.script.trailController.showPopup360(ann.trailIndex);
                 }
             } else {
-                this.openVideoModal(ann.videoSrc, ann.label);
+                this.openVideoModal(ann.video, ann.label);
             }
         });
 
@@ -460,6 +461,7 @@ AnnotationController.prototype.setupModal = function() {
     // Custom Video Player UI
     const videoWrapper = document.createElement('div');
     videoWrapper.className = 'custom-video-container paused';
+    this.videoWrapper = videoWrapper;
     
     this.videoPlayer = document.createElement('video');
     this.videoPlayer.style.width = '100%';
@@ -586,7 +588,9 @@ AnnotationController.prototype.setupModal = function() {
 
     const togglePlay = () => {
         if (this.videoPlayer.paused) {
-            this.videoPlayer.play();
+            // Se entretanto a versão do vídeo trocar, este pedido é
+            // cancelado pelo navegador — não é um erro que interesse.
+            this.videoPlayer.play().catch(() => {});
         } else {
             this.videoPlayer.pause();
         }
@@ -746,6 +750,10 @@ AnnotationController.prototype.setupModal = function() {
         
         setTimeout(() => {
             this.modal.style.display = 'none';
+            if (this.gestorDeQualidade) {
+                this.gestorDeQualidade.parar();
+                this.gestorDeQualidade = null;
+            }
             this.videoPlayer.pause();
             this.videoPlayer.src = ''; 
             const gsplat = this.app.root.findByName('gsplat-scene');
@@ -776,66 +784,95 @@ AnnotationController.prototype.setupModal = function() {
     this.videoSources = null;
 };
 
-AnnotationController.prototype.openVideoModal = function(sources, title) {
+AnnotationController.prototype.openVideoModal = function(nome, title) {
     this.modalTitle.textContent = title;
-    
-    // Store current sources dict
-    this.videoSources = typeof sources === 'string' ? { "Default": sources } : sources;
-    
-    // Menu das resoluções: uma entrada por versão que exista deste vídeo,
-    // da mais nítida para a mais leve.
-    this.qualityMenu.innerHTML = '';
-    const qualities = Object.keys(this.videoSources);
 
-    // Começa na resolução que o equipamento aguenta bem; as outras ficam
-    // à distância de um clique.
-    let selectedQuality = resolucaoDeArranque(qualities);
-    if (!this.videoSources[selectedQuality]) selectedQuality = qualities[0];
+    const fontes = fontesDeVideo(nome);
+    this.videoSources = fontes;
 
-    qualities.forEach(quality => {
-        const btn = document.createElement('button');
-        btn.className = 'quality-btn';
-        if (quality === selectedQuality) btn.classList.add('active');
-        btn.innerText = quality;
-        btn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            if (selectedQuality === quality) return;
-            
-            // Update active state
-            Array.from(this.qualityMenu.children).forEach(c => c.classList.remove('active'));
-            btn.classList.add('active');
-            selectedQuality = quality;
-            
-            // Troca de versão sem perder o sítio: o momento só pode ser
-            // reposto depois de o novo ficheiro dizer quanto tempo tem.
-            const momento = this.videoPlayer.currentTime;
-            const estavaAPausa = this.videoPlayer.paused;
+    if (this.gestorDeQualidade) this.gestorDeQualidade.parar();
 
-            this.videoPlayer.src = this.videoSources[quality];
-            this.videoPlayer.addEventListener('loadedmetadata', () => {
-                this.videoPlayer.currentTime = momento;
-                if (!estavaAPausa) {
-                    this.videoPlayer.play().catch(err => console.log(err));
-                }
-            }, { once: true });
-            this.qualityMenu.classList.remove('show');
-        });
-        this.qualityMenu.appendChild(btn);
+    // Quem decide a qualidade é o gestor: começa pelo que a ligação
+    // aguenta e vai corrigindo enquanto o vídeo corre.
+    this.gestorDeQualidade = criarGestorDeQualidade({
+        video: this.videoPlayer,
+        fontes,
+        nome,
+        moldura: this.videoWrapper,
+        aoMudar: (resolucao, modo) => this.marcarQualidadeEscolhida(resolucao, modo)
     });
-    
-    // Set initial source
-    this.videoPlayer.src = this.videoSources[selectedQuality];
-    
+
+    this.desenharMenuDeQualidade(fontes);
+
     this.modal.style.display = 'flex';
+
+    // Só com o player já visível é que se sabe o tamanho que vai ter, e a
+    // escolha da versão depende disso. Ler a altura obriga o navegador a
+    // fazer as contas do tamanho já a seguir, sem esperar pela animação.
+    void this.videoWrapper.clientHeight;
+    this.gestorDeQualidade.arrancar();
+    this.videoPlayer.play().catch(e => console.log('Autoplay prevented:', e));
+
     requestAnimationFrame(() => {
         this.modal.style.opacity = '1';
         this.modalContent.style.transform = 'scale(1)';
     });
-    
-    this.videoPlayer.play().catch(e => console.log('Autoplay prevented:', e));
 
     const gsplat = this.app.root.findByName('gsplat-scene');
     if (gsplat) gsplat.enabled = false;
+};
+
+/**
+ * Constrói o menu de qualidade: primeiro o automático, depois cada versão
+ * para quem quiser mandar à mão.
+ *
+ * @param {Object<string, string>} fontes - Resolução → endereço.
+ */
+AnnotationController.prototype.desenharMenuDeQualidade = function(fontes) {
+    this.qualityMenu.innerHTML = '';
+
+    const criarBotao = (texto, aoClicar) => {
+        const btn = document.createElement('button');
+        btn.className = 'quality-btn';
+        btn.innerText = texto;
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            aoClicar();
+            this.qualityMenu.classList.remove('show');
+        });
+        this.qualityMenu.appendChild(btn);
+        return btn;
+    };
+
+    this.botaoAutomatico = criarBotao('Automático', () => this.gestorDeQualidade.automatico());
+    this.botaoAutomatico.dataset.modo = 'auto';
+
+    Object.keys(fontes).forEach((resolucao) => {
+        const btn = criarBotao(resolucao, () => this.gestorDeQualidade.fixar(resolucao));
+        btn.dataset.resolucao = resolucao;
+    });
+};
+
+/**
+ * Actualiza o menu para mostrar o que está a tocar. No automático, a
+ * primeira linha diz também que versão está a ser usada neste momento.
+ *
+ * @param {string} resolucao - A versão em uso.
+ * @param {string} modo - 'auto' ou 'manual'.
+ */
+AnnotationController.prototype.marcarQualidadeEscolhida = function(resolucao, modo) {
+    if (!this.qualityMenu) return;
+
+    if (this.botaoAutomatico) {
+        this.botaoAutomatico.innerText = modo === 'auto' ?
+            `Automático · ${resolucao}` : 'Automático';
+    }
+
+    Array.from(this.qualityMenu.children).forEach((btn) => {
+        const eAutomatico = btn.dataset.modo === 'auto';
+        const escolhido = modo === 'auto' ? eAutomatico : btn.dataset.resolucao === resolucao;
+        btn.classList.toggle('active', escolhido);
+    });
 };
 
 // Markers shrink with distance so a far one never reads as bigger than a near
