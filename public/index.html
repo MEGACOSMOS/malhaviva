@@ -733,7 +733,7 @@
 
         <!-- Assets -->
         <pc-asset id="splat-scene" src="splat/lod-meta.json" type="gsplat"></pc-asset>
-        <pc-asset id="camera-controls-script" src="./camera-controls.mjs?v=6" type="script"></pc-asset>
+        <pc-asset id="camera-controls-script" src="./camera-controls.mjs?v=7" type="script"></pc-asset>
         <pc-asset id="camera-coords-script" src="./coords.mjs?v=5" type="script"></pc-asset>
         <pc-asset id="annotations-script" src="./annotations.mjs?v=10" type="script"></pc-asset>
         <pc-asset id="trail-script" src="./trail.mjs?v=7" type="script"></pc-asset>
@@ -789,6 +789,7 @@
             Vec3, Texture,
             PIXELFORMAT_RGBA8, FILTER_LINEAR, ADDRESS_CLAMP_TO_EDGE
         } from 'playcanvas';
+        import { ligarLodNoCentroDaVista } from './lod-foco.mjs?v=1';
 
         // Resolução da grelha usada para medir o mapa, em metros.
         const RESOLUCAO_LIMITE = 4;
@@ -1136,11 +1137,15 @@ void modifySplatColor(vec3 center, inout vec4 color) {
                 // --- Per-asset LOD tuning ---
                 const splatEl = document.querySelector('pc-entity[name="gsplat-scene"]');
                 if (splatEl && splatEl.entity && splatEl.entity.gsplat) {
+                    // As distâncias abaixo encolheram um pouco desde que o
+                    // detalhe deixou de andar colado à câmara: como agora
+                    // assenta onde a pessoa está a olhar, chega menos raio
+                    // para a vista ficar mais nítida do que estava.
                     if (isHigh) {
-                        splatEl.entity.gsplat.lodBaseDistance = 300; 
+                        splatEl.entity.gsplat.lodBaseDistance = 250; 
                         splatEl.entity.gsplat.lodMultiplier = 3; 
                     } else if (isMed) {
-                        splatEl.entity.gsplat.lodBaseDistance = 100; 
+                        splatEl.entity.gsplat.lodBaseDistance = 85; 
                         splatEl.entity.gsplat.lodMultiplier = 3; 
                         // Sem limite duro de memoria no nível Médio
                     } else { // isLow
@@ -1311,6 +1316,11 @@ void modifySplatColor(vec3 center, inout vec4 color) {
             });
 
             aplicarLimitesDoMapa(app);
+
+            // O detalhe fino do mapa passa a seguir o centro da vista em vez
+            // da posição da câmara, com um limite de distância para não
+            // carregar pormenores longe demais para se notarem.
+            window.lodFoco = ligarLodNoCentroDaVista(app);
 
             // Give a bit more time for the first chunks to load
             setTimeout(showUIOnce, 2000);

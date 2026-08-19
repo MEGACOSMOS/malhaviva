@@ -968,9 +968,12 @@ class CameraControls extends Script {
                 const isLow = typeof window !== 'undefined' && window.actualQuality === 'low';
                 const isMed = typeof window !== 'undefined' && window.actualQuality === 'med';
                 
-                let baseDist = 300;
+                // Estes valores mandam mesmo (reescrevem a cada imagem os que
+                // ficam definidos no arranque da pagina) e tem de acompanhar
+                // os do index.html.
+                let baseDist = 250;
                 if (isLow) baseDist = 20;
-                else if (isMed) baseDist = 100;
+                else if (isMed) baseDist = 85;
                 
                 this._splatGsplat.lodBaseDistance = baseDist * fovRatio;
             }
