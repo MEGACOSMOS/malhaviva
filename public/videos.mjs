@@ -9,10 +9,30 @@
 
 const BASE = 'https://pub-0a409b596f304409941ca1f88f3b593b.r2.dev/';
 
-// Da mais nítida para a mais leve. É por esta ordem que aparecem no menu.
-// O 2160p é o ficheiro original, tal como saiu da montagem.
-export const ORIGINAL = '2160p';
-export const RESOLUCOES = [ORIGINAL, '1440p', '1080p', '720p', '480p'];
+// As versões feitas a partir do original, da mais nítida para a mais leve.
+// É por esta ordem que aparecem no menu, logo a seguir ao original.
+export const RESOLUCOES = ['1440p', '1080p', '720p', '480p'];
+
+// Rótulo do ficheiro original de cada vídeo, tal como saiu da montagem.
+//
+// As entrevistas foram filmadas em 4K (3840 x 2160), por isso o 2160p diz
+// tudo. As rotas 360º são 8K e muito mais largas — a imagem dá a volta
+// toda ao observador — e como os números terminados em "p" só contam as
+// linhas, ficariam a esconder metade da história. Nessas, o rótulo diz
+// quantos pontos tem na horizontal.
+const ROTULO_ORIGINAL = '2160p';
+const ROTULO_ORIGINAL_360 = '8K (7680 px)';
+const VIDEOS_360 = ['Esvarena - 360 - A', 'Esvarena - 360 - B', 'Esvarena - 360 - C'];
+
+/**
+ * Como se chama a versão original de um vídeo no menu de qualidade.
+ *
+ * @param {string} nome - Nome do vídeo.
+ * @returns {string} O rótulo a mostrar.
+ */
+export function rotuloOriginal(nome) {
+    return VIDEOS_360.includes(nome) ? ROTULO_ORIGINAL_360 : ROTULO_ORIGINAL;
+}
 
 // Versões que ainda não foram carregadas para a nuvem. Enquanto estiverem
 // aqui, não aparecem no menu — assim ninguém escolhe uma qualidade que
@@ -29,7 +49,7 @@ const POR_CARREGAR = {
  */
 export function resolucoesDe(nome) {
     const emFalta = POR_CARREGAR[nome] || [];
-    return RESOLUCOES.filter(r => !emFalta.includes(r));
+    return [rotuloOriginal(nome)].concat(RESOLUCOES.filter(r => !emFalta.includes(r)));
 }
 
 /**
@@ -40,7 +60,8 @@ export function resolucoesDe(nome) {
  * @returns {string} Endereço completo.
  */
 export function enderecoDe(nome, resolucao) {
-    const ficheiro = resolucao === ORIGINAL ? `${nome}.mp4` : `${nome}_${resolucao}.mp4`;
+    const original = resolucao === rotuloOriginal(nome);
+    const ficheiro = original ? `${nome}.mp4` : `${nome}_${resolucao}.mp4`;
     return BASE + encodeURIComponent(ficheiro);
 }
 
@@ -62,14 +83,14 @@ export function fontesDeVideo(nome) {
  * Que resolução deve começar a tocar, conforme o equipamento e a escolha
  * de qualidade guardada nas definições do site.
  *
- * O 1440p e o original (2160p) nunca arrancam sozinhos: são ficheiros
- * muito pesados, ficam reservados para quem os escolher de propósito.
+ * O 1440p e o original nunca arrancam sozinhos: são ficheiros muito
+ * pesados, ficam reservados para quem os escolher de propósito.
  *
  * @param {string[]} disponiveis - Resoluções deste vídeo.
  * @returns {string} A resolução por onde começar.
  */
 export function resolucaoDeArranque(disponiveis) {
-    const lista = disponiveis && disponiveis.length ? disponiveis : RESOLUCOES;
+    const lista = disponiveis && disponiveis.length ? disponiveis : RESOLUCOES.slice();
 
     let qualidade = null;
     try {
@@ -81,11 +102,13 @@ export function resolucaoDeArranque(disponiveis) {
         qualidade = detetarEquipamento();
     }
 
-    const preferidas = qualidade === 'low' ? ['480p', '720p', '1080p', '1440p', ORIGINAL] :
-        qualidade === 'med' ? ['720p', '1080p', '480p', '1440p', ORIGINAL] :
-            ['1080p', '720p', '1440p', '480p', ORIGINAL];
+    const preferidas = qualidade === 'low' ? ['480p', '720p', '1080p', '1440p'] :
+        qualidade === 'med' ? ['720p', '1080p', '480p', '1440p'] :
+            ['1080p', '720p', '1440p', '480p'];
 
-    return preferidas.find(r => lista.includes(r)) || lista[0];
+    // Se nada disto existir, fica-se pela mais leve que houver — nunca
+    // pelo original, que é o primeiro da lista.
+    return preferidas.find(r => lista.includes(r)) || lista[lista.length - 1];
 }
 
 /**
