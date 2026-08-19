@@ -1,4 +1,5 @@
 import * as pc from 'playcanvas';
+import { fontesDeVideo, resolucaoDeArranque } from './videos.mjs?v=1';
 
 export const AnnotationController = pc.createScript('annotationController');
 
@@ -28,64 +29,43 @@ AnnotationController.prototype.initialize = function() {
         {
             position: new pc.Vec3(36.16, 2.49, 50.48),
             label: "Dulce",
-            videoSrc: {
-                "Alta Qualidade": "https://pub-0a409b596f304409941ca1f88f3b593b.r2.dev/Dulce.mp4",
-                "Baixa Qualidade": "https://pub-0a409b596f304409941ca1f88f3b593b.r2.dev/Dulce.mp4"
-            },
+            videoSrc: fontesDeVideo("Dulce"),
             element: null
         },
         {
             position: new pc.Vec3(-67.03, -1.70, -64.40),
             label: "Luna",
-            videoSrc: {
-                "Alta Qualidade": "https://pub-0a409b596f304409941ca1f88f3b593b.r2.dev/Luna.mp4",
-                "Baixa Qualidade": "https://pub-0a409b596f304409941ca1f88f3b593b.r2.dev/Luna.mp4"
-            },
+            videoSrc: fontesDeVideo("Luna"),
             element: null
         },
         {
             position: new pc.Vec3(-85.42, -7.76, -26.34),
             label: "Sofia",
-            videoSrc: {
-                "Alta Qualidade": "https://pub-0a409b596f304409941ca1f88f3b593b.r2.dev/Sofia.mp4",
-                "Baixa Qualidade": "https://pub-0a409b596f304409941ca1f88f3b593b.r2.dev/Sofia.mp4"
-            },
+            videoSrc: fontesDeVideo("Sofia"),
             element: null
         },
         {
             position: new pc.Vec3(-38.38, 1.47, -64.20),
             label: "Frei",
-            videoSrc: {
-                "Alta Qualidade": "https://pub-0a409b596f304409941ca1f88f3b593b.r2.dev/Frei.mp4",
-                "Baixa Qualidade": "https://pub-0a409b596f304409941ca1f88f3b593b.r2.dev/Frei.mp4"
-            },
+            videoSrc: fontesDeVideo("Frei"),
             element: null
         },
         {
             position: new pc.Vec3(94.09, 1.82, 31.41),
             label: "Edson",
-            videoSrc: {
-                "Alta Qualidade": "https://pub-0a409b596f304409941ca1f88f3b593b.r2.dev/Edson.mp4",
-                "Baixa Qualidade": "https://pub-0a409b596f304409941ca1f88f3b593b.r2.dev/Edson.mp4"
-            },
+            videoSrc: fontesDeVideo("Edson"),
             element: null
         },
         {
             position: new pc.Vec3(-91.98, -5.48, -53.98),
             label: "Edmilson",
-            videoSrc: {
-                "Alta Qualidade": "https://pub-0a409b596f304409941ca1f88f3b593b.r2.dev/Edmilson.mp4",
-                "Baixa Qualidade": "https://pub-0a409b596f304409941ca1f88f3b593b.r2.dev/Edmilson.mp4"
-            },
+            videoSrc: fontesDeVideo("Edmilson"),
             element: null
         },
         {
             position: new pc.Vec3(31.12, 4.32, -92.28),
             label: "Carlos",
-            videoSrc: {
-                "Alta Qualidade": "https://pub-0a409b596f304409941ca1f88f3b593b.r2.dev/Carlos.mp4",
-                "Baixa Qualidade": "https://pub-0a409b596f304409941ca1f88f3b593b.r2.dev/Carlos.mp4"
-            },
+            videoSrc: fontesDeVideo("Carlos"),
             element: null
         }
     ];
@@ -806,32 +786,16 @@ AnnotationController.prototype.openVideoModal = function(sources, title) {
     // Store current sources dict
     this.videoSources = typeof sources === 'string' ? { "Default": sources } : sources;
     
-    // Build Quality Menu
+    // Menu das resoluções: uma entrada por versão que exista deste vídeo,
+    // da mais nítida para a mais leve.
     this.qualityMenu.innerHTML = '';
     const qualities = Object.keys(this.videoSources);
-    
-    // Detect tier to set default quality
-    let savedQuality = localStorage.getItem('quality') || 'auto';
-    if (savedQuality === 'auto') {
-        const isMobileUA = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-        const isSmallScreen = window.matchMedia("(max-width: 768px)").matches;
-        const isTouch = (navigator.maxTouchPoints > 0) || (navigator.msMaxTouchPoints > 0);
-        if (isMobileUA || (isSmallScreen && isTouch)) {
-            savedQuality = 'low';
-        } else {
-            const cores = navigator.hardwareConcurrency || 4;
-            savedQuality = cores <= 6 ? 'med' : 'high';
-        }
-    }
 
-    // Default select based on device performance
-    let selectedQuality;
-    if (savedQuality === 'low' || savedQuality === 'med') {
-        selectedQuality = qualities.find(q => q.toLowerCase().includes('baixa')) || qualities[qualities.length - 1];
-    } else {
-        selectedQuality = qualities.find(q => q.toLowerCase().includes('alta')) || qualities[0];
-    }
-    
+    // Começa na resolução que o equipamento aguenta bem; as outras ficam
+    // à distância de um clique.
+    let selectedQuality = resolucaoDeArranque(qualities);
+    if (!this.videoSources[selectedQuality]) selectedQuality = qualities[0];
+
     qualities.forEach(quality => {
         const btn = document.createElement('button');
         btn.className = 'quality-btn';
@@ -846,15 +810,18 @@ AnnotationController.prototype.openVideoModal = function(sources, title) {
             btn.classList.add('active');
             selectedQuality = quality;
             
-            // Switch Source seamlessly
-            const currentTime = this.videoPlayer.currentTime;
-            const isPaused = this.videoPlayer.paused;
-            
+            // Troca de versão sem perder o sítio: o momento só pode ser
+            // reposto depois de o novo ficheiro dizer quanto tempo tem.
+            const momento = this.videoPlayer.currentTime;
+            const estavaAPausa = this.videoPlayer.paused;
+
             this.videoPlayer.src = this.videoSources[quality];
-            this.videoPlayer.currentTime = currentTime;
-            if (!isPaused) {
-                this.videoPlayer.play().catch(e => console.log(e));
-            }
+            this.videoPlayer.addEventListener('loadedmetadata', () => {
+                this.videoPlayer.currentTime = momento;
+                if (!estavaAPausa) {
+                    this.videoPlayer.play().catch(err => console.log(err));
+                }
+            }, { once: true });
             this.qualityMenu.classList.remove('show');
         });
         this.qualityMenu.appendChild(btn);

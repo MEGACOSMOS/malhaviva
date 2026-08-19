@@ -808,13 +808,15 @@ TrailController.prototype.setupCursorAnnotation = function() {
 TrailController.prototype.showPopup360 = function(trailIndex) {
     const container = this.popup.querySelector('#trail-video-container');
     if (container) {
-        let src = "https://pub-0a409b596f304409941ca1f88f3b593b.r2.dev/Esvarena - 360 - A.mp4";
+        // Passa-se o nome da rota; é o player que decide as resoluções a
+        // oferecer e por qual começar.
+        let nome = "Esvarena - 360 - A";
         if (trailIndex === 1 || trailIndex === '1') {
-            src = "https://pub-0a409b596f304409941ca1f88f3b593b.r2.dev/Esvarena - 360 - B.mp4";
+            nome = "Esvarena - 360 - B";
         } else if (trailIndex === 2 || trailIndex === '2') {
-            src = "https://pub-0a409b596f304409941ca1f88f3b593b.r2.dev/Esvarena - 360 - C.mp4";
+            nome = "Esvarena - 360 - C";
         }
-        container.innerHTML = `<iframe src="/video360.html?src=${encodeURIComponent(src)}" style="width: 100%; height: 100%; border: none; background: #000;" allow="xr-spatial-tracking; fullscreen; autoplay"></iframe>`;
+        container.innerHTML = `<iframe src="/video360.html?nome=${encodeURIComponent(nome)}" style="width: 100%; height: 100%; border: none; background: #000;" allow="xr-spatial-tracking; fullscreen; autoplay"></iframe>`;
     }
     this.popup.style.display = 'flex';
     setTimeout(() => {
