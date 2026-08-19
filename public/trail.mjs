@@ -421,23 +421,40 @@ TrailController.prototype.distRaySegment = function(rayOrigin, rayDir, p1, p2) {
     return this._tmpDP.length();
 };
 
-// Painéis e botões sobrepostos ao mapa. Um clique num deles não deve chegar
-// à cena 3D, senão mexer nas definições abre vídeos sem querer.
-const UI_POR_CIMA = '#header, #settings-menu, #dev-menu, #filter-panel, #camera-stuck-popup, #trail-edit-ui, .annotation-marker';
+// Painéis, botões e players sobrepostos ao mapa. Um clique num deles não
+// deve chegar à cena 3D, senão mexer nas definições ou nos controlos de um
+// vídeo abre outros vídeos sem querer.
+const UI_POR_CIMA = '#header, #settings-menu, #dev-menu, #filter-panel, #camera-stuck-popup, #trail-edit-ui, .annotation-marker, #video-modal, #trail-popup-360';
 
 TrailController.prototype.cliqueEmUI = function(e) {
     const alvo = e && e.event && e.event.target;
     return !!(alvo && alvo.closest && alvo.closest(UI_POR_CIMA));
 };
 
+/**
+ * Se já há um vídeo aberto a ocupar o ecrã. Enquanto houver, o mapa que
+ * está por trás não responde a nada: nem sequer se vê.
+ *
+ * É uma segunda tranca, para lá da lista acima — há cliques que não trazem
+ * consigo o sítio onde aconteceram, e mesmo esses não podem abrir uma rota
+ * por cima do vídeo que está a correr.
+ *
+ * @returns {boolean} Verdadeiro se algum player estiver aberto.
+ */
+TrailController.prototype.playerAberto = function() {
+    const aberto = (elemento) => !!elemento && elemento.style.display !== 'none' &&
+        getComputedStyle(elemento).display !== 'none';
+    return aberto(document.getElementById('video-modal')) || aberto(this.popup);
+};
+
 TrailController.prototype.onMouseDown = function(e) {
     if (e.button !== pc.MOUSEBUTTON_LEFT) return;
-    if (this.cliqueEmUI(e)) return;
+    if (this.playerAberto() || this.cliqueEmUI(e)) return;
     this.handleInteraction(e.x, e.y);
 };
 
 TrailController.prototype.onTouchStart = function(e) {
-    if (this.cliqueEmUI(e)) return;
+    if (this.playerAberto() || this.cliqueEmUI(e)) return;
     if (e.touches.length > 0) {
         this.handleInteraction(e.touches[0].x, e.touches[0].y);
     }
@@ -445,7 +462,17 @@ TrailController.prototype.onTouchStart = function(e) {
 
 TrailController.prototype.onMouseMove = function(e) {
     if (this.editMode) return;
-    
+
+    // Com um vídeo aberto, o mapa está tapado: nada de trilhos a acender
+    // nem de etiqueta a seguir o rato por baixo do player.
+    if (this.playerAberto()) {
+        if (this.cursorAnnotation) this.cursorAnnotation.style.display = 'none';
+        this.trailRenderData.forEach(t => this.setTrailHoverState(t, false));
+        this.updateGlobalCursor(false, []);
+        this._hoverPending = false;
+        return;
+    }
+
     if (this.cursorAnnotation && e.event) {
         this.cursorAnnotation.style.left = e.event.clientX + 'px';
         this.cursorAnnotation.style.top = e.event.clientY + 'px';
@@ -701,6 +728,7 @@ TrailController.prototype.handleInteraction = function(x, y) {
 
 TrailController.prototype.setupPopup360 = function() {
     this.popup = document.createElement('div');
+    this.popup.id = 'trail-popup-360';
     this.popup.style.position = 'fixed';
     this.popup.style.top = '0';
     this.popup.style.left = '0';
