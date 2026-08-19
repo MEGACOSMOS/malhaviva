@@ -10,7 +10,9 @@
 const BASE = 'https://pub-0a409b596f304409941ca1f88f3b593b.r2.dev/';
 
 // Da mais nítida para a mais leve. É por esta ordem que aparecem no menu.
-export const RESOLUCOES = ['1440p', '1080p', '720p', '480p'];
+// O 2160p é o ficheiro original, tal como saiu da montagem.
+export const ORIGINAL = '2160p';
+export const RESOLUCOES = [ORIGINAL, '1440p', '1080p', '720p', '480p'];
 
 // Versões que ainda não foram carregadas para a nuvem. Enquanto estiverem
 // aqui, não aparecem no menu — assim ninguém escolhe uma qualidade que
@@ -38,7 +40,8 @@ export function resolucoesDe(nome) {
  * @returns {string} Endereço completo.
  */
 export function enderecoDe(nome, resolucao) {
-    return BASE + encodeURIComponent(`${nome}_${resolucao}.mp4`);
+    const ficheiro = resolucao === ORIGINAL ? `${nome}.mp4` : `${nome}_${resolucao}.mp4`;
+    return BASE + encodeURIComponent(ficheiro);
 }
 
 /**
@@ -59,8 +62,8 @@ export function fontesDeVideo(nome) {
  * Que resolução deve começar a tocar, conforme o equipamento e a escolha
  * de qualidade guardada nas definições do site.
  *
- * O 1440p nunca arranca sozinho: são ficheiros muito pesados, ficam
- * reservados para quem os escolher de propósito.
+ * O 1440p e o original (2160p) nunca arrancam sozinhos: são ficheiros
+ * muito pesados, ficam reservados para quem os escolher de propósito.
  *
  * @param {string[]} disponiveis - Resoluções deste vídeo.
  * @returns {string} A resolução por onde começar.
@@ -78,9 +81,9 @@ export function resolucaoDeArranque(disponiveis) {
         qualidade = detetarEquipamento();
     }
 
-    const preferidas = qualidade === 'low' ? ['480p', '720p', '1080p', '1440p'] :
-        qualidade === 'med' ? ['720p', '1080p', '480p', '1440p'] :
-            ['1080p', '720p', '1440p', '480p'];
+    const preferidas = qualidade === 'low' ? ['480p', '720p', '1080p', '1440p', ORIGINAL] :
+        qualidade === 'med' ? ['720p', '1080p', '480p', '1440p', ORIGINAL] :
+            ['1080p', '720p', '1440p', '480p', ORIGINAL];
 
     return preferidas.find(r => lista.includes(r)) || lista[0];
 }

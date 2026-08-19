@@ -1,5 +1,5 @@
 import * as pc from 'playcanvas';
-import { fontesDeVideo, resolucaoDeArranque } from './videos.mjs?v=1';
+import { fontesDeVideo, resolucaoDeArranque } from './videos.mjs?v=2';
 
 export const AnnotationController = pc.createScript('annotationController');
 
@@ -297,10 +297,6 @@ AnnotationController.prototype.initialize = function() {
         .quality-btn:hover, .quality-btn.active {
             background: rgba(255,255,255,0.1);
             color: var(--color-accent, #10b981);
-        }
-        .quality-btn.active::before {
-            content: '✓';
-            font-weight: bold;
         }
         .big-play-btn {
             position: absolute;
