@@ -783,6 +783,41 @@
         </pc-scene>
     </pc-app>
 
+    <!-- Este pedaço corre antes de o motor 3D arrancar, e é de propósito:
+         o anti-serrilhado e a densidade de pixéis só podem ser escolhidos
+         no momento em que o motor é criado. Decididos mais tarde, como
+         estavam, ficavam sem efeito — o nível Médio andava a desenhar com
+         anti-serrilhado e a mais de duas vezes os pixéis do ecrã. -->
+    <script>
+        (function () {
+            function detetarNivel() {
+                var telemovel = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+                var ecraPequeno = window.matchMedia('(max-width: 768px)').matches;
+                var toque = (navigator.maxTouchPoints > 0) || (navigator.msMaxTouchPoints > 0);
+                if (telemovel || (ecraPequeno && toque)) return 'low';
+                var nucleos = navigator.hardwareConcurrency || 4;
+                return nucleos <= 6 ? 'med' : 'high';
+            }
+
+            var guardada = null;
+            try { guardada = localStorage.getItem('quality'); } catch (e) { guardada = null; }
+            var nivel = (!guardada || guardada === 'auto') ? detetarNivel() : guardada;
+            window.actualQuality = nivel;
+
+            if (nivel !== 'high') {
+                var motor = document.getElementById('main-app');
+                if (motor) {
+                    motor.setAttribute('antialias', 'false');
+                    motor.setAttribute('high-resolution', 'false');
+                }
+                // Nos níveis Médio e Baixo entra o modelo do bairro já
+                // aligeirado de origem.
+                var mapa = document.getElementById('splat-scene');
+                if (mapa) mapa.setAttribute('src', 'splat_perf/lod-meta.json');
+            }
+        })();
+    </script>
+
     <script type="module">
         import { whenReady } from '@playcanvas/web-components';
         import {
@@ -1073,8 +1108,11 @@ void modifySplatColor(vec3 center, inout vec4 color) {
 
         let savedQuality = localStorage.getItem('quality') || 'auto';
 
-        const actualQuality = savedQuality === 'auto' ? detectTier() : savedQuality;
-        window.actualQuality = actualQuality; // Export for use in other scripts
+        // O nível já foi decidido antes de o motor arrancar (ver o pequeno
+        // script a seguir à cena); aqui é só lido.
+        const actualQuality = window.actualQuality ||
+            (savedQuality === 'auto' ? detectTier() : savedQuality);
+        window.actualQuality = actualQuality;
         const isHigh = actualQuality === 'high';
         const isMed = actualQuality === 'med';
         const isLow = actualQuality === 'low';
@@ -1085,18 +1123,6 @@ void modifySplatColor(vec3 center, inout vec4 color) {
         document.getElementById('radio-med').checked = (savedQuality === 'med');
         document.getElementById('radio-low').checked = (savedQuality === 'low');
         
-        // Setup initial PlayCanvas attributes before initialization
-        const pcAppEl = document.getElementById('main-app');
-        if (!isHigh) {
-            pcAppEl.setAttribute('antialias', 'false');
-            pcAppEl.setAttribute('high-resolution', 'false');
-            
-            // Carrega o Splat específico e optimizado para performance (Médio e Baixo)
-            const splatAsset = document.getElementById('splat-scene');
-            if (splatAsset) {
-                splatAsset.setAttribute('src', 'splat_perf/lod-meta.json');
-            }
-        }
 
         function showUI() {
             overlay.classList.add('hidden');
@@ -1147,11 +1173,19 @@ void modifySplatColor(vec3 center, inout vec4 color) {
                     } else if (isMed) {
                         splatEl.entity.gsplat.lodBaseDistance = 70; 
                         splatEl.entity.gsplat.lodMultiplier = 3; 
-                        // Sem limite duro de memoria no nível Médio
                     } else { // isLow
                         splatEl.entity.gsplat.lodBaseDistance = 20; 
                         splatEl.entity.gsplat.lodMultiplier = 8; 
-                        splatEl.entity.gsplat.splatBudget = 2000000; 
+                    }
+
+                    // Tecto de pontos no ecrã. Fica na cena e não no mapa:
+                    // escrito no mapa, como estava, o motor ignorava-o e o
+                    // limite nunca chegou a existir. Nas vistas mais largas
+                    // é ele que aperta o detalhe sozinho, em vez de deixar
+                    // a imagem começar a arrastar.
+                    if (app && app.scene && app.scene.gsplat) {
+                        if (isMed) app.scene.gsplat.splatBudget = 1200000;
+                        else if (isLow) app.scene.gsplat.splatBudget = 900000;
                     }
                 }
             } catch(e) {
