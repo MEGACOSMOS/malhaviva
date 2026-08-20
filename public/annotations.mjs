@@ -7,6 +7,14 @@ export const AnnotationController = pc.createScript('annotationController');
 AnnotationController.prototype.initialize = function() {
     this.annotations = [
         {
+            position: new pc.Vec3(0, 150, 0),
+            label: "Olho de Águia",
+            is360: true,
+            isImage: true,
+            imagePath: "https://pub-0a409b596f304409941ca1f88f3b593b.r2.dev/HDRi%20-%20Preenchimento%20Generativo.exr",
+            element: null
+        },
+        {
             position: new pc.Vec3(-102.35, -14.56, 57.67),
             label: "Esvarena",
             is360: true,
@@ -97,6 +105,7 @@ AnnotationController.prototype.initialize = function() {
             width: 32px;
             height: 32px;
             background-color: #10b981;
+            color: #fff;
             border-radius: 0;
             position: relative;
             display: flex;
@@ -105,6 +114,21 @@ AnnotationController.prototype.initialize = function() {
         }
         .marker-dot.is-360 {
             background-color: #ff0000;
+            color: #ffffff;
+        }
+        .marker-dot.viewed {
+            background-color: #ffffff;
+            color: #10b981;
+        }
+        .marker-dot.is-360.viewed {
+            background-color: #ffffff;
+            color: #ff0000;
+        }
+        .marker-text-360 {
+            font-size: 11px;
+            font-weight: 700;
+            font-family: var(--font-main, sans-serif);
+            letter-spacing: -0.5px;
         }
         .marker-label {
             background-color: #05050a;
@@ -168,14 +192,14 @@ AnnotationController.prototype.initialize = function() {
             height: 6px;
             background: rgba(255,255,255,0.2);
             cursor: pointer;
-            border-radius: 3px;
+            border-radius: 0;
             position: relative;
         }
         .progress-filled {
             height: 100%;
-            background: var(--color-accent, #10b981);
+            background: #ffffff;
             width: 0%;
-            border-radius: 3px;
+            border-radius: 0;
             pointer-events: none;
         }
         .controls-main {
@@ -202,14 +226,15 @@ AnnotationController.prototype.initialize = function() {
         }
         .player-btn:hover {
             opacity: 1;
-            color: var(--color-accent, #10b981);
+            color: #ffffff;
             transform: scale(1.1);
         }
         .time-display {
-            color: white;
+            color: rgba(255,255,255,0.9);
             font-size: 0.85rem;
             font-family: var(--font-main, sans-serif);
             font-variant-numeric: tabular-nums;
+            font-weight: 500;
         }
         
         /* Volume Slider */
@@ -240,10 +265,10 @@ AnnotationController.prototype.initialize = function() {
         }
         .volume-slider {
             -webkit-appearance: none;
-            width: 60px;
+            width: 80px;
             height: 4px;
-            background: rgba(255,255,255,0.3);
-            border-radius: 2px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 0;
             outline: none;
             cursor: pointer;
         }
@@ -251,8 +276,8 @@ AnnotationController.prototype.initialize = function() {
             -webkit-appearance: none;
             width: 12px;
             height: 12px;
-            border-radius: 50%;
-            background: var(--color-accent, #10b981);
+            border-radius: 0;
+            background: #ffffff;
             cursor: pointer;
             transition: transform 0.1s;
         }
@@ -271,15 +296,16 @@ AnnotationController.prototype.initialize = function() {
             position: absolute;
             bottom: 50px;
             right: 15px;
-            background: rgba(18, 18, 28, 0.95);
-            border: 1px solid rgba(255,255,255,0.1);
-            border-radius: 8px;
-            padding: 8px 0;
+            background: linear-gradient(to bottom, rgba(255,255,255,0.05), transparent), #05050a;
+            border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 0;
+            padding: 16px;
             display: none;
             flex-direction: column;
-            min-width: 140px;
+            width: 260px;
             z-index: 20;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+            font-family: var(--font-main, sans-serif);
         }
         .quality-menu.show { display: flex; }
         .quality-btn {
@@ -297,7 +323,8 @@ AnnotationController.prototype.initialize = function() {
         }
         .quality-btn:hover, .quality-btn.active {
             background: rgba(255,255,255,0.1);
-            color: var(--color-accent, #10b981);
+            color: #ffffff;
+            font-weight: 600;
         }
         .big-play-btn {
             position: absolute;
@@ -319,7 +346,7 @@ AnnotationController.prototype.initialize = function() {
         }
         .custom-video-container.paused .big-play-btn:hover {
             transform: translate(-50%, -50%) scale(1.1);
-            color: var(--color-accent, #10b981);
+            color: #ffffff;
         }
     `;
     document.head.appendChild(style);
@@ -338,6 +365,16 @@ AnnotationController.prototype.initialize = function() {
 
     this.setupModal();
 
+    // Load viewed annotations
+    let viewedAnnotations = [];
+    try {
+        const stored = localStorage.getItem('viewedAnnotations');
+        if (stored) viewedAnnotations = JSON.parse(stored);
+    } catch (e) {
+        console.warn("Could not load viewed annotations", e);
+    }
+    this.viewedAnnotations = viewedAnnotations;
+
     this.annotations.forEach(ann => {
         const el = document.createElement('div');
         el.className = 'annotation-marker';
@@ -345,17 +382,20 @@ AnnotationController.prototype.initialize = function() {
         if (ann.label === "Esvarena") el.classList.add('esvarena-marker');
         if (ann.trailIndex !== undefined) el.dataset.trailIndex = ann.trailIndex;
         
+        const annId = ann.is360 ? `360-${ann.trailIndex}` : `video-${ann.video}`;
+        const isViewed = this.viewedAnnotations.includes(annId);
+
         if (ann.is360) {
             el.innerHTML = `
-                <div class="marker-dot is-360">
-                    <span style="font-size: 11px; font-weight: 700; color: #fff; font-family: var(--font-main, sans-serif); letter-spacing: -0.5px;">360</span>
+                <div class="marker-dot is-360 ${isViewed ? 'viewed' : ''}">
+                    <span class="marker-text-360">360º</span>
                 </div>
                 <div class="marker-label">${ann.label}</div>
             `;
         } else {
             el.innerHTML = `
-                <div class="marker-dot">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <div class="marker-dot ${isViewed ? 'viewed' : ''}">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter">
                         <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"></path>
                         <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
                         <line x1="12" y1="19" x2="12" y2="22"></line>
@@ -377,8 +417,22 @@ AnnotationController.prototype.initialize = function() {
         el.style.gap = '6px';
 
         el.addEventListener('click', () => {
+            // Mark as viewed
+            if (!this.viewedAnnotations.includes(annId)) {
+                this.viewedAnnotations.push(annId);
+                try {
+                    localStorage.setItem('viewedAnnotations', JSON.stringify(this.viewedAnnotations));
+                } catch (e) {
+                    console.warn("Could not save viewed annotations", e);
+                }
+                const dot = el.querySelector('.marker-dot');
+                if (dot) dot.classList.add('viewed');
+            }
+
             if (ann.is360) {
-                if (this.entity.script && this.entity.script.trailController) {
+                if (ann.isImage) {
+                    this.openImage360(ann.imagePath);
+                } else if (this.entity.script && this.entity.script.trailController) {
                     this.entity.script.trailController.showPopup360(ann.trailIndex);
                 }
             } else {
@@ -389,6 +443,66 @@ AnnotationController.prototype.initialize = function() {
         this.container.appendChild(el);
         ann.element = el;
     });
+};
+
+AnnotationController.prototype.openImage360 = function(imagePath) {
+    if (!this.imageModal) {
+        this.imageModal = document.createElement('div');
+        this.imageModal.style.position = 'fixed';
+        this.imageModal.style.top = '0';
+        this.imageModal.style.left = '0';
+        this.imageModal.style.width = '100vw';
+        this.imageModal.style.height = '100vh';
+        this.imageModal.style.backgroundColor = '#000000';
+        this.imageModal.style.zIndex = '3000';
+        this.imageModal.style.display = 'none';
+
+        // Close button
+        const closeBtn = document.createElement('div');
+        closeBtn.innerHTML = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>';
+        closeBtn.style.position = 'absolute';
+        closeBtn.style.top = '20px';
+        closeBtn.style.right = '20px';
+        closeBtn.style.color = '#ffffff';
+        closeBtn.style.cursor = 'pointer';
+        closeBtn.style.zIndex = '3010';
+        closeBtn.style.width = '44px';
+        closeBtn.style.height = '44px';
+        closeBtn.style.display = 'flex';
+        closeBtn.style.alignItems = 'center';
+        closeBtn.style.justifyContent = 'center';
+        closeBtn.style.background = 'rgba(0,0,0,0.5)';
+        closeBtn.style.borderRadius = '50%';
+        closeBtn.style.transition = 'background 0.2s, transform 0.2s';
+        
+        closeBtn.addEventListener('mouseenter', () => { closeBtn.style.background = 'rgba(0,0,0,0.8)'; closeBtn.style.transform = 'scale(1.1)'; });
+        closeBtn.addEventListener('mouseleave', () => { closeBtn.style.background = 'rgba(0,0,0,0.5)'; closeBtn.style.transform = 'scale(1)'; });
+
+        closeBtn.addEventListener('click', () => {
+            this.imageModal.style.display = 'none';
+            // Clear iframe to stop resources
+            Array.from(this.imageModal.children).forEach(child => {
+                if (child !== closeBtn) this.imageModal.removeChild(child);
+            });
+            const gsplat = this.app.root.findByName('gsplat-scene');
+            if (gsplat) gsplat.enabled = true;
+        });
+
+        this.imageModal.appendChild(closeBtn);
+        document.body.appendChild(this.imageModal);
+    }
+
+    const iframe = document.createElement('iframe');
+    iframe.src = '/image360.html?src=' + encodeURIComponent(imagePath);
+    iframe.style.width = '100%';
+    iframe.style.height = '100%';
+    iframe.style.border = 'none';
+    this.imageModal.appendChild(iframe);
+
+    this.imageModal.style.display = 'block';
+
+    const gsplat = this.app.root.findByName('gsplat-scene');
+    if (gsplat) gsplat.enabled = false;
 };
 
 AnnotationController.prototype.setupModal = function() {
@@ -447,7 +561,7 @@ AnnotationController.prototype.setupModal = function() {
     closeBtn.addEventListener('mouseenter', () => {
         closeBtn.style.opacity = '1';
         closeBtn.style.transform = 'scale(1.1)';
-        closeBtn.style.color = '#10b981';
+        closeBtn.style.color = '#ffffff';
     });
     closeBtn.addEventListener('mouseleave', () => {
         closeBtn.style.opacity = '0.6';
@@ -510,8 +624,8 @@ AnnotationController.prototype.setupModal = function() {
     
     const volumeBtn = document.createElement('button');
     volumeBtn.className = 'player-btn';
-    const volHighIcon = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>';
-    const volMutedIcon = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><line x1="23" y1="9" x2="17" y2="15"></line><line x1="17" y1="9" x2="23" y2="15"></line></svg>';
+    const volHighIcon = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>';
+    const volMutedIcon = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><line x1="23" y1="9" x2="17" y2="15"></line><line x1="17" y1="9" x2="23" y2="15"></line></svg>';
     volumeBtn.innerHTML = volHighIcon;
 
     const volumeSliderWrapper = document.createElement('div');
@@ -548,7 +662,7 @@ AnnotationController.prototype.setupModal = function() {
 
     const settingsBtn = document.createElement('button');
     settingsBtn.className = 'player-btn';
-    settingsBtn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>';
+    settingsBtn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>';
     
     this.qualityMenu = document.createElement('div');
     this.qualityMenu.className = 'quality-menu';
@@ -558,9 +672,35 @@ AnnotationController.prototype.setupModal = function() {
 
     const fullscreenBtn = document.createElement('button');
     fullscreenBtn.className = 'player-btn';
-    fullscreenBtn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>';
+    fullscreenBtn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter"><path d="M8 3H3v5m18 0V3h-5m0 18h5v-5M3 16v5h5"></path></svg>';
+
+    const vrBtn = document.createElement('button');
+    vrBtn.className = 'player-btn';
+    vrBtn.title = 'Ver com óculos';
+    vrBtn.style.display = 'none';
+    vrBtn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a3 3 0 0 1 3-3h12a3 3 0 0 1 3 3v3a3 3 0 0 1-3 3h-2.5a2 2 0 0 1-1.7-1l-.9-1.4a1.2 1.2 0 0 0-2 0l-.9 1.4a2 2 0 0 1-1.7 1H6a3 3 0 0 1-3-3z"></path></svg>';
+
+    // Só aparece a quem tenha óculos ligados.
+    if (navigator.xr && navigator.xr.isSessionSupported) {
+        navigator.xr.isSessionSupported('immersive-vr')
+            .then((tem) => { if (tem) vrBtn.style.display = ''; })
+            .catch(() => {});
+    }
+
+    // Uma entrevista dentro dos óculos vê-se como num cinema vazio: um
+    // ecrã grande à frente, com o vídeo a continuar de onde ia. Quem trata
+    // disso é a mesma página que já mostra as rotas 360º, aqui em modo de
+    // ecrã plano.
+    vrBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (!this.videoNome) return;
+        const momento = Math.max(0, Math.floor(this.videoPlayer.currentTime));
+        this.videoPlayer.pause();
+        this.abrirCinemaVR(videoWrapper, this.videoNome, momento);
+    });
 
     controlsRight.appendChild(qualityContainer);
+    controlsRight.appendChild(vrBtn);
     controlsRight.appendChild(fullscreenBtn);
 
     controlsMain.appendChild(controlsLeft);
@@ -734,6 +874,15 @@ AnnotationController.prototype.setupModal = function() {
         }
     });
 
+    document.addEventListener('fullscreenchange', () => {
+        if (!fullscreenBtn) return;
+        if (document.fullscreenElement === videoWrapper) {
+            fullscreenBtn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter"><path d="M3 9h6V3 M21 9h-6V3 M21 15h-6v6 M3 15h6v6"></path></svg>';
+        } else {
+            fullscreenBtn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter"><path d="M8 3H3v5m18 0V3h-5m0 18h5v-5M3 16v5h5"></path></svg>';
+        }
+    });
+
     const closeModal = () => {
         const overlay = document.getElementById('loading-overlay');
         const loadingText = overlay ? overlay.querySelector('.loading-text') : null;
@@ -750,6 +899,7 @@ AnnotationController.prototype.setupModal = function() {
         
         setTimeout(() => {
             this.modal.style.display = 'none';
+            this.fecharCinemaVR();
             if (this.gestorDeQualidade) {
                 this.gestorDeQualidade.parar();
                 this.gestorDeQualidade = null;
@@ -786,6 +936,7 @@ AnnotationController.prototype.setupModal = function() {
 
 AnnotationController.prototype.openVideoModal = function(nome, title) {
     this.modalTitle.textContent = title;
+    this.videoNome = nome;
 
     const fontes = fontesDeVideo(nome);
     this.videoSources = fontes;
@@ -823,33 +974,87 @@ AnnotationController.prototype.openVideoModal = function(nome, title) {
 };
 
 /**
+ * Troca o vídeo por uma sala de cinema virtual, onde ele se vê num ecrã
+ * grande com os óculos postos.
+ *
+ * A sala é a mesma página que mostra as rotas 360º, aqui posta em modo de
+ * ecrã plano. Fica dentro da mesma janela, e o botão de fechar de sempre
+ * devolve tudo ao sítio.
+ *
+ * @param {HTMLElement} moldura - A caixa onde o vídeo estava.
+ * @param {string} nome - Nome do vídeo.
+ * @param {number} momento - Segundo em que o vídeo ia.
+ */
+AnnotationController.prototype.abrirCinemaVR = function(moldura, nome, momento) {
+    if (this.cinemaVR) return;
+
+    const endereco = '/video360.html?nome=' + encodeURIComponent(nome) +
+        '&plano=1&vr=1&t=' + momento;
+
+    const janela = document.createElement('iframe');
+    janela.src = endereco;
+    janela.setAttribute('allow', 'xr-spatial-tracking; fullscreen; autoplay');
+    janela.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;border:none;background:#000;z-index:5;';
+
+    moldura.appendChild(janela);
+    this.cinemaVR = janela;
+};
+
+/**
+ * Fecha a sala de cinema virtual, se estiver aberta.
+ */
+AnnotationController.prototype.fecharCinemaVR = function() {
+    if (!this.cinemaVR) return;
+    this.cinemaVR.remove();
+    this.cinemaVR = null;
+};
+
+/**
  * Constrói o menu de qualidade: primeiro o automático, depois cada versão
  * para quem quiser mandar à mão.
  *
  * @param {Object<string, string>} fontes - Resolução → endereço.
  */
 AnnotationController.prototype.desenharMenuDeQualidade = function(fontes) {
-    this.qualityMenu.innerHTML = '';
+    this.qualityMenu.innerHTML = `
+        <div class="settings-title">Qualidade</div>
+        <div class="settings-options"></div>
+    `;
+    const optionsContainer = this.qualityMenu.querySelector('.settings-options');
 
-    const criarBotao = (texto, aoClicar) => {
-        const btn = document.createElement('button');
-        btn.className = 'quality-btn';
-        btn.innerText = texto;
-        btn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            aoClicar();
-            this.qualityMenu.classList.remove('show');
+    const criarOpcao = (texto, aoClicar) => {
+        const label = document.createElement('label');
+        label.className = 'settings-radio';
+        
+        const input = document.createElement('input');
+        input.type = 'radio';
+        input.name = 'video-quality';
+        
+        const span = document.createElement('span');
+        span.innerText = texto;
+        
+        label.appendChild(input);
+        label.appendChild(span);
+        
+        input.addEventListener('change', () => {
+            if (input.checked) {
+                aoClicar();
+                setTimeout(() => this.qualityMenu.classList.remove('show'), 150);
+            }
         });
-        this.qualityMenu.appendChild(btn);
-        return btn;
+        
+        optionsContainer.appendChild(label);
+        return input;
     };
 
-    this.botaoAutomatico = criarBotao('Automático', () => this.gestorDeQualidade.automatico());
+    this.botaoAutomatico = criarOpcao('Automático', () => this.gestorDeQualidade.automatico());
     this.botaoAutomatico.dataset.modo = 'auto';
+    this.botoesResolucao = [];
 
     Object.keys(fontes).forEach((resolucao) => {
-        const btn = criarBotao(resolucao, () => this.gestorDeQualidade.fixar(resolucao));
+        const btn = criarOpcao(resolucao, () => this.gestorDeQualidade.fixar(resolucao));
         btn.dataset.resolucao = resolucao;
+        this.botoesResolucao.push(btn);
     });
 };
 
@@ -864,15 +1069,18 @@ AnnotationController.prototype.marcarQualidadeEscolhida = function(resolucao, mo
     if (!this.qualityMenu) return;
 
     if (this.botaoAutomatico) {
-        this.botaoAutomatico.innerText = modo === 'auto' ?
+        this.botaoAutomatico.nextSibling.innerText = modo === 'auto' ?
             `Automático · ${resolucao}` : 'Automático';
+        if (modo === 'auto') this.botaoAutomatico.checked = true;
     }
 
-    Array.from(this.qualityMenu.children).forEach((btn) => {
-        const eAutomatico = btn.dataset.modo === 'auto';
-        const escolhido = modo === 'auto' ? eAutomatico : btn.dataset.resolucao === resolucao;
-        btn.classList.toggle('active', escolhido);
-    });
+    if (this.botoesResolucao) {
+        this.botoesResolucao.forEach((btn) => {
+            if (modo !== 'auto' && btn.dataset.resolucao === resolucao) {
+                btn.checked = true;
+            }
+        });
+    }
 };
 
 // Markers shrink with distance so a far one never reads as bigger than a near
@@ -942,6 +1150,9 @@ AnnotationController.prototype.update = function(dt) {
 
             // Use translate3d to stay on the GPU compositor layer (no layout/reflow)
             el.style.transform = `translate3d(${screenPos.x}px, ${screenPos.y}px, 0) scale(${scale.toFixed(3)}) translate(-50%, ${-MARKER_DOT_HALF}px)`;
+            
+            // Set z-index based on distance so closer annotations appear on top
+            el.style.zIndex = Math.max(1, Math.round(10000 - distance * 10));
         }
     }
 };

@@ -32,12 +32,13 @@
             display: flex; flex-direction: column; align-items: center; justify-content: center;
         }
         #play-btn-initial {
-            background: #10b981; color: white; border: none; padding: 15px 40px; border-radius: 30px;
-            font-size: 1.2rem; font-weight: bold; cursor: pointer; transition: transform 0.2s;
-            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4);
+            background: rgba(255, 255, 255, 0.1); color: white; border: 1px solid rgba(255, 255, 255, 0.15); padding: 15px 40px; border-radius: 0;
+            font-size: 1.2rem; font-weight: 600; cursor: pointer; transition: background 0.2s, transform 0.2s;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.4);
             display: flex; align-items: center; gap: 10px;
+            backdrop-filter: blur(8px);
         }
-        #play-btn-initial:hover { transform: scale(1.05); }
+        #play-btn-initial:hover { background: rgba(255, 255, 255, 0.2); transform: scale(1.05); }
         .spinner {
             width: 30px; height: 30px; border: 3px solid rgba(255,255,255,0.3);
             border-top-color: #fff; border-radius: 50%; animation: spin 1s linear infinite;
@@ -72,15 +73,15 @@
         }
         #ui-layer.paused .big-play-btn:hover {
             transform: translate(-50%, -50%) scale(1.1);
-            color: #10b981;
+            color: #ffffff;
         }
 
         /* --- Controls Bar --- */
         .video-controls {
             position: absolute;
             bottom: 0; left: 0; right: 0;
-            background: linear-gradient(transparent, rgba(0,0,0,0.9));
-            padding: 30px 15px 10px;
+            background: linear-gradient(transparent, rgba(5,5,10,0.95));
+            padding: 30px 15px 15px;
             display: flex;
             flex-direction: column;
             gap: 12px;
@@ -97,14 +98,14 @@
             height: 6px;
             background: rgba(255,255,255,0.2);
             cursor: pointer;
-            border-radius: 3px;
+            border-radius: 0;
             position: relative;
         }
         .progress-filled {
             height: 100%;
-            background: #10b981;
+            background: #ffffff;
             width: 0%;
-            border-radius: 3px;
+            border-radius: 0;
             pointer-events: none;
             transition: width 0.1s linear;
         }
@@ -132,13 +133,14 @@
         }
         .player-btn:hover {
             opacity: 1;
-            color: #10b981;
+            color: #ffffff;
             transform: scale(1.1);
         }
         .time-display {
-            color: white;
+            color: rgba(255,255,255,0.9);
             font-size: 0.85rem;
             font-variant-numeric: tabular-nums;
+            font-weight: 500;
         }
         
         /* Volume Slider */
@@ -169,10 +171,10 @@
         }
         .volume-slider {
             -webkit-appearance: none;
-            width: 60px;
+            width: 80px;
             height: 4px;
-            background: rgba(255,255,255,0.3);
-            border-radius: 2px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 0;
             outline: none;
             cursor: pointer;
         }
@@ -180,8 +182,8 @@
             -webkit-appearance: none;
             width: 12px;
             height: 12px;
-            border-radius: 50%;
-            background: #10b981;
+            border-radius: 0;
+            background: #ffffff;
             cursor: pointer;
             transition: transform 0.1s;
         }
@@ -205,35 +207,47 @@
             position: absolute;
             bottom: 36px;
             right: 0;
-            background: rgba(18, 18, 28, 0.95);
-            border: 1px solid rgba(255,255,255,0.1);
-            border-radius: 8px;
-            padding: 8px 0;
+            background: linear-gradient(to bottom, rgba(255,255,255,0.05), transparent), #05050a;
+            border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 0;
+            padding: 16px;
             display: none;
             flex-direction: column;
-            min-width: 120px;
+            width: 260px;
             z-index: 20;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+            font-family: sans-serif;
         }
         .quality-menu.show { display: flex; }
-        .quality-btn {
-            background: none;
-            border: none;
-            color: #ddd;
-            padding: 10px 20px;
-            text-align: left;
-            cursor: pointer;
-            font-size: 0.85rem;
-            transition: all 0.2s ease;
+        
+        .settings-title {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: rgba(255, 255, 255, 0.7);
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .settings-options {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .settings-radio {
             display: flex;
             align-items: center;
-            gap: 8px;
-            white-space: nowrap;
+            gap: 10px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            color: #fff;
         }
-        .quality-btn:hover, .quality-btn.active {
-            background: rgba(255,255,255,0.1);
-            color: #10b981;
+        .settings-radio input {
+            accent-color: #05050a;
+            width: 16px;
+            height: 16px;
+            cursor: pointer;
         }
+
 
     </style>
 </head>
@@ -269,7 +283,7 @@
                     
                     <div class="volume-container" id="volume-container">
                         <button class="player-btn" id="volume-btn">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
                         </button>
                         <div class="volume-slider-wrapper">
                             <input type="range" class="volume-slider" id="volume-slider" min="0" max="3" step="0.05" value="1">
@@ -283,12 +297,15 @@
                 <div class="controls-right">
                     <div class="quality-container" id="quality-container">
                         <button class="player-btn" id="quality-btn" title="Resolução">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
                         </button>
                         <div class="quality-menu" id="quality-menu"></div>
                     </div>
+                    <button class="player-btn" id="vr-btn" title="Ver com óculos" style="display: none;">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a3 3 0 0 1 3-3h12a3 3 0 0 1 3 3v3a3 3 0 0 1-3 3h-2.5a2 2 0 0 1-1.7-1l-.9-1.4a1.2 1.2 0 0 0-2 0l-.9 1.4a2 2 0 0 1-1.7 1H6a3 3 0 0 1-3-3z"></path></svg>
+                    </button>
                     <button class="player-btn" id="fullscreen-btn">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter"><path d="M8 3H3v5m18 0V3h-5m0 18h5v-5M3 16v5h5"></path></svg>
                     </button>
                 </div>
             </div>
@@ -314,6 +331,11 @@
         // endereço directo continua a funcionar, para links antigos.
         const nome = urlParams.get('nome') || 'Esvarena - 360 - A';
         const enderecoDirecto = urlParams.get('src');
+
+        // Um vídeo normal (uma entrevista) entra aqui em modo de ecrã
+        // plano, e pode vir com o momento em que ia a dar lá fora.
+        const ecraPlano = urlParams.get('plano') === '1';
+        const momentoInicial = parseFloat(urlParams.get('t') || '0') || 0;
         const fontes = enderecoDirecto ? { 'Original': enderecoDirecto } : fontesDeVideo(nome);
 
         // DOM Elements
@@ -333,6 +355,7 @@
         const fullscreenBtn = document.getElementById('fullscreen-btn');
         const qualityBtn = document.getElementById('quality-btn');
         const qualityMenu = document.getElementById('quality-menu');
+        const vrBtn = document.getElementById('vr-btn');
         
         const scene = document.querySelector('a-scene');
         const assets = document.querySelector('a-assets');
@@ -347,14 +370,36 @@
         video.preload = 'auto';
         assets.appendChild(video);
 
-        // Create Sphere mapped to video
-        const videosphere = document.createElement('a-videosphere');
-        videosphere.setAttribute('src', '#video360');
-        videosphere.setAttribute('rotation', '0 180 0'); // Seam placed directly behind the user
-        videosphere.setAttribute('segments-width', '128');
-        videosphere.setAttribute('segments-height', '64');
-        videosphere.setAttribute('fix-seam', '');
-        scene.appendChild(videosphere);
+        // Duas maneiras de mostrar o vídeo: à volta do observador, que é o
+        // caso das rotas, ou num ecrã grande à frente dele, que é como uma
+        // entrevista se vê bem dentro dos óculos — como estar numa sala de
+        // cinema vazia.
+        if (ecraPlano) {
+            const painel = document.createElement('a-video');
+            painel.setAttribute('src', '#video360');
+            painel.setAttribute('width', '6.4');
+            painel.setAttribute('height', '3.6');
+            painel.setAttribute('position', '0 1.6 -5');
+            scene.appendChild(painel);
+
+            // Um chão discreto dá referência ao corpo e evita a sensação de
+            // se estar a flutuar no escuro.
+            const chao = document.createElement('a-plane');
+            chao.setAttribute('rotation', '-90 0 0');
+            chao.setAttribute('width', '30');
+            chao.setAttribute('height', '30');
+            chao.setAttribute('color', '#0b0b12');
+            chao.setAttribute('position', '0 0 0');
+            scene.appendChild(chao);
+        } else {
+            const videosphere = document.createElement('a-videosphere');
+            videosphere.setAttribute('src', '#video360');
+            videosphere.setAttribute('rotation', '0 180 0'); // Seam placed directly behind the user
+            videosphere.setAttribute('segments-width', '128');
+            videosphere.setAttribute('segments-height', '64');
+            videosphere.setAttribute('fix-seam', '');
+            scene.appendChild(videosphere);
+        }
 
         // --- Video Logic ---
         
@@ -367,8 +412,8 @@
 
         const playIcon = '<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>';
         const pauseIcon = '<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>';
-        const volHighIcon = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>';
-        const volMutedIcon = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><line x1="23" y1="9" x2="17" y2="15"></line><line x1="17" y1="9" x2="23" y2="15"></line></svg>';
+        const volHighIcon = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>';
+        const volMutedIcon = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><line x1="23" y1="9" x2="17" y2="15"></line><line x1="17" y1="9" x2="23" y2="15"></line></svg>';
 
         // Web Audio API for >100% Volume
         let audioCtx;
@@ -402,7 +447,21 @@
         };
 
         // Event Listeners
+        // Quem chega aqui vindo do botão de óculos do mapa já pediu VR: o
+        // botão do meio passa a ser o convite para entrar, porque abrir os
+        // óculos exige sempre um toque dado nesta página.
+        const pedidoDeVR = urlParams.get('vr') === '1';
+        if (pedidoDeVR) {
+            playBtnInitial.innerHTML = playBtnInitial.innerHTML.replace(
+                /Iniciar Vídeo 360º|Ver com óculos/,
+                'Ver com óculos'
+            );
+        }
+
         playBtnInitial.addEventListener('click', () => {
+            if (pedidoDeVR && scene.enterVR) {
+                scene.enterVR().catch((erro) => console.log('VR:', erro));
+            }
             playBtnInitial.style.display = 'none';
             spinner.style.display = 'block';
             
@@ -480,12 +539,19 @@
             }
         });
 
-        // Fullscreen
         fullscreenBtn.addEventListener('click', () => {
             if (!document.fullscreenElement) {
                 document.body.requestFullscreen().catch(err => console.log(err));
             } else {
                 document.exitFullscreen();
+            }
+        });
+
+        document.addEventListener('fullscreenchange', () => {
+            if (document.fullscreenElement) {
+                fullscreenBtn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter"><path d="M3 9h6V3 M21 9h-6V3 M21 15h-6v6 M3 15h6v6"></path></svg>';
+            } else {
+                fullscreenBtn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter"><path d="M8 3H3v5m18 0V3h-5m0 18h5v-5M3 16v5h5"></path></svg>';
             }
         });
 
@@ -505,38 +571,61 @@
         });
 
         let botaoAutomatico = null;
+        let botoesResolucao = [];
+
+        qualityMenu.innerHTML = `
+            <div class="settings-title">Qualidade</div>
+            <div class="settings-options"></div>
+        `;
+        const optionsContainer = qualityMenu.querySelector('.settings-options');
 
         function marcarEscolha(resolucao, modo) {
             if (botaoAutomatico) {
-                botaoAutomatico.innerText = modo === 'auto' ?
+                botaoAutomatico.nextSibling.innerText = modo === 'auto' ?
                     `Automático · ${resolucao}` : 'Automático';
+                if (modo === 'auto') botaoAutomatico.checked = true;
             }
-            Array.from(qualityMenu.children).forEach((b) => {
-                const eAutomatico = b.dataset.modo === 'auto';
-                const escolhido = modo === 'auto' ? eAutomatico : b.dataset.resolucao === resolucao;
-                b.classList.toggle('active', escolhido);
-            });
+            if (botoesResolucao) {
+                botoesResolucao.forEach((btn) => {
+                    if (modo !== 'auto' && btn.dataset.resolucao === resolucao) {
+                        btn.checked = true;
+                    }
+                });
+            }
         }
 
-        function criarBotao(texto, aoClicar) {
-            const btn = document.createElement('button');
-            btn.className = 'quality-btn';
-            btn.innerText = texto;
-            btn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                aoClicar();
-                qualityMenu.classList.remove('show');
+        function criarOpcao(texto, aoClicar) {
+            const label = document.createElement('label');
+            label.className = 'settings-radio';
+            
+            const input = document.createElement('input');
+            input.type = 'radio';
+            input.name = 'video-quality';
+            
+            const span = document.createElement('span');
+            span.innerText = texto;
+            
+            label.appendChild(input);
+            label.appendChild(span);
+            
+            input.addEventListener('change', () => {
+                if (input.checked) {
+                    aoClicar();
+                    setTimeout(() => qualityMenu.classList.remove('show'), 150);
+                }
             });
-            qualityMenu.appendChild(btn);
-            return btn;
+            
+            optionsContainer.appendChild(label);
+            return input;
         }
 
-        botaoAutomatico = criarBotao('Automático', () => gestor.automatico());
+        botaoAutomatico = criarOpcao('Automático', () => gestor.automatico());
         botaoAutomatico.dataset.modo = 'auto';
 
         Object.keys(fontes).forEach((resolucao) => {
-            const btn = criarBotao(resolucao, () => gestor.fixar(resolucao));
+            const btn = criarOpcao(resolucao, () => gestor.fixar(resolucao));
             btn.dataset.resolucao = resolucao;
+            botoesResolucao.push(btn);
         });
 
         gestor.arrancar();
@@ -559,6 +648,37 @@
                 qualityMenu.classList.remove('show');
             }
         });
+
+        // --- Óculos de realidade virtual ---
+
+        // O botão só aparece a quem tenha óculos ligados.
+        if (navigator.xr && navigator.xr.isSessionSupported) {
+            navigator.xr.isSessionSupported('immersive-vr').then((tem) => {
+                if (tem) vrBtn.style.display = '';
+            }).catch(() => {});
+        }
+
+        vrBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (scene.is('vr-mode')) {
+                scene.exitVR();
+                return;
+            }
+            // Dentro dos óculos ninguém carrega no botão de arranque, por
+            // isso o vídeo começa a andar aqui se ainda estiver parado.
+            if (video.paused) {
+                overlay.style.display = 'none';
+                video.play().then(initAudio).catch(() => {});
+            }
+            scene.enterVR().catch((erro) => console.log('VR:', erro));
+        });
+
+        // Quando a entrevista vem do player do mapa, continua-se de onde ia.
+        if (momentoInicial > 0) {
+            video.addEventListener('loadedmetadata', () => {
+                video.currentTime = momentoInicial;
+            }, { once: true });
+        }
 
         // Auto-hide controls logic
         let controlsTimeout;

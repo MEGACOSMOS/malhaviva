@@ -285,7 +285,7 @@
             position: relative;
         }
         
-        #settings-btn, #dev-btn, #help-btn, #fullscreen-main-btn {
+        #settings-btn, #dev-btn, #help-btn, #fullscreen-main-btn, #vr-btn {
             background: #05050a;
             border: 1px solid rgba(255, 255, 255, 0.15);
             color: var(--color-text);
@@ -301,7 +301,16 @@
         }
         
         #settings-btn:hover, #dev-btn:hover,
-        #help-btn:hover, #fullscreen-main-btn:hover {
+        #vr-btn.a-pedir-toque {
+            color: #10b981;
+            border-color: rgba(16, 185, 129, 0.6);
+            animation: vr-a-chamar 1.4s ease-in-out infinite;
+        }
+        @keyframes vr-a-chamar {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.45; }
+        }
+        #help-btn:hover, #fullscreen-main-btn:hover, #vr-btn:hover {
             background: rgba(255, 255, 255, 0.1) !important;
             color: var(--color-accent);
         }
@@ -708,6 +717,10 @@
             </div>
         </div>
 
+            <button id="vr-btn" title="Modo VR" style="display: none;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a3 3 0 0 1 3-3h12a3 3 0 0 1 3 3v3a3 3 0 0 1-3 3h-2.5a2 2 0 0 1-1.7-1l-.9-1.4a1.2 1.2 0 0 0-2 0l-.9 1.4a2 2 0 0 1-1.7 1H6a3 3 0 0 1-3-3z"></path></svg>
+            </button>
+
             <button id="fullscreen-main-btn" title="Ecrã Inteiro">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter"><path d="M8 3H3v5m18 0V3h-5m0 18h5v-5M3 16v5h5"></path></svg>
             </button>
@@ -742,7 +755,7 @@
         <pc-asset id="splat-scene" src="splat/lod-meta.json" type="gsplat"></pc-asset>
         <pc-asset id="camera-controls-script" src="./camera-controls.mjs?v=8" type="script"></pc-asset>
         <pc-asset id="camera-coords-script" src="./coords.mjs?v=5" type="script"></pc-asset>
-        <pc-asset id="annotations-script" src="./annotations.mjs?v=25" type="script"></pc-asset>
+        <pc-asset id="annotations-script" src="./annotations.mjs?v=26" type="script"></pc-asset>
         <pc-asset id="trail-script" src="./trail.mjs?v=9" type="script"></pc-asset>
         <pc-asset id="image-particles-script" src="./image-particles.mjs?v=12" type="script"></pc-asset>
         <pc-asset id="ground-fireflies-script" src="./ground-fireflies.mjs?v=4" type="script"></pc-asset>
@@ -811,6 +824,17 @@
             var nivel = (!guardada || guardada === 'auto') ? detetarNivel() : guardada;
             window.actualQuality = nivel;
 
+            // O modo VR pede o motor de desenho antigo (WebGL2): é o único
+            // que os óculos sabem receber. Quando se entra em VR a página
+            // recarrega-se com esta marca no endereço, e é aqui que ela é
+            // respeitada — tem de ser antes de o motor nascer.
+            var pedido = new URLSearchParams(window.location.search);
+            window.modoVRpedido = pedido.get('vr') === '1';
+            if (window.modoVRpedido) {
+                var motorVR = document.getElementById('main-app');
+                if (motorVR) motorVR.setAttribute('backend', 'webgl2');
+            }
+
             if (nivel !== 'high') {
                 var motor = document.getElementById('main-app');
                 if (motor) {
@@ -843,6 +867,7 @@
             PIXELFORMAT_RGBA8, FILTER_LINEAR, ADDRESS_CLAMP_TO_EDGE
         } from 'playcanvas';
         import { ligarLodNoCentroDaVista } from './lod-foco.mjs?v=3';
+        import { criarModoVR } from './vr.mjs?v=3';
 
         // Resolução da grelha usada para medir o mapa, em metros.
         const RESOLUCAO_LIMITE = 4;
@@ -1424,6 +1449,53 @@ void modifySplatColor(vec3 center, inout vec4 color) {
             });
 
             aplicarLimitesDoMapa(app);
+
+            // --- Modo VR ---
+            // O botão só aparece a quem tenha óculos; a quem não tenha, não
+            // vale a pena mostrar uma porta que não abre.
+            const modoVR = criarModoVR(app);
+            window.modoVR = modoVR;
+            const botaoVR = document.getElementById('vr-btn');
+
+            modoVR.disponivel().then((tem) => {
+                if (!tem || !botaoVR) return;
+                botaoVR.style.display = '';
+
+                // Quando se volta de propósito para entrar em VR, os
+                // navegadores exigem um toque para abrir os óculos: fica
+                // aqui o convite, em vez de parecer que nada aconteceu.
+                if (modoVR.pedidoPendente) {
+                    botaoVR.classList.add('a-pedir-toque');
+                    botaoVR.title = 'Tocar para entrar em VR';
+                }
+
+                botaoVR.addEventListener('click', async () => {
+                    if (modoVR.activo) {
+                        modoVR.sair();
+                        return;
+                    }
+                    botaoVR.classList.remove('a-pedir-toque');
+                    const resposta = await modoVR.entrar();
+                    if (resposta !== 'entrou' && resposta !== 'a recarregar') {
+                        avisarVR(resposta);
+                    }
+                });
+            });
+
+            /**
+             * Mostra um aviso curto quando os óculos não abrem.
+             *
+             * @param {string} texto - O que dizer à pessoa.
+             */
+            function avisarVR(texto) {
+                const aviso = document.createElement('div');
+                aviso.textContent = texto;
+                aviso.style.cssText = 'position:fixed;left:50%;bottom:40px;transform:translateX(-50%);' +
+                    'background:#05050a;color:#fff;border:1px solid rgba(255,255,255,0.15);' +
+                    'padding:12px 18px;z-index:3000;font-size:0.85rem;max-width:80vw;text-align:center;';
+                document.body.appendChild(aviso);
+                setTimeout(() => aviso.remove(), 5000);
+            }
 
             // O detalhe fino do mapa passa a seguir o centro da vista em vez
             // da posição da câmara, com um limite de distância para não
