@@ -49,6 +49,76 @@ const ANGULO_DE_ATUALIZACAO = 2;
 // vazios momentâneos onde o detalhe novo ainda não carregou.
 const NIVEIS_DE_RECURSO = 2;
 
+// Até onde a régua das distâncias pode ser apertada para caber no tecto de
+// pontos. É um travão de segurança: sem ele, um engano nas contas podia
+// encolher o detalhe até não sobrar nada.
+const ESCALA_MINIMA_DO_TECTO = 0.05;
+
+/**
+ * Tira ao tecto de pontos o hábito de comer o nível de detalhe do meio.
+ *
+ * Quando há tecto de pontos (níveis Médio e Baixo), o motor cumpre-o de
+ * duas maneiras. Uma é boa: aperta ou alarga as distâncias a que cada
+ * nível começa, e as três faixas — fina, média e grosseira — encolhem ou
+ * crescem juntas, mantendo a passagem suave. A outra é gulosa: percorre os
+ * pedaços do mapa e vai empurrando cada um, à vez, para o nível seguinte,
+ * até as contas fecharem.
+ *
+ * A segunda estraga o degradé, e é por isso que se via o mapa saltar do
+ * detalhe fino para o mais grosseiro sem nada pelo meio: numa vista larga,
+ * a faixa média chegava a ficar reduzida a uma tira de nove metros, com
+ * dezoito pedaços apenas. Acontece que empurrar pedaços um a um não
+ * distingue o que está a dois passos do que está a duzentos metros — só
+ * conta manchas.
+ *
+ * Aqui a segunda maneira é substituída pela primeira: quando se passa do
+ * tecto, em vez de se empurrarem pedaços soltos, aperta-se a régua toda,
+ * e a avaliação seguinte — uma fracção de segundo depois — já cabe. Nas
+ * mesmas vistas, a faixa média volta a ter centenas de pedaços espalhados
+ * por uma centena de metros, e continua a caber no tecto.
+ *
+ * @param {object} mundo - O gestor interno de mapas do motor.
+ */
+function corrigirRepartidorDoTecto(mundo) {
+    const repartidor = mundo && mundo._budgetBalancer;
+    if (!repartidor) return;
+
+    repartidor.mundoDoTecto = mundo;
+
+    const modelo = Object.getPrototypeOf(repartidor);
+    if (!modelo || typeof modelo.balance !== 'function' || modelo.tectoSuavizado) return;
+
+    modelo.balance = function (instancias, tecto) {
+        const mundoDele = this.mundoDoTecto;
+        if (!mundoDele || !(tecto > 0)) return;
+
+        let total = 0;
+        for (const [, instancia] of instancias) {
+            const nos = instancia.octree.nodes;
+            const infos = instancia.nodeInfos;
+            for (let i = 0; i < nos.length; i++) {
+                const nivel = infos[i].optimalLod;
+                if (nivel < 0) continue;
+                const lod = nos[i].lods[nivel];
+                if (lod && lod.count) total += lod.count;
+            }
+        }
+
+        // Dentro do tecto não se mexe: o degradé fica como a régua o deixou.
+        if (total <= tecto) return;
+
+        // Acima do tecto, encolhe-se a régua. A raiz cúbica é porque o
+        // detalhe cresce com o volume à volta do ponto de atenção: para
+        // gastar metade, basta encurtar as distâncias a uns quatro quintos.
+        const excesso = total / tecto;
+        mundoDele._budgetScale = Math.max(
+            ESCALA_MINIMA_DO_TECTO,
+            mundoDele._budgetScale / Math.pow(excesso, 1 / 3)
+        );
+    };
+    modelo.tectoSuavizado = true;
+}
+
 /**
  * Liga o detalhe centrado na vista.
  *
@@ -139,8 +209,11 @@ export function ligarLodNoCentroDaVista(app, opcoes = {}) {
             for (const dadosCamada of dadosCamera.layersMap.values()) {
                 const gestores = [dadosCamada.gsplatManager, dadosCamada.gsplatManagerShadow];
                 for (const gestor of gestores) {
-                    const instancias = gestor && gestor.world && gestor.world._octreeInstances;
+                    const mundo = gestor && gestor.world;
+                    const instancias = mundo && mundo._octreeInstances;
                     if (!instancias || instancias.size === 0) continue;
+
+                    corrigirRepartidorDoTecto(mundo);
 
                     for (const instancia of instancias.values()) {
                         const modelo = Object.getPrototypeOf(instancia);
