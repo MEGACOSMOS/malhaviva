@@ -40,7 +40,12 @@ const PADRAO = {
     brilho: 1,
     cupula: false,
     tamanhoDaCupula: 600,
-    alturaDaCupula: 0
+    alturaDaCupula: 0,
+    // A cúpula não tem de ficar centrada na origem do mapa: a panorâmica
+    // foi tirada de um ponto concreto do bairro, e é sobre esse ponto que
+    // ela assenta melhor. Estas duas medidas deslocam-na no plano.
+    deslocamentoX: 0,
+    deslocamentoZ: 0
 };
 
 /**
@@ -128,9 +133,13 @@ export function ligarCeu(app) {
             cena.sky.type = definicoes.cupula ? 'dome' : 'infinite';
             if (definicoes.cupula) {
                 const t = definicoes.tamanhoDaCupula;
+                const x = definicoes.deslocamentoX;
+                const z = definicoes.deslocamentoZ;
                 cena.sky.node.setLocalScale(t, t, t);
-                cena.sky.node.setLocalPosition(0, definicoes.alturaDaCupula, 0);
-                cena.sky.center = new Vec3(0, definicoes.alturaDaCupula, 0);
+                cena.sky.node.setLocalPosition(x, definicoes.alturaDaCupula, z);
+                // O centro tem de acompanhar a cúpula, senão a projecção
+                // fica a olhar para um sítio onde ela já não está.
+                cena.sky.center = new Vec3(x, definicoes.alturaDaCupula, z);
             }
         }
         guardar();

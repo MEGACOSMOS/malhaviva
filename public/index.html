@@ -748,6 +748,20 @@
                             <input type="range" id="ceu-altura" min="-100" max="200" step="0.1" value="0">
                         </label>
 
+                        <label class="ceu-afinacao" id="ceu-x-linha">
+                            <span>Deslocar em X
+                                <input type="text" inputmode="decimal" id="ceu-x-valor" class="ceu-numero" value="0">
+                            </span>
+                            <input type="range" id="ceu-x" min="-500" max="500" step="0.1" value="0">
+                        </label>
+
+                        <label class="ceu-afinacao" id="ceu-z-linha">
+                            <span>Deslocar em Z
+                                <input type="text" inputmode="decimal" id="ceu-z-valor" class="ceu-numero" value="0">
+                            </span>
+                            <input type="range" id="ceu-z" min="-500" max="500" step="0.1" value="0">
+                        </label>
+
                         <button id="ceu-reiniciar" class="ceu-botao">Repor o céu</button>
                     </div>
                 </div>
@@ -956,7 +970,7 @@
         } from 'playcanvas';
         import { ligarLodNoCentroDaVista } from './lod-foco.mjs?v=3';
         import { criarModoVR } from './vr.mjs?v=3';
-        import { ligarCeu } from './ceu.mjs?v=1';
+        import { ligarCeu } from './ceu.mjs?v=2';
 
         // Resolução da grelha usada para medir o mapa, em metros.
         const RESOLUCAO_LIMITE = 4;
@@ -1591,11 +1605,15 @@ void modifySplatColor(vec3 center, inout vec4 color) {
                 const cupula = document.getElementById('ceu-cupula');
                 const tamanho = document.getElementById('ceu-tamanho');
                 const altura = document.getElementById('ceu-altura');
+                const deslocX = document.getElementById('ceu-x');
+                const deslocZ = document.getElementById('ceu-z');
                 const reiniciar = document.getElementById('ceu-reiniciar');
                 if (!ligado) return;
 
                 const tamanhoEscrito = document.getElementById('ceu-tamanho-valor');
                 const alturaEscrita = document.getElementById('ceu-altura-valor');
+                const xEscrito = document.getElementById('ceu-x-valor');
+                const zEscrito = document.getElementById('ceu-z-valor');
 
                 /**
                  * Alarga a barra quando se escreve um valor que ela não
@@ -1618,18 +1636,24 @@ void modifySplatColor(vec3 center, inout vec4 color) {
                     cupula.checked = d.cupula;
                     acomodar(tamanho, d.tamanhoDaCupula);
                     acomodar(altura, d.alturaDaCupula);
+                    acomodar(deslocX, d.deslocamentoX);
+                    acomodar(deslocZ, d.deslocamentoZ);
                     tamanho.value = d.tamanhoDaCupula;
                     altura.value = d.alturaDaCupula;
+                    deslocX.value = d.deslocamentoX;
+                    deslocZ.value = d.deslocamentoZ;
                     document.getElementById('ceu-rotacao-valor').innerText = Math.round(d.rotacao) + '°';
                     document.getElementById('ceu-brilho-valor').innerText = Number(d.brilho).toFixed(2);
                     // A caixa escrita não é tocada enquanto lá se está a
                     // escrever: senão apagava os números a meio da frase.
                     if (document.activeElement !== tamanhoEscrito) tamanhoEscrito.value = arredondar(d.tamanhoDaCupula);
                     if (document.activeElement !== alturaEscrita) alturaEscrita.value = arredondar(d.alturaDaCupula);
+                    if (document.activeElement !== xEscrito) xEscrito.value = arredondar(d.deslocamentoX);
+                    if (document.activeElement !== zEscrito) zEscrito.value = arredondar(d.deslocamentoZ);
                     // As medidas da cúpula só interessam com a cúpula ligada.
                     const visivel = d.cupula ? '' : 'none';
-                    document.getElementById('ceu-tamanho-linha').style.display = visivel;
-                    document.getElementById('ceu-altura-linha').style.display = visivel;
+                    ['ceu-tamanho-linha', 'ceu-altura-linha', 'ceu-x-linha', 'ceu-z-linha']
+                        .forEach(id => { document.getElementById(id).style.display = visivel; });
                 };
 
                 /**
@@ -1672,8 +1696,12 @@ void modifySplatColor(vec3 center, inout vec4 color) {
                 brilho.addEventListener('input', () => { ceu.afinar('brilho', parseFloat(brilho.value)); mostrar(); });
                 tamanho.addEventListener('input', () => { ceu.afinar('tamanhoDaCupula', parseFloat(tamanho.value)); mostrar(); });
                 altura.addEventListener('input', () => { ceu.afinar('alturaDaCupula', parseFloat(altura.value)); mostrar(); });
+                deslocX.addEventListener('input', () => { ceu.afinar('deslocamentoX', parseFloat(deslocX.value)); mostrar(); });
+                deslocZ.addEventListener('input', () => { ceu.afinar('deslocamentoZ', parseFloat(deslocZ.value)); mostrar(); });
                 ligarEscrita(tamanhoEscrito, tamanho, 'tamanhoDaCupula');
                 ligarEscrita(alturaEscrita, altura, 'alturaDaCupula');
+                ligarEscrita(xEscrito, deslocX, 'deslocamentoX');
+                ligarEscrita(zEscrito, deslocZ, 'deslocamentoZ');
                 reiniciar.addEventListener('click', () => { ceu.reiniciar(); mostrar(); });
 
                 mostrar();
