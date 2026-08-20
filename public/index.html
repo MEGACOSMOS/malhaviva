@@ -301,6 +301,39 @@
         }
         
         #settings-btn:hover, #dev-btn:hover,
+        .ceu-afinacao {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            padding: 8px 0 2px;
+            color: rgba(255,255,255,0.75);
+            font-size: 0.8rem;
+        }
+        .ceu-afinacao b {
+            color: #fff;
+            font-weight: 600;
+            font-variant-numeric: tabular-nums;
+        }
+        .ceu-afinacao input[type="range"] {
+            width: 100%;
+            accent-color: #ffffff;
+            cursor: pointer;
+        }
+        .ceu-botao {
+            margin-top: 10px;
+            background: transparent;
+            color: rgba(255,255,255,0.8);
+            border: 1px solid rgba(255,255,255,0.15);
+            padding: 8px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            font-family: inherit;
+            transition: background 0.2s;
+        }
+        .ceu-botao:hover {
+            background: rgba(255,255,255,0.1);
+            color: #fff;
+        }
         #vr-btn.a-pedir-toque {
             color: #10b981;
             border-color: rgba(16, 185, 129, 0.6);
@@ -662,6 +695,41 @@
                             <span>Mostrar FPS</span>
                         </label>
                     </div>
+
+                    <div class="settings-title" style="margin-top: 18px;">Céu (Olho de Águia)</div>
+                    <div class="settings-options">
+                        <label class="settings-radio">
+                            <input type="checkbox" id="ceu-ligado" checked>
+                            <span>Mostrar o céu</span>
+                        </label>
+
+                        <label class="ceu-afinacao">
+                            <span>Rotação <b id="ceu-rotacao-valor">0°</b></span>
+                            <input type="range" id="ceu-rotacao" min="0" max="360" step="1" value="0">
+                        </label>
+
+                        <label class="ceu-afinacao">
+                            <span>Brilho <b id="ceu-brilho-valor">1.00</b></span>
+                            <input type="range" id="ceu-brilho" min="0" max="2" step="0.05" value="1">
+                        </label>
+
+                        <label class="settings-radio">
+                            <input type="checkbox" id="ceu-cupula">
+                            <span>Assentar no chão (cúpula)</span>
+                        </label>
+
+                        <label class="ceu-afinacao" id="ceu-tamanho-linha">
+                            <span>Tamanho da cúpula <b id="ceu-tamanho-valor">600</b></span>
+                            <input type="range" id="ceu-tamanho" min="100" max="2000" step="10" value="600">
+                        </label>
+
+                        <label class="ceu-afinacao" id="ceu-altura-linha">
+                            <span>Altura da cúpula <b id="ceu-altura-valor">0</b></span>
+                            <input type="range" id="ceu-altura" min="-100" max="200" step="1" value="0">
+                        </label>
+
+                        <button id="ceu-reiniciar" class="ceu-botao">Repor o céu</button>
+                    </div>
                 </div>
             </div>
 
@@ -868,6 +936,7 @@
         } from 'playcanvas';
         import { ligarLodNoCentroDaVista } from './lod-foco.mjs?v=3';
         import { criarModoVR } from './vr.mjs?v=3';
+        import { ligarCeu } from './ceu.mjs?v=1';
 
         // Resolução da grelha usada para medir o mapa, em metros.
         const RESOLUCAO_LIMITE = 4;
@@ -1450,6 +1519,13 @@ void modifySplatColor(vec3 center, inout vec4 color) {
 
             aplicarLimitesDoMapa(app);
 
+            // --- Céu ---
+            // A panorâmica do Olho de Águia passa a envolver o mapa, e o
+            // menu de desenvolvedor deixa afiná-la sem mexer no código.
+            const ceu = ligarCeu(app);
+            window.ceu = ceu;
+            ligarComandosDoCeu(ceu);
+
             // --- Modo VR ---
             // O botão só aparece a quem tenha óculos; a quem não tenha, não
             // vale a pena mostrar uma porta que não abre.
@@ -1481,6 +1557,51 @@ void modifySplatColor(vec3 center, inout vec4 color) {
                     }
                 });
             });
+
+            /**
+             * Liga os comandos do céu do menu de desenvolvedor.
+             *
+             * @param {object} ceu - O céu devolvido por ligarCeu.
+             */
+            function ligarComandosDoCeu(ceu) {
+                const d = ceu.definicoes;
+                const ligado = document.getElementById('ceu-ligado');
+                const rotacao = document.getElementById('ceu-rotacao');
+                const brilho = document.getElementById('ceu-brilho');
+                const cupula = document.getElementById('ceu-cupula');
+                const tamanho = document.getElementById('ceu-tamanho');
+                const altura = document.getElementById('ceu-altura');
+                const reiniciar = document.getElementById('ceu-reiniciar');
+                if (!ligado) return;
+
+                /** Escreve nos comandos o que está em vigor. */
+                const mostrar = () => {
+                    ligado.checked = d.ligado;
+                    rotacao.value = d.rotacao;
+                    brilho.value = d.brilho;
+                    cupula.checked = d.cupula;
+                    tamanho.value = d.tamanhoDaCupula;
+                    altura.value = d.alturaDaCupula;
+                    document.getElementById('ceu-rotacao-valor').innerText = Math.round(d.rotacao) + '°';
+                    document.getElementById('ceu-brilho-valor').innerText = Number(d.brilho).toFixed(2);
+                    document.getElementById('ceu-tamanho-valor').innerText = Math.round(d.tamanhoDaCupula);
+                    document.getElementById('ceu-altura-valor').innerText = Math.round(d.alturaDaCupula);
+                    // As medidas da cúpula só interessam com a cúpula ligada.
+                    const visivel = d.cupula ? '' : 'none';
+                    document.getElementById('ceu-tamanho-linha').style.display = visivel;
+                    document.getElementById('ceu-altura-linha').style.display = visivel;
+                };
+
+                ligado.addEventListener('change', () => { ceu.afinar('ligado', ligado.checked); mostrar(); });
+                cupula.addEventListener('change', () => { ceu.afinar('cupula', cupula.checked); mostrar(); });
+                rotacao.addEventListener('input', () => { ceu.afinar('rotacao', parseFloat(rotacao.value)); mostrar(); });
+                brilho.addEventListener('input', () => { ceu.afinar('brilho', parseFloat(brilho.value)); mostrar(); });
+                tamanho.addEventListener('input', () => { ceu.afinar('tamanhoDaCupula', parseFloat(tamanho.value)); mostrar(); });
+                altura.addEventListener('input', () => { ceu.afinar('alturaDaCupula', parseFloat(altura.value)); mostrar(); });
+                reiniciar.addEventListener('click', () => { ceu.reiniciar(); mostrar(); });
+
+                mostrar();
+            }
 
             /**
              * Mostra um aviso curto quando os óculos não abrem.
