@@ -314,6 +314,22 @@
             font-weight: 600;
             font-variant-numeric: tabular-nums;
         }
+        .ceu-numero {
+            width: 84px;
+            margin-left: 6px;
+            background: rgba(0,0,0,0.4);
+            color: #fff;
+            border: 1px solid rgba(255,255,255,0.15);
+            padding: 3px 6px;
+            font-family: inherit;
+            font-size: 0.8rem;
+            font-variant-numeric: tabular-nums;
+            text-align: right;
+        }
+        .ceu-numero:focus {
+            outline: none;
+            border-color: rgba(255,255,255,0.45);
+        }
         .ceu-afinacao input[type="range"] {
             width: 100%;
             accent-color: #ffffff;
@@ -719,13 +735,17 @@
                         </label>
 
                         <label class="ceu-afinacao" id="ceu-tamanho-linha">
-                            <span>Tamanho da cúpula <b id="ceu-tamanho-valor">600</b></span>
-                            <input type="range" id="ceu-tamanho" min="100" max="2000" step="10" value="600">
+                            <span>Tamanho da cúpula
+                                <input type="text" inputmode="decimal" id="ceu-tamanho-valor" class="ceu-numero" value="600">
+                            </span>
+                            <input type="range" id="ceu-tamanho" min="100" max="2000" step="0.1" value="600">
                         </label>
 
                         <label class="ceu-afinacao" id="ceu-altura-linha">
-                            <span>Altura da cúpula <b id="ceu-altura-valor">0</b></span>
-                            <input type="range" id="ceu-altura" min="-100" max="200" step="1" value="0">
+                            <span>Altura da cúpula
+                                <input type="text" inputmode="decimal" id="ceu-altura-valor" class="ceu-numero" value="0">
+                            </span>
+                            <input type="range" id="ceu-altura" min="-100" max="200" step="0.1" value="0">
                         </label>
 
                         <button id="ceu-reiniciar" class="ceu-botao">Repor o céu</button>
@@ -1574,22 +1594,76 @@ void modifySplatColor(vec3 center, inout vec4 color) {
                 const reiniciar = document.getElementById('ceu-reiniciar');
                 if (!ligado) return;
 
+                const tamanhoEscrito = document.getElementById('ceu-tamanho-valor');
+                const alturaEscrita = document.getElementById('ceu-altura-valor');
+
+                /**
+                 * Alarga a barra quando se escreve um valor que ela não
+                 * alcança. Assim o número escrito manda sempre, e a barra
+                 * continua a servir para afinar à volta dele.
+                 *
+                 * @param {HTMLInputElement} barra - A barra a alargar.
+                 * @param {number} valor - O valor escrito.
+                 */
+                const acomodar = (barra, valor) => {
+                    if (valor < parseFloat(barra.min)) barra.min = valor;
+                    if (valor > parseFloat(barra.max)) barra.max = valor;
+                };
+
                 /** Escreve nos comandos o que está em vigor. */
                 const mostrar = () => {
                     ligado.checked = d.ligado;
                     rotacao.value = d.rotacao;
                     brilho.value = d.brilho;
                     cupula.checked = d.cupula;
+                    acomodar(tamanho, d.tamanhoDaCupula);
+                    acomodar(altura, d.alturaDaCupula);
                     tamanho.value = d.tamanhoDaCupula;
                     altura.value = d.alturaDaCupula;
                     document.getElementById('ceu-rotacao-valor').innerText = Math.round(d.rotacao) + '°';
                     document.getElementById('ceu-brilho-valor').innerText = Number(d.brilho).toFixed(2);
-                    document.getElementById('ceu-tamanho-valor').innerText = Math.round(d.tamanhoDaCupula);
-                    document.getElementById('ceu-altura-valor').innerText = Math.round(d.alturaDaCupula);
+                    // A caixa escrita não é tocada enquanto lá se está a
+                    // escrever: senão apagava os números a meio da frase.
+                    if (document.activeElement !== tamanhoEscrito) tamanhoEscrito.value = arredondar(d.tamanhoDaCupula);
+                    if (document.activeElement !== alturaEscrita) alturaEscrita.value = arredondar(d.alturaDaCupula);
                     // As medidas da cúpula só interessam com a cúpula ligada.
                     const visivel = d.cupula ? '' : 'none';
                     document.getElementById('ceu-tamanho-linha').style.display = visivel;
                     document.getElementById('ceu-altura-linha').style.display = visivel;
+                };
+
+                /**
+                 * Corta as casas decimais que não dizem nada, para a caixa
+                 * mostrar 600 e não 600.0000001.
+                 *
+                 * @param {number} valor - O número a arrumar.
+                 * @returns {number} O mesmo número, sem lixo no fim.
+                 */
+                function arredondar(valor) {
+                    return Math.round(valor * 1000) / 1000;
+                }
+
+                /**
+                 * Liga uma caixa de escrita à afinação correspondente.
+                 *
+                 * @param {HTMLInputElement} caixa - Onde se escreve.
+                 * @param {HTMLInputElement} barra - A barra a acompanhar.
+                 * @param {string} campo - Nome da afinação.
+                 */
+                const ligarEscrita = (caixa, barra, campo) => {
+                    const aplicar = () => {
+                        // Escreve-se com vírgula ou com ponto, tanto faz.
+                        const valor = parseFloat(caixa.value.replace(',', '.'));
+                        if (!isFinite(valor)) return;
+                        acomodar(barra, valor);
+                        ceu.afinar(campo, valor);
+                        mostrar();
+                    };
+                    caixa.addEventListener('input', aplicar);
+                    // Ao sair da caixa, o que lá está é arrumado — mesmo que
+                    // tenha ficado vazia ou com um rabisco.
+                    caixa.addEventListener('blur', mostrar);
+                    caixa.addEventListener('keydown', (e) => { if (e.key === 'Enter') caixa.blur(); });
                 };
 
                 ligado.addEventListener('change', () => { ceu.afinar('ligado', ligado.checked); mostrar(); });
@@ -1598,6 +1672,8 @@ void modifySplatColor(vec3 center, inout vec4 color) {
                 brilho.addEventListener('input', () => { ceu.afinar('brilho', parseFloat(brilho.value)); mostrar(); });
                 tamanho.addEventListener('input', () => { ceu.afinar('tamanhoDaCupula', parseFloat(tamanho.value)); mostrar(); });
                 altura.addEventListener('input', () => { ceu.afinar('alturaDaCupula', parseFloat(altura.value)); mostrar(); });
+                ligarEscrita(tamanhoEscrito, tamanho, 'tamanhoDaCupula');
+                ligarEscrita(alturaEscrita, altura, 'alturaDaCupula');
                 reiniciar.addEventListener('click', () => { ceu.reiniciar(); mostrar(); });
 
                 mostrar();
