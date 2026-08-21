@@ -314,6 +314,12 @@
             font-weight: 600;
             font-variant-numeric: tabular-nums;
         }
+        .ceu-nota {
+            color: rgba(255,255,255,0.5);
+            font-size: 0.75rem;
+            line-height: 1.5;
+            padding: 4px 0 2px;
+        }
         .ceu-numero {
             width: 84px;
             margin-left: 6px;
@@ -764,6 +770,63 @@
 
                         <button id="ceu-reiniciar" class="ceu-botao">Repor o céu</button>
                     </div>
+
+                    <div class="settings-title" style="margin-top: 18px;">Fotografia do céu</div>
+                    <div class="settings-options">
+                        <div class="ceu-nota">Afina a própria fotografia até ela combinar com o bairro. O resultado aparece à medida que se arrasta.</div>
+
+                        <label class="ceu-afinacao">
+                            <span>Exposição
+                                <input type="text" inputmode="decimal" id="foto-exposicao-valor" class="ceu-numero" value="1">
+                            </span>
+                            <input type="range" id="foto-exposicao" min="0.2" max="12" step="0.05" value="1">
+                        </label>
+
+                        <label class="ceu-afinacao">
+                            <span>Gama
+                                <input type="text" inputmode="decimal" id="foto-gama-valor" class="ceu-numero" value="1">
+                            </span>
+                            <input type="range" id="foto-gama" min="0.4" max="2.5" step="0.01" value="1">
+                        </label>
+
+                        <label class="ceu-afinacao">
+                            <span>Contraste
+                                <input type="text" inputmode="decimal" id="foto-contraste-valor" class="ceu-numero" value="0">
+                            </span>
+                            <input type="range" id="foto-contraste" min="0" max="4" step="0.05" value="0">
+                        </label>
+
+                        <label class="ceu-afinacao">
+                            <span>Cor
+                                <input type="text" inputmode="decimal" id="foto-saturacao-valor" class="ceu-numero" value="1">
+                            </span>
+                            <input type="range" id="foto-saturacao" min="0" max="1.6" step="0.01" value="1">
+                        </label>
+
+                        <label class="ceu-afinacao">
+                            <span>Desfoque do céu
+                                <input type="text" inputmode="decimal" id="foto-desfoque-ceu-valor" class="ceu-numero" value="0">
+                            </span>
+                            <input type="range" id="foto-desfoque-ceu" min="0" max="40" step="1" value="0">
+                        </label>
+
+                        <label class="ceu-afinacao">
+                            <span>Desfoque no horizonte
+                                <input type="text" inputmode="decimal" id="foto-desfoque-horizonte-valor" class="ceu-numero" value="0">
+                            </span>
+                            <input type="range" id="foto-desfoque-horizonte" min="0" max="60" step="1" value="0">
+                        </label>
+
+                        <label class="ceu-afinacao">
+                            <span>Desfoque no fundo
+                                <input type="text" inputmode="decimal" id="foto-desfoque-fundo-valor" class="ceu-numero" value="0">
+                            </span>
+                            <input type="range" id="foto-desfoque-fundo" min="0" max="120" step="1" value="0">
+                        </label>
+
+                        <button id="foto-reiniciar" class="ceu-botao">Repor a fotografia</button>
+                        <button id="foto-copiar" class="ceu-botao">Copiar os números</button>
+                    </div>
                 </div>
             </div>
 
@@ -970,7 +1033,7 @@
         } from 'playcanvas';
         import { ligarLodNoCentroDaVista } from './lod-foco.mjs?v=3';
         import { criarModoVR } from './vr.mjs?v=3';
-        import { ligarCeu } from './ceu.mjs?v=3';
+        import { ligarCeu } from './ceu.mjs?v=4';
 
         // Resolução da grelha usada para medir o mapa, em metros.
         const RESOLUCAO_LIMITE = 4;
@@ -1702,9 +1765,86 @@ void modifySplatColor(vec3 center, inout vec4 color) {
                 ligarEscrita(alturaEscrita, altura, 'alturaDaCupula');
                 ligarEscrita(xEscrito, deslocX, 'deslocamentoX');
                 ligarEscrita(zEscrito, deslocZ, 'deslocamentoZ');
-                reiniciar.addEventListener('click', () => { ceu.reiniciar(); mostrar(); });
+                reiniciar.addEventListener('click', () => { ceu.reiniciar(); mostrar(); mostrarFotografia(); });
+
+                // --- Editor da fotografia ---
+                // Cada linha tem barra e caixa, ligadas uma à outra, e mexe
+                // num só ajuste da imagem.
+                const linhasDaFoto = [
+                    { campo: 'exposicao', barra: 'foto-exposicao', caixa: 'foto-exposicao-valor' },
+                    { campo: 'gama', barra: 'foto-gama', caixa: 'foto-gama-valor' },
+                    { campo: 'contraste', barra: 'foto-contraste', caixa: 'foto-contraste-valor' },
+                    { campo: 'saturacao', barra: 'foto-saturacao', caixa: 'foto-saturacao-valor' },
+                    { campo: 'desfoqueCeu', barra: 'foto-desfoque-ceu', caixa: 'foto-desfoque-ceu-valor' },
+                    { campo: 'desfoqueHorizonte', barra: 'foto-desfoque-horizonte', caixa: 'foto-desfoque-horizonte-valor' },
+                    { campo: 'desfoqueFundo', barra: 'foto-desfoque-fundo', caixa: 'foto-desfoque-fundo-valor' }
+                ].map(l => Object.assign(l, {
+                    elBarra: document.getElementById(l.barra),
+                    elCaixa: document.getElementById(l.caixa)
+                })).filter(l => l.elBarra && l.elCaixa);
+
+                /** Escreve nos comandos da fotografia o que está em vigor. */
+                function mostrarFotografia() {
+                    const ajustes = ceu.definicoes.ajustes || {};
+                    linhasDaFoto.forEach((l) => {
+                        const valor = ajustes[l.campo];
+                        if (valor === undefined) return;
+                        acomodar(l.elBarra, valor);
+                        l.elBarra.value = valor;
+                        if (document.activeElement !== l.elCaixa) {
+                            l.elCaixa.value = arredondar(valor);
+                        }
+                    });
+                }
+
+                linhasDaFoto.forEach((l) => {
+                    l.elBarra.addEventListener('input', () => {
+                        ceu.afinarFotografia(l.campo, parseFloat(l.elBarra.value));
+                        mostrarFotografia();
+                    });
+                    l.elCaixa.addEventListener('input', () => {
+                        const valor = parseFloat(l.elCaixa.value.replace(',', '.'));
+                        if (!isFinite(valor)) return;
+                        acomodar(l.elBarra, valor);
+                        ceu.afinarFotografia(l.campo, valor);
+                        mostrarFotografia();
+                    });
+                    l.elCaixa.addEventListener('blur', mostrarFotografia);
+                    l.elCaixa.addEventListener('keydown', (e) => { if (e.key === 'Enter') l.elCaixa.blur(); });
+                });
+
+                const reporFoto = document.getElementById('foto-reiniciar');
+                if (reporFoto) {
+                    reporFoto.addEventListener('click', () => {
+                        ceu.reiniciarFotografia();
+                        mostrarFotografia();
+                    });
+                }
+
+                // Os números afinados aqui servem para cozer a imagem de
+                // antemão, se um dia se quiser poupar este trabalho ao
+                // navegador. Este botão copia-os prontos a usar.
+                const copiar = document.getElementById('foto-copiar');
+                if (copiar) {
+                    copiar.addEventListener('click', () => {
+                        const a = ceu.definicoes.ajustes;
+                        const texto = 'exposicao ' + arredondar(a.exposicao) +
+                            ' | gama ' + arredondar(a.gama) +
+                            ' | contraste ' + arredondar(a.contraste) +
+                            ' | cor ' + arredondar(a.saturacao) +
+                            ' | desfoque ceu ' + arredondar(a.desfoqueCeu) +
+                            ' | horizonte ' + arredondar(a.desfoqueHorizonte) +
+                            ' | fundo ' + arredondar(a.desfoqueFundo);
+                        const antes = copiar.innerText;
+                        navigator.clipboard.writeText(texto)
+                            .then(() => { copiar.innerText = 'Copiado'; })
+                            .catch(() => { copiar.innerText = texto; });
+                        setTimeout(() => { copiar.innerText = antes; }, 2500);
+                    });
+                }
 
                 mostrar();
+                mostrarFotografia();
             }
 
             /**

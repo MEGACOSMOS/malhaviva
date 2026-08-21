@@ -1,4 +1,7 @@
-import { Asset, EnvLighting, Quat, Vec3 } from 'playcanvas';
+import { EnvLighting, Quat, Texture, Vec3,
+    ADDRESS_CLAMP_TO_EDGE, FILTER_LINEAR, PIXELFORMAT_RGBA8, TEXTUREPROJECTION_EQUIRECT
+} from 'playcanvas';
+import { AJUSTES_PADRAO, LARGURA_FINAL, LARGURA_RAPIDA, tratarFotografia } from './ceu-fotografia.mjs?v=1';
 
 /**
  * O céu do bairro: a panorâmica do Olho de Águia à volta do mapa.
@@ -20,22 +23,11 @@ import { Asset, EnvLighting, Quat, Vec3 } from 'playcanvas';
  * quando se anda pelas ruas, e mais estranho quando se sobe muito.
  */
 
-// A panorâmica não entra tal como saiu da máquina. Duas coisas lhe são
-// feitas de antemão, no ficheiro, para não custarem nada a quem visita:
-//
-// A cor é acertada pela paleta do próprio modelo do bairro — medida nas
-// manchas que o compõem, mais de um milhão delas. A fotografia original é
-// bem mais escura do que o modelo, e era isso que fazia saltar à vista o
-// sítio onde um acaba e a outra começa.
-//
-// E leva desfoque embutido, mais forte para baixo. Por um lado a metade de
-// baixo é a que estica sem remédio, por ter sido tirada de um ponto só;
-// por outro, uma paisagem distante desfocada é o que o olho espera ver, e
-// desfocada deixa de competir com o detalhe do modelo.
-//
-// Quem quiser refazer a imagem com outra afinação tem o guião em
-// scripts/calibrar-ceu.py.
-const IMAGEM = '/ceu-olho-de-aguia-calibrado.jpg';
+// A fotografia entra tal como saiu da máquina. O acerto da luz, da cor e
+// do desfoque é feito aqui no site, a partir dos números que ficam no
+// editor do menu de desenvolvedor — assim afina-se a olho, com o bairro à
+// frente, em vez de se adivinhar de antemão.
+const IMAGEM = '/ceu-olho-de-aguia.jpg';
 
 // Tamanho de cada face do cubo, conforme o nível de qualidade. São seis
 // faces, por isso o custo em memória é seis vezes o quadrado destes
@@ -71,8 +63,11 @@ const PADRAO = {
  */
 export function ligarCeu(app) {
     const definicoes = Object.assign({}, PADRAO, lerGuardado());
+    definicoes.ajustes = Object.assign({}, AJUSTES_PADRAO, definicoes.ajustes || {});
     let cubo = null;
-    let aCarregar = null;
+    let fotografia = null;
+    let aTrazer = null;
+    let temporizador = null;
 
     /**
      * Lê as afinações guardadas na visita anterior.
@@ -97,34 +92,74 @@ export function ligarCeu(app) {
     }
 
     /**
-     * Traz a panorâmica e arruma-a nas seis faces do cubo do céu.
+     * Traz a fotografia do servidor, uma vez só.
      *
+     * @returns {Promise<HTMLImageElement|null>} A fotografia, ou nada.
+     */
+    function trazerFotografia() {
+        if (fotografia) return Promise.resolve(fotografia);
+        if (aTrazer) return aTrazer;
+        aTrazer = new Promise((resolve) => {
+            const imagem = new Image();
+            imagem.onload = () => { fotografia = imagem; resolve(imagem); };
+            imagem.onerror = () => {
+                console.warn('Céu: não foi possível trazer a fotografia.');
+                resolve(null);
+            };
+            imagem.src = IMAGEM;
+        });
+        return aTrazer;
+    }
+
+    /**
+     * Arruma a fotografia nas seis faces do cubo do céu, já tratada.
+     *
+     * @param {number} [largura] - Largura de trabalho da fotografia.
      * @returns {Promise<object|null>} O cubo do céu, ou nada se falhar.
      */
-    function carregar() {
-        if (cubo) return Promise.resolve(cubo);
-        if (aCarregar) return aCarregar;
+    async function construirCubo(largura) {
+        const imagem = await trazerFotografia();
+        if (!imagem) return null;
+        try {
+            const tela = tratarFotografia(imagem, definicoes.ajustes, largura || LARGURA_FINAL);
+            const plana = new Texture(app.graphicsDevice, {
+                name: 'ceu-tratado',
+                width: tela.width,
+                height: tela.height,
+                format: PIXELFORMAT_RGBA8,
+                projection: TEXTUREPROJECTION_EQUIRECT,
+                addressU: ADDRESS_CLAMP_TO_EDGE,
+                addressV: ADDRESS_CLAMP_TO_EDGE,
+                minFilter: FILTER_LINEAR,
+                magFilter: FILTER_LINEAR,
+                mipmaps: false
+            });
+            plana.setSource(tela);
 
-        aCarregar = new Promise((resolve) => {
-            const asset = new Asset('ceu-olho-de-aguia', 'texture', { url: IMAGEM });
-            asset.once('load', () => {
-                const tamanho = TAMANHO_DAS_FACES[window.actualQuality] || TAMANHO_DAS_FACES.med;
-                try {
-                    cubo = EnvLighting.generateSkyboxCubemap(asset.resource, tamanho);
-                    resolve(cubo);
-                } catch (e) {
-                    console.warn('Céu: não foi possível preparar a panorâmica.', e);
-                    resolve(null);
-                }
-            });
-            asset.once('error', (erro) => {
-                console.warn('Céu: não foi possível trazer a panorâmica.', erro);
-                resolve(null);
-            });
-            app.assets.add(asset);
-            app.assets.load(asset);
-        });
-        return aCarregar;
+            const faces = TAMANHO_DAS_FACES[window.actualQuality] || TAMANHO_DAS_FACES.med;
+            const novo = EnvLighting.generateSkyboxCubemap(plana, faces);
+            plana.destroy();
+            if (cubo) cubo.destroy();
+            cubo = novo;
+            return cubo;
+        } catch (e) {
+            console.warn('Céu: não foi possível preparar a fotografia.', e);
+            return null;
+        }
+    }
+
+    /**
+     * Refaz o céu depois de se mexer nos ajustes da fotografia.
+     *
+     * Enquanto a mão anda no cursor trabalha-se em pequeno, que é
+     * instantâneo; mal ela pára, refaz-se em tamanho grande.
+     */
+    function refazerFotografia() {
+        construirCubo(LARGURA_RAPIDA).then(aplicar);
+        clearTimeout(temporizador);
+        temporizador = setTimeout(() => {
+            construirCubo(LARGURA_FINAL).then(aplicar);
+        }, 450);
     }
 
     /**
@@ -169,25 +204,46 @@ export function ligarCeu(app) {
     function afinar(campo, valor) {
         definicoes[campo] = valor;
         if (campo === 'ligado' && valor && !cubo) {
-            carregar().then(aplicar);
+            construirCubo(LARGURA_FINAL).then(aplicar);
             return;
         }
         aplicar();
     }
 
+    /**
+     * Muda um ajuste da própria fotografia — luz, cor ou desfoque — e
+     * mostra logo o resultado.
+     *
+     * @param {string} campo - Nome do ajuste.
+     * @param {number} valor - Novo valor.
+     */
+    function afinarFotografia(campo, valor) {
+        definicoes.ajustes[campo] = valor;
+        guardar();
+        refazerFotografia();
+    }
+
     if (definicoes.ligado) {
-        carregar().then(aplicar);
+        construirCubo(LARGURA_FINAL).then(aplicar);
     }
 
     return {
         definicoes,
         afinar,
+        afinarFotografia,
         aplicar,
         /** Volta a pôr tudo como veio de fábrica. */
         reiniciar() {
             Object.assign(definicoes, PADRAO);
-            if (!cubo) carregar().then(aplicar);
-            else aplicar();
+            definicoes.ajustes = Object.assign({}, AJUSTES_PADRAO);
+            guardar();
+            refazerFotografia();
+        },
+        /** Volta a pôr só a fotografia como veio da máquina. */
+        reiniciarFotografia() {
+            definicoes.ajustes = Object.assign({}, AJUSTES_PADRAO);
+            guardar();
+            refazerFotografia();
         }
     };
 }
