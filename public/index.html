@@ -309,6 +309,10 @@
             color: rgba(255,255,255,0.75);
             font-size: 0.8rem;
         }
+        .ceu-afinacao small {
+            color: rgba(255,255,255,0.45);
+            font-size: 0.72rem;
+        }
         .ceu-afinacao b {
             color: #fff;
             font-weight: 600;
@@ -720,8 +724,8 @@
                         </label>
 
                         <label class="ceu-afinacao">
-                            <span>Rotação <b id="ceu-rotacao-valor">0°</b></span>
-                            <input type="range" id="ceu-rotacao" min="0" max="360" step="1" value="0">
+                            <span>Rotação <b id="ceu-rotacao-valor">291°</b></span>
+                            <input type="range" id="ceu-rotacao" min="0" max="360" step="1" value="291">
                         </label>
 
                         <label class="ceu-afinacao">
@@ -730,36 +734,37 @@
                         </label>
 
                         <label class="settings-radio">
-                            <input type="checkbox" id="ceu-cupula">
+                            <input type="checkbox" id="ceu-cupula" checked>
                             <span>Assentar no chão (cúpula)</span>
                         </label>
 
                         <label class="ceu-afinacao" id="ceu-tamanho-linha">
-                            <span>Tamanho da cúpula
-                                <input type="text" inputmode="decimal" id="ceu-tamanho-valor" class="ceu-numero" value="600">
+                            <span>Altura da fotografia (m)
+                                <input type="text" inputmode="decimal" id="ceu-tamanho-valor" class="ceu-numero" value="150">
                             </span>
-                            <input type="range" id="ceu-tamanho" min="100" max="2000" step="0.1" value="600">
+                            <input type="range" id="ceu-tamanho" min="5" max="400" step="0.1" value="150">
+                            <small id="ceu-alcance">chão da fotografia até 1500 m</small>
                         </label>
 
                         <label class="ceu-afinacao" id="ceu-altura-linha">
                             <span>Altura da cúpula
-                                <input type="text" inputmode="decimal" id="ceu-altura-valor" class="ceu-numero" value="0">
+                                <input type="text" inputmode="decimal" id="ceu-altura-valor" class="ceu-numero" value="0.1">
                             </span>
-                            <input type="range" id="ceu-altura" min="-100" max="200" step="0.1" value="0">
+                            <input type="range" id="ceu-altura" min="-100" max="200" step="0.1" value="0.1">
                         </label>
 
                         <label class="ceu-afinacao" id="ceu-x-linha">
                             <span>Deslocar em X
-                                <input type="text" inputmode="decimal" id="ceu-x-valor" class="ceu-numero" value="0">
+                                <input type="text" inputmode="decimal" id="ceu-x-valor" class="ceu-numero" value="-0.07">
                             </span>
-                            <input type="range" id="ceu-x" min="-500" max="500" step="0.1" value="0">
+                            <input type="range" id="ceu-x" min="-500" max="500" step="0.1" value="-0.07">
                         </label>
 
                         <label class="ceu-afinacao" id="ceu-z-linha">
                             <span>Deslocar em Z
-                                <input type="text" inputmode="decimal" id="ceu-z-valor" class="ceu-numero" value="0">
+                                <input type="text" inputmode="decimal" id="ceu-z-valor" class="ceu-numero" value="-0.01">
                             </span>
-                            <input type="range" id="ceu-z" min="-500" max="500" step="0.1" value="0">
+                            <input type="range" id="ceu-z" min="-500" max="500" step="0.1" value="-0.01">
                         </label>
 
                         <button id="ceu-reiniciar" class="ceu-botao">Repor o céu</button>
@@ -970,7 +975,7 @@
         } from 'playcanvas';
         import { ligarLodNoCentroDaVista } from './lod-foco.mjs?v=3';
         import { criarModoVR } from './vr.mjs?v=3';
-        import { ligarCeu } from './ceu.mjs?v=2';
+        import { ligarCeu } from './ceu.mjs?v=3';
 
         // Resolução da grelha usada para medir o mapa, em metros.
         const RESOLUCAO_LIMITE = 4;
@@ -1634,11 +1639,11 @@ void modifySplatColor(vec3 center, inout vec4 color) {
                     rotacao.value = d.rotacao;
                     brilho.value = d.brilho;
                     cupula.checked = d.cupula;
-                    acomodar(tamanho, d.tamanhoDaCupula);
+                    acomodar(tamanho, d.alturaDaFotografia);
                     acomodar(altura, d.alturaDaCupula);
                     acomodar(deslocX, d.deslocamentoX);
                     acomodar(deslocZ, d.deslocamentoZ);
-                    tamanho.value = d.tamanhoDaCupula;
+                    tamanho.value = d.alturaDaFotografia;
                     altura.value = d.alturaDaCupula;
                     deslocX.value = d.deslocamentoX;
                     deslocZ.value = d.deslocamentoZ;
@@ -1646,7 +1651,9 @@ void modifySplatColor(vec3 center, inout vec4 color) {
                     document.getElementById('ceu-brilho-valor').innerText = Number(d.brilho).toFixed(2);
                     // A caixa escrita não é tocada enquanto lá se está a
                     // escrever: senão apagava os números a meio da frase.
-                    if (document.activeElement !== tamanhoEscrito) tamanhoEscrito.value = arredondar(d.tamanhoDaCupula);
+                    if (document.activeElement !== tamanhoEscrito) tamanhoEscrito.value = arredondar(d.alturaDaFotografia);
+                    document.getElementById('ceu-alcance').innerText =
+                        'chão da fotografia até ' + Math.round(ceu.raioDoChao) + ' m';
                     if (document.activeElement !== alturaEscrita) alturaEscrita.value = arredondar(d.alturaDaCupula);
                     if (document.activeElement !== xEscrito) xEscrito.value = arredondar(d.deslocamentoX);
                     if (document.activeElement !== zEscrito) zEscrito.value = arredondar(d.deslocamentoZ);
@@ -1694,11 +1701,11 @@ void modifySplatColor(vec3 center, inout vec4 color) {
                 cupula.addEventListener('change', () => { ceu.afinar('cupula', cupula.checked); mostrar(); });
                 rotacao.addEventListener('input', () => { ceu.afinar('rotacao', parseFloat(rotacao.value)); mostrar(); });
                 brilho.addEventListener('input', () => { ceu.afinar('brilho', parseFloat(brilho.value)); mostrar(); });
-                tamanho.addEventListener('input', () => { ceu.afinar('tamanhoDaCupula', parseFloat(tamanho.value)); mostrar(); });
+                tamanho.addEventListener('input', () => { ceu.afinar('alturaDaFotografia', parseFloat(tamanho.value)); mostrar(); });
                 altura.addEventListener('input', () => { ceu.afinar('alturaDaCupula', parseFloat(altura.value)); mostrar(); });
                 deslocX.addEventListener('input', () => { ceu.afinar('deslocamentoX', parseFloat(deslocX.value)); mostrar(); });
                 deslocZ.addEventListener('input', () => { ceu.afinar('deslocamentoZ', parseFloat(deslocZ.value)); mostrar(); });
-                ligarEscrita(tamanhoEscrito, tamanho, 'tamanhoDaCupula');
+                ligarEscrita(tamanhoEscrito, tamanho, 'alturaDaFotografia');
                 ligarEscrita(alturaEscrita, altura, 'alturaDaCupula');
                 ligarEscrita(xEscrito, deslocX, 'deslocamentoX');
                 ligarEscrita(zEscrito, deslocZ, 'deslocamentoZ');

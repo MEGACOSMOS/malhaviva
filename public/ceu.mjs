@@ -34,18 +34,31 @@ const TAMANHO_DAS_FACES = {
 // Onde ficam guardadas as afinações, para sobreviverem a um recarregar.
 const CHAVE = 'ceu-olho-de-aguia';
 
+// A cúpula do motor tem proporções fixas, e é isso que manda em tudo o
+// resto: o ponto de onde a fotografia foi tirada fica sempre a um vigésimo
+// do tamanho da cúpula, e o chão dela estende-se até metade desse tamanho.
+//
+// Daí a regra simples: dizendo a que altura a fotografia foi tirada, o
+// tamanho da cúpula sai por conta — vinte vezes essa altura — e o chão da
+// fotografia encaixa no chão do bairro. Se os dois números não baterem
+// certo, o terreno à volta estica, que é exactamente o defeito que se vê.
+const ALTURA_DA_VISTA = 0.05;
+const RAIO_DO_CHAO = 0.5;
+
 const PADRAO = {
     ligado: true,
-    rotacao: 0,
+    rotacao: 291,
     brilho: 1,
-    cupula: false,
-    tamanhoDaCupula: 600,
-    alturaDaCupula: 0,
+    cupula: true,
+    // A que altura, em metros, foi tirada a panorâmica. A marca do Olho de
+    // Águia está a 150 metros, que é o ponto de partida natural.
+    alturaDaFotografia: 150,
+    alturaDaCupula: 0.1,
     // A cúpula não tem de ficar centrada na origem do mapa: a panorâmica
     // foi tirada de um ponto concreto do bairro, e é sobre esse ponto que
     // ela assenta melhor. Estas duas medidas deslocam-na no plano.
-    deslocamentoX: 0,
-    deslocamentoZ: 0
+    deslocamentoX: -0.07,
+    deslocamentoZ: -0.01
 };
 
 /**
@@ -65,11 +78,20 @@ export function ligarCeu(app) {
      * @returns {object} O que estiver guardado, ou nada.
      */
     function lerGuardado() {
+        let guardado;
         try {
-            return JSON.parse(localStorage.getItem(CHAVE) || '{}');
+            guardado = JSON.parse(localStorage.getItem(CHAVE) || '{}');
         } catch (e) {
             return {};
         }
+        // Antes afinava-se o tamanho da cúpula à mão; agora afina-se a
+        // altura da fotografia, que é a mesma coisa vista pelo lado que se
+        // percebe. Quem tinha o número antigo guardado não o perde.
+        if (guardado.tamanhoDaCupula !== undefined && guardado.alturaDaFotografia === undefined) {
+            guardado.alturaDaFotografia = guardado.tamanhoDaCupula * ALTURA_DA_VISTA;
+            delete guardado.tamanhoDaCupula;
+        }
+        return guardado;
     }
 
     /**
@@ -132,14 +154,20 @@ export function ligarCeu(app) {
         if (cena.sky) {
             cena.sky.type = definicoes.cupula ? 'dome' : 'infinite';
             if (definicoes.cupula) {
-                const t = definicoes.tamanhoDaCupula;
-                const x = definicoes.deslocamentoX;
-                const z = definicoes.deslocamentoZ;
-                cena.sky.node.setLocalScale(t, t, t);
-                cena.sky.node.setLocalPosition(x, definicoes.alturaDaCupula, z);
-                // O centro tem de acompanhar a cúpula, senão a projecção
-                // fica a olhar para um sítio onde ela já não está.
-                cena.sky.center = new Vec3(x, definicoes.alturaDaCupula, z);
+                const tamanho = definicoes.alturaDaFotografia / ALTURA_DA_VISTA;
+                cena.sky.node.setLocalScale(tamanho, tamanho, tamanho);
+                cena.sky.node.setLocalPosition(
+                    definicoes.deslocamentoX,
+                    definicoes.alturaDaCupula,
+                    definicoes.deslocamentoZ
+                );
+                // O ponto de onde a fotografia é projectada. Conta-se em
+                // medidas da própria cúpula, não em metros do mapa: o motor
+                // multiplica-o pelo tamanho e pela posição dela. Escrevê-lo
+                // em metros — como estava — atirava a projecção para dezenas
+                // de metros ao lado, e era daí que vinha boa parte do
+                // esticão do terreno em volta.
+                cena.sky.center = new Vec3(0, ALTURA_DA_VISTA, 0);
             }
         }
         guardar();
@@ -168,6 +196,10 @@ export function ligarCeu(app) {
         definicoes,
         afinar,
         aplicar,
+        /** Até que distância, em metros, chega o chão da fotografia. */
+        get raioDoChao() {
+            return definicoes.alturaDaFotografia / ALTURA_DA_VISTA * RAIO_DO_CHAO;
+        },
         /** Volta a pôr tudo como veio de fábrica. */
         reiniciar() {
             Object.assign(definicoes, PADRAO);
