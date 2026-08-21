@@ -309,10 +309,6 @@
             color: rgba(255,255,255,0.75);
             font-size: 0.8rem;
         }
-        .ceu-afinacao small {
-            color: rgba(255,255,255,0.45);
-            font-size: 0.72rem;
-        }
         .ceu-afinacao b {
             color: #fff;
             font-weight: 600;
@@ -724,8 +720,8 @@
                         </label>
 
                         <label class="ceu-afinacao">
-                            <span>Rotação <b id="ceu-rotacao-valor">291°</b></span>
-                            <input type="range" id="ceu-rotacao" min="0" max="360" step="1" value="291">
+                            <span>Rotação <b id="ceu-rotacao-valor">0°</b></span>
+                            <input type="range" id="ceu-rotacao" min="0" max="360" step="1" value="0">
                         </label>
 
                         <label class="ceu-afinacao">
@@ -734,57 +730,36 @@
                         </label>
 
                         <label class="settings-radio">
-                            <input type="checkbox" id="ceu-cupula" checked>
-                            <span>Muralha à volta do bairro</span>
-                        </label>
-
-                        <label class="settings-radio" id="ceu-contorno-linha">
-                            <input type="checkbox" id="ceu-contorno" checked>
-                            <span>Seguir o contorno do bairro</span>
+                            <input type="checkbox" id="ceu-cupula">
+                            <span>Assentar no chão (cúpula)</span>
                         </label>
 
                         <label class="ceu-afinacao" id="ceu-tamanho-linha">
-                            <span>Distância do céu
-                                <input type="text" inputmode="decimal" id="ceu-tamanho-valor" class="ceu-numero" value="833.5">
+                            <span>Tamanho da cúpula
+                                <input type="text" inputmode="decimal" id="ceu-tamanho-valor" class="ceu-numero" value="600">
                             </span>
-                            <input type="range" id="ceu-tamanho" min="100" max="3000" step="0.1" value="833.5">
-                            <small id="ceu-alcance">muralha a 417 m do centro</small>
-                        </label>
-
-                        <label class="ceu-afinacao" id="ceu-muralha-altura-linha">
-                            <span>Altura da muralha (m)
-                                <input type="text" inputmode="decimal" id="ceu-muralha-altura-valor" class="ceu-numero" value="120">
-                            </span>
-                            <input type="range" id="ceu-muralha-altura" min="10" max="600" step="0.1" value="120">
-                            <small>acima disto começa a cúpula</small>
-                        </label>
-
-                        <label class="ceu-afinacao" id="ceu-muralha-fundo-linha">
-                            <span>Muralha abaixo do chão (m)
-                                <input type="text" inputmode="decimal" id="ceu-muralha-fundo-valor" class="ceu-numero" value="120">
-                            </span>
-                            <input type="range" id="ceu-muralha-fundo" min="0" max="600" step="0.1" value="120">
+                            <input type="range" id="ceu-tamanho" min="100" max="2000" step="0.1" value="600">
                         </label>
 
                         <label class="ceu-afinacao" id="ceu-altura-linha">
                             <span>Altura da cúpula
-                                <input type="text" inputmode="decimal" id="ceu-altura-valor" class="ceu-numero" value="0.1">
+                                <input type="text" inputmode="decimal" id="ceu-altura-valor" class="ceu-numero" value="0">
                             </span>
-                            <input type="range" id="ceu-altura" min="-100" max="200" step="0.1" value="0.1">
+                            <input type="range" id="ceu-altura" min="-100" max="200" step="0.1" value="0">
                         </label>
 
                         <label class="ceu-afinacao" id="ceu-x-linha">
                             <span>Deslocar em X
-                                <input type="text" inputmode="decimal" id="ceu-x-valor" class="ceu-numero" value="-0.07">
+                                <input type="text" inputmode="decimal" id="ceu-x-valor" class="ceu-numero" value="0">
                             </span>
-                            <input type="range" id="ceu-x" min="-500" max="500" step="0.1" value="-0.07">
+                            <input type="range" id="ceu-x" min="-500" max="500" step="0.1" value="0">
                         </label>
 
                         <label class="ceu-afinacao" id="ceu-z-linha">
                             <span>Deslocar em Z
-                                <input type="text" inputmode="decimal" id="ceu-z-valor" class="ceu-numero" value="-0.01">
+                                <input type="text" inputmode="decimal" id="ceu-z-valor" class="ceu-numero" value="0">
                             </span>
-                            <input type="range" id="ceu-z" min="-500" max="500" step="0.1" value="-0.01">
+                            <input type="range" id="ceu-z" min="-500" max="500" step="0.1" value="0">
                         </label>
 
                         <button id="ceu-reiniciar" class="ceu-botao">Repor o céu</button>
@@ -995,7 +970,7 @@
         } from 'playcanvas';
         import { ligarLodNoCentroDaVista } from './lod-foco.mjs?v=3';
         import { criarModoVR } from './vr.mjs?v=3';
-        import { ligarCeu } from './ceu.mjs?v=10';
+        import { ligarCeu } from './ceu.mjs?v=2';
 
         // Resolução da grelha usada para medir o mapa, em metros.
         const RESOLUCAO_LIMITE = 4;
@@ -1632,9 +1607,6 @@ void modifySplatColor(vec3 center, inout vec4 color) {
                 const altura = document.getElementById('ceu-altura');
                 const deslocX = document.getElementById('ceu-x');
                 const deslocZ = document.getElementById('ceu-z');
-                const contorno = document.getElementById('ceu-contorno');
-                const muralhaAltura = document.getElementById('ceu-muralha-altura');
-                const muralhaFundo = document.getElementById('ceu-muralha-fundo');
                 const reiniciar = document.getElementById('ceu-reiniciar');
                 if (!ligado) return;
 
@@ -1642,8 +1614,6 @@ void modifySplatColor(vec3 center, inout vec4 color) {
                 const alturaEscrita = document.getElementById('ceu-altura-valor');
                 const xEscrito = document.getElementById('ceu-x-valor');
                 const zEscrito = document.getElementById('ceu-z-valor');
-                const muralhaAlturaEscrita = document.getElementById('ceu-muralha-altura-valor');
-                const muralhaFundoEscrito = document.getElementById('ceu-muralha-fundo-valor');
 
                 /**
                  * Alarga a barra quando se escreve um valor que ela não
@@ -1664,38 +1634,25 @@ void modifySplatColor(vec3 center, inout vec4 color) {
                     rotacao.value = d.rotacao;
                     brilho.value = d.brilho;
                     cupula.checked = d.cupula;
-                    contorno.checked = d.seguirOContorno;
                     acomodar(tamanho, d.tamanhoDaCupula);
                     acomodar(altura, d.alturaDaCupula);
                     acomodar(deslocX, d.deslocamentoX);
                     acomodar(deslocZ, d.deslocamentoZ);
-                    acomodar(muralhaAltura, d.alturaDaMuralha);
-                    acomodar(muralhaFundo, d.profundidadeDaMuralha);
                     tamanho.value = d.tamanhoDaCupula;
                     altura.value = d.alturaDaCupula;
                     deslocX.value = d.deslocamentoX;
                     deslocZ.value = d.deslocamentoZ;
-                    muralhaAltura.value = d.alturaDaMuralha;
-                    muralhaFundo.value = d.profundidadeDaMuralha;
                     document.getElementById('ceu-rotacao-valor').innerText = Math.round(d.rotacao) + '°';
                     document.getElementById('ceu-brilho-valor').innerText = Number(d.brilho).toFixed(2);
                     // A caixa escrita não é tocada enquanto lá se está a
                     // escrever: senão apagava os números a meio da frase.
                     if (document.activeElement !== tamanhoEscrito) tamanhoEscrito.value = arredondar(d.tamanhoDaCupula);
-                    document.getElementById('ceu-alcance').innerText =
-                        (ceu.segueOContorno && ceu.extremosDaMuralha
-                            ? 'muralha entre ' + Math.round(ceu.extremosDaMuralha.minimo) +
-                              ' e ' + Math.round(ceu.extremosDaMuralha.maximo) + ' m do centro'
-                            : 'muralha a ' + Math.round(ceu.raioDoChao) + ' m do centro');
                     if (document.activeElement !== alturaEscrita) alturaEscrita.value = arredondar(d.alturaDaCupula);
                     if (document.activeElement !== xEscrito) xEscrito.value = arredondar(d.deslocamentoX);
                     if (document.activeElement !== zEscrito) zEscrito.value = arredondar(d.deslocamentoZ);
-                    if (document.activeElement !== muralhaAlturaEscrita) muralhaAlturaEscrita.value = arredondar(d.alturaDaMuralha);
-                    if (document.activeElement !== muralhaFundoEscrito) muralhaFundoEscrito.value = arredondar(d.profundidadeDaMuralha);
                     // As medidas da cúpula só interessam com a cúpula ligada.
                     const visivel = d.cupula ? '' : 'none';
-                    ['ceu-contorno-linha', 'ceu-tamanho-linha', 'ceu-muralha-altura-linha', 'ceu-muralha-fundo-linha',
-                        'ceu-altura-linha', 'ceu-x-linha', 'ceu-z-linha']
+                    ['ceu-tamanho-linha', 'ceu-altura-linha', 'ceu-x-linha', 'ceu-z-linha']
                         .forEach(id => { document.getElementById(id).style.display = visivel; });
                 };
 
@@ -1743,19 +1700,11 @@ void modifySplatColor(vec3 center, inout vec4 color) {
                 deslocZ.addEventListener('input', () => { ceu.afinar('deslocamentoZ', parseFloat(deslocZ.value)); mostrar(); });
                 ligarEscrita(tamanhoEscrito, tamanho, 'tamanhoDaCupula');
                 ligarEscrita(alturaEscrita, altura, 'alturaDaCupula');
-                contorno.addEventListener('change', () => { ceu.afinar('seguirOContorno', contorno.checked); mostrar(); });
-                muralhaAltura.addEventListener('input', () => { ceu.afinar('alturaDaMuralha', parseFloat(muralhaAltura.value)); mostrar(); });
-                muralhaFundo.addEventListener('input', () => { ceu.afinar('profundidadeDaMuralha', parseFloat(muralhaFundo.value)); mostrar(); });
                 ligarEscrita(xEscrito, deslocX, 'deslocamentoX');
                 ligarEscrita(zEscrito, deslocZ, 'deslocamentoZ');
-                ligarEscrita(muralhaAlturaEscrita, muralhaAltura, 'alturaDaMuralha');
-                ligarEscrita(muralhaFundoEscrito, muralhaFundo, 'profundidadeDaMuralha');
                 reiniciar.addEventListener('click', () => { ceu.reiniciar(); mostrar(); });
 
                 mostrar();
-                // A medida do contorno chega um instante depois do resto;
-                // quando chegar, o menu volta a escrever-se.
-                ceu.aoMedirContorno = mostrar;
             }
 
             /**
