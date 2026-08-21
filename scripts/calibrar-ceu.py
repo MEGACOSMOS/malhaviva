@@ -2,35 +2,38 @@
 """
 Prepara a panoramica do Olho de Aguia para servir de ceu ao bairro.
 
-Faz duas coisas a imagem, de uma vez por todas, para nao custarem nada a
-quem visita o site.
+O alvo nao e a fotografia ficar bonita, e ficar parecida com o bairro tal
+como ele aparece desenhado no ecra - so assim a passagem de um para o
+outro deixa de se notar. Os numeros em ALVO foram medidos assim: com o
+mapa carregado, desliga-se o ceu, le-se a cor media do que fica no ecra, e
+e essa a cor que a fotografia tem de imitar. Foi preciso chegar aqui por
+tentativa: medir as cores guardadas nas manchas do modelo, como se fez
+antes, da valores completamente diferentes dos que se veem pintados.
 
-A primeira e corrigir-lhe a luz. A fotografia sai da maquina bem mais
-escura do que o modelo do bairro, e era isso que denunciava o sitio onde
-um acaba e a outra comeca. A conta e feita em luz linear, que e onde
-aumentar o brilho e uma multiplicacao honesta: somar brilho ja em espaco
-de ecra levanta os pretos e lava a imagem, que foi o erro da primeira
-tentativa. A gama e o contraste vem depois, ja em espaco de ecra, que e
-onde o olho os mede.
+Sao tres coisas feitas a imagem, todas de uma vez por todas, para nao
+custarem nada a quem visita:
 
-So se lhe corrige a luz, nao a cor: a mesma exposicao para os tres canais.
-Chegou a experimentar-se impor a paleta do modelo canal a canal, medida
-nas manchas do proprio ficheiro do splat, mas o que se media eram as cores
-guardadas de cada mancha e nao a imagem composta que aparece no ecra - o
-resultado saia com verdes fluorescentes e telhados rosados.
+ 1. Exposicao por canal, feita em luz linear - onde aumentar o brilho e
+    uma multiplicacao honesta. Somar brilho ja em espaco de ecra levanta
+    os pretos e lava a imagem, que foi o erro da primeira tentativa.
 
-A segunda e embutir o desfoque, mais forte a medida que se desce. A metade
-de baixo estica sem remedio, por a panoramica ter sido tirada de um ponto
-so, e desfocada deixa de competir com o detalhe do modelo.
+ 2. Cor puxada para tras. Uma fotografia e muito mais colorida do que uma
+    reconstrucao em manchas: o modelo tem cerca de 14 por cento de
+    saturacao e a fotografia tinha 23. Era esta a diferenca que mais
+    denunciava a passagem, mais do que o brilho.
+
+ 3. Desfoque embutido, mais forte a medida que se desce. A metade de baixo
+    estica sem remedio, por a panoramica ter sido tirada de um ponto so, e
+    desfocada deixa de competir com o detalhe do modelo.
 
 Como usar, a partir desta pasta:
 
     ffmpeg -i "HDRi - Preenchimento Generativo.exr"            -vf "scale=4096:2048:flags=lanczos" -pix_fmt rgb24 ceu-8bit.png
-    python calibrar-ceu.py 130 62 1.08 3 48 2 ceu-olho-de-aguia-calibrado.jpg
+    python calibrar-ceu.py 0.5 48 1.0 4 56 3 ceu-olho-de-aguia-calibrado.jpg
 
-Os numeros sao: brilho pretendido no terreno (0 a 255), contraste
-pretendido, gama, desfoque junto ao horizonte, desfoque no fundo,
-desfoque no ceu, e o nome do ficheiro a escrever.
+Os numeros sao: quanto se puxa a cor para tras (1 = deixa como esta),
+contraste pretendido, gama, desfoque junto ao horizonte, desfoque no
+fundo, desfoque no ceu, e o nome do ficheiro a escrever.
 
 O original de 228 MB esta na nuvem, em
 https://pub-0a409b596f304409941ca1f88f3b593b.r2.dev/HDRi%20-%20Preenchimento%20Generativo.exr
@@ -40,13 +43,17 @@ import numpy as np
 from PIL import Image, ImageFilter
 Image.MAX_IMAGE_PIXELS = None
 
-ALVO_LUM = float(sys.argv[1]) if len(sys.argv) > 1 else 135.0
-ALVO_DESVIO = float(sys.argv[2]) if len(sys.argv) > 2 else 60.0
+# Medido no ecra, com o mapa desenhado e o ceu desligado: e isto que a
+# fotografia tem de imitar.
+ALVO = np.array([126.6, 114.2, 109.6], dtype=np.float64)
+
+SATURACAO = float(sys.argv[1]) if len(sys.argv) > 1 else 0.65
+ALVO_DESVIO = float(sys.argv[2]) if len(sys.argv) > 2 else 55.0
 GAMA = float(sys.argv[3]) if len(sys.argv) > 3 else 1.0
 DESF_HOR = float(sys.argv[4]) if len(sys.argv) > 4 else 3.0
 DESF_FUNDO = float(sys.argv[5]) if len(sys.argv) > 5 else 48.0
 DESF_CEU = float(sys.argv[6]) if len(sys.argv) > 6 else 2.0
-SAIDA = sys.argv[7] if len(sys.argv) > 7 else 'ceu-v3.jpg'
+SAIDA = sys.argv[7] if len(sys.argv) > 7 else 'ceu-v4.jpg'
 
 def para_linear(x):
     return np.where(x <= 0.04045, x / 12.92, ((x + 0.055) / 1.055) ** 2.4)
@@ -60,14 +67,21 @@ def contraste(x, k):
         return x
     return np.clip(0.5 + np.tanh(k * (x - 0.5)) / np.tanh(k / 2.0) * 0.5, 0.0, 1.0)
 
-def tratar(a, exposicao, k, gama):
-    """A exposicao e feita em luz linear, que e onde ela e uma multiplicacao
-    honesta: nao levanta os pretos nem lava a imagem. A gama e o contraste
-    vem depois, ja em espaco de ecra, que e onde o olho os mede."""
-    srgb = para_srgb(para_linear(a / 255.0) * exposicao)
+def lum(a):
+    return 0.299*a[...,0] + 0.587*a[...,1] + 0.114*a[...,2]
+
+def tratar(a, ganhos, k, gama, sat):
+    # exposicao por canal em luz linear: acerta o brilho e a dominante
+    srgb = para_srgb(para_linear(a / 255.0) * ganhos)
     if abs(gama - 1.0) > 1e-4:
         srgb = np.power(np.clip(srgb, 0, 1), 1.0 / gama)
-    return contraste(srgb, k) * 255.0
+    out = contraste(srgb, k) * 255.0
+    # a fotografia e bem mais colorida do que o modelo: puxa-se a cor para
+    # tras, aproximando cada pixel do seu proprio cinzento
+    if abs(sat - 1.0) > 1e-4:
+        cinza = lum(out)[..., None]
+        out = cinza + (out - cinza) * sat
+    return np.clip(out, 0, 255)
 
 img = np.asarray(Image.open('ceu-8bit.png')).astype(np.float64)
 h, w, _ = img.shape
@@ -75,28 +89,27 @@ linha = h // 2
 cima, baixo = linha + int(h*12/180), linha + int(h*60/180)
 amostra = img[cima:baixo]
 
-def luminancia(a):
-    return 0.299*a[...,0] + 0.587*a[...,1] + 0.114*a[...,2]
-
-# Uma so exposicao para os tres canais: a fotografia mantem a sua cor, so
-# se lhe corrige a luz. Procura-se a exposicao que acerta o brilho e o
-# contraste que acerta o desvio.
-exposicao, k = 1.0, 0.0
+ganhos = np.array([1.0, 1.0, 1.0])
+k = 0.0
 for _ in range(60):
-    t = tratar(amostra, exposicao, k, GAMA)
-    lum = luminancia(t)
-    exposicao *= (ALVO_LUM / max(lum.mean(), 1e-3)) ** 1.2
-    exposicao = min(exposicao, 80.0)
-    k += float(np.clip((ALVO_DESVIO - lum.std()) / 70.0, -0.2, 0.2))
+    t = tratar(amostra, ganhos, k, GAMA, SATURACAO)
+    medias = t.reshape(-1, 3).mean(axis=0)
+    ganhos = np.clip(ganhos * (ALVO / np.maximum(medias, 1e-3)) ** 1.2, 0.01, 200.0)
+    k += float(np.clip((ALVO_DESVIO - lum(t).std()) / 70.0, -0.2, 0.2))
     k = float(np.clip(k, 0.0, 5.0))
-t = tratar(amostra, exposicao, k, GAMA)
-lum = luminancia(t)
-print('exposicao %.2f   contraste %.3f   gama %.2f' % (exposicao, k, GAMA))
-print('faixa do terreno: luminancia %.1f (alvo %.0f)   desvio %.1f (alvo %.0f)' % (
-    lum.mean(), ALVO_LUM, lum.std(), ALVO_DESVIO))
-print('cor media  R %.1f  G %.1f  B %.1f' % tuple(t.reshape(-1,3).mean(axis=0)))
 
-corrigida = tratar(img, exposicao, k, GAMA)
+t = tratar(amostra, ganhos, k, GAMA, SATURACAO)
+m = t.reshape(-1, 3).mean(axis=0)
+def saturacao_media(a):
+    x = a.reshape(-1, 3)
+    return float(((x.max(axis=1) - x.min(axis=1)) / np.maximum(x.mean(axis=1), 1e-3)).mean())
+print('ganhos %s  contraste %.2f  gama %.2f  saturacao %.2f' % (np.round(ganhos,2), k, GAMA, SATURACAO))
+print('faixa: R %.1f G %.1f B %.1f  lum %.1f  desvio %.1f  saturacao %.0f%%' % (
+    m[0], m[1], m[2], lum(t).mean(), lum(t).std(), 100*saturacao_media(t)))
+print('alvo:  R %.1f G %.1f B %.1f  lum %.1f              saturacao ~14%%' % (
+    ALVO[0], ALVO[1], ALVO[2], 0.299*ALVO[0]+0.587*ALVO[1]+0.114*ALVO[2]))
+
+corrigida = tratar(img, ganhos, k, GAMA, SATURACAO)
 
 def suave(a, b, x):
     tt = np.clip((x - a) / max(b - a, 1e-6), 0.0, 1.0)
@@ -109,10 +122,10 @@ img = np.clip(img * (1 - peso) + corrigida * peso, 0, 255)
 def desfocar(a, raio):
     if raio <= 0.05:
         return a
-    m = int(np.ceil(raio * 3))
-    largo = np.concatenate([a[:, -m:], a, a[:, :m]], axis=1)
+    mm = int(np.ceil(raio * 3))
+    largo = np.concatenate([a[:, -mm:], a, a[:, :mm]], axis=1)
     return np.asarray(Image.fromarray(largo.astype(np.uint8)).filter(
-        ImageFilter.GaussianBlur(raio)), dtype=np.float64)[:, m:m + a.shape[1]]
+        ImageFilter.GaussianBlur(raio)), dtype=np.float64)[:, mm:mm + a.shape[1]]
 
 leve, medio, forte = desfocar(img, DESF_CEU), desfocar(img, DESF_HOR), desfocar(img, DESF_FUNDO)
 pm, pf = suave(0.40, 0.52, v), suave(0.55, 0.95, v)
