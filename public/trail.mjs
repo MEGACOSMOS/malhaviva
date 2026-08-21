@@ -357,69 +357,7 @@ TrailController.prototype.getCatmullRomPoint = function(t, p0, p1, p2, p3) {
     return new pc.Vec3(x, y, z);
 };
 
-TrailController.prototype.distRaySegment = function(rayOrigin, rayDir, p1, p2) {
-    if (!this._tmpV) {
-        this._tmpV = new pc.Vec3();
-        this._tmpW = new pc.Vec3();
-        this._tmpDP = new pc.Vec3();
-        this._tmpUsc = new pc.Vec3();
-        this._tmpVtc = new pc.Vec3();
-    }
-    const u = rayDir;
-    const v = this._tmpV.sub2(p2, p1);
-    const w = this._tmpW.sub2(rayOrigin, p1);
 
-    const a = u.dot(u); 
-    const b = u.dot(v);
-    const c = v.dot(v);
-    const d = u.dot(w);
-    const e = v.dot(w);
-
-    const D = a * c - b * b;
-    let sc, sN, sD = D;
-    let tc, tN, tD = D;
-
-    if (D < 0.0001) {
-        sN = 0.0;
-        sD = 1.0;
-        tN = e;
-        tD = c;
-    } else {
-        sN = (b * e - c * d);
-        tN = (a * e - b * d);
-        if (sN < 0.0) {
-            sN = 0.0;
-            tN = e;
-            tD = c;
-        }
-    }
-
-    if (tN < 0.0) {
-        tN = 0.0;
-        if (-d < 0.0) sN = 0.0;
-        else if (-d > a) sN = sD;
-        else {
-            sN = -d;
-            sD = a;
-        }
-    } else if (tN > tD) {
-        tN = tD;
-        if ((-d + b) < 0.0) sN = 0;
-        else if ((-d + b) > a) sN = sD;
-        else {
-            sN = (-d + b);
-            sD = a;
-        }
-    }
-
-    sc = (Math.abs(sN) < 0.0001 ? 0.0 : sN / sD);
-    tc = (Math.abs(tN) < 0.0001 ? 0.0 : tN / tD);
-
-    this._tmpUsc.copy(u).mulScalar(sc);
-    this._tmpVtc.copy(v).mulScalar(tc);
-    this._tmpDP.copy(w).add(this._tmpUsc).sub(this._tmpVtc);
-    return this._tmpDP.length();
-};
 
 // Painéis, botões e players sobrepostos ao mapa. Um clique num deles não
 // deve chegar à cena 3D, senão mexer nas definições ou nos controlos de um
@@ -519,55 +457,7 @@ TrailController.prototype.onTouchMove = function(e) {
     }
 };
 
-/**
- * Distância do raio a um ponto — teste barato usado para rejeitar blocos
- * inteiros antes de se medir segmento a segmento.
- */
-TrailController.prototype.distRayPoint = function(rayOrigin, rayDir, point) {
-    if (!this._tmpRP) this._tmpRP = new pc.Vec3();
-    const oc = this._tmpRP.sub2(point, rayOrigin);
-    const t = oc.dot(rayDir);
-    if (t <= 0) return oc.length();
-    return Math.sqrt(Math.max(0, oc.lengthSq() - t * t));
-};
 
-/**
- * Devolve true se o raio passa suficientemente perto da trilha para contar
- * como toque. Descarta primeiro a trilha inteira, depois bloco a bloco, e só
- * mede os segmentos dos blocos que sobrevivem.
- */
-TrailController.prototype.rayHitsTrail = function(trail, camPos) {
-    if (trail.segments.length === 0) return false;
-
-    const origin = this.ray.origin;
-    const dir = this.ray.direction;
-
-    // Margem de tolerância: cresce com a distância à câmara, tal como antes.
-    const thresholdAt = (dist) => Math.max(this.clickDistanceThreshold, dist * 0.03);
-
-    // 1) Rejeitar a trilha inteira
-    const trailCamDist = camPos.distance(trail.boundsCenter) + trail.boundsRadius;
-    if (this.distRayPoint(origin, dir, trail.boundsCenter) > trail.boundsRadius + thresholdAt(trailCamDist)) {
-        return false;
-    }
-
-    // 2) Percorrer apenas os blocos que o raio atravessa
-    for (let c = 0; c < trail.chunks.length; c++) {
-        const chunk = trail.chunks[c];
-        const chunkCamDist = camPos.distance(chunk.center) + chunk.radius;
-        const tol = thresholdAt(chunkCamDist);
-
-        if (this.distRayPoint(origin, dir, chunk.center) > chunk.radius + tol) continue;
-
-        for (let k = chunk.start; k < chunk.end; k++) {
-            const seg = trail.segments[k];
-            const dist = this.distRaySegment(origin, dir, seg.a, seg.b);
-            if (dist < thresholdAt(camPos.distance(seg.a))) return true;
-        }
-    }
-
-    return false;
-};
 
 /**
  * Mostra ou esconde os trilhos tracejados. Os tracinhos são agrupados num
@@ -597,28 +487,13 @@ TrailController.prototype.setTrailsVisible = function(visivel) {
 
 TrailController.prototype.checkHover = function(x, y) {
     if (this._trailsVisible === false) return;
-    if (!this.entity.camera || !this.trailRenderData) return;
-
-    this.entity.camera.screenToWorld(x, y, this.entity.camera.nearClip, this.ray.origin);
-    this.entity.camera.screenToWorld(x, y, this.entity.camera.farClip, this.ray.direction);
-    this.ray.direction.sub(this.ray.origin).normalize();
-
-    const camPos = this.entity.getPosition();
-    let anyHovered = false;
-    const hoveredTrailIndices = [];
+    if (!this.trailRenderData) return;
 
     for (let i = 0; i < this.trailRenderData.length; i++) {
-        const trail = this.trailRenderData[i];
-        const isHovered = this.rayHitsTrail(trail, camPos);
-
-        if (isHovered) {
-            anyHovered = true;
-            hoveredTrailIndices.push(i);
-        }
-        this.setTrailHoverState(trail, isHovered);
+        this.setTrailHoverState(this.trailRenderData[i], false);
     }
 
-    this.updateGlobalCursor(anyHovered, hoveredTrailIndices);
+    this.updateGlobalCursor(false, []);
 };
 
 TrailController.prototype.setTrailHoverState = function(trail, isHovered) {
@@ -698,30 +573,6 @@ TrailController.prototype.handleInteraction = function(x, y) {
                 }
             }
         }
-        return;
-    }
-
-    // Trilhos escondidos nao devem responder a cliques
-    if (this._trailsVisible === false) return;
-
-    // Normal Mode: Check if trail was clicked
-    if (!this.entity.camera || !this.trailRenderData) return;
-    
-    this.entity.camera.screenToWorld(x, y, this.entity.camera.nearClip, this.ray.origin);
-    this.entity.camera.screenToWorld(x, y, this.entity.camera.farClip, this.ray.direction);
-    this.ray.direction.sub(this.ray.origin).normalize();
-
-    const camPos = this.entity.getPosition();
-    let clickedTrailIndex = -1;
-    for (let i = 0; i < this.trailRenderData.length; i++) {
-        if (this.rayHitsTrail(this.trailRenderData[i], camPos)) {
-            clickedTrailIndex = i;
-            break;
-        }
-    }
-
-    if (clickedTrailIndex !== -1) {
-        this.showPopup360(clickedTrailIndex);
     }
 };
 
@@ -746,12 +597,12 @@ TrailController.prototype.setupPopup360 = function() {
     content.style.position = 'relative';
     content.style.width = '90%';
     content.style.maxWidth = '1000px';
-    content.style.aspectRatio = '16 / 9';
-    content.style.backgroundColor = '#000000';
-    content.style.borderRadius = '12px';
+    content.style.backgroundColor = '#05050a';
+    content.style.borderRadius = '0px';
     content.style.overflow = 'hidden';
     content.style.boxShadow = '0 20px 60px rgba(0,0,0,0.6)';
-    content.style.border = '1px solid rgba(255,255,255,0.1)';
+    content.style.border = '1px solid rgba(255,255,255,0.15)';
+    content.style.position = 'relative';
     content.style.display = 'flex';
     content.style.flexDirection = 'column';
     content.style.alignItems = 'center';
@@ -759,19 +610,25 @@ TrailController.prototype.setupPopup360 = function() {
 
     const closeBtn = document.createElement('button');
     closeBtn.innerHTML = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>';
-    closeBtn.style.position = 'absolute';
-    closeBtn.style.top = '16px';
-    closeBtn.style.right = '16px';
-    closeBtn.style.background = 'rgba(0,0,0,0.5)';
+    closeBtn.style.background = 'none';
     closeBtn.style.border = 'none';
     closeBtn.style.color = '#fff';
     closeBtn.style.cursor = 'pointer';
-    closeBtn.style.padding = '8px';
-    closeBtn.style.borderRadius = '50%';
-    closeBtn.style.zIndex = '10';
-    closeBtn.style.transition = 'background 0.2s ease';
-    closeBtn.addEventListener('mouseenter', () => closeBtn.style.background = 'rgba(255,0,0,0.8)');
-    closeBtn.addEventListener('mouseleave', () => closeBtn.style.background = 'rgba(0,0,0,0.5)');
+    closeBtn.style.opacity = '0.6';
+    closeBtn.style.transition = 'opacity 0.2s ease, transform 0.2s ease, color 0.2s ease';
+    closeBtn.style.display = 'flex';
+    closeBtn.style.alignItems = 'center';
+    closeBtn.style.justifyContent = 'center';
+    closeBtn.addEventListener('mouseenter', () => {
+        closeBtn.style.opacity = '1';
+        closeBtn.style.transform = 'scale(1.1)';
+        closeBtn.style.color = '#ffffff';
+    });
+    closeBtn.addEventListener('mouseleave', () => {
+        closeBtn.style.opacity = '0.6';
+        closeBtn.style.transform = 'scale(1)';
+        closeBtn.style.color = '#fff';
+    });
     
     closeBtn.addEventListener('click', () => {
         const overlay = document.getElementById('loading-overlay');
@@ -805,12 +662,19 @@ TrailController.prototype.setupPopup360 = function() {
     });
 
     content.innerHTML = `
-        <div id="trail-video-container" style="width: 100%; height: 100%;"></div>
+        <div id="trail-video-header" style="padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.05); background: linear-gradient(to bottom, rgba(255,255,255,0.05), transparent); font-family: var(--font-main, sans-serif); width: 100%;">
+            <div id="trail-video-title" style="color: #fff; font-weight: 600; font-size: 1.1rem;">Esvarena</div>
+            <div id="trail-close-btn-container"></div>
+        </div>
+        <div id="trail-video-container" style="width: 100%; aspect-ratio: 16 / 9; position: relative;"></div>
     `;
     
-    content.appendChild(closeBtn);
     this.popup.appendChild(content);
     document.body.appendChild(this.popup);
+    
+    // We append the closeBtn inside the new container after innerHTML replaces the DOM
+    const btnContainer = content.querySelector('#trail-close-btn-container');
+    if (btnContainer) btnContainer.appendChild(closeBtn);
 };
 
 TrailController.prototype.setupCursorAnnotation = function() {
@@ -835,6 +699,21 @@ TrailController.prototype.setupCursorAnnotation = function() {
 
 TrailController.prototype.showPopup360 = function(trailIndex) {
     const container = this.popup.querySelector('#trail-video-container');
+    const titleEl = this.popup.querySelector('#trail-video-title');
+    
+    if (titleEl) {
+        let titleStr = "Esvarena";
+        if (window.MALHA_VIVA_ANNOTATIONS) {
+            const ann = window.MALHA_VIVA_ANNOTATIONS.find(a => a.trailIndex == trailIndex);
+            if (ann && ann.title) {
+                titleStr = ann.title;
+            } else if (ann && ann.label) {
+                titleStr = ann.label;
+            }
+        }
+        titleEl.innerText = titleStr;
+    }
+
     if (container) {
         // Passa-se o nome da rota; é o player que decide as resoluções a
         // oferecer e por qual começar.
