@@ -20,7 +20,22 @@ import { Asset, EnvLighting, Quat, Vec3 } from 'playcanvas';
  * quando se anda pelas ruas, e mais estranho quando se sobe muito.
  */
 
-const IMAGEM = '/ceu-olho-de-aguia.jpg';
+// A panorâmica não entra tal como saiu da máquina. Duas coisas lhe são
+// feitas de antemão, no ficheiro, para não custarem nada a quem visita:
+//
+// A cor é acertada pela paleta do próprio modelo do bairro — medida nas
+// manchas que o compõem, mais de um milhão delas. A fotografia original é
+// bem mais escura do que o modelo, e era isso que fazia saltar à vista o
+// sítio onde um acaba e a outra começa.
+//
+// E leva desfoque embutido, mais forte para baixo. Por um lado a metade de
+// baixo é a que estica sem remédio, por ter sido tirada de um ponto só;
+// por outro, uma paisagem distante desfocada é o que o olho espera ver, e
+// desfocada deixa de competir com o detalhe do modelo.
+//
+// Quem quiser refazer a imagem com outra afinação tem o guião em
+// scripts/calibrar-ceu.py.
+const IMAGEM = '/ceu-olho-de-aguia-calibrado.jpg';
 
 // Tamanho de cada face do cubo, conforme o nível de qualidade. São seis
 // faces, por isso o custo em memória é seis vezes o quadrado destes
@@ -36,15 +51,15 @@ const CHAVE = 'ceu-olho-de-aguia';
 
 const PADRAO = {
     ligado: true,
-    rotacao: 0,
+    rotacao: 296,
     brilho: 1,
-    cupula: false,
-    tamanhoDaCupula: 600,
-    alturaDaCupula: 0,
+    cupula: true,
+    tamanhoDaCupula: 857.6,
+    alturaDaCupula: 0.1,
     // A cúpula não tem de ficar centrada na origem do mapa: a panorâmica
     // foi tirada de um ponto concreto do bairro, e é sobre esse ponto que
     // ela assenta melhor. Estas duas medidas deslocam-na no plano.
-    deslocamentoX: 0,
+    deslocamentoX: -0.06,
     deslocamentoZ: 0
 };
 
