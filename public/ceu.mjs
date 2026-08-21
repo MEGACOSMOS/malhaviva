@@ -15,9 +15,10 @@ import { Asset, EnvLighting, Mesh, PRIMITIVE_TRIANGLES, Quat, Vec3 } from 'playc
  *
  * Há duas maneiras de o pendurar. "Infinito" é o céu de sempre: por muito
  * que se ande, fica sempre à mesma distância, como o horizonte verdadeiro.
- * "Cúpula" assenta a panorâmica numa taça em volta do mapa, o que faz o
- * chão da fotografia encontrar-se com o chão do bairro — fica mais certo
- * quando se anda pelas ruas, e mais estranho quando se sobe muito.
+ * A outra é a muralha: a fotografia encosta a uma parede redonda em volta
+ * do bairro, que lá em cima fecha em cúpula. Assim a metade de baixo da
+ * fotografia — a que estica sem remédio, por ter sido tirada de um ponto
+ * só — fica arrumada atrás do modelo, e o chão continua a ser o do bairro.
  */
 
 const IMAGEM = '/ceu-olho-de-aguia.jpg';
@@ -52,6 +53,11 @@ const PADRAO = {
     cupula: true,
     tamanhoDaCupula: 833.5,
     alturaDaCupula: 0.1,
+    // Onde a muralha acaba e a cúpula começa, e até onde desce por baixo
+    // do bairro. A muralha tem de subir acima do ponto de vista da
+    // fotografia, senão o horizonte dela cairia já na parte curva.
+    alturaDaMuralha: 120,
+    profundidadeDaMuralha: 120,
     // A cúpula não tem de ficar centrada na origem do mapa: a panorâmica
     // foi tirada de um ponto concreto do bairro, e é sobre esse ponto que
     // ela assenta melhor. Estas duas medidas deslocam-na no plano.
@@ -59,266 +65,94 @@ const PADRAO = {
     deslocamentoZ: -0.01
 };
 
-// De quantos em quantos metros se mede o relevo do bairro. Oito metros
-// chegam bem: isto e o chao por baixo e a volta do modelo, nao o modelo.
-const PASSO_DO_RELEVO = 8;
-
-// Ao longo de quantos metros, para la da ultima casa, o relevo se desvanece
-// ate ao nivel de fora. Sem esta descida havia um degrau na borda.
-const DESCIDA_DAS_BORDAS = 120;
-
-// Em quantas fatias se divide a superficie: a volta e do centro para fora.
-// Do centro para fora as fatias sao desiguais de proposito - juntas ao pe,
-// largas ao longe, que e onde a fotografia ja nao tem pormenor nenhum.
+// Em quantas fatias se divide a volta. Cento e vinte e oito dão uma
+// muralha redonda o suficiente para ninguém lhe ver os cantos.
 const FATIAS_A_VOLTA = 128;
-const FATIAS_ATE_AO_FIM = 72;
+
+// Em quantos degraus a cúpula sobe, do cimo da muralha até ao topo.
+const DEGRAUS_DA_CUPULA = 24;
 
 /**
- * Mede o relevo do bairro a partir do proprio modelo.
+ * Constroi a superficie onde a fotografia assenta: uma muralha a toda a
+ * volta do bairro que, lá em cima, fecha numa cúpula.
  *
- * A arvore de zonas do modelo diz onde ha terreno e entre que alturas.
- * Guardando a altura mais baixa de cada zona fica-se com o chao por baixo
- * das casas, que e o que interessa para assentar a fotografia.
+ * A razão de ser desta forma é o esticão do terreno. Numa cúpula de fundo
+ * assente no chão, a metade de baixo da fotografia — que foi tirada de um
+ * ponto só — tem de ser espalhada por todo o terreno em volta, e estica
+ * sem remédio. Numa muralha, essa metade cai atrás do modelo, encostada,
+ * e o que sobra à vista é a faixa junto ao horizonte, que é a única parte
+ * da fotografia que ali faz sentido. O chão fica por conta do bairro, que
+ * é quem o tem a sério.
  *
- * @param {object} app - A aplicacao 3D.
- * @returns {Promise<object|null>} A grelha de alturas, ou nada se falhar.
- */
-async function medirRelevo(app) {
-    try {
-        const elemento = document.getElementById('splat-scene');
-        const meta = await (await fetch(elemento.getAttribute('src'))).json();
-        const mapa = app.root.findByName('gsplat-scene');
-        if (!meta || !meta.tree || !mapa) return null;
-
-        const zonas = [];
-        (function recolher(no) {
-            if (!no.children || no.children.length === 0) {
-                if (no.bound) zonas.push(no.bound);
-                return;
-            }
-            no.children.forEach(recolher);
-        })(meta.tree);
-        if (!zonas.length) return null;
-
-        app.root.syncHierarchy();
-        const matriz = mapa.getWorldTransform();
-        const canto = new Vec3();
-
-        const caixas = [];
-        let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
-        for (const b of zonas) {
-            let x0 = Infinity, x1 = -Infinity, y0 = Infinity, z0 = Infinity, z1 = -Infinity;
-            for (let i = 0; i < 8; i++) {
-                canto.set(
-                    i & 1 ? b.max[0] : b.min[0],
-                    i & 2 ? b.max[1] : b.min[1],
-                    i & 4 ? b.max[2] : b.min[2]
-                );
-                matriz.transformPoint(canto, canto);
-                x0 = Math.min(x0, canto.x); x1 = Math.max(x1, canto.x);
-                z0 = Math.min(z0, canto.z); z1 = Math.max(z1, canto.z);
-                y0 = Math.min(y0, canto.y);
-            }
-            caixas.push({ x0, x1, z0, z1, y: y0 });
-            minX = Math.min(minX, x0); maxX = Math.max(maxX, x1);
-            minZ = Math.min(minZ, z0); maxZ = Math.max(maxZ, z1);
-        }
-
-        const folga = Math.ceil(DESCIDA_DAS_BORDAS / PASSO_DO_RELEVO) + 2;
-        const colunas = Math.ceil((maxX - minX) / PASSO_DO_RELEVO) + folga * 2;
-        const linhas = Math.ceil((maxZ - minZ) / PASSO_DO_RELEVO) + folga * 2;
-        const origemX = minX - folga * PASSO_DO_RELEVO;
-        const origemZ = minZ - folga * PASSO_DO_RELEVO;
-
-        const alturas = new Float32Array(colunas * linhas);
-        const temTerreno = new Uint8Array(colunas * linhas);
-
-        for (const c of caixas) {
-            const a = Math.max(0, Math.floor((c.x0 - origemX) / PASSO_DO_RELEVO));
-            const b2 = Math.min(colunas - 1, Math.floor((c.x1 - origemX) / PASSO_DO_RELEVO));
-            const d = Math.max(0, Math.floor((c.z0 - origemZ) / PASSO_DO_RELEVO));
-            const e = Math.min(linhas - 1, Math.floor((c.z1 - origemZ) / PASSO_DO_RELEVO));
-            for (let j = d; j <= e; j++) {
-                for (let i = a; i <= b2; i++) {
-                    const k = j * colunas + i;
-                    if (!temTerreno[k] || c.y < alturas[k]) alturas[k] = c.y;
-                    temTerreno[k] = 1;
-                }
-            }
-        }
-
-        // As celulas sem terreno herdam a altura das vizinhas, e depois
-        // tudo e alisado: o que se quer e uma cama, nao um recorte.
-        espalhar(alturas, temTerreno, colunas, linhas);
-        for (let i = 0; i < 3; i++) alisar(alturas, colunas, linhas);
-
-        return { alturas, colunas, linhas, origemX, origemZ, passo: PASSO_DO_RELEVO };
-    } catch (e) {
-        console.warn('Ceu: nao foi possivel medir o relevo do bairro.', e);
-        return null;
-    }
-}
-
-/**
- * Da altura as celulas vazias, copiando das vizinhas ate nao sobrar nenhuma.
- *
- * @param {Float32Array} alturas - Grelha de alturas.
- * @param {Uint8Array} temTerreno - Que celulas tem terreno.
- * @param {number} colunas - Largura da grelha.
- * @param {number} linhas - Altura da grelha.
- */
-function espalhar(alturas, temTerreno, colunas, linhas) {
-    const sabido = Uint8Array.from(temTerreno);
-    for (let volta = 0; volta < 80; volta++) {
-        let mudou = false;
-        const antes = Uint8Array.from(sabido);
-        for (let j = 0; j < linhas; j++) {
-            for (let i = 0; i < colunas; i++) {
-                const k = j * colunas + i;
-                if (antes[k]) continue;
-                let soma = 0, contados = 0;
-                for (let dj = -1; dj <= 1; dj++) {
-                    for (let di = -1; di <= 1; di++) {
-                        const i2 = i + di, j2 = j + dj;
-                        if (i2 < 0 || j2 < 0 || i2 >= colunas || j2 >= linhas) continue;
-                        const k2 = j2 * colunas + i2;
-                        if (!antes[k2]) continue;
-                        soma += alturas[k2];
-                        contados++;
-                    }
-                }
-                if (contados) {
-                    alturas[k] = soma / contados;
-                    sabido[k] = 1;
-                    mudou = true;
-                }
-            }
-        }
-        if (!mudou) break;
-    }
-}
-
-/**
- * Passa uma mao de alisamento pela grelha de alturas.
- *
- * @param {Float32Array} alturas - Grelha de alturas.
- * @param {number} colunas - Largura da grelha.
- * @param {number} linhas - Altura da grelha.
- */
-function alisar(alturas, colunas, linhas) {
-    const copia = Float32Array.from(alturas);
-    for (let j = 1; j < linhas - 1; j++) {
-        for (let i = 1; i < colunas - 1; i++) {
-            const k = j * colunas + i;
-            alturas[k] = (
-                copia[k] * 4 +
-                copia[k - 1] + copia[k + 1] +
-                copia[k - colunas] + copia[k + colunas]
-            ) / 8;
-        }
-    }
-}
-
-/**
- * A altura do relevo num ponto qualquer do plano.
- *
- * @param {object} relevo - A grelha devolvida por medirRelevo.
- * @param {number} x - Coordenada X, em metros.
- * @param {number} z - Coordenada Z, em metros.
- * @returns {number} A altura, em metros.
- */
-function alturaEm(relevo, x, z) {
-    const { alturas, colunas, linhas, origemX, origemZ, passo } = relevo;
-    const fi = (x - origemX) / passo;
-    const fj = (z - origemZ) / passo;
-    if (fi < 0 || fj < 0 || fi >= colunas - 1 || fj >= linhas - 1) return 0;
-
-    const i = Math.floor(fi), j = Math.floor(fj);
-    const tx = fi - i, tz = fj - j;
-    const k = j * colunas + i;
-    const a = alturas[k], b = alturas[k + 1];
-    const c = alturas[k + colunas], d = alturas[k + colunas + 1];
-    return (a * (1 - tx) + b * tx) * (1 - tz) + (c * (1 - tx) + d * tx) * tz;
-}
-
-/**
- * Constroi a superficie onde a fotografia assenta.
- *
- * Em vez de uma cupula de fundo liso, o chao desta superficie segue o
- * relevo do bairro: sobe onde o bairro sobe, desce onde desce, e vai-se
- * desvanecendo ate ao nivel de fora a medida que se afasta. A partir do
- * anel do horizonte sobe uma parede e fecha-se por cima, para o ceu nao
- * ficar com buracos.
+ * Não há fundo nenhum: por baixo está o modelo, e a muralha desce abaixo
+ * dele o suficiente para não se ver por onde acaba.
  *
  * @param {object} dispositivo - O dispositivo grafico.
- * @param {object|null} relevo - A grelha de alturas, se existir.
- * @param {number} raio - Ate onde chega o chao, em metros.
- * @param {number} alturaDaVista - Altura do ponto de vista, em metros.
+ * @param {number} raio - A que distancia fica a muralha, em metros.
+ * @param {number} base - Onde comeca a muralha, em metros (abaixo de zero).
+ * @param {number} altura - Onde acaba a muralha e comeca a cupula.
  * @returns {object} A malha pronta a desenhar.
  */
-function criarSuperficie(dispositivo, relevo, raio, alturaDaVista) {
+function criarSuperficie(dispositivo, raio, base, altura) {
     const pontos = [];
     const triangulos = [];
 
-    const alturaNoPonto = (x, z, r) => {
-        if (!relevo) return 0;
-        // Longe do bairro o relevo deixa de fazer sentido e assenta.
-        const excesso = Math.max(0, r - raio * 0.35);
-        const peso = Math.max(0, 1 - excesso / DESCIDA_DAS_BORDAS);
-        return alturaEm(relevo, x, z) * peso;
-    };
-
-    pontos.push(0, alturaNoPonto(0, 0, 0), 0);
-    for (let anel = 1; anel <= FATIAS_ATE_AO_FIM; anel++) {
-        const t = anel / FATIAS_ATE_AO_FIM;
-        const r = raio * t * t;
+    /**
+     * Põe um anel de pontos à volta, a uma dada altura e distância.
+     *
+     * @param {number} r - Distancia ao eixo.
+     * @param {number} y - Altura.
+     * @returns {number} O indice do primeiro ponto do anel.
+     */
+    const anel = (r, y) => {
+        const primeiro = pontos.length / 3;
         for (let a = 0; a < FATIAS_A_VOLTA; a++) {
             const ang = a / FATIAS_A_VOLTA * Math.PI * 2;
-            const x = Math.cos(ang) * r;
-            const z = Math.sin(ang) * r;
-            pontos.push(x, alturaNoPonto(x, z, r), z);
+            pontos.push(Math.cos(ang) * r, y, Math.sin(ang) * r);
         }
-    }
+        return primeiro;
+    };
 
-    const indiceDoAnel = (anel) => 1 + (anel - 1) * FATIAS_A_VOLTA;
-
-    for (let a = 0; a < FATIAS_A_VOLTA; a++) {
-        const b = (a + 1) % FATIAS_A_VOLTA;
-        triangulos.push(0, indiceDoAnel(1) + b, indiceDoAnel(1) + a);
-    }
-    for (let anel = 1; anel < FATIAS_ATE_AO_FIM; anel++) {
-        const dentro = indiceDoAnel(anel);
-        const fora = indiceDoAnel(anel + 1);
+    /**
+     * Cose dois anéis um ao outro.
+     *
+     * @param {number} baixo - Indice do primeiro ponto do anel de baixo.
+     * @param {number} cima - Indice do primeiro ponto do anel de cima.
+     */
+    const coser = (baixo, cima) => {
         for (let a = 0; a < FATIAS_A_VOLTA; a++) {
             const b = (a + 1) % FATIAS_A_VOLTA;
-            triangulos.push(dentro + a, fora + b, fora + a);
-            triangulos.push(dentro + a, dentro + b, fora + b);
+            triangulos.push(baixo + a, cima + b, cima + a);
+            triangulos.push(baixo + a, baixo + b, cima + b);
         }
+    };
+
+    // A muralha: direita, do fundo até onde começa a cúpula. Sendo recta,
+    // dois anéis chegam — o que se vê entre eles é exacto na mesma.
+    const fundo = anel(raio, base);
+    const cimo = anel(raio, altura);
+    coser(fundo, cimo);
+
+    // A cúpula: a partir do cimo da muralha, a curvar até fechar.
+    let anterior = cimo;
+    for (let d = 1; d <= DEGRAUS_DA_CUPULA; d++) {
+        const t = d / DEGRAUS_DA_CUPULA * Math.PI / 2;
+        const seguinte = anel(raio * Math.cos(t), altura + raio * Math.sin(t));
+        coser(anterior, seguinte);
+        anterior = seguinte;
     }
 
-    const alturaDoTecto = alturaDaVista + raio;
-    const baseDaParede = pontos.length / 3;
-    for (let a = 0; a < FATIAS_A_VOLTA; a++) {
-        const ang = a / FATIAS_A_VOLTA * Math.PI * 2;
-        pontos.push(Math.cos(ang) * raio, alturaDoTecto, Math.sin(ang) * raio);
-    }
-    const ultimoAnel = indiceDoAnel(FATIAS_ATE_AO_FIM);
+    // O último anel é já quase um ponto; fecha-se com um remate no topo.
+    const topo = pontos.length / 3;
+    pontos.push(0, altura + raio, 0);
     for (let a = 0; a < FATIAS_A_VOLTA; a++) {
         const b = (a + 1) % FATIAS_A_VOLTA;
-        triangulos.push(ultimoAnel + a, baseDaParede + b, baseDaParede + a);
-        triangulos.push(ultimoAnel + a, ultimoAnel + b, baseDaParede + b);
-    }
-
-    const tecto = pontos.length / 3;
-    pontos.push(0, alturaDoTecto, 0);
-    for (let a = 0; a < FATIAS_A_VOLTA; a++) {
-        const b = (a + 1) % FATIAS_A_VOLTA;
-        triangulos.push(tecto, baseDaParede + a, baseDaParede + b);
+        triangulos.push(topo, anterior + a, anterior + b);
     }
 
     // O céu é visto por dentro, e o motor desenha-o a esconder as faces
     // viradas para fora. Os triângulos são construídos acima virados para
-    // cima, que é como se pensa neles; aqui viram-se todos do avesso, de
+    // fora, que é como se pensa neles; aqui viram-se todos do avesso, de
     // uma vez, para o motor os aceitar.
     for (let i = 0; i < triangulos.length; i += 3) {
         const meio = triangulos[i + 1];
@@ -343,9 +177,8 @@ export function ligarCeu(app) {
     const definicoes = Object.assign({}, PADRAO, lerGuardado());
     let cubo = null;
     let aCarregar = null;
-    let relevo = null;
     let superficie = null;
-    let raioDaSuperficie = 0;
+    let formaDaSuperficie = '';
 
     /**
      * Lê as afinações guardadas na visita anterior.
@@ -463,18 +296,17 @@ export function ligarCeu(app) {
      */
     function aplicarSuperficie(cena) {
         const raio = definicoes.tamanhoDaCupula * RAIO_DO_CHAO;
+        const base = -Math.abs(definicoes.profundidadeDaMuralha);
+        const altura = definicoes.alturaDaMuralha;
+        const forma = raio + '|' + base + '|' + altura;
+
         // Quando o motor refaz o céu, leva a nossa malha com ele — fica um
         // objecto vazio, sem os pontos lá dentro. Vale a pena reparar
         // nisso antes de a tentar usar outra vez.
         const desfeita = superficie && !superficie.vertexBuffer;
-        if (!superficie || desfeita || raio !== raioDaSuperficie) {
-            superficie = criarSuperficie(
-                app.graphicsDevice,
-                relevo,
-                raio,
-                definicoes.tamanhoDaCupula * ALTURA_DA_VISTA
-            );
-            raioDaSuperficie = raio;
+        if (!superficie || desfeita || forma !== formaDaSuperficie) {
+            superficie = criarSuperficie(app.graphicsDevice, raio, base, altura);
+            formaDaSuperficie = forma;
         }
         const desenho = cena.sky.skyMesh && cena.sky.skyMesh.meshInstance;
         if (desenho && desenho.mesh !== superficie) {
@@ -510,27 +342,13 @@ export function ligarCeu(app) {
         aplicarSuperficie(cena);
     });
 
-    // O relevo demora um instante a ser medido; quando chega, a superfície
-    // é refeita com ele e o céu passa a acompanhar o terreno.
-    medirRelevo(app).then((medido) => {
-        if (!medido) return;
-        relevo = medido;
-        superficie = null;
-        aplicar();
-    });
-
     return {
         definicoes,
         afinar,
         aplicar,
-        /** Até que distância, em metros, chega o chão da fotografia. */
+        /** A que distância fica a muralha, em metros. */
         get raioDoChao() {
             return definicoes.tamanhoDaCupula * RAIO_DO_CHAO;
-        },
-
-        /** Se o chão da fotografia já está a seguir o relevo do bairro. */
-        get segueORelevo() {
-            return !!relevo;
         },
         /** Volta a pôr tudo como veio de fábrica. */
         reiniciar() {
