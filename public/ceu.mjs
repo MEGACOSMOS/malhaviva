@@ -58,6 +58,9 @@ const PADRAO = {
     // fotografia, senão o horizonte dela cairia já na parte curva.
     alturaDaMuralha: 120,
     profundidadeDaMuralha: 120,
+    // A muralha toma o feitio da planta do bairro em vez de ser um
+    // círculo. Desligado, volta a ser redonda.
+    seguirOContorno: true,
     // A cúpula não tem de ficar centrada na origem do mapa: a panorâmica
     // foi tirada de um ponto concreto do bairro, e é sobre esse ponto que
     // ela assenta melhor. Estas duas medidas deslocam-na no plano.
@@ -71,6 +74,100 @@ const FATIAS_A_VOLTA = 128;
 
 // Em quantos degraus a cúpula sobe, do cimo da muralha até ao topo.
 const DEGRAUS_DA_CUPULA = 24;
+
+/**
+ * Mede a planta do bairro: até onde vai o modelo em cada direcção.
+ *
+ * A árvore de zonas do próprio modelo diz onde há terreno. Olhando dessas
+ * zonas só para a planta — esquecendo a altura — e perguntando, para cada
+ * direcção à volta, qual é a mais afastada, fica-se com o contorno do
+ * bairro visto de cima. É esse contorno que a muralha vai seguir.
+ *
+ * @param {object} app - A aplicacao 3D.
+ * @returns {Promise<Float32Array|null>} Distancia ao centro em cada
+ *   direcção, ou nada se não for possível medir.
+ */
+async function medirContorno(app) {
+    try {
+        const elemento = document.getElementById('splat-scene');
+        const meta = await (await fetch(elemento.getAttribute('src'))).json();
+        const mapa = app.root.findByName('gsplat-scene');
+        if (!meta || !meta.tree || !mapa) return null;
+
+        const zonas = [];
+        (function recolher(no) {
+            if (!no.children || no.children.length === 0) {
+                if (no.bound) zonas.push(no.bound);
+                return;
+            }
+            no.children.forEach(recolher);
+        })(meta.tree);
+        if (!zonas.length) return null;
+
+        app.root.syncHierarchy();
+        const matriz = mapa.getWorldTransform();
+        const canto = new Vec3();
+        const distancias = new Float32Array(FATIAS_A_VOLTA);
+
+        // De cada zona bastam os quatro cantos da planta: é o que está mais
+        // longe do centro, e é isso que define o contorno.
+        for (const b of zonas) {
+            for (let i = 0; i < 8; i++) {
+                canto.set(
+                    i & 1 ? b.max[0] : b.min[0],
+                    i & 2 ? b.max[1] : b.min[1],
+                    i & 4 ? b.max[2] : b.min[2]
+                );
+                matriz.transformPoint(canto, canto);
+                const r = Math.sqrt(canto.x * canto.x + canto.z * canto.z);
+                let ang = Math.atan2(canto.z, canto.x);
+                if (ang < 0) ang += Math.PI * 2;
+                const fatia = Math.min(
+                    FATIAS_A_VOLTA - 1,
+                    Math.floor(ang / (Math.PI * 2) * FATIAS_A_VOLTA)
+                );
+                if (r > distancias[fatia]) distancias[fatia] = r;
+            }
+        }
+
+        // Direcções sem terreno herdam a vizinha, e depois alisa-se tudo:
+        // o que se quer é o feitio do bairro, não os dentes de cada casa.
+        for (let volta = 0; volta < 2; volta++) {
+            for (let i = 0; i < FATIAS_A_VOLTA; i++) {
+                if (distancias[i] > 0) continue;
+                const antes = distancias[(i - 1 + FATIAS_A_VOLTA) % FATIAS_A_VOLTA];
+                const depois = distancias[(i + 1) % FATIAS_A_VOLTA];
+                if (antes && depois) distancias[i] = (antes + depois) / 2;
+                else distancias[i] = antes || depois;
+            }
+        }
+        alisarContorno(distancias, 3);
+        return distancias;
+    } catch (e) {
+        console.warn('Céu: não foi possível medir o contorno do bairro.', e);
+        return null;
+    }
+}
+
+/**
+ * Alisa o contorno, tirando-lhe os dentes.
+ *
+ * @param {Float32Array} distancias - O contorno a alisar, dá a volta toda.
+ * @param {number} voltas - Quantas passagens de alisamento.
+ */
+function alisarContorno(distancias, voltas) {
+    const n = distancias.length;
+    for (let volta = 0; volta < voltas; volta++) {
+        const copia = Float32Array.from(distancias);
+        for (let i = 0; i < n; i++) {
+            distancias[i] = (
+                copia[(i - 2 + n) % n] + copia[(i - 1 + n) % n] * 2 +
+                copia[i] * 3 +
+                copia[(i + 1) % n] * 2 + copia[(i + 2) % n]
+            ) / 9;
+        }
+    }
+}
 
 /**
  * Constroi a superficie onde a fotografia assenta: uma muralha a toda a
@@ -93,21 +190,35 @@ const DEGRAUS_DA_CUPULA = 24;
  * @param {number} altura - Onde acaba a muralha e comeca a cupula.
  * @returns {object} A malha pronta a desenhar.
  */
-function criarSuperficie(dispositivo, raio, base, altura) {
+function criarSuperficie(dispositivo, raio, base, altura, contorno) {
     const pontos = [];
     const triangulos = [];
 
+    // A que distância fica a muralha em cada direcção. Sem contorno
+    // medido, é um círculo; com ele, é o feitio do bairro esticado ou
+    // encolhido até ficar, em média, à distância pedida.
+    const distancias = new Float32Array(FATIAS_A_VOLTA);
+    let media = 0;
+    if (contorno) {
+        for (let i = 0; i < FATIAS_A_VOLTA; i++) media += contorno[i];
+        media /= FATIAS_A_VOLTA;
+    }
+    for (let i = 0; i < FATIAS_A_VOLTA; i++) {
+        distancias[i] = (contorno && media > 0) ? contorno[i] * (raio / media) : raio;
+    }
+
     /**
-     * Põe um anel de pontos à volta, a uma dada altura e distância.
+     * Põe um anel de pontos à volta, a uma dada altura.
      *
-     * @param {number} r - Distancia ao eixo.
-     * @param {number} y - Altura.
+     * @param {number} y - Altura do anel.
+     * @param {Function} distanciaEm - Distância ao eixo em cada direcção.
      * @returns {number} O indice do primeiro ponto do anel.
      */
-    const anel = (r, y) => {
+    const anel = (y, distanciaEm) => {
         const primeiro = pontos.length / 3;
         for (let a = 0; a < FATIAS_A_VOLTA; a++) {
             const ang = a / FATIAS_A_VOLTA * Math.PI * 2;
+            const r = distanciaEm(a);
             pontos.push(Math.cos(ang) * r, y, Math.sin(ang) * r);
         }
         return primeiro;
@@ -127,17 +238,24 @@ function criarSuperficie(dispositivo, raio, base, altura) {
         }
     };
 
-    // A muralha: direita, do fundo até onde começa a cúpula. Sendo recta,
-    // dois anéis chegam — o que se vê entre eles é exacto na mesma.
-    const fundo = anel(raio, base);
-    const cimo = anel(raio, altura);
+    // A muralha: a direito, do fundo até onde começa a cúpula, com o
+    // feitio do bairro em planta. Sendo recta, dois anéis chegam.
+    const contornoEm = (a) => distancias[a];
+    const fundo = anel(base, contornoEm);
+    const cimo = anel(altura, contornoEm);
     coser(fundo, cimo);
 
-    // A cúpula: a partir do cimo da muralha, a curvar até fechar.
+    // A cúpula: à medida que sobe, vai perdendo o feitio do bairro e
+    // arredondando, para fechar como uma abóbada e não como um funil
+    // torto.
     let anterior = cimo;
     for (let d = 1; d <= DEGRAUS_DA_CUPULA; d++) {
         const t = d / DEGRAUS_DA_CUPULA * Math.PI / 2;
-        const seguinte = anel(raio * Math.cos(t), altura + raio * Math.sin(t));
+        const arredondar = Math.sin(t);
+        const seguinte = anel(
+            altura + raio * Math.sin(t),
+            (a) => (distancias[a] * (1 - arredondar) + raio * arredondar) * Math.cos(t)
+        );
         coser(anterior, seguinte);
         anterior = seguinte;
     }
@@ -179,6 +297,7 @@ export function ligarCeu(app) {
     let aCarregar = null;
     let superficie = null;
     let formaDaSuperficie = '';
+    let contorno = null;
 
     /**
      * Lê as afinações guardadas na visita anterior.
@@ -298,14 +417,15 @@ export function ligarCeu(app) {
         const raio = definicoes.tamanhoDaCupula * RAIO_DO_CHAO;
         const base = -Math.abs(definicoes.profundidadeDaMuralha);
         const altura = definicoes.alturaDaMuralha;
-        const forma = raio + '|' + base + '|' + altura;
+        const aSeguir = definicoes.seguirOContorno && contorno ? contorno : null;
+        const forma = raio + '|' + base + '|' + altura + '|' + (aSeguir ? 'contorno' : 'redonda');
 
         // Quando o motor refaz o céu, leva a nossa malha com ele — fica um
         // objecto vazio, sem os pontos lá dentro. Vale a pena reparar
         // nisso antes de a tentar usar outra vez.
         const desfeita = superficie && !superficie.vertexBuffer;
         if (!superficie || desfeita || forma !== formaDaSuperficie) {
-            superficie = criarSuperficie(app.graphicsDevice, raio, base, altura);
+            superficie = criarSuperficie(app.graphicsDevice, raio, base, altura, aSeguir);
             formaDaSuperficie = forma;
         }
         const desenho = cena.sky.skyMesh && cena.sky.skyMesh.meshInstance;
@@ -342,10 +462,43 @@ export function ligarCeu(app) {
         aplicarSuperficie(cena);
     });
 
-    return {
+    // O contorno demora um instante a ser medido; quando chega, a muralha
+    // é refeita com o feitio do bairro.
+    medirContorno(app).then((medido) => {
+        if (!medido) return;
+        contorno = medido;
+        superficie = null;
+        aplicar();
+        // O menu está à espera desta medida para poder dizer entre que
+        // distâncias a muralha ficou.
+        if (typeof gestor.aoMedirContorno === 'function') gestor.aoMedirContorno();
+    });
+
+    const gestor = {
         definicoes,
         afinar,
         aplicar,
+        /** Avisa o menu quando o contorno do bairro fica medido. */
+        aoMedirContorno: null,
+        /** Se a muralha já tem o feitio da planta do bairro. */
+        get segueOContorno() {
+            return !!(contorno && definicoes.seguirOContorno);
+        },
+        /** A que distância fica a muralha no ponto mais perto e no mais longe. */
+        get extremosDaMuralha() {
+            if (!contorno) return null;
+            const raio = definicoes.tamanhoDaCupula * RAIO_DO_CHAO;
+            let media = 0;
+            for (let i = 0; i < contorno.length; i++) media += contorno[i];
+            media /= contorno.length;
+            let minimo = Infinity, maximo = 0;
+            for (let i = 0; i < contorno.length; i++) {
+                const d = contorno[i] * (raio / media);
+                minimo = Math.min(minimo, d);
+                maximo = Math.max(maximo, d);
+            }
+            return { minimo, maximo };
+        },
         /** A que distância fica a muralha, em metros. */
         get raioDoChao() {
             return definicoes.tamanhoDaCupula * RAIO_DO_CHAO;
@@ -353,8 +506,11 @@ export function ligarCeu(app) {
         /** Volta a pôr tudo como veio de fábrica. */
         reiniciar() {
             Object.assign(definicoes, PADRAO);
+            superficie = null;
             if (!cubo) carregar().then(aplicar);
             else aplicar();
         }
     };
+
+    return gestor;
 }

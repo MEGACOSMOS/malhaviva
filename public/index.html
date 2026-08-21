@@ -738,6 +738,11 @@
                             <span>Muralha à volta do bairro</span>
                         </label>
 
+                        <label class="settings-radio" id="ceu-contorno-linha">
+                            <input type="checkbox" id="ceu-contorno" checked>
+                            <span>Seguir o contorno do bairro</span>
+                        </label>
+
                         <label class="ceu-afinacao" id="ceu-tamanho-linha">
                             <span>Distância do céu
                                 <input type="text" inputmode="decimal" id="ceu-tamanho-valor" class="ceu-numero" value="833.5">
@@ -990,7 +995,7 @@
         } from 'playcanvas';
         import { ligarLodNoCentroDaVista } from './lod-foco.mjs?v=3';
         import { criarModoVR } from './vr.mjs?v=3';
-        import { ligarCeu } from './ceu.mjs?v=8';
+        import { ligarCeu } from './ceu.mjs?v=10';
 
         // Resolução da grelha usada para medir o mapa, em metros.
         const RESOLUCAO_LIMITE = 4;
@@ -1627,6 +1632,7 @@ void modifySplatColor(vec3 center, inout vec4 color) {
                 const altura = document.getElementById('ceu-altura');
                 const deslocX = document.getElementById('ceu-x');
                 const deslocZ = document.getElementById('ceu-z');
+                const contorno = document.getElementById('ceu-contorno');
                 const muralhaAltura = document.getElementById('ceu-muralha-altura');
                 const muralhaFundo = document.getElementById('ceu-muralha-fundo');
                 const reiniciar = document.getElementById('ceu-reiniciar');
@@ -1658,6 +1664,7 @@ void modifySplatColor(vec3 center, inout vec4 color) {
                     rotacao.value = d.rotacao;
                     brilho.value = d.brilho;
                     cupula.checked = d.cupula;
+                    contorno.checked = d.seguirOContorno;
                     acomodar(tamanho, d.tamanhoDaCupula);
                     acomodar(altura, d.alturaDaCupula);
                     acomodar(deslocX, d.deslocamentoX);
@@ -1676,7 +1683,10 @@ void modifySplatColor(vec3 center, inout vec4 color) {
                     // escrever: senão apagava os números a meio da frase.
                     if (document.activeElement !== tamanhoEscrito) tamanhoEscrito.value = arredondar(d.tamanhoDaCupula);
                     document.getElementById('ceu-alcance').innerText =
-                        'muralha a ' + Math.round(ceu.raioDoChao) + ' m do centro';
+                        (ceu.segueOContorno && ceu.extremosDaMuralha
+                            ? 'muralha entre ' + Math.round(ceu.extremosDaMuralha.minimo) +
+                              ' e ' + Math.round(ceu.extremosDaMuralha.maximo) + ' m do centro'
+                            : 'muralha a ' + Math.round(ceu.raioDoChao) + ' m do centro');
                     if (document.activeElement !== alturaEscrita) alturaEscrita.value = arredondar(d.alturaDaCupula);
                     if (document.activeElement !== xEscrito) xEscrito.value = arredondar(d.deslocamentoX);
                     if (document.activeElement !== zEscrito) zEscrito.value = arredondar(d.deslocamentoZ);
@@ -1684,7 +1694,7 @@ void modifySplatColor(vec3 center, inout vec4 color) {
                     if (document.activeElement !== muralhaFundoEscrito) muralhaFundoEscrito.value = arredondar(d.profundidadeDaMuralha);
                     // As medidas da cúpula só interessam com a cúpula ligada.
                     const visivel = d.cupula ? '' : 'none';
-                    ['ceu-tamanho-linha', 'ceu-muralha-altura-linha', 'ceu-muralha-fundo-linha',
+                    ['ceu-contorno-linha', 'ceu-tamanho-linha', 'ceu-muralha-altura-linha', 'ceu-muralha-fundo-linha',
                         'ceu-altura-linha', 'ceu-x-linha', 'ceu-z-linha']
                         .forEach(id => { document.getElementById(id).style.display = visivel; });
                 };
@@ -1733,6 +1743,7 @@ void modifySplatColor(vec3 center, inout vec4 color) {
                 deslocZ.addEventListener('input', () => { ceu.afinar('deslocamentoZ', parseFloat(deslocZ.value)); mostrar(); });
                 ligarEscrita(tamanhoEscrito, tamanho, 'tamanhoDaCupula');
                 ligarEscrita(alturaEscrita, altura, 'alturaDaCupula');
+                contorno.addEventListener('change', () => { ceu.afinar('seguirOContorno', contorno.checked); mostrar(); });
                 muralhaAltura.addEventListener('input', () => { ceu.afinar('alturaDaMuralha', parseFloat(muralhaAltura.value)); mostrar(); });
                 muralhaFundo.addEventListener('input', () => { ceu.afinar('profundidadeDaMuralha', parseFloat(muralhaFundo.value)); mostrar(); });
                 ligarEscrita(xEscrito, deslocX, 'deslocamentoX');
@@ -1742,6 +1753,9 @@ void modifySplatColor(vec3 center, inout vec4 color) {
                 reiniciar.addEventListener('click', () => { ceu.reiniciar(); mostrar(); });
 
                 mostrar();
+                // A medida do contorno chega um instante depois do resto;
+                // quando chegar, o menu volta a escrever-se.
+                ceu.aoMedirContorno = mostrar;
             }
 
             /**
