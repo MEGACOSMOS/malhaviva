@@ -1,6 +1,4 @@
-import { EnvLighting, Quat, Texture, Vec3,
-    ADDRESS_CLAMP_TO_EDGE, FILTER_LINEAR, PIXELFORMAT_RGBA8, TEXTUREPROJECTION_EQUIRECT
-} from 'playcanvas';
+import { EnvLighting, PIXELFORMAT_RGBA8, Quat, Texture, Vec3 } from 'playcanvas';
 import { AJUSTES_PADRAO, LARGURA_FINAL, LARGURA_RAPIDA, tratarFotografia } from './ceu-fotografia.mjs?v=1';
 
 /**
@@ -122,17 +120,17 @@ export function ligarCeu(app) {
         if (!imagem) return null;
         try {
             const tela = tratarFotografia(imagem, definicoes.ajustes, largura || LARGURA_FINAL);
+            // A textura tem de ser feita exactamente como o motor a fazia
+            // quando carregava a fotografia sozinho. Parece detalhe, mas
+            // não é: mexer na projecção ou nos mipmaps muda a maneira como
+            // a imagem é enrolada no cubo, e a paisagem acaba noutro sítio
+            // do horizonte.
             const plana = new Texture(app.graphicsDevice, {
                 name: 'ceu-tratado',
                 width: tela.width,
                 height: tela.height,
                 format: PIXELFORMAT_RGBA8,
-                projection: TEXTUREPROJECTION_EQUIRECT,
-                addressU: ADDRESS_CLAMP_TO_EDGE,
-                addressV: ADDRESS_CLAMP_TO_EDGE,
-                minFilter: FILTER_LINEAR,
-                magFilter: FILTER_LINEAR,
-                mipmaps: false
+                mipmaps: true
             });
             plana.setSource(tela);
 
