@@ -735,14 +735,14 @@
 
                         <label class="settings-radio">
                             <input type="checkbox" id="ceu-cupula" checked>
-                            <span>Assentar no chão (cúpula)</span>
+                            <span>Assentar no chão do bairro</span>
                         </label>
 
                         <label class="ceu-afinacao" id="ceu-tamanho-linha">
-                            <span>Altura da fotografia (m)
-                                <input type="text" inputmode="decimal" id="ceu-tamanho-valor" class="ceu-numero" value="150">
+                            <span>Distância do céu
+                                <input type="text" inputmode="decimal" id="ceu-tamanho-valor" class="ceu-numero" value="833.5">
                             </span>
-                            <input type="range" id="ceu-tamanho" min="5" max="400" step="0.1" value="150">
+                            <input type="range" id="ceu-tamanho" min="100" max="3000" step="0.1" value="833.5">
                             <small id="ceu-alcance">chão da fotografia até 1500 m</small>
                         </label>
 
@@ -975,7 +975,7 @@
         } from 'playcanvas';
         import { ligarLodNoCentroDaVista } from './lod-foco.mjs?v=3';
         import { criarModoVR } from './vr.mjs?v=3';
-        import { ligarCeu } from './ceu.mjs?v=3';
+        import { ligarCeu } from './ceu.mjs?v=7';
 
         // Resolução da grelha usada para medir o mapa, em metros.
         const RESOLUCAO_LIMITE = 4;
@@ -1639,11 +1639,11 @@ void modifySplatColor(vec3 center, inout vec4 color) {
                     rotacao.value = d.rotacao;
                     brilho.value = d.brilho;
                     cupula.checked = d.cupula;
-                    acomodar(tamanho, d.alturaDaFotografia);
+                    acomodar(tamanho, d.tamanhoDaCupula);
                     acomodar(altura, d.alturaDaCupula);
                     acomodar(deslocX, d.deslocamentoX);
                     acomodar(deslocZ, d.deslocamentoZ);
-                    tamanho.value = d.alturaDaFotografia;
+                    tamanho.value = d.tamanhoDaCupula;
                     altura.value = d.alturaDaCupula;
                     deslocX.value = d.deslocamentoX;
                     deslocZ.value = d.deslocamentoZ;
@@ -1651,9 +1651,9 @@ void modifySplatColor(vec3 center, inout vec4 color) {
                     document.getElementById('ceu-brilho-valor').innerText = Number(d.brilho).toFixed(2);
                     // A caixa escrita não é tocada enquanto lá se está a
                     // escrever: senão apagava os números a meio da frase.
-                    if (document.activeElement !== tamanhoEscrito) tamanhoEscrito.value = arredondar(d.alturaDaFotografia);
+                    if (document.activeElement !== tamanhoEscrito) tamanhoEscrito.value = arredondar(d.tamanhoDaCupula);
                     document.getElementById('ceu-alcance').innerText =
-                        'chão da fotografia até ' + Math.round(ceu.raioDoChao) + ' m';
+                        'chão da fotografia até ' + Math.round(ceu.raioDoChao) + ' m' + (ceu.segueORelevo ? ', a seguir o relevo' : '');
                     if (document.activeElement !== alturaEscrita) alturaEscrita.value = arredondar(d.alturaDaCupula);
                     if (document.activeElement !== xEscrito) xEscrito.value = arredondar(d.deslocamentoX);
                     if (document.activeElement !== zEscrito) zEscrito.value = arredondar(d.deslocamentoZ);
@@ -1701,11 +1701,11 @@ void modifySplatColor(vec3 center, inout vec4 color) {
                 cupula.addEventListener('change', () => { ceu.afinar('cupula', cupula.checked); mostrar(); });
                 rotacao.addEventListener('input', () => { ceu.afinar('rotacao', parseFloat(rotacao.value)); mostrar(); });
                 brilho.addEventListener('input', () => { ceu.afinar('brilho', parseFloat(brilho.value)); mostrar(); });
-                tamanho.addEventListener('input', () => { ceu.afinar('alturaDaFotografia', parseFloat(tamanho.value)); mostrar(); });
+                tamanho.addEventListener('input', () => { ceu.afinar('tamanhoDaCupula', parseFloat(tamanho.value)); mostrar(); });
                 altura.addEventListener('input', () => { ceu.afinar('alturaDaCupula', parseFloat(altura.value)); mostrar(); });
                 deslocX.addEventListener('input', () => { ceu.afinar('deslocamentoX', parseFloat(deslocX.value)); mostrar(); });
                 deslocZ.addEventListener('input', () => { ceu.afinar('deslocamentoZ', parseFloat(deslocZ.value)); mostrar(); });
-                ligarEscrita(tamanhoEscrito, tamanho, 'alturaDaFotografia');
+                ligarEscrita(tamanhoEscrito, tamanho, 'tamanhoDaCupula');
                 ligarEscrita(alturaEscrita, altura, 'alturaDaCupula');
                 ligarEscrita(xEscrito, deslocX, 'deslocamentoX');
                 ligarEscrita(zEscrito, deslocZ, 'deslocamentoZ');
