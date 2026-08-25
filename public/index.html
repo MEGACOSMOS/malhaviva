@@ -944,7 +944,7 @@
 
         <!-- Assets -->
         <pc-asset id="splat-scene" src="splat/lod-meta.json" type="gsplat"></pc-asset>
-        <pc-asset id="camera-controls-script" src="./camera-controls.mjs?v=9" type="script"></pc-asset>
+        <pc-asset id="camera-controls-script" src="./camera-controls.mjs?v=8" type="script"></pc-asset>
         <pc-asset id="camera-coords-script" src="./coords.mjs?v=7" type="script"></pc-asset>
         <pc-asset id="annotations-script" src="./annotations.mjs?v=27" type="script"></pc-asset>
         <pc-asset id="trail-script" src="./trail.mjs?v=9" type="script"></pc-asset>
@@ -1040,7 +1040,7 @@
             Vec3, Texture,
             PIXELFORMAT_RGBA8, FILTER_LINEAR, ADDRESS_CLAMP_TO_EDGE
         } from 'playcanvas';
-        import { ligarLodNoCentroDaVista } from './lod-foco.mjs?v=4';
+        import { ligarLodNoCentroDaVista } from './lod-foco.mjs?v=3';
         import { criarModoVR } from './vr.mjs?v=3';
         import { ligarCeu } from './ceu.mjs?v=5';
 
@@ -1401,7 +1401,7 @@ void modifySplatColor(vec3 center, inout vec4 color) {
                         splatEl.entity.gsplat.lodBaseDistance = 70; 
                         splatEl.entity.gsplat.lodMultiplier = 3; 
                     } else { // isLow
-                        splatEl.entity.gsplat.lodBaseDistance = 28; 
+                        splatEl.entity.gsplat.lodBaseDistance = 20; 
                         splatEl.entity.gsplat.lodMultiplier = 8; 
                     }
 
