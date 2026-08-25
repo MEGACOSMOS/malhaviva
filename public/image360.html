@@ -106,15 +106,38 @@
         };
         fotografia.src = endereco;
 
-        // Ecrã inteiro e óculos, com o mesmo comportamento do player 360.
+        // Ecrã inteiro. O pedido é feito à página toda (e não só ao corpo),
+        // que é o que os navegadores tratam melhor, e a seguir avisa-se a
+        // cena para se voltar a medir — senão ficava a fotografia pequena
+        // no meio de um ecrã preto.
         const botaoEcra = document.getElementById('fullscreen-btn');
+        const iconeEntrar = botaoEcra.innerHTML;
+        const iconeSair = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter"><path d="M3 9h6V3 M21 9h-6V3 M21 15h-6v6 M3 15h6v6"></path></svg>';
+
         botaoEcra.addEventListener('click', () => {
-            if (!document.fullscreenElement) {
-                document.body.requestFullscreen().catch(() => {});
-            } else {
-                document.exitFullscreen();
-            }
+            const alvo = document.documentElement;
+            const entrar = alvo.requestFullscreen || alvo.webkitRequestFullscreen;
+            const sair = document.exitFullscreen || document.webkitExitFullscreen;
+            const jaEsta = document.fullscreenElement || document.webkitFullscreenElement;
+            try {
+                if (!jaEsta) {
+                    const pedido = entrar.call(alvo);
+                    if (pedido && pedido.catch) pedido.catch(() => {});
+                } else {
+                    sair.call(document);
+                }
+            } catch (e) { /* navegador sem ecrã inteiro: não há mais nada a fazer */ }
         });
+
+        const aoMudarDeEcra = () => {
+            const dentro = !!(document.fullscreenElement || document.webkitFullscreenElement);
+            botaoEcra.innerHTML = dentro ? iconeSair : iconeEntrar;
+            // A cena tem de se voltar a medir para encher o novo tamanho.
+            window.dispatchEvent(new Event('resize'));
+            if (cena && cena.resize) setTimeout(() => cena.resize(), 60);
+        };
+        document.addEventListener('fullscreenchange', aoMudarDeEcra);
+        document.addEventListener('webkitfullscreenchange', aoMudarDeEcra);
 
         const botaoVR = document.getElementById('vr-btn');
         if (navigator.xr && navigator.xr.isSessionSupported) {

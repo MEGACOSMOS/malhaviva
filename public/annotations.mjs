@@ -390,11 +390,20 @@ AnnotationController.prototype.initialize = function() {
         const isViewed = this.viewedAnnotations.includes(annId);
 
         if (ann.is360) {
+            // As rotas mostram "360º" e o nome por baixo. A fotografia do
+            // alto do bairro dispensa as duas coisas: fica só um olho,
+            // pousado no céu, sem legenda a tapar a paisagem.
+            const simbolo = ann.isImage
+                ? `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter">
+                        <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"></path>
+                        <circle cx="12" cy="12" r="3"></circle>
+                   </svg>`
+                : '<span class="marker-text-360">360º</span>';
             el.innerHTML = `
                 <div class="marker-dot is-360 ${isViewed ? 'viewed' : ''}">
-                    <span class="marker-text-360">360º</span>
+                    ${simbolo}
                 </div>
-                <div class="marker-label">${ann.label}</div>
+                ${ann.isImage ? '' : `<div class="marker-label">${ann.label}</div>`}
             `;
         } else {
             el.innerHTML = `
@@ -549,7 +558,7 @@ AnnotationController.prototype.openImage360 = function(caminho, titulo) {
 
     this.imageModalTitle.textContent = titulo || 'Fotografia 360º';
     this.imageFrame.innerHTML = '<iframe src="/image360.html?src=' + encodeURIComponent(caminho) +
-        '" style="width: 100%; height: 100%; border: none; background: #000; display: block;" allow="xr-spatial-tracking; fullscreen"></iframe>';
+        '" style="width: 100%; height: 100%; border: none; background: #000; display: block;" allow="xr-spatial-tracking; fullscreen" allowfullscreen></iframe>';
 
     this.imageModal.style.display = 'flex';
     setTimeout(() => {

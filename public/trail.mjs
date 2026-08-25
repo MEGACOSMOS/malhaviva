@@ -873,7 +873,7 @@ TrailController.prototype.showPopup360 = function(trailIndex) {
         // Passa-se o nome da rota; é o player que decide as resoluções a
         // oferecer e por qual começar.
         const nome = 'Esvarena - 360 - ' + letra;
-        container.innerHTML = `<iframe src="/video360.html?nome=${encodeURIComponent(nome)}" style="width: 100%; height: 100%; border: none; background: #000; display: block;" allow="xr-spatial-tracking; fullscreen; autoplay"></iframe>`;
+        container.innerHTML = `<iframe src="/video360.html?nome=${encodeURIComponent(nome)}" style="width: 100%; height: 100%; border: none; background: #000; display: block;" allow="xr-spatial-tracking; fullscreen; autoplay" allowfullscreen></iframe>`;
     }
     if (this.popupTitle) this.popupTitle.textContent = 'Esvarena — Rota 360º ' + letra;
 

@@ -582,14 +582,23 @@
         });
 
         fullscreenBtn.addEventListener('click', () => {
-            if (!document.fullscreenElement) {
-                document.body.requestFullscreen().catch(err => console.log(err));
-            } else {
-                document.exitFullscreen();
-            }
+            const alvo = document.documentElement;
+            const entrar = alvo.requestFullscreen || alvo.webkitRequestFullscreen;
+            const sair = document.exitFullscreen || document.webkitExitFullscreen;
+            try {
+                if (!document.fullscreenElement) {
+                    const pedido = entrar.call(alvo);
+                    if (pedido && pedido.catch) pedido.catch(err => console.log(err));
+                } else {
+                    sair.call(document);
+                }
+            } catch (e) { console.log(e); }
         });
 
         document.addEventListener('fullscreenchange', () => {
+            // A cena tem de se voltar a medir para encher o novo tamanho.
+            window.dispatchEvent(new Event('resize'));
+            if (scene && scene.resize) setTimeout(() => scene.resize(), 60);
             if (document.fullscreenElement) {
                 fullscreenBtn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter"><path d="M3 9h6V3 M21 9h-6V3 M21 15h-6v6 M3 15h6v6"></path></svg>';
             } else {
