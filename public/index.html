@@ -944,7 +944,7 @@
 
         <!-- Assets -->
         <pc-asset id="splat-scene" src="splat/lod-meta.json" type="gsplat"></pc-asset>
-        <pc-asset id="camera-controls-script" src="./camera-controls.mjs?v=8" type="script"></pc-asset>
+        <pc-asset id="camera-controls-script" src="./camera-controls.mjs?v=9" type="script"></pc-asset>
         <pc-asset id="camera-coords-script" src="./coords.mjs?v=7" type="script"></pc-asset>
         <pc-asset id="annotations-script" src="./annotations.mjs?v=27" type="script"></pc-asset>
         <pc-asset id="trail-script" src="./trail.mjs?v=9" type="script"></pc-asset>
@@ -1390,19 +1390,39 @@ void modifySplatColor(vec3 center, inout vec4 color) {
                 // --- Per-asset LOD tuning ---
                 const splatEl = document.querySelector('pc-entity[name="gsplat-scene"]');
                 if (splatEl && splatEl.entity && splatEl.entity.gsplat) {
-                    // As distâncias abaixo encolheram um pouco desde que o
-                    // detalhe deixou de andar colado à câmara: como agora
-                    // assenta onde a pessoa está a olhar, chega menos raio
-                    // para a vista ficar mais nítida do que estava.
+                    // Duas medidas mandam no detalhe do bairro:
+                    //
+                    //  - a primeira diz até onde vai o detalhe fino, contado
+                    //    a partir do ponto para onde a câmara aponta;
+                    //  - a segunda diz quanto mais longe ainda se mantém o
+                    //    detalhe do meio antes de passar ao mais grosseiro,
+                    //    que serve o fundo da paisagem.
+                    //
+                    // Estavam ambas a trabalhar contra o que se vê: a
+                    // primeira era tão curta que o detalhe fino mal saía de
+                    // cima da pessoa, e a segunda tão larga que a faixa do
+                    // meio ocupava o bairro quase todo e comia os pontos que
+                    // fariam falta ao detalhe fino. Trocaram de papéis:
+                    // detalhe fino bem mais longe, faixa do meio mais curta.
                     if (isHigh) {
-                        splatEl.entity.gsplat.lodBaseDistance = 250; 
-                        splatEl.entity.gsplat.lodMultiplier = 3; 
+                        splatEl.entity.gsplat.lodBaseDistance = 350; 
+                        splatEl.entity.gsplat.lodMultiplier = 2.5; 
                     } else if (isMed) {
-                        splatEl.entity.gsplat.lodBaseDistance = 70; 
-                        splatEl.entity.gsplat.lodMultiplier = 3; 
+                        splatEl.entity.gsplat.lodBaseDistance = 110; 
+                        splatEl.entity.gsplat.lodMultiplier = 2.5; 
                     } else { // isLow
-                        splatEl.entity.gsplat.lodBaseDistance = 20; 
-                        splatEl.entity.gsplat.lodMultiplier = 8; 
+                        splatEl.entity.gsplat.lodBaseDistance = 70; 
+                        splatEl.entity.gsplat.lodMultiplier = 2; 
+                    }
+
+                    // O que fica para trás das costas não precisa de estar
+                    // nítido. Esta medida conta como mais distante tudo o que
+                    // está atrás do ponto para onde se olha, e os pontos que
+                    // assim se poupam vão todos para a frente, que é onde a
+                    // pessoa está a olhar. Nas ruas é ela que paga o alcance
+                    // maior do detalhe fino sem a imagem ficar mais pesada.
+                    if (app && app.scene && app.scene.gsplat) {
+                        app.scene.gsplat.lodBehindPenalty = isHigh ? 3 : 2;
                     }
 
                     // Tecto de pontos no ecrã. Fica na cena e não no mapa:
