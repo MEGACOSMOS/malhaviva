@@ -132,7 +132,10 @@ CameraCoordinates.prototype.update = function(dt) {
     const x = this.mousePos.x;
     const y = this.mousePos.y;
     
-    // --- 1. Manual Raycast against Fireflies ---
+    // --- 1. Primeiro tenta-se acertar nos pontos desenhados (a ponte) ---
+    // São esferas pequenas: mede-se à mão a distância do raio a cada uma,
+    // que é mais barato do que pedir ao motor para as desenhar de novo só
+    // para saber onde se carregou.
     const camera = this.entity.camera;
     camera.screenToWorld(x, y, camera.nearClip, this.ray.origin);
     camera.screenToWorld(x, y, camera.farClip, this.ray.direction);
@@ -174,7 +177,7 @@ CameraCoordinates.prototype.update = function(dt) {
             this.coordY.textContent = this.hitPosition.y.toFixed(2);
             this.coordZ.textContent = this.hitPosition.z.toFixed(2);
         }
-        return; // Found a firefly, skip depth picker
+        return; // acertou num ponto: não é preciso ir ao mapa
     }
 
     // --- 2. Fallback to Depth Picker (Gaussian Splat) ---

@@ -12,5 +12,3 @@
 /bridge_drawing.png
   Cache-Control: public, max-age=86400, stale-while-revalidate=604800
 
-/ground_fireflies.json
-  Cache-Control: public, max-age=86400, stale-while-revalidate=604800
