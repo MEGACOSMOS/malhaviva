@@ -39,6 +39,11 @@ const FATOR_DA_ALTURA = 3;
 // ...nem fica mais perto do que isto, para nunca colar à ponta do nariz.
 const ALCANCE_MINIMO = 30;
 
+// Até que altura acima do chão o ponto de atenção pode subir. Serve para
+// ele não seguir a vista para o céu: quem olha para cima continua a ter à
+// frente casas, e é nelas que o detalhe deve ficar.
+const ALTURA_MAXIMA_DO_FOCO = 12;
+
 // Quantos graus a câmara tem de rodar para o detalhe ser recalculado.
 // De origem o motor só reagia a deslocações; agora que a direção do olhar
 // manda no detalhe, a rotação também tem de contar.
@@ -190,6 +195,14 @@ export function ligarLodNoCentroDaVista(app, opcoes = {}) {
             posicao.y + frente.y * distancia,
             posicao.z + frente.z * distancia
         );
+
+        // O ponto de atenção anda pelo chão, nunca pelo ar. A olhar para
+        // cima a linha de visão vai dar ao céu, e o ponto ia atrás dela —
+        // ficava a pairar num sítio onde não há bairro nenhum, e o detalhe
+        // fino desaparecia mesmo do que se tinha à frente. Aqui ele desce
+        // ao terreno, que é onde estão as casas que se estão a ver.
+        const tectoDoFoco = Math.min(posicao.y, definicoes.alturaDoChao + ALTURA_MAXIMA_DO_FOCO);
+        if (posicaoDeFoco.y > tectoDoFoco) posicaoDeFoco.y = tectoDoFoco;
 
         cameraDeFoco.camera = cameraReal.camera;
         cameraDeFoco.forward = frente;

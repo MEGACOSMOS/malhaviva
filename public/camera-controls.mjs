@@ -972,7 +972,7 @@ class CameraControls extends Script {
                 // ficam definidos no arranque da pagina) e tem de acompanhar
                 // os do index.html.
                 let baseDist = 250;
-                if (isLow) baseDist = 20;
+                if (isLow) baseDist = 28;
                 else if (isMed) baseDist = 70;
                 
                 this._splatGsplat.lodBaseDistance = baseDist * fovRatio;
