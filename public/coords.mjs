@@ -132,56 +132,9 @@ CameraCoordinates.prototype.update = function(dt) {
     const x = this.mousePos.x;
     const y = this.mousePos.y;
     
-    // --- 1. Primeiro tenta-se acertar nos pontos desenhados (a ponte) ---
-    // São esferas pequenas: mede-se à mão a distância do raio a cada uma,
-    // que é mais barato do que pedir ao motor para as desenhar de novo só
-    // para saber onde se carregou.
-    const camera = this.entity.camera;
-    camera.screenToWorld(x, y, camera.nearClip, this.ray.origin);
-    camera.screenToWorld(x, y, camera.farClip, this.ray.direction);
-    this.ray.direction.sub(this.ray.origin).normalize();
-
-    let hitParticle = false;
-    let closestDist = Infinity;
-    
-    if (window.pickableParticles) {
-        const oc = new pc.Vec3();
-        for (let i = 0; i < window.pickableParticles.length; i++) {
-            const e = window.pickableParticles[i];
-            if (!e || !e.enabled || !e.parent) continue; // Check if valid and in hierarchy
-            
-            const center = e.getPosition();
-            const radius = e.getLocalScale().x * 3.0; // Larger hitbox (3x) for easy picking
-
-            oc.sub2(this.ray.origin, center);
-            const b = oc.dot(this.ray.direction);
-            const c = oc.dot(oc) - radius * radius;
-            const discriminant = b * b - c;
-
-            if (discriminant > 0) {
-                const t = -b - Math.sqrt(discriminant);
-                if (t > 0 && t < closestDist) {
-                    closestDist = t;
-                    this.hitPosition.copy(this.ray.direction).mulScalar(t).add(this.ray.origin);
-                    hitParticle = true;
-                }
-            }
-        }
-    }
-
-    if (hitParticle) {
-        this.picking = false;
-        this.cursor.setPosition(this.hitPosition);
-        if (this.coordX && this.coordY && this.coordZ) {
-            this.coordX.textContent = this.hitPosition.x.toFixed(2);
-            this.coordY.textContent = this.hitPosition.y.toFixed(2);
-            this.coordZ.textContent = this.hitPosition.z.toFixed(2);
-        }
-        return; // acertou num ponto: não é preciso ir ao mapa
-    }
-
-    // --- 2. Fallback to Depth Picker (Gaussian Splat) ---
-    // Prepare picker (renders depth buffer)
+    // O sítio onde se carregou sai da profundidade que o mapa desenha.
+    // (Havia antes uma primeira tentativa, à mão, contra os pontos da ponte
+    // desenhada; saiu com ela.)
     this.picker.prepare(this.entity.camera, this.app.scene);
     
     if (this.picker.getWorldPointAsync) {

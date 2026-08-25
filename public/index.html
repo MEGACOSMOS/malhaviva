@@ -945,10 +945,9 @@
         <!-- Assets -->
         <pc-asset id="splat-scene" src="splat/lod-meta.json" type="gsplat"></pc-asset>
         <pc-asset id="camera-controls-script" src="./camera-controls.mjs?v=8" type="script"></pc-asset>
-        <pc-asset id="camera-coords-script" src="./coords.mjs?v=6" type="script"></pc-asset>
+        <pc-asset id="camera-coords-script" src="./coords.mjs?v=7" type="script"></pc-asset>
         <pc-asset id="annotations-script" src="./annotations.mjs?v=27" type="script"></pc-asset>
         <pc-asset id="trail-script" src="./trail.mjs?v=9" type="script"></pc-asset>
-        <pc-asset id="image-particles-script" src="./image-particles.mjs?v=13" type="script"></pc-asset>
 
         <!-- Scene -->
         <pc-scene>
@@ -974,13 +973,6 @@
                 <pc-gsplat asset="splat-scene"></pc-gsplat>
             </pc-entity>
 
-
-            <!-- Image Particles (Drawn Bridge) -->
-            <pc-entity name="imagePlane" position="1263 0 -3368" rotation="0 336 0" scale="4.7 4.7 4.7">
-                <pc-scripts>
-                    <pc-script name="imageParticles" image-url="./bridge_drawing.png" width="600" particle-density="0.5" particle-size="1.0" threshold="50"></pc-script>
-                </pc-scripts>
-            </pc-entity>
 
         </pc-scene>
     </pc-app>
@@ -1369,9 +1361,6 @@ void modifySplatColor(vec3 center, inout vec4 color) {
                 }
 
                 // --- Nível Baixo: menos pixéis para desenhar ---
-                // A ponte deixou de ser apagada aqui: agora que os seus
-                // pontos são agrupados num punhado de desenhos, cabe em todos
-                // os níveis de qualidade e faz parte do cenário à volta.
                 //
                 // Um telemóvel desenha à medida do ecrã (um ponto por ponto),
                 // o que já é bem menos do que os dois ou três pontos por
@@ -1622,10 +1611,10 @@ void modifySplatColor(vec3 center, inout vec4 color) {
         };
 
         whenReady('pc-app').then(({ app }) => {
-            // Junta os milhares de objetos pequenos (os pontos da ponte, os
-            // tracinhos das rotas) num punhado de desenhos. Este motor não
-            // corre este passo sozinho, por isso é acionado aqui a cada
-            // imagem — só faz trabalho quando há objetos novos por agrupar.
+            // Junta os tracinhos das rotas num punhado de desenhos. Este
+            // motor não corre este passo sozinho, por isso é acionado aqui a
+            // cada imagem — só faz trabalho quando há objetos novos por
+            // agrupar.
             app.on('prerender', () => {
                 app.root.syncHierarchy();
                 app.batcher.updateAll();

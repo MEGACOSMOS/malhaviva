@@ -9,6 +9,4 @@
 /videos/*
   Cache-Control: public, max-age=86400, stale-while-revalidate=604800
 
-/bridge_drawing.png
-  Cache-Control: public, max-age=86400, stale-while-revalidate=604800
 
