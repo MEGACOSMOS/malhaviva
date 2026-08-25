@@ -116,13 +116,13 @@ AnnotationController.prototype.initialize = function() {
             background-color: #ff0000;
             color: #ffffff;
         }
-        .marker-dot.viewed {
-            background-color: #ffffff;
-            color: #10b981;
-        }
+        /* Já visto: o marcador apaga-se em cinzento e deixa passar um
+           pouco do bairro por trás, para se perceber de relance o que
+           falta ver sem que o que já se viu desapareça. */
+        .marker-dot.viewed,
         .marker-dot.is-360.viewed {
-            background-color: #ffffff;
-            color: #ff0000;
+            background-color: rgba(138, 143, 152, 0.55);
+            color: rgba(255, 255, 255, 0.85);
         }
         .marker-text-360 {
             font-size: 11px;
