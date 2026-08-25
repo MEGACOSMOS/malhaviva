@@ -11,7 +11,11 @@ AnnotationController.prototype.initialize = function() {
             label: "Olho de Águia",
             is360: true,
             isImage: true,
-            imagePath: "https://pub-0a409b596f304409941ca1f88f3b593b.r2.dev/HDRi%20-%20Preenchimento%20Generativo.exr",
+            // A mesma panorâmica que envolve o bairro, já preparada para
+            // a web. Antes apontava para o ficheiro original, num formato
+            // que o navegador não sabe abrir sozinho e com muitos megabytes
+            // pelo meio — a janela abria vazia.
+            imagePath: "/ceu-olho-de-aguia.jpg",
             element: null
         },
         {
@@ -431,7 +435,7 @@ AnnotationController.prototype.initialize = function() {
 
             if (ann.is360) {
                 if (ann.isImage) {
-                    this.openImage360(ann.imagePath);
+                    this.openImage360(ann.imagePath, ann.label);
                 } else if (this.entity.script && this.entity.script.trailController) {
                     this.entity.script.trailController.showPopup360(ann.trailIndex);
                 }
@@ -445,61 +449,113 @@ AnnotationController.prototype.initialize = function() {
     });
 };
 
-AnnotationController.prototype.openImage360 = function(imagePath) {
+/**
+ * Abre uma fotografia 360º na mesma janela dos vídeos.
+ *
+ * Antes esta janela era um ecrã preto de ponta a ponta com uma cruz a
+ * flutuar a um canto; agora tem a moldura, a barra de cima com o nome e a
+ * mesma entrada dos vídeos das pessoas, para ser a mesma casa.
+ *
+ * @param {string} caminho - Onde está a fotografia.
+ * @param {string} [titulo] - Nome a mostrar na barra de cima.
+ */
+AnnotationController.prototype.openImage360 = function(caminho, titulo) {
     if (!this.imageModal) {
         this.imageModal = document.createElement('div');
+        this.imageModal.id = 'image-modal';
         this.imageModal.style.position = 'fixed';
         this.imageModal.style.top = '0';
         this.imageModal.style.left = '0';
-        this.imageModal.style.width = '100vw';
-        this.imageModal.style.height = '100vh';
-        this.imageModal.style.backgroundColor = '#000000';
-        this.imageModal.style.zIndex = '3000';
+        this.imageModal.style.width = '100%';
+        this.imageModal.style.height = '100%';
+        this.imageModal.style.backgroundColor = '#05050a';
         this.imageModal.style.display = 'none';
+        this.imageModal.style.alignItems = 'center';
+        this.imageModal.style.justifyContent = 'center';
+        this.imageModal.style.zIndex = '3000';
+        this.imageModal.style.opacity = '0';
+        this.imageModal.style.transition = 'opacity 0.3s ease';
 
-        // Close button
-        const closeBtn = document.createElement('div');
-        closeBtn.innerHTML = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>';
-        closeBtn.style.position = 'absolute';
-        closeBtn.style.top = '20px';
-        closeBtn.style.right = '20px';
-        closeBtn.style.color = '#ffffff';
+        const content = document.createElement('div');
+        content.style.position = 'relative';
+        content.style.width = '90%';
+        content.style.maxWidth = '1000px';
+        content.style.backgroundColor = '#05050a';
+        content.style.borderRadius = '0';
+        content.style.overflow = 'hidden';
+        content.style.boxShadow = '0 20px 60px rgba(0,0,0,0.6)';
+        content.style.border = '1px solid rgba(255,255,255,0.1)';
+        content.style.transform = 'scale(0.95)';
+        content.style.transition = 'transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)';
+        this.imageModalContent = content;
+
+        const header = document.createElement('div');
+        header.style.padding = '16px 24px';
+        header.style.display = 'flex';
+        header.style.justifyContent = 'space-between';
+        header.style.alignItems = 'center';
+        header.style.borderBottom = '1px solid rgba(255,255,255,0.05)';
+        header.style.background = 'linear-gradient(to bottom, rgba(255,255,255,0.05), transparent)';
+
+        this.imageModalTitle = document.createElement('div');
+        this.imageModalTitle.style.color = '#fff';
+        this.imageModalTitle.style.fontWeight = '600';
+        this.imageModalTitle.style.fontSize = '1.1rem';
+
+        const closeBtn = document.createElement('button');
+        closeBtn.innerHTML = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>';
+        closeBtn.style.background = 'none';
+        closeBtn.style.border = 'none';
+        closeBtn.style.color = '#fff';
         closeBtn.style.cursor = 'pointer';
-        closeBtn.style.zIndex = '3010';
-        closeBtn.style.width = '44px';
-        closeBtn.style.height = '44px';
+        closeBtn.style.opacity = '0.6';
+        closeBtn.style.transition = 'opacity 0.2s ease, transform 0.2s ease';
         closeBtn.style.display = 'flex';
         closeBtn.style.alignItems = 'center';
         closeBtn.style.justifyContent = 'center';
-        closeBtn.style.background = 'rgba(0,0,0,0.5)';
-        closeBtn.style.borderRadius = '50%';
-        closeBtn.style.transition = 'background 0.2s, transform 0.2s';
-        
-        closeBtn.addEventListener('mouseenter', () => { closeBtn.style.background = 'rgba(0,0,0,0.8)'; closeBtn.style.transform = 'scale(1.1)'; });
-        closeBtn.addEventListener('mouseleave', () => { closeBtn.style.background = 'rgba(0,0,0,0.5)'; closeBtn.style.transform = 'scale(1)'; });
-
-        closeBtn.addEventListener('click', () => {
-            this.imageModal.style.display = 'none';
-            // Clear iframe to stop resources
-            Array.from(this.imageModal.children).forEach(child => {
-                if (child !== closeBtn) this.imageModal.removeChild(child);
-            });
-            const gsplat = this.app.root.findByName('gsplat-scene');
-            if (gsplat) gsplat.enabled = true;
+        closeBtn.addEventListener('mouseenter', () => {
+            closeBtn.style.opacity = '1';
+            closeBtn.style.transform = 'scale(1.1)';
+        });
+        closeBtn.addEventListener('mouseleave', () => {
+            closeBtn.style.opacity = '0.6';
+            closeBtn.style.transform = 'scale(1)';
         });
 
-        this.imageModal.appendChild(closeBtn);
+        closeBtn.addEventListener('click', () => {
+            this.imageModal.style.opacity = '0';
+            this.imageModalContent.style.transform = 'scale(0.95)';
+            setTimeout(() => {
+                this.imageModal.style.display = 'none';
+                this.imageFrame.innerHTML = '';
+                const gsplat = this.app.root.findByName('gsplat-scene');
+                if (gsplat) gsplat.enabled = true;
+            }, 300);
+        });
+
+        header.appendChild(this.imageModalTitle);
+        header.appendChild(closeBtn);
+
+        this.imageFrame = document.createElement('div');
+        this.imageFrame.style.width = '100%';
+        this.imageFrame.style.aspectRatio = '16 / 9';
+        this.imageFrame.style.backgroundColor = '#000';
+
+        content.appendChild(header);
+        content.appendChild(this.imageFrame);
+        this.imageModal.appendChild(content);
         document.body.appendChild(this.imageModal);
     }
 
-    const iframe = document.createElement('iframe');
-    iframe.src = '/image360.html?src=' + encodeURIComponent(imagePath);
-    iframe.style.width = '100%';
-    iframe.style.height = '100%';
-    iframe.style.border = 'none';
-    this.imageModal.appendChild(iframe);
+    this.imageModalTitle.textContent = titulo || 'Fotografia 360º';
+    this.imageFrame.innerHTML = '<iframe src="/image360.html?src=' + encodeURIComponent(caminho) +
+        '" style="width: 100%; height: 100%; border: none; background: #000; display: block;" allow="xr-spatial-tracking; fullscreen"></iframe>';
 
-    this.imageModal.style.display = 'block';
+    this.imageModal.style.display = 'flex';
+    setTimeout(() => {
+        this.imageModal.style.opacity = '1';
+        this.imageModalContent.style.transform = 'scale(1)';
+    }, 10);
 
     const gsplat = this.app.root.findByName('gsplat-scene');
     if (gsplat) gsplat.enabled = false;

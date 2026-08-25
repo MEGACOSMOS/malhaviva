@@ -39,6 +39,23 @@
             backdrop-filter: blur(8px);
         }
         #play-btn-initial:hover { background: rgba(255, 255, 255, 0.2); transform: scale(1.05); }
+
+        /* Quando é só para começar a ver, o botão é o mesmo círculo dos
+           outros vídeos do bairro. A tarja larga com letras fica reservada
+           para o convite a entrar nos óculos, que é outra coisa. */
+        #play-btn-initial.play-redondo {
+            background: rgba(0,0,0,0.6);
+            border: none;
+            border-radius: 50%;
+            width: 70px; height: 70px;
+            padding: 0;
+            gap: 0;
+            font-size: 0;
+            box-shadow: none;
+            backdrop-filter: none;
+            justify-content: center;
+        }
+        #play-btn-initial.play-redondo:hover { background: rgba(0,0,0,0.75); transform: scale(1.1); }
         .spinner {
             width: 30px; height: 30px; border: 3px solid rgba(255,255,255,0.3);
             border-top-color: #fff; border-radius: 50%; animation: spin 1s linear infinite;
@@ -80,8 +97,8 @@
         .video-controls {
             position: absolute;
             bottom: 0; left: 0; right: 0;
-            background: linear-gradient(transparent, rgba(5,5,10,0.95));
-            padding: 30px 15px 15px;
+            background: linear-gradient(transparent, rgba(0,0,0,0.9));
+            padding: 30px 15px 10px;
             display: flex;
             flex-direction: column;
             gap: 12px;
@@ -254,9 +271,8 @@
 <body>
     <!-- Initial Load Overlay -->
     <div id="play-overlay">
-        <button id="play-btn-initial">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
-            Iniciar Vídeo 360º
+        <button id="play-btn-initial" class="play-redondo" aria-label="Reproduzir">
+            <svg width="36" height="36" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
         </button>
         <div class="spinner" id="spinner"></div>
     </div>
@@ -452,10 +468,10 @@
         // óculos exige sempre um toque dado nesta página.
         const pedidoDeVR = urlParams.get('vr') === '1';
         if (pedidoDeVR) {
-            playBtnInitial.innerHTML = playBtnInitial.innerHTML.replace(
-                /Iniciar Vídeo 360º|Ver com óculos/,
-                'Ver com óculos'
-            );
+            playBtnInitial.classList.remove('play-redondo');
+            playBtnInitial.innerHTML =
+                '<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>' +
+                'Ver com óculos';
         }
 
         playBtnInitial.addEventListener('click', () => {
@@ -477,6 +493,29 @@
                 spinner.style.display = 'none';
             });
         });
+
+        // Nos vídeos das pessoas a imagem começa a andar mal a janela abre.
+        // Aqui era preciso carregar num botão primeiro, e isso fazia as duas
+        // janelas parecerem coisas diferentes. Agora tenta-se arrancar
+        // sozinho; só se o navegador recusar (há navegadores que exigem um
+        // toque antes de deixar sair som) é que o botão fica à espera.
+        if (!pedidoDeVR) {
+            video.addEventListener('canplay', () => {
+                if (!video.paused) return;
+                video.play().then(() => {
+                    overlay.style.display = 'none';
+                    uiLayer.classList.remove('paused');
+                    showControls();
+                }).catch(() => { /* fica o botão do meio à espera de um toque */ });
+            }, { once: true });
+        }
+
+        // O comando do volume passa pela mesa de som do navegador, e essa
+        // só pode ser ligada depois de a pessoa tocar em alguma coisa. Fica
+        // à espera do primeiro toque, seja ele onde for.
+        const ligarSomAoPrimeiroToque = () => initAudio();
+        window.addEventListener('pointerdown', ligarSomAoPrimeiroToque, { once: true });
+        window.addEventListener('keydown', ligarSomAoPrimeiroToque, { once: true });
 
         playPauseBtn.addEventListener('click', togglePlay);
         bigPlayBtn.addEventListener('click', togglePlay);
@@ -512,6 +551,7 @@
         volumeSlider.addEventListener('input', (e) => {
             currentVolume = parseFloat(e.target.value);
             if (gainNode) gainNode.gain.value = currentVolume;
+            else video.volume = Math.min(1, currentVolume);
             volumePercentage.innerText = Math.round(currentVolume * 100) + '%';
             
             if (currentVolume === 0) {
@@ -528,11 +568,13 @@
                 currentVolume = parseFloat(volumeSlider.value) || 1;
                 if (currentVolume === 0) { currentVolume = 1; volumeSlider.value = 1; }
                 if (gainNode) gainNode.gain.value = currentVolume;
+                else video.volume = Math.min(1, currentVolume);
                 volumePercentage.innerText = Math.round(currentVolume * 100) + '%';
                 volumeBtn.innerHTML = volHighIcon;
                 isMuted = false;
             } else {
                 if (gainNode) gainNode.gain.value = 0;
+                else video.volume = 0;
                 volumePercentage.innerText = '0%';
                 volumeBtn.innerHTML = volMutedIcon;
                 isMuted = true;
