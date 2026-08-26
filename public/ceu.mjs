@@ -56,13 +56,7 @@ const PADRAO = {
     // foi tirada de um ponto concreto do bairro, e é sobre esse ponto que
     // ela assenta melhor. Estas duas medidas deslocam-na no plano.
     deslocamentoX: -0.06,
-    deslocamentoZ: 0,
-    // A que altura estava a máquina quando tirou a panorâmica, em metros
-    // acima do chão da cúpula. É esta medida que decide como a paisagem se
-    // move quando andamos: a fotografia é projectada a partir deste ponto,
-    // e se ele não estiver à altura certa o chão em volta parece deslizar
-    // ao contrário de nós.
-    alturaDoOlho: 86
+    deslocamentoZ: 0
 };
 
 /**
@@ -197,19 +191,9 @@ export function ligarCeu(app) {
                 const z = definicoes.deslocamentoZ;
                 cena.sky.node.setLocalScale(t, t, t);
                 cena.sky.node.setLocalPosition(x, definicoes.alturaDaCupula, z);
-                // O ponto de onde a fotografia é projectada — o sítio onde
-                // estava a máquina. Fica em cima do centro da cúpula, à
-                // altura pedida.
-                //
-                // Atenção: o motor lê este ponto em medidas da própria
-                // cúpula, não em metros do mapa, e depois multiplica-o pelo
-                // tamanho dela. Antes escreviam-se aqui metros, e o ponto
-                // acabava a oitenta e tal metros de altura e a cinquenta
-                // metros de lado, sem ninguém dar por isso — era daí que
-                // vinha o chão a escorregar para o lado errado quando se
-                // andava. Agora divide-se pelo tamanho, e o ponto fica
-                // mesmo onde se manda.
-                cena.sky.center = new Vec3(0, definicoes.alturaDoOlho / t, 0);
+                // O centro tem de acompanhar a cúpula, senão a projecção
+                // fica a olhar para um sítio onde ela já não está.
+                cena.sky.center = new Vec3(x, definicoes.alturaDaCupula, z);
             }
         }
         guardar();
