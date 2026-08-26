@@ -24,6 +24,11 @@
  */
 
 export const AJUSTES_PADRAO = {
+    // Quanto da paisagem se vê. A um, a fotografia aparece por inteiro; a
+    // zero, dá lugar ao fundo do bairro e é como se não estivesse lá. Pelo
+    // meio, esbate-se — serve para a paisagem deixar de competir com o
+    // bairro sem ter de se desligar de vez.
+    opacidade: 1,
     exposicao: 1,
     gama: 1,
     contraste: 0,
@@ -35,6 +40,11 @@ export const AJUSTES_PADRAO = {
 
 // Largura da fotografia enquanto se arrasta um cursor, e depois de a mão
 // parar. A pequena é para ser instantânea; a grande é a que fica.
+// A cor do fundo do bairro (o mesmo #05050a do ecrã de espera). É para
+// aqui que a paisagem se esbate quando se lhe baixa a opacidade — assim,
+// a zero, o resultado é igual a não haver paisagem nenhuma.
+export const FUNDO = [5, 5, 10];
+
 export const LARGURA_RAPIDA = 1024;
 export const LARGURA_FINAL = 4096;
 
@@ -72,7 +82,8 @@ function paraEcra(x) {
  */
 export function ajustesNeutros(ajustes) {
     const a = Object.assign({}, AJUSTES_PADRAO, ajustes);
-    return Math.abs(a.exposicao - 1) < 1e-4 &&
+    return Math.abs(a.opacidade - 1) < 1e-4 &&
+        Math.abs(a.exposicao - 1) < 1e-4 &&
         Math.abs(a.gama - 1) < 1e-4 &&
         a.contraste <= 1e-4 &&
         Math.abs(a.saturacao - 1) < 1e-4 &&
@@ -199,6 +210,8 @@ export function tratarFotografia(original, ajustes, largura) {
     const dados = imagem.data;
     const tabela = construirTabela(a);
     const sat = a.saturacao;
+    const op = Math.min(Math.max(a.opacidade, 0), 1);
+    const esbater = Math.abs(op - 1) > 1e-4;
 
     for (let i = 0; i < dados.length; i += 4) {
         let r = tabela[dados[i]];
@@ -209,6 +222,11 @@ export function tratarFotografia(original, ajustes, largura) {
             r = cinzento + (r - cinzento) * sat;
             g = cinzento + (g - cinzento) * sat;
             b = cinzento + (b - cinzento) * sat;
+        }
+        if (esbater) {
+            r = r * op + FUNDO[0] * (1 - op);
+            g = g * op + FUNDO[1] * (1 - op);
+            b = b * op + FUNDO[2] * (1 - op);
         }
         dados[i] = r;
         dados[i + 1] = g;

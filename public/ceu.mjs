@@ -1,5 +1,5 @@
 import { EnvLighting, PIXELFORMAT_RGBA8, Quat, Texture, Vec3 } from 'playcanvas';
-import { AJUSTES_PADRAO, LARGURA_FINAL, LARGURA_RAPIDA, tratarFotografia } from './ceu-fotografia.mjs?v=3';
+import { AJUSTES_PADRAO, LARGURA_FINAL, LARGURA_RAPIDA, tratarFotografia } from './ceu-fotografia.mjs?v=4';
 
 /**
  * O céu do bairro: a panorâmica do Olho de Águia à volta do mapa.

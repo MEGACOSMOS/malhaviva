@@ -876,6 +876,13 @@
                         </label>
 
                         <label class="ceu-afinacao">
+                            <span>Opacidade
+                                <input type="text" inputmode="decimal" id="foto-opacidade-valor" class="ceu-numero" value="1">
+                            </span>
+                            <input type="range" id="foto-opacidade" min="0" max="1" step="0.01" value="1">
+                        </label>
+
+                        <label class="ceu-afinacao">
                             <span>Gama
                                 <input type="text" inputmode="decimal" id="foto-gama-valor" class="ceu-numero" value="1">
                             </span>
@@ -1117,7 +1124,7 @@
         } from 'playcanvas';
         import { ligarLodNoCentroDaVista } from './lod-foco.mjs?v=3';
         import { criarModoVR } from './vr.mjs?v=3';
-        import { ligarCeu } from './ceu.mjs?v=8';
+        import { ligarCeu } from './ceu.mjs?v=9';
 
         // Resolução da grelha usada para medir o mapa, em metros.
         const RESOLUCAO_LIMITE = 4;
@@ -1902,6 +1909,7 @@ void modifySplatColor(vec3 center, inout vec4 color) {
                 // num só ajuste da imagem.
                 const linhasDaFoto = [
                     { campo: 'exposicao', barra: 'foto-exposicao', caixa: 'foto-exposicao-valor' },
+                    { campo: 'opacidade', barra: 'foto-opacidade', caixa: 'foto-opacidade-valor' },
                     { campo: 'gama', barra: 'foto-gama', caixa: 'foto-gama-valor' },
                     { campo: 'contraste', barra: 'foto-contraste', caixa: 'foto-contraste-valor' },
                     { campo: 'saturacao', barra: 'foto-saturacao', caixa: 'foto-saturacao-valor' },
@@ -1959,6 +1967,7 @@ void modifySplatColor(vec3 center, inout vec4 color) {
                     copiar.addEventListener('click', () => {
                         const a = ceu.definicoes.ajustes;
                         const texto = 'exposicao ' + arredondar(a.exposicao) +
+                            ' | opacidade ' + arredondar(a.opacidade) +
                             ' | gama ' + arredondar(a.gama) +
                             ' | contraste ' + arredondar(a.contraste) +
                             ' | cor ' + arredondar(a.saturacao) +
