@@ -60,7 +60,11 @@
             display: block;
             width: 100%;
             height: 100%;
-            filter: saturate(90%);
+            /* O tratamento de fábrica da imagem do bairro. Está escrito por
+               extenso, e não só na parte que muda, para ser o mesmo texto
+               que o painel do filtro visual monta — assim o que se vê ao
+               abrir a página é exactamente o que os cursores dizem. */
+            filter: saturate(90%) brightness(100%) contrast(90%) hue-rotate(0deg) sepia(0%);
         }
 
         /* ─── Loading Overlay ─── */
@@ -686,8 +690,8 @@
             <input type="range" id="filter-brightness" min="0" max="200" value="100">
         </div>
         <div class="filter-row">
-            <label>Contraste <span class="filter-val" id="val-contrast">100%</span></label>
-            <input type="range" id="filter-contrast" min="0" max="200" value="100">
+            <label>Contraste <span class="filter-val" id="val-contrast">90%</span></label>
+            <input type="range" id="filter-contrast" min="0" max="200" value="90">
         </div>
         <div class="filter-row">
             <label>Matiz <span class="filter-val" id="val-hue">0°</span></label>
@@ -1937,7 +1941,7 @@ void modifySplatColor(vec3 center, inout vec4 color) {
         const sliders = {
             saturate:   { el: document.getElementById('filter-saturate'),   valEl: document.getElementById('val-saturate'),   unit: '%', def: 90 },
             brightness: { el: document.getElementById('filter-brightness'), valEl: document.getElementById('val-brightness'), unit: '%', def: 100 },
-            contrast:   { el: document.getElementById('filter-contrast'),   valEl: document.getElementById('val-contrast'),   unit: '%', def: 100 },
+            contrast:   { el: document.getElementById('filter-contrast'),   valEl: document.getElementById('val-contrast'),   unit: '%', def: 90 },
             hue:        { el: document.getElementById('filter-hue'),        valEl: document.getElementById('val-hue'),        unit: '°', def: 0 },
             sepia:      { el: document.getElementById('filter-sepia'),      valEl: document.getElementById('val-sepia'),      unit: '%', def: 0 },
         };
@@ -1968,12 +1972,15 @@ void modifySplatColor(vec3 center, inout vec4 color) {
             });
         });
 
+        // Repor devolve o tratamento de fábrica — o mesmo com que a página
+        // abre. Antes tirava o filtro todo, e ficavam os cursores a dizer
+        // uma coisa e a imagem a mostrar outra.
         document.getElementById('filter-reset').addEventListener('click', () => {
             for (const key in sliders) {
                 sliders[key].el.value = sliders[key].def;
             }
             updateLabels();
-            if (pcAppEl) pcAppEl.style.filter = 'none';
+            applyFilter();
         });
 
         // Apply button (close panel and keep filter)
