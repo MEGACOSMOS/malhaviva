@@ -972,6 +972,14 @@
                         <span>Rotas 360º</span>
                     </label>
                 </div>
+
+                <div class="settings-title" style="margin-top: 18px;">Paisagem</div>
+                <div class="settings-options">
+                    <label class="settings-radio">
+                        <input type="checkbox" id="paisagem-ligada" checked>
+                        <span>Cidade e rio em volta</span>
+                    </label>
+                </div>
             </div>
         </div>
 
@@ -1678,6 +1686,26 @@ void modifySplatColor(vec3 center, inout vec4 color) {
             }
         }
 
+        // --- Paisagem ---
+        //
+        // A panorâmica que envolve o bairro — o rio, a ponte, a cidade ao
+        // fundo. Desligada, fica só o bairro contra o escuro, que é como
+        // ele estava antes de a paisagem existir. Quem tiver uma máquina
+        // mais fraca ganha algum fôlego com isto.
+        //
+        // A escolha fica guardada com as outras afinações do céu, por isso
+        // sobrevive a fechar a página.
+        const caixaDaPaisagem = document.getElementById('paisagem-ligada');
+        if (caixaDaPaisagem) {
+            caixaDaPaisagem.addEventListener('change', () => {
+                if (window.ceu) window.ceu.afinar('ligado', caixaDaPaisagem.checked);
+                // O menu de desenvolvedor tem o mesmo interruptor: fica a
+                // dizer o mesmo que este.
+                const gemeo = document.getElementById('ceu-ligado');
+                if (gemeo) gemeo.checked = caixaDaPaisagem.checked;
+            });
+        }
+
         tiposDeAnotacao.forEach(({ id, chave }) => {
             const caixa = document.getElementById(id);
             if (!caixa) return;
@@ -1718,6 +1746,7 @@ void modifySplatColor(vec3 center, inout vec4 color) {
             const ceu = ligarCeu(app);
             window.ceu = ceu;
             ligarComandosDoCeu(ceu);
+            if (caixaDaPaisagem) caixaDaPaisagem.checked = ceu.definicoes.ligado !== false;
 
             // --- Modo VR ---
             // O botão só aparece a quem tenha óculos; a quem não tenha, não
@@ -1849,7 +1878,12 @@ void modifySplatColor(vec3 center, inout vec4 color) {
                     caixa.addEventListener('keydown', (e) => { if (e.key === 'Enter') caixa.blur(); });
                 };
 
-                ligado.addEventListener('change', () => { ceu.afinar('ligado', ligado.checked); mostrar(); });
+                ligado.addEventListener('change', () => {
+                    ceu.afinar('ligado', ligado.checked);
+                    const gemeo = document.getElementById('paisagem-ligada');
+                    if (gemeo) gemeo.checked = ligado.checked;
+                    mostrar();
+                });
                 cupula.addEventListener('change', () => { ceu.afinar('cupula', cupula.checked); mostrar(); });
                 rotacao.addEventListener('input', () => { ceu.afinar('rotacao', parseFloat(rotacao.value)); mostrar(); });
                 brilho.addEventListener('input', () => { ceu.afinar('brilho', parseFloat(brilho.value)); mostrar(); });
