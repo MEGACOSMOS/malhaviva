@@ -100,17 +100,23 @@
             color: var(--color-accent);
         }
 
-        .loading-spinner {
-            width: 40px;
-            height: 40px;
-            border: 3px solid var(--color-border);
-            border-top-color: var(--color-accent);
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
+        /* A espera do bairro é contada em quadrados: a barra vai-se
+           enchendo da esquerda para a direita, um de cada vez, e acende
+           toda quando o mapa está pronto a entrar. */
+        .loading-bar {
+            display: flex;
+            gap: 5px;
         }
 
-        @keyframes spin {
-            to { transform: rotate(360deg); }
+        .loading-bar span {
+            width: 10px;
+            height: 10px;
+            background: var(--color-border);
+            transition: background 0.25s ease;
+        }
+
+        .loading-bar span.aceso {
+            background: var(--color-accent);
         }
 
         .loading-text {
@@ -673,10 +679,69 @@
     <div id="loading-overlay">
         <div class="loading-content">
             <div class="loading-logo">Malha Viva</div>
-            <div class="loading-spinner"></div>
+            <div class="loading-bar" id="loading-bar" aria-hidden="true"></div>
             <div class="loading-text">A carregar modelo 3D…</div>
         </div>
     </div>
+
+    <script>
+    /**
+     * A barra de carregamento, quadrado a quadrado.
+     *
+     * Não há maneira honesta de saber quanto falta: o bairro chega aos
+     * bocados, e os bocados não se anunciam. Por isso a barra avança como
+     * quem se aproxima de uma porta — cada passo é uma fracção do que
+     * falta, e assim nunca pára nem chega ao fim antes de tempo. Quando o
+     * mapa está mesmo pronto, acende de uma vez até ao último quadrado.
+     */
+    (function () {
+        const barra = document.getElementById('loading-bar');
+        const overlay = document.getElementById('loading-overlay');
+        if (!barra || !overlay) return;
+
+        const QUANTOS = 16;
+        const quadrados = [];
+        for (let i = 0; i < QUANTOS; i++) {
+            const q = document.createElement('span');
+            barra.appendChild(q);
+            quadrados.push(q);
+        }
+
+        let fraccao = 0;
+        let relogio = null;
+
+        const desenhar = () => {
+            const acesos = Math.round(fraccao * QUANTOS);
+            for (let i = 0; i < QUANTOS; i++) {
+                quadrados[i].classList.toggle('aceso', i < acesos);
+            }
+        };
+
+        const parar = () => { clearInterval(relogio); relogio = null; };
+
+        const andar = () => {
+            // O aviso de que falta o WebGL substitui o conteúdo todo do
+            // ecrã de espera; a partir daí não há barra para mexer.
+            if (!barra.isConnected) { parar(); return; }
+            fraccao += (0.92 - fraccao) * 0.03;
+            desenhar();
+        };
+
+        const comecar = () => { parar(); fraccao = 0; desenhar(); relogio = setInterval(andar, 90); };
+        const peloMenos = (f) => { if (f > fraccao) { fraccao = f; desenhar(); } };
+        const acabar = () => { parar(); fraccao = 1; desenhar(); };
+
+        window.barraDeCarga = { comecar, peloMenos, acabar };
+        comecar();
+
+        // O mesmo ecrã de espera volta a aparecer quando se fecha um vídeo
+        // 360º e o bairro é reposto. Aqui a barra dá por isso sozinha.
+        new MutationObserver(() => {
+            if (overlay.classList.contains('hidden')) acabar();
+            else if (!relogio) comecar();
+        }).observe(overlay, { attributes: true, attributeFilter: ['class'] });
+    })();
+    </script>
 
     <!-- Filter Panel -->
     <div id="filter-panel">
@@ -1635,6 +1700,9 @@ void modifySplatColor(vec3 center, inout vec4 color) {
         };
 
         whenReady('pc-app').then(({ app }) => {
+            // O motor já arrancou: falta só o bairro chegar aos bocados.
+            if (window.barraDeCarga) window.barraDeCarga.peloMenos(0.75);
+
             // Junta os tracinhos das rotas num punhado de desenhos. Este
             // motor não corre este passo sozinho, por isso é acionado aqui a
             // cada imagem — só faz trabalho quando há objetos novos por
