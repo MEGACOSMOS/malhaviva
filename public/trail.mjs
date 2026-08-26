@@ -218,19 +218,41 @@ TrailController.prototype.rebuildTrail = function() {
 
     const tmpLook = new pc.Vec3();
 
-    for (const pts of allPaths) {
+    // Cada rota é feita duas vezes: uma apagada e outra acesa, no mesmo
+    // sítio. Só uma delas está visível de cada vez.
+    //
+    // Parece esbanjamento e não é. Os tracinhos são agrupados pelo motor
+    // num punhado de desenhos, e mexer no material depois desse agrupamento
+    // faz o grupo inteiro deixar de aparecer — era essa a razão de a rota
+    // desaparecer quando o cursor lhe passava por cima. Acender e apagar
+    // conjuntos já feitos não mexe em material nenhum, e por isso funciona
+    // sempre. O conjunto escondido não custa nada a desenhar.
+    const fazerMaterial = (cor, intensidade, atravessaCasas) => {
         const material = new pc.StandardMaterial();
-        material.diffuse = this.dashColor;
-        material.emissive = this.dashColor;
-        material.emissiveIntensity = 1.0;
+        material.diffuse = cor;
+        material.emissive = cor;
+        material.emissiveIntensity = intensidade;
         material.blendType = pc.BLEND_NONE;
         material.opacity = 1.0;
         material.depthWrite = true;
-        material.depthTest = true;
+        material.depthTest = !atravessaCasas;
         material.update();
-        
+        return material;
+    };
+
+    for (const pts of allPaths) {
+        const material = fazerMaterial(this.dashColor, 1.0, false);
+        // O conjunto aceso é desenhado com as mesmas regras de profundidade
+        // do apagado. Tentar pô-lo por cima de tudo — desligando-lhe o teste
+        // de profundidade — é precisamente o que o fazia desaparecer: sem
+        // esse teste, o bairro, que é desenhado depois e é feito de manchas
+        // transparentes, passa-lhe por cima e apaga-o.
+        const materialAceso = fazerMaterial(this.dashHoverColor, 1.0, false);
+
         const trail = {
             material: material,
+            materialAceso: materialAceso,
+            pivotsAcesos: [],
             glowElements: [],
             dashCenters: [],
             pivots: [],
@@ -312,6 +334,25 @@ TrailController.prototype.rebuildTrail = function() {
             trail.pivots.push(dash);
             trail.dashCenters.push(centerPos.clone());
 
+            // O mesmo tracinho, na cor de aceso, à espera da sua vez.
+            const aceso = new pc.Entity('dash-aceso');
+            aceso.addComponent('render', {
+                type: 'box',
+                material: materialAceso,
+                castShadows: false,
+                receiveShadows: false
+            });
+            this.trailRoot.addChild(aceso);
+            aceso.setPosition(centerPos);
+            aceso.lookAt(tmpLook.copy(centerPos).add(seg.dir));
+            aceso.rotateLocal(90, 0, 0);
+            // Um pouco mais gordo do que o apagado: o destaque lê-se logo,
+            // esteja a rota sobre um telhado escuro ou sobre a terra clara.
+            aceso.setLocalScale(this.dashWidth * 1.45, this.dashLength * 1.1, this.dashThickness * 1.45);
+            if (batchGroupId !== null) {
+                aceso.render.batchGroupId = batchGroupId;
+            }
+            trail.pivotsAcesos.push(aceso);
         }
 
         this.buildTrailBounds(trail);
@@ -321,6 +362,11 @@ TrailController.prototype.rebuildTrail = function() {
     if (batchGroupId !== null && this.app.batcher) {
         this.app.batcher.markGroupDirty(batchGroupId);
     }
+
+    // Os desenhos agrupados só existem depois de o motor os juntar, na
+    // imagem seguinte. Fica o recado para então se apagarem os conjuntos
+    // acesos, que nascem todos visíveis.
+    this._porArrumar = true;
 };
 
 /**
@@ -601,6 +647,12 @@ TrailController.prototype.setTrailsVisible = function(visivel) {
                 batch.meshInstance.visible = visivel;
             }
         }
+        // Cada rota tem dois conjuntos, e só um deve aparecer: o aceso se o
+        // cursor lá estiver, o apagado nos outros casos.
+        for (const trail of this.trailRenderData) {
+            this.mostrarConjunto(trail.materialAceso, visivel && trail.isHovered);
+            this.mostrarConjunto(trail.material, visivel && !trail.isHovered);
+        }
     }
 
     if (!visivel) {
@@ -635,20 +687,33 @@ TrailController.prototype.checkHover = function(x, y) {
     this.updateGlobalCursor(anyHovered, hoveredTrailIndices);
 };
 
+/**
+ * Acende ou apaga o conjunto de tracinhos feito com um dado material.
+ *
+ * Os tracinhos são agrupados pelo motor num punhado de desenhos, um por
+ * material. É sobre esses desenhos que se manda — e mandar neles é só
+ * dizer se aparecem, sem lhes tocar no material.
+ *
+ * @param {object} material - O material do conjunto.
+ * @param {boolean} visivel - Se deve aparecer.
+ */
+TrailController.prototype.mostrarConjunto = function(material, visivel) {
+    const agrupador = this.app.batcher;
+    if (!agrupador || !agrupador._batchList) return;
+    for (const lote of agrupador._batchList) {
+        if (lote.meshInstance && lote.meshInstance.material === material) {
+            lote.meshInstance.visible = visivel;
+        }
+    }
+};
+
 TrailController.prototype.setTrailHoverState = function(trail, isHovered) {
     if (isHovered !== trail.isHovered) {
         trail.isHovered = isHovered;
 
-        // Acesa, a rota fica mais clara e passa a ver-se através das casas,
-        // para se perceber por onde segue mesmo quando dá a volta por trás
-        // de um telhado. Apagada, volta ao vermelho de sempre e volta a
-        // esconder-se atrás do que tem à frente.
-        const cor = trail.isHovered ? this.dashHoverColor : this.dashColor;
-        trail.material.depthTest = !trail.isHovered;
-        trail.material.diffuse.copy(cor);
-        trail.material.emissive.copy(cor);
-        trail.material.emissiveIntensity = 1.0;
-        trail.material.update();
+        // Troca-se de conjunto: acende-se um, apaga-se o outro.
+        this.mostrarConjunto(trail.materialAceso, trail.isHovered);
+        this.mostrarConjunto(trail.material, !trail.isHovered);
         
         for (const el of trail.glowElements) {
             el.style.opacity = trail.isHovered ? '1' : '0';
@@ -699,6 +764,17 @@ TrailController.prototype.updateGlobalCursor = function(anyHovered, hoveredTrail
 };
 
 TrailController.prototype.postUpdate = function(dt) {
+    // Assim que os desenhos agrupados existirem, deixa-se visível só o
+    // conjunto certo de cada rota.
+    if (this._porArrumar && this.app.batcher && this.app.batcher._batchList &&
+        this.app.batcher._batchList.length > 0) {
+        for (const trail of this.trailRenderData) {
+            this.mostrarConjunto(trail.materialAceso, trail.isHovered);
+            this.mostrarConjunto(trail.material, !trail.isHovered);
+        }
+        this._porArrumar = false;
+    }
+
     if (!this._hoverPending) return;
     this._hoverPending = false;
     this.checkHover(this._hoverX, this._hoverY);
