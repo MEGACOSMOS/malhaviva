@@ -1,5 +1,5 @@
 import { EnvLighting, PIXELFORMAT_RGBA8, Quat, Texture, Vec3 } from 'playcanvas';
-import { AJUSTES_PADRAO, LARGURA_FINAL, LARGURA_RAPIDA, ajustesNeutros, tratarFotografia } from './ceu-fotografia.mjs?v=2';
+import { AJUSTES_PADRAO, LARGURA_FINAL, LARGURA_RAPIDA, tratarFotografia } from './ceu-fotografia.mjs?v=3';
 
 /**
  * O céu do bairro: a panorâmica do Olho de Águia à volta do mapa.
@@ -131,11 +131,7 @@ export function ligarCeu(app) {
         const imagem = await trazerFotografia();
         if (!imagem) return null;
         try {
-            // Sem nada para acertar, a fotografia entra tal como veio: já
-            // traz a luz e a cor assadas de fábrica.
-            const fonte = ajustesNeutros(definicoes.ajustes)
-                ? imagem
-                : tratarFotografia(imagem, definicoes.ajustes, largura || LARGURA_FINAL);
+            const fonte = tratarFotografia(imagem, definicoes.ajustes, largura || LARGURA_FINAL);
             // A textura tem de ser feita exactamente como o motor a fazia
             // quando carregava a fotografia sozinho. Parece detalhe, mas
             // não é: mexer na projecção ou nos mipmaps muda a maneira como

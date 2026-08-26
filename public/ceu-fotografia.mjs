@@ -179,11 +179,21 @@ export function tratarFotografia(original, ajustes, largura) {
     const a = Object.assign({}, AJUSTES_PADRAO, ajustes);
     const altura = Math.round(largura / 2);
 
+    // A fotografia é sempre copiada para uma tela, mesmo quando não há nada
+    // a acertar. Não é desperdício: passá-la directamente à placa gráfica
+    // deixava a textura vazia — o céu ficava preto. A cópia é o que garante
+    // que a imagem chega lá inteira, e custa um instante.
+    const neutro = ajustesNeutros(a);
     const tela = document.createElement('canvas');
     tela.width = largura;
     tela.height = altura;
-    const pincel = tela.getContext('2d', { willReadFrequently: true });
+    const pincel = tela.getContext('2d', neutro ? undefined : { willReadFrequently: true });
     pincel.drawImage(original, 0, 0, largura, altura);
+
+    // Sem acertos por fazer — que é o caso desde que a luz e a cor passaram
+    // a vir assadas na própria imagem — fica-se por aqui, sem tocar num
+    // único dos oito milhões de pontos.
+    if (neutro) return tela;
 
     const imagem = pincel.getImageData(0, 0, largura, altura);
     const dados = imagem.data;
