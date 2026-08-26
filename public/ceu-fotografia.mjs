@@ -60,6 +60,26 @@ function paraEcra(x) {
 }
 
 /**
+ * Diz se os ajustes deixam a fotografia exactamente como está.
+ *
+ * Desde que a luz e a cor passaram a vir assadas na própria imagem, o
+ * caminho normal é este: não há nada a fazer. Vale a pena sabê-lo, porque
+ * assim a fotografia entra directamente, sem passar por uma tela de oito
+ * milhões de pontos só para sair de lá igual.
+ *
+ * @param {object} ajustes - Os ajustes a testar.
+ * @returns {boolean} Verdadeiro se não houver nada a fazer.
+ */
+export function ajustesNeutros(ajustes) {
+    const a = Object.assign({}, AJUSTES_PADRAO, ajustes);
+    return Math.abs(a.exposicao - 1) < 1e-4 &&
+        Math.abs(a.gama - 1) < 1e-4 &&
+        a.contraste <= 1e-4 &&
+        Math.abs(a.saturacao - 1) < 1e-4 &&
+        a.desfoqueCeu < 1 && a.desfoqueHorizonte < 1 && a.desfoqueFundo < 1;
+}
+
+/**
  * Tabela com o destino de cada um dos 256 tons.
  *
  * Fazer as contas uma vez por tom, e não uma vez por ponto da imagem, é o

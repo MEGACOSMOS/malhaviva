@@ -1,5 +1,5 @@
 import { EnvLighting, PIXELFORMAT_RGBA8, Quat, Texture, Vec3 } from 'playcanvas';
-import { AJUSTES_PADRAO, LARGURA_FINAL, LARGURA_RAPIDA, tratarFotografia } from './ceu-fotografia.mjs?v=1';
+import { AJUSTES_PADRAO, LARGURA_FINAL, LARGURA_RAPIDA, ajustesNeutros, tratarFotografia } from './ceu-fotografia.mjs?v=2';
 
 /**
  * O céu do bairro: a panorâmica do Olho de Águia à volta do mapa.
@@ -21,10 +21,13 @@ import { AJUSTES_PADRAO, LARGURA_FINAL, LARGURA_RAPIDA, tratarFotografia } from 
  * quando se anda pelas ruas, e mais estranho quando se sobe muito.
  */
 
-// A fotografia entra tal como saiu da máquina. O acerto da luz, da cor e
-// do desfoque é feito aqui no site, a partir dos números que ficam no
-// editor do menu de desenvolvedor — assim afina-se a olho, com o bairro à
-// frente, em vez de se adivinhar de antemão.
+// A fotografia já vem tratada: a luz, a cor e o contraste foram assados
+// nela de uma vez por todas, a partir do original em vírgula flutuante
+// (ver scripts/assar-ceu.py). Assim não há contas a fazer a cada visita,
+// não há bandas de tanto esticar 256 tons, e o que passava do branco em
+// vez de chapar ficou com desenho. O editor aqui em baixo continua a
+// servir para experimentar por cima — mas o que ele mostrar já é acerto
+// sobre acerto.
 const IMAGEM = '/ceu-olho-de-aguia.jpg';
 
 // Tamanho de cada face do cubo, conforme o nível de qualidade. São seis
@@ -37,7 +40,10 @@ const TAMANHO_DAS_FACES = {
 };
 
 // Onde ficam guardadas as afinações, para sobreviverem a um recarregar.
-const CHAVE = 'ceu-olho-de-aguia';
+// O número no fim muda sempre que os valores de fábrica mudam: assim o que
+// ficou guardado de uma afinação antiga não volta a ser aplicado por cima
+// de uma fotografia que já a traz embutida.
+const CHAVE = 'ceu-olho-de-aguia-v2';
 
 const PADRAO = {
     ligado: true,
@@ -50,7 +56,13 @@ const PADRAO = {
     // foi tirada de um ponto concreto do bairro, e é sobre esse ponto que
     // ela assenta melhor. Estas duas medidas deslocam-na no plano.
     deslocamentoX: -0.06,
-    deslocamentoZ: 0
+    deslocamentoZ: 0,
+    // A que altura estava a máquina quando tirou a panorâmica, em metros
+    // acima do chão da cúpula. É esta medida que decide como a paisagem se
+    // move quando andamos: a fotografia é projectada a partir deste ponto,
+    // e se ele não estiver à altura certa o chão em volta parece deslizar
+    // ao contrário de nós.
+    alturaDoOlho: 86
 };
 
 /**
@@ -119,7 +131,11 @@ export function ligarCeu(app) {
         const imagem = await trazerFotografia();
         if (!imagem) return null;
         try {
-            const tela = tratarFotografia(imagem, definicoes.ajustes, largura || LARGURA_FINAL);
+            // Sem nada para acertar, a fotografia entra tal como veio: já
+            // traz a luz e a cor assadas de fábrica.
+            const fonte = ajustesNeutros(definicoes.ajustes)
+                ? imagem
+                : tratarFotografia(imagem, definicoes.ajustes, largura || LARGURA_FINAL);
             // A textura tem de ser feita exactamente como o motor a fazia
             // quando carregava a fotografia sozinho. Parece detalhe, mas
             // não é: mexer na projecção ou nos mipmaps muda a maneira como
@@ -127,12 +143,12 @@ export function ligarCeu(app) {
             // do horizonte.
             const plana = new Texture(app.graphicsDevice, {
                 name: 'ceu-tratado',
-                width: tela.width,
-                height: tela.height,
+                width: fonte.width,
+                height: fonte.height,
                 format: PIXELFORMAT_RGBA8,
                 mipmaps: true
             });
-            plana.setSource(tela);
+            plana.setSource(fonte);
 
             const faces = TAMANHO_DAS_FACES[window.actualQuality] || TAMANHO_DAS_FACES.med;
             const novo = EnvLighting.generateSkyboxCubemap(plana, faces);
@@ -185,9 +201,19 @@ export function ligarCeu(app) {
                 const z = definicoes.deslocamentoZ;
                 cena.sky.node.setLocalScale(t, t, t);
                 cena.sky.node.setLocalPosition(x, definicoes.alturaDaCupula, z);
-                // O centro tem de acompanhar a cúpula, senão a projecção
-                // fica a olhar para um sítio onde ela já não está.
-                cena.sky.center = new Vec3(x, definicoes.alturaDaCupula, z);
+                // O ponto de onde a fotografia é projectada — o sítio onde
+                // estava a máquina. Fica em cima do centro da cúpula, à
+                // altura pedida.
+                //
+                // Atenção: o motor lê este ponto em medidas da própria
+                // cúpula, não em metros do mapa, e depois multiplica-o pelo
+                // tamanho dela. Antes escreviam-se aqui metros, e o ponto
+                // acabava a oitenta e tal metros de altura e a cinquenta
+                // metros de lado, sem ninguém dar por isso — era daí que
+                // vinha o chão a escorregar para o lado errado quando se
+                // andava. Agora divide-se pelo tamanho, e o ponto fica
+                // mesmo onde se manda.
+                cena.sky.center = new Vec3(0, definicoes.alturaDoOlho / t, 0);
             }
         }
         guardar();
