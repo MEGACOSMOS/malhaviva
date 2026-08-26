@@ -139,13 +139,19 @@ TrailController.prototype.initialize = function() {
     this.editPoints = [];
     
     this.dashColor = new pc.Color().fromString('#ff0000'); // RED
-    // Cor da rota quando o cursor passa por cima. Antes o destaque era
-    // feito somando luz por cima do que estava desenhado; parecia bem numas
-    // vistas e noutras a rota desaparecia por completo, consoante a ordem
-    // por que o bairro e os tracinhos calhavam ser desenhados. Agora o
-    // destaque é uma cor própria, mais clara, que não depende dessa ordem —
-    // e por isso todas as rotas acendem sempre da mesma maneira.
-    this.dashHoverColor = new pc.Color().fromString('#ff6b1a');
+    // Cor da rota quando o cursor passa por cima.
+    //
+    // O destaque era feito somando luz por cima do que já estava desenhado.
+    // Ficava bonito — vermelho quente, com o bairro a espreitar por baixo —
+    // mas dependia da ordem por que o bairro e os tracinhos calhavam ser
+    // desenhados, e havia vistas em que a rota, em vez de acender,
+    // desaparecia por completo.
+    //
+    // Aqui a soma é feita de antemão, e o resultado fica escrito numa cor
+    // só: o vermelho no máximo, e o verde e o azul a meio, que é o que a
+    // soma dava em cima do bairro. Fica o mesmo vermelho quente de antes,
+    // mas sem depender de ordem nenhuma — e por isso acende sempre.
+    this.dashHoverColor = new pc.Color().fromString('#ff6e64');
     this.dashLength = 2.0;
     this.dashGap = 1.5;
     this.dashWidth = 0.8;
@@ -641,7 +647,7 @@ TrailController.prototype.setTrailHoverState = function(trail, isHovered) {
         trail.material.depthTest = !trail.isHovered;
         trail.material.diffuse.copy(cor);
         trail.material.emissive.copy(cor);
-        trail.material.emissiveIntensity = trail.isHovered ? 1.7 : 1.0;
+        trail.material.emissiveIntensity = 1.0;
         trail.material.update();
         
         for (const el of trail.glowElements) {
