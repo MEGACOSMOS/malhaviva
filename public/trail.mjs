@@ -152,6 +152,10 @@ TrailController.prototype.initialize = function() {
     // soma dava em cima do bairro. Fica o mesmo vermelho quente de antes,
     // mas sem depender de ordem nenhuma — e por isso acende sempre.
     this.dashHoverColor = new pc.Color().fromString('#ff6e64');
+
+    // Quanto a rota acesa é puxada na direcção da câmara, para se ver por
+    // onde segue mesmo quando passa por trás de uma casa.
+    this.dashHoverBias = -8;
     this.dashLength = 2.0;
     this.dashGap = 1.5;
     this.dashWidth = 0.8;
@@ -227,7 +231,7 @@ TrailController.prototype.rebuildTrail = function() {
     // desaparecer quando o cursor lhe passava por cima. Acender e apagar
     // conjuntos já feitos não mexe em material nenhum, e por isso funciona
     // sempre. O conjunto escondido não custa nada a desenhar.
-    const fazerMaterial = (cor, intensidade, atravessaCasas) => {
+    const fazerMaterial = (cor, intensidade, aproximar) => {
         const material = new pc.StandardMaterial();
         material.diffuse = cor;
         material.emissive = cor;
@@ -235,19 +239,20 @@ TrailController.prototype.rebuildTrail = function() {
         material.blendType = pc.BLEND_NONE;
         material.opacity = 1.0;
         material.depthWrite = true;
-        material.depthTest = !atravessaCasas;
+        material.depthTest = true;
+        // Puxar a rota acesa na direcção da câmara, sem lhe desligar o teste
+        // de profundidade. Desligá-lo fazia-a desaparecer — sem esse teste o
+        // bairro, que é desenhado por fim, passava-lhe por cima. Assim ela
+        // continua a ser medida contra o resto, mas mede-se como se
+        // estivesse mais perto, e ganha ao que tem à frente.
+        if (aproximar) material.depthBias = aproximar;
         material.update();
         return material;
     };
 
     for (const pts of allPaths) {
-        const material = fazerMaterial(this.dashColor, 1.0, false);
-        // O conjunto aceso é desenhado com as mesmas regras de profundidade
-        // do apagado. Tentar pô-lo por cima de tudo — desligando-lhe o teste
-        // de profundidade — é precisamente o que o fazia desaparecer: sem
-        // esse teste, o bairro, que é desenhado depois e é feito de manchas
-        // transparentes, passa-lhe por cima e apaga-o.
-        const materialAceso = fazerMaterial(this.dashHoverColor, 1.0, false);
+        const material = fazerMaterial(this.dashColor, 1.0, 0);
+        const materialAceso = fazerMaterial(this.dashHoverColor, 1.0, this.dashHoverBias);
 
         const trail = {
             material: material,
