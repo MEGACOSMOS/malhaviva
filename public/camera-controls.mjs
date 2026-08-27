@@ -267,6 +267,48 @@ class CameraControls extends Script {
     };
 
     /**
+     * Quanto o rato andou desde a última imagem, guardado em dois montes:
+     * o que ele anda solto serve para olhar em volta, o que ele anda com o
+     * botão esquerdo em baixo serve para deslocar a câmara.
+     *
+     * @type {number[]}
+     * @private
+     */
+    _lookDelta = [0, 0];
+
+    /**
+     * @type {number[]}
+     * @private
+     */
+    _dragDelta = [0, 0];
+
+    /**
+     * @type {boolean}
+     * @private
+     */
+    _dragging = false;
+
+    /**
+     * @type {{ x: number, y: number } | null}
+     * @private
+     */
+    _lastPointer = null;
+
+    /**
+     * @type {(() => void) | null}
+     * @private
+     */
+    _detachMouse = null;
+
+    /**
+     * Quanto anda a câmara por cada ponto do ecrã que a mão puxa.
+     *
+     * @type {number}
+     * @private
+     */
+    _dragMoveSens = 0.08;
+
+    /**
      * Enable fly camera controls.
      *
      * @attribute
@@ -659,6 +701,11 @@ class CameraControls extends Script {
         this._flyMobileInput.attach(this.app.graphicsDevice.canvas);
         this._gamepadInput.attach(this.app.graphicsDevice.canvas);
 
+        // O olhar deixa de precisar do botão: basta mexer o rato por cima
+        // do bairro. Quem trata disso é este bloco, à parte do motor —
+        // o motor só conta o rato enquanto há um botão carregado.
+        this._attachMouseLook(this.app.graphicsDevice.canvas);
+
         // Native wheel event for FOV Zoom - Attaching to window with capture to bypass engine suppression
         if (typeof window !== 'undefined') {
             window.addEventListener('wheel', (e) => {
@@ -713,9 +760,86 @@ class CameraControls extends Script {
     }
 
     /**
+     * Segue o rato por cima do bairro.
+     *
+     * Solto, o que ele anda vai para o monte do olhar. Com o botão esquerdo
+     * em baixo, vai para o monte da deslocação — e o olhar fica quieto
+     * enquanto se puxa, para não andarem as duas coisas ao mesmo tempo.
+     *
+     * @param {HTMLCanvasElement} canvas - O quadro onde o bairro é desenhado.
+     * @private
+     */
+    _attachMouseLook(canvas) {
+        // Saltos maiores do que isto não são a mão: são a janela a mudar de
+        // sítio, ou o rato a voltar de fora do ecrã.
+        const SALTO_MAX = 200;
+
+        const onDown = (event) => {
+            if (event.pointerType !== 'mouse' || event.target !== canvas) {
+                return;
+            }
+            if (event.button === 0) {
+                this._dragging = true;
+            }
+            this._lastPointer = { x: event.clientX, y: event.clientY };
+        };
+
+        const onMove = (event) => {
+            if (event.pointerType !== 'mouse') {
+                return;
+            }
+            if (event.target !== canvas) {
+                this._lastPointer = null;
+                return;
+            }
+            const anterior = this._lastPointer;
+            this._lastPointer = { x: event.clientX, y: event.clientY };
+            if (!anterior) {
+                return;
+            }
+            const dx = event.clientX - anterior.x;
+            const dy = event.clientY - anterior.y;
+            if (Math.abs(dx) > SALTO_MAX || Math.abs(dy) > SALTO_MAX) {
+                return;
+            }
+            const monte = this._dragging ? this._dragDelta : this._lookDelta;
+            monte[0] += dx;
+            monte[1] += dy;
+        };
+
+        const onUp = (event) => {
+            if (event.pointerType && event.pointerType !== 'mouse') {
+                return;
+            }
+            this._dragging = false;
+            this._lastPointer = null;
+        };
+
+        canvas.addEventListener('pointerdown', onDown);
+        canvas.addEventListener('pointermove', onMove);
+        canvas.addEventListener('pointerup', onUp);
+        canvas.addEventListener('pointercancel', onUp);
+        canvas.addEventListener('pointerleave', onUp);
+        window.addEventListener('pointerup', onUp);
+        window.addEventListener('blur', onUp);
+
+        this._detachMouse = () => {
+            canvas.removeEventListener('pointerdown', onDown);
+            canvas.removeEventListener('pointermove', onMove);
+            canvas.removeEventListener('pointerup', onUp);
+            canvas.removeEventListener('pointercancel', onUp);
+            canvas.removeEventListener('pointerleave', onUp);
+            window.removeEventListener('pointerup', onUp);
+            window.removeEventListener('blur', onUp);
+        };
+    }
+
+    /**
      * @private
      */
     _destroy() {
+        this._detachMouse?.();
+        this._detachMouse = null;
         this._desktopInput.destroy();
         this._orbitMobileInput.destroy();
         this._flyMobileInput.destroy();
@@ -844,15 +968,29 @@ class CameraControls extends Script {
         const { leftInput, rightInput } = this._flyMobileInput.read();
         const { leftStick, rightStick } = this._gamepadInput.read();
 
+        // O que o rato andou desde a imagem anterior, e que aqui se esvazia:
+        // olhar de um lado, puxar do outro.
+        const lookX = this._lookDelta[0];
+        const lookY = this._lookDelta[1];
+        const dragX = this._dragDelta[0];
+        const dragY = this._dragDelta[1];
+        this._lookDelta[0] = 0;
+        this._lookDelta[1] = 0;
+        this._dragDelta[0] = 0;
+        this._dragDelta[1] = 0;
+
         // apply dead zone to gamepad sticks
         applyDeadZone(leftStick, this.gamepadDeadZone.x, this.gamepadDeadZone.y);
         applyDeadZone(rightStick, this.gamepadDeadZone.x, this.gamepadDeadZone.y);
 
         // update state
+        // As teclas andam ao contrário de propósito: W e a seta de cima
+        // recuam, S e a seta de baixo avançam, A vai para a direita e D
+        // para a esquerda.
         this._state.axis.add(tmpV1.set(
-            (key[keyCode.D] - key[keyCode.A]) + (key[keyCode.RIGHT] - key[keyCode.LEFT]),
+            (key[keyCode.A] - key[keyCode.D]) + (key[keyCode.LEFT] - key[keyCode.RIGHT]),
             0, // Q and E keys disabled: (key[keyCode.E] - key[keyCode.Q]),
-            (key[keyCode.W] - key[keyCode.S]) + (key[keyCode.UP] - key[keyCode.DOWN])
+            (key[keyCode.S] - key[keyCode.W]) + (key[keyCode.DOWN] - key[keyCode.UP])
         ));
         for (let i = 0; i < this._state.mouse.length; i++) {
             this._state.mouse[i] += button[i];
@@ -979,7 +1117,7 @@ class CameraControls extends Script {
             }
         }
 
-        // desktop rotate (Drag to Look)
+        // desktop rotate (o olhar segue o rato, sem precisar de botão)
         v.set(0, 0, 0);
         
         if (!this._smoothRotateVelocity) {
@@ -987,7 +1125,7 @@ class CameraControls extends Script {
         }
         
         // Target rotation based on mouse input with slight speed reduction (0.8)
-        const targetRotate = tmpV2.set(mouse[0] * 0.8, mouse[1] * 0.8, 0).mulScalar(rotateDeltaMult);
+        const targetRotate = tmpV2.set(lookX * 0.8, lookY * 0.8, 0).mulScalar(rotateDeltaMult);
         
         // Apply ease in and out (inertia)
         this._smoothRotateVelocity.lerp(this._smoothRotateVelocity, targetRotate, 5.0 * dt);
@@ -1079,6 +1217,16 @@ class CameraControls extends Script {
             
             if (this._smoothMoveVelocity.length() > 0.00001) {
                 this._pose.position.add(this._smoothMoveVelocity);
+            }
+
+            // Puxar com o botão esquerdo é agarrar o bairro e arrastá-lo:
+            // a mão vai para um lado, a câmara vai para o outro, e o sítio
+            // onde se pegou fica debaixo do rato.
+            if (dragX !== 0 || dragY !== 0) {
+                const puxaFrente = dragY * this._dragMoveSens;
+                const puxaLado = -dragX * this._dragMoveSens;
+                this._pose.position.x += flatForwardX * puxaFrente + flatRightX * puxaLado;
+                this._pose.position.z += flatForwardZ * puxaFrente + flatRightZ * puxaLado;
             }
             // NO ATTACH HERE!
         }

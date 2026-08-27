@@ -177,6 +177,7 @@ TrailController.prototype.initialize = function() {
     this.ray = new pc.Ray();
     if (this.app.mouse) {
         this.app.mouse.on(pc.EVENT_MOUSEDOWN, this.onMouseDown, this);
+        this.app.mouse.on(pc.EVENT_MOUSEUP, this.onMouseUp, this);
         this.app.mouse.on(pc.EVENT_MOUSEMOVE, this.onMouseMove, this);
     }
     if (this.app.touch) {
@@ -512,8 +513,24 @@ TrailController.prototype.playerAberto = function() {
         aberto(document.getElementById('image-modal')) || aberto(this.popup);
 };
 
+// Uma rota só abre ao levantar o botão, e só se a mão não tiver andado
+// pelo caminho: agora o botão esquerdo também serve para puxar a câmara, e
+// arrastar por cima de uma rota não pode abrir o vídeo.
 TrailController.prototype.onMouseDown = function(e) {
     if (e.button !== pc.MOUSEBUTTON_LEFT) return;
+    this._inicioDoClique = { x: e.x, y: e.y };
+};
+
+TrailController.prototype.onMouseUp = function(e) {
+    if (e.button !== pc.MOUSEBUTTON_LEFT) return;
+    const inicio = this._inicioDoClique;
+    this._inicioDoClique = null;
+    if (!inicio) return;
+
+    // Meia dúzia de pontos de folga, para a mão que treme não contar como
+    // arrastar.
+    if (Math.abs(e.x - inicio.x) > 5 || Math.abs(e.y - inicio.y) > 5) return;
+
     if (this.playerAberto() || this.cliqueEmUI(e)) return;
     this.handleInteraction(e.x, e.y);
 };
