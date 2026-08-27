@@ -1,21 +1,33 @@
 import { Vec3 } from 'playcanvas';
 
 /**
- * Detalhe do mapa centrado no que a câmara está a ver.
+ * Afinações do detalhe do mapa.
  *
- * De origem, o motor decide a qualidade de cada pedaço do bairro pela
- * distância à *posição* da câmara: quem está mesmo por baixo dos nossos pés
- * fica nítido, mesmo que estejamos a olhar para o horizonte. Aqui a conta
- * passa a ser feita a partir do ponto para onde a câmara aponta — o centro
- * do ecrã — que é aquilo que a pessoa está de facto a ver.
+ * Duas coisas ficam ligadas de origem, e ambas melhoram o que se vê:
  *
- * Esse ponto é onde a linha de visão toca o chão. Quando se olha para o
- * horizonte (ou para cima) esse toque acontece a quilómetros de distância,
- * por isso existem limites: o ponto de atenção nunca se afasta mais do que
- * ALCANCE_MAXIMO metros da câmara, nem mais do que a altura a que a câmara
- * voa. Assim, apontar para o outro extremo do bairro não obriga o
- * computador a carregar detalhe que ninguém distingue, e quem anda pela rua
- * mantém nítidas as casas que tem mesmo à frente.
+ *  - o detalhe volta a ser recalculado ao virar a cabeça, e não só ao
+ *    andar, senão olhar em volta parado deixava o mapa com a nitidez do
+ *    sítio anterior;
+ *  - quando o mapa passa do tecto de manchas, aperta-se a régua das
+ *    distâncias toda de uma vez em vez de se empurrarem pedaços soltos
+ *    para o nível seguinte — é o que mantém o degradé suave (ver
+ *    corrigirRepartidorDoTecto, mais abaixo).
+ *
+ * Há uma terceira, o *ponto de atenção*, que fica desligada. A ideia era
+ * medir as distâncias a partir do ponto para onde a câmara aponta em vez
+ * da posição da câmara, para gastar o detalhe onde a pessoa está a olhar.
+ * Sem tecto de manchas isso quase não se notava; com tecto estraga a
+ * imagem, porque o que está ao pé da câmara fica *atrás* do ponto de
+ * atenção e passa a contar como distante.
+ *
+ * Medido com a câmara dentro do bairro, a vinte e cinco metros de altura:
+ * dos noventa e sete pedaços a menos de sessenta metros, só trinta e
+ * quatro ficavam no detalhe fino, e o nível do meio começava a vinte e
+ * seis metros da câmara enquanto o detalhe fino era gasto a cento e
+ * cinquenta. Desligado, os noventa e sete ficam no detalhe fino e a troca
+ * de níveis afasta-se para os noventa metros, que é onde deixa de se dar
+ * por ela. Pode voltar a ligar-se com {@link ligarLodNoCentroDaVista}
+ * passando `{ ativo: true }`.
  */
 
 // Até que distância à frente da câmara o ponto de atenção pode ir, em metros.
@@ -131,7 +143,7 @@ export function ligarLodNoCentroDaVista(app, opcoes = {}) {
         alcanceMaximo: opcoes.alcanceMaximo ??
             ALCANCE_MAXIMO[window.actualQuality] ?? ALCANCE_MAXIMO.med,
         alturaDoChao: opcoes.alturaDoChao ?? ALTURA_DO_CHAO,
-        ativo: true
+        ativo: opcoes.ativo ?? false
     };
 
     // Sem isto o detalhe só seria recalculado ao andar, e olhar em volta

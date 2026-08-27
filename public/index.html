@@ -1120,7 +1120,7 @@
             Vec3, Texture,
             PIXELFORMAT_RGBA8, FILTER_LINEAR, ADDRESS_CLAMP_TO_EDGE
         } from 'playcanvas';
-        import { ligarLodNoCentroDaVista } from './lod-foco.mjs?v=3';
+        import { ligarLodNoCentroDaVista } from './lod-foco.mjs?v=4';
         import { criarModoVR } from './vr.mjs?v=3';
         import { ligarCeu } from './ceu.mjs?v=9';
 
@@ -1501,14 +1501,15 @@ void modifySplatColor(vec3 center, inout vec4 color) {
                         splatEl.entity.gsplat.lodMultiplier = 2; 
                     }
 
-                    // O que fica para trás das costas não precisa de estar
-                    // nítido. Esta medida conta como mais distante tudo o que
-                    // está atrás do ponto para onde se olha, e os pontos que
-                    // assim se poupam vão todos para a frente, que é onde a
-                    // pessoa está a olhar. Nas ruas é ela que paga o alcance
-                    // maior do detalhe fino sem a imagem ficar mais pesada.
+                    // O que fica para trás das costas conta como mais
+                    // distante, e o detalhe que assim se poupa vai todo para
+                    // a frente. É uma troca boa nos equipamentos mais fracos,
+                    // mas no nível Alto tira nitidez a pedaços que estão a
+                    // meia dúzia de metros e ainda se vêem de canto de olho,
+                    // e faz o mapa mudar de nível mal se roda a vista. Aí
+                    // fica desligada, como no visualizador do SuperSplat.
                     if (app && app.scene && app.scene.gsplat) {
-                        app.scene.gsplat.lodBehindPenalty = isHigh ? 3 : 2;
+                        app.scene.gsplat.lodBehindPenalty = isHigh ? 1 : 2;
                     }
 
                     // O tecto de manchas no ecrã é posto mal o motor
