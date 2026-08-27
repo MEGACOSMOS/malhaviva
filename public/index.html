@@ -13,6 +13,9 @@
          nascer já na língua certa, sem piscar em português primeiro. -->
     <script src="/idiomas.js?v=1"></script>
 
+    <!-- A tinta do cabeçalho segue o brilho do bairro por trás dela. -->
+    <script src="/contraste.js?v=1"></script>
+
     <!-- PlayCanvas Web Components (versões fixas para estabilidade em produção) -->
     <script type="importmap">
         {
@@ -129,17 +132,12 @@
         }
 
         /* ─── Header ─── */
-        /* O cabeçalho é só a arrumação: não leva camada própria nem se
-           prega ao ecrã com "fixed". Se levasse, fechava os ícones numa
-           bolha e eles deixavam de conseguir misturar-se com o mapa por
-           baixo — e é disso que vive a cor invertida. Quem precisa de
-           ficar por cima é cada peça, uma a uma, mais abaixo. A página
-           não rola, por isso "absolute" fica onde "fixed" ficava. */
         #header {
-            position: absolute;
+            position: fixed;
             top: 0;
             left: 0;
             right: 0;
+            z-index: 100;
             display: flex;
             align-items: center;
             justify-content: space-between;
@@ -153,18 +151,11 @@
 
         #header.visible {
             opacity: 1;
-            /* "none", e não "translateY(0)": qualquer deslocamento, mesmo de
-               zero, voltaria a fechar os ícones na bolha. */
-            transform: none;
+            transform: translateY(0);
         }
 
         #header > * {
             pointer-events: auto;
-        }
-
-        .brand {
-            position: relative;
-            z-index: 100;
         }
 
         .brand {
@@ -309,16 +300,10 @@
             position: relative;
         }
         
-        /* Sem caixa nenhuma até o rato lá chegar. Para se verem sempre,
-           os ícones passam a ser o negativo do que quer que lhes passe por
-           baixo: brancos sobre o escuro, escuros sobre o céu. */
+        /* Sem caixa nenhuma até o rato lá chegar. */
         #definicoes-btn, #dev-btn, #idioma-btn, #help-btn, #fullscreen-main-btn, #vr-btn {
-            position: relative;
-            z-index: 100;
             background: transparent;
             border: 1px solid transparent;
-            color: #ffffff;
-            mix-blend-mode: difference;
             width: 40px;
             height: 40px;
             border-radius: 0;
@@ -400,25 +385,38 @@
            Antes cada ícone fazia à sua maneira — e os de Definições e
            Desenvolvedor não faziam nada, porque a regra deles tinha ficado
            colada à regra seguinte e nunca chegou a existir. */
+        /* A tinta do cabeçalho segue o que lhe passa por baixo, como a
+           barra de estado de um telemóvel Android: sobre escuro fica
+           branca, sobre claro fica preta. Quem vai ver é o contraste.js,
+           que mede o brilho da imagem por trás de cada peça. */
+        #header .adaptavel {
+            --tinta: #ffffff;
+            --fundo: #05050a;
+            color: var(--tinta);
+            transition: color 0.25s ease, background-color 0.25s ease;
+        }
+
+        #header .adaptavel.sobre-claro {
+            --tinta: #05050a;
+            --fundo: #ffffff;
+        }
+
         /* Com o rato em cima — ou com o menu aberto, que é o mesmo que
-           estar escolhido — nasce a caixa escura, e o ícone volta a ser
-           branco em vez do negativo do fundo. É o mesmo aceso que a
-           página dos controlos usa nas suas linhas. */
-        #definicoes-btn:hover, #dev-btn:hover, #idioma-btn:hover,
-        #help-btn:hover, #fullscreen-main-btn:hover, #vr-btn:hover,
+           estar escolhido — as duas cores trocam de lugar: o que era tinta
+           passa a fundo e o que era fundo passa a tinta. */
+        #header button.adaptavel:hover,
+        #header a.adaptavel:hover,
         .settings:has(.open) > #definicoes-btn,
         .settings:has(.open) > #dev-btn,
         .settings:has(.open) > #idioma-btn {
-            background: linear-gradient(rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.05)), #05050a;
-            border-color: rgba(255, 255, 255, 0.15);
-            mix-blend-mode: normal;
+            background: var(--tinta);
+            color: var(--fundo);
         }
         
         #definicoes-menu, #dev-menu, #idioma-menu {
             position: absolute;
             top: 50px;
             right: 0;
-            z-index: 110;
             background: linear-gradient(to bottom, rgba(255,255,255,0.05), transparent), #05050a;
             border: 1px solid rgba(255, 255, 255, 0.15);
             border-radius: 0;
@@ -816,42 +814,13 @@
     <div id="header">
         <div class="brand">
             <div class="brand-text">
-                <span class="brand-name">Malha Viva</span>
+                <span class="brand-name adaptavel">Malha Viva</span>
             </div>
         </div>
         
         <div style="display: flex; align-items: center; gap: 8px;">
-        <div class="settings">
-            <button id="idioma-btn" title="Idioma" data-i18n-title="cab.idioma">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" stroke="none">
-                    <path d="M12.87 15.07l-2.54-2.51.03-.03c1.74-1.94 2.98-4.17 3.71-6.53H17V4h-7V2H8v2H1v1.99h11.17C11.5 7.92 10.44 9.75 9 11.35 8.07 10.32 7.3 9.19 6.69 8h-2c.73 1.63 1.73 3.17 2.98 4.56l-5.09 5.02L4 19l5-5 3.11 3.11.76-2.04zM18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2l-4.5-12zm-2.62 7l1.62-4.33L19.12 17h-3.24z"></path>
-                </svg>
-            </button>
-            <div id="idioma-menu" class="hidden">
-                <div class="settings-title" data-i18n="idm.titulo">Idioma</div>
-                <div class="settings-options">
-                    <label class="settings-radio">
-                        <input type="radio" name="idioma" value="pt" id="idioma-pt">
-                        <span>Português</span>
-                    </label>
-                    <label class="settings-radio">
-                        <input type="radio" name="idioma" value="en" id="idioma-en">
-                        <span>English</span>
-                    </label>
-                    <label class="settings-radio">
-                        <input type="radio" name="idioma" value="es" id="idioma-es">
-                        <span>Español</span>
-                    </label>
-                    <label class="settings-radio">
-                        <input type="radio" name="idioma" value="kea" id="idioma-kea">
-                        <span>Kriolu</span>
-                    </label>
-                </div>
-            </div>
-        </div>
-
             <div class="settings" id="dev-menu-container">
-                <button id="dev-btn" title="Menu de Desenvolvedor">
+                <button id="dev-btn" class="adaptavel" title="Menu de Desenvolvedor">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter">
                         <polyline points="16 18 22 12 16 6"></polyline>
                         <polyline points="8 6 2 12 8 18"></polyline>
@@ -1001,7 +970,7 @@
                 </div>
             </div>
 
-        <a href="/controlos.html" id="help-btn" title="Controlos" data-i18n-title="cab.controlos">
+        <a href="/controlos.html" id="help-btn" class="adaptavel" title="Controlos" data-i18n-title="cab.controlos">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter">
                     <rect x="2" y="6" width="20" height="12"></rect>
                     <line x1="6" y1="12" x2="10" y2="12"></line>
@@ -1012,7 +981,36 @@
             </a>
             
         <div class="settings">
-            <button id="definicoes-btn" title="Definições" data-i18n-title="cab.definicoes">
+            <button id="idioma-btn" class="adaptavel" title="Idioma" data-i18n-title="cab.idioma">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" stroke="none">
+                    <path d="M12.87 15.07l-2.54-2.51.03-.03c1.74-1.94 2.98-4.17 3.71-6.53H17V4h-7V2H8v2H1v1.99h11.17C11.5 7.92 10.44 9.75 9 11.35 8.07 10.32 7.3 9.19 6.69 8h-2c.73 1.63 1.73 3.17 2.98 4.56l-5.09 5.02L4 19l5-5 3.11 3.11.76-2.04zM18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2l-4.5-12zm-2.62 7l1.62-4.33L19.12 17h-3.24z"></path>
+                </svg>
+            </button>
+            <div id="idioma-menu" class="hidden">
+                <div class="settings-title" data-i18n="idm.titulo">Idioma</div>
+                <div class="settings-options">
+                    <label class="settings-radio">
+                        <input type="radio" name="idioma" value="pt" id="idioma-pt">
+                        <span>Português</span>
+                    </label>
+                    <label class="settings-radio">
+                        <input type="radio" name="idioma" value="en" id="idioma-en">
+                        <span>English</span>
+                    </label>
+                    <label class="settings-radio">
+                        <input type="radio" name="idioma" value="es" id="idioma-es">
+                        <span>Español</span>
+                    </label>
+                    <label class="settings-radio">
+                        <input type="radio" name="idioma" value="kea" id="idioma-kea">
+                        <span>Kriolu</span>
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <div class="settings">
+            <button id="definicoes-btn" class="adaptavel" title="Definições" data-i18n-title="cab.definicoes">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter">
                     <circle cx="12" cy="12" r="3"></circle>
                     <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
@@ -1061,11 +1059,11 @@
             </div>
         </div>
 
-            <button id="vr-btn" title="Modo VR" data-i18n-title="cab.vr" style="display: none;">
+            <button id="vr-btn" class="adaptavel" title="Modo VR" data-i18n-title="cab.vr" style="display: none;">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a3 3 0 0 1 3-3h12a3 3 0 0 1 3 3v3a3 3 0 0 1-3 3h-2.5a2 2 0 0 1-1.7-1l-.9-1.4a1.2 1.2 0 0 0-2 0l-.9 1.4a2 2 0 0 1-1.7 1H6a3 3 0 0 1-3-3z"></path></svg>
             </button>
 
-            <button id="fullscreen-main-btn" title="Ecrã Inteiro" data-i18n-title="cab.ecra">
+            <button id="fullscreen-main-btn" class="adaptavel" title="Ecrã Inteiro" data-i18n-title="cab.ecra">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter"><path d="M8 3H3v5m18 0V3h-5m0 18h5v-5M3 16v5h5"></path></svg>
             </button>
         </div>
