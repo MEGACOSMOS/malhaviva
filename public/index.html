@@ -391,26 +391,25 @@
            que mede o brilho da imagem por trás de cada peça. */
         #header .adaptavel {
             --tinta: #ffffff;
-            --fundo: #05050a;
+            --avesso: #05050a;
             color: var(--tinta);
-            transition: color 0.25s ease, background-color 0.25s ease;
+            transition: color 0.25s ease;
         }
 
         #header .adaptavel.sobre-claro {
             --tinta: #05050a;
-            --fundo: #ffffff;
+            --avesso: #ffffff;
         }
 
         /* Com o rato em cima — ou com o menu aberto, que é o mesmo que
-           estar escolhido — as duas cores trocam de lugar: o que era tinta
-           passa a fundo e o que era fundo passa a tinta. */
+           estar escolhido — a tinta vira do avesso. Só a tinta: não nasce
+           caixa nenhuma por trás do ícone. */
         #header button.adaptavel:hover,
         #header a.adaptavel:hover,
         .settings:has(.open) > #definicoes-btn,
         .settings:has(.open) > #dev-btn,
         .settings:has(.open) > #idioma-btn {
-            background: var(--tinta);
-            color: var(--fundo);
+            color: var(--avesso);
         }
         
         #definicoes-menu, #dev-menu, #idioma-menu {
