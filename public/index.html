@@ -1022,11 +1022,11 @@
     </div>
 
     <!-- PlayCanvas Application -->
-    <pc-app id="main-app" antialias="true" max-pixel-ratio="2">
+    <pc-app id="main-app" antialias="false" max-pixel-ratio="2">
 
         <!-- Assets -->
         <pc-asset id="splat-scene" src="splat/lod-meta.json" type="gsplat"></pc-asset>
-        <pc-asset id="camera-controls-script" src="./camera-controls.mjs?v=11" type="script"></pc-asset>
+        <pc-asset id="camera-controls-script" src="./camera-controls.mjs?v=12" type="script"></pc-asset>
         <pc-asset id="camera-coords-script" src="./coords.mjs?v=7" type="script"></pc-asset>
         <pc-asset id="annotations-script" src="./annotations.mjs?v=29" type="script"></pc-asset>
         <pc-asset id="trail-script" src="./trail.mjs?v=21" type="script"></pc-asset>
@@ -1094,8 +1094,6 @@
             if (nivel !== 'high') {
                 var motor = document.getElementById('main-app');
                 if (motor) {
-                    motor.setAttribute('antialias', 'false');
-
                     // Um ponto do modelo por cada ponto do ecrã. Num
                     // telemóvel isto é já um terço dos pontos que ele tem,
                     // e é a maior poupança que há sem tocar na imagem.
@@ -1439,7 +1437,13 @@ void modifySplatColor(vec3 center, inout vec4 color) {
                 // --- Limita a densidade de pixels a 2x no nível Alto: acima disso
                 //     não há ganho visível de nitidez, só custo de renderização ---
                 if (isHigh && app && app.graphicsDevice) {
-                    app.graphicsDevice.maxPixelRatio = Math.min(window.devicePixelRatio, 2);
+                    // Num ecrã muito fino de grão, dois pontos por ponto
+                    // são quatro vezes mais tinta para nenhuma nitidez a
+                    // mais. O limite acompanha o tamanho do ecrã, como faz
+                    // o visualizador do SuperSplat.
+                    const menorLado = Math.min(screen.width, screen.height) || 1080;
+                    app.graphicsDevice.maxPixelRatio =
+                        Math.min(2160 / menorLado, window.devicePixelRatio || 1, 2);
                 }
 
                 // --- Nível Baixo: menos pixéis para desenhar ---
@@ -1487,7 +1491,7 @@ void modifySplatColor(vec3 center, inout vec4 color) {
                     // fariam falta ao detalhe fino. Trocaram de papéis:
                     // detalhe fino bem mais longe, faixa do meio mais curta.
                     if (isHigh) {
-                        splatEl.entity.gsplat.lodBaseDistance = 350; 
+                        splatEl.entity.gsplat.lodBaseDistance = 150; 
                         splatEl.entity.gsplat.lodMultiplier = 2.5; 
                     } else if (isMed) {
                         splatEl.entity.gsplat.lodBaseDistance = 110; 
@@ -1507,15 +1511,9 @@ void modifySplatColor(vec3 center, inout vec4 color) {
                         app.scene.gsplat.lodBehindPenalty = isHigh ? 3 : 2;
                     }
 
-                    // Tecto de pontos no ecrã. Fica na cena e não no mapa:
-                    // escrito no mapa, como estava, o motor ignorava-o e o
-                    // limite nunca chegou a existir. Nas vistas mais largas
-                    // é ele que aperta o detalhe sozinho, em vez de deixar
-                    // a imagem começar a arrastar.
-                    if (app && app.scene && app.scene.gsplat) {
-                        if (isMed) app.scene.gsplat.splatBudget = 1200000;
-                        else if (isLow) app.scene.gsplat.splatBudget = 500000;
-                    }
+                    // O tecto de manchas no ecrã é posto mal o motor
+                    // arranca (procurar "Tecto de manchas" mais abaixo),
+                    // para o bairro nunca chegar a pedir detalhe a mais.
 
                     // --- Nível Baixo: poupar onde não se dá por isso ---
                     //
@@ -1735,6 +1733,25 @@ void modifySplatColor(vec3 center, inout vec4 color) {
         whenReady('pc-app').then(({ app }) => {
             // O motor já arrancou: falta só o bairro chegar aos bocados.
             if (window.barraDeCarga) window.barraDeCarga.peloMenos(0.75);
+
+            // --- Tecto de manchas no ecrã ---
+            //
+            // O bairro guardado tem dezasseis milhões de manchas. Sem um
+            // tecto, o nível Alto acabava a desenhar e a ordenar as catorze
+            // milhões do detalhe fino de uma vez, o mapa inteiro, mesmo o
+            // que está longe de mais para se distinguir.
+            //
+            // Com tecto, o motor aperta ou alarga sozinho as distâncias a
+            // que cada nível começa, para o que está no ecrã caber sempre
+            // nesta conta. É o mesmo tecto que o visualizador do SuperSplat
+            // usa para o mesmo modelo.
+            //
+            // Fica aqui, e não depois de a página abrir, para o bairro nunca
+            // chegar a pedir mais detalhe do que aquele que vai desenhar.
+            if (app.scene && app.scene.gsplat) {
+                const tecto = isHigh ? 4000000 : (isMed ? 1200000 : 500000);
+                app.scene.gsplat.splatBudget = tecto;
+            }
 
             // Junta os tracinhos das rotas num punhado de desenhos. Este
             // motor não corre este passo sozinho, por isso é acionado aqui a

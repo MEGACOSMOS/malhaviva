@@ -1402,7 +1402,7 @@ class CameraControls extends Script {
         }
 
         const quality = typeof window !== 'undefined' ? window.actualQuality : null;
-        let baseDist = 350;
+        let baseDist = 150;
         if (quality === 'low') {
             baseDist = 70;
         } else if (quality === 'med') {
