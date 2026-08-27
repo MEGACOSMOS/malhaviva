@@ -1120,7 +1120,7 @@
             Vec3, Texture,
             PIXELFORMAT_RGBA8, FILTER_LINEAR, ADDRESS_CLAMP_TO_EDGE
         } from 'playcanvas';
-        import { ligarDetalheNoQueSeVe } from './lod-foco.mjs?v=6';
+        import { ligarLodNoCentroDaVista } from './lod-foco.mjs?v=4';
         import { criarModoVR } from './vr.mjs?v=3';
         import { ligarCeu } from './ceu.mjs?v=9';
 
@@ -2019,10 +2019,10 @@ void modifySplatColor(vec3 center, inout vec4 color) {
                 setTimeout(() => aviso.remove(), 5000);
             }
 
-            // O tecto de manchas deixa de ser gasto no que está fora do
-            // ecrã: o que fica de lado ou para trás desce de nível, e o
-            // detalhe que assim sobra estica-se por onde a pessoa olha.
-            window.lodFoco = ligarDetalheNoQueSeVe(app);
+            // O detalhe fino do mapa passa a seguir o centro da vista em vez
+            // da posição da câmara, com um limite de distância para não
+            // carregar pormenores longe demais para se notarem.
+            window.lodFoco = ligarLodNoCentroDaVista(app);
 
             // Give a bit more time for the first chunks to load
             setTimeout(showUIOnce, 2000);
