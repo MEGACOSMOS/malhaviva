@@ -9,7 +9,6 @@ import {
     MultiTouchSource,
     OrbitController,
     Pose,
-    PROJECTION_PERSPECTIVE,
     Script,
     Vec2,
     Vec3
@@ -63,57 +62,47 @@ const applyDeadZone = (stick, low, high) => {
 };
 
 /**
- * Converts screen space mouse deltas to world space pan vector.
+ * How low the camera may come down.
+ */
+const MIN_HEIGHT = 1;
+
+/**
+ * How high the camera may climb: the height the opening view sits at.
+ */
+const MAX_HEIGHT = 63.28;
+
+/**
+ * Looking towards the horizon, the ground under the pointer runs off to
+ * infinity. Grabbing a spot that far away would fling the map across the
+ * screen, so reach is capped at this many times the camera's height.
+ */
+const MAX_REACH = 12;
+
+/**
+ * Which way the camera faces, as a unit vector, given its angles.
  *
- * @param {CameraComponent} camera - The camera component.
- * @param {number} dx - The mouse delta x value.
- * @param {number} dy - The mouse delta y value.
- * @param {number} dz - The world space zoom delta value.
- * @param {Vec3} [out] - The output vector to store the pan result.
- * @returns {Vec3} - The pan vector in world space.
+ * @param {number} pitch - The pitch, in degrees. Negative looks down.
+ * @param {number} yaw - The yaw, in degrees.
+ * @param {Vec3} out - The vector to write into.
+ * @returns {Vec3} - The direction the camera faces.
  * @private
  */
-const screenToWorld = (camera, dx, dy, dz, out = new Vec3()) => {
-    const { system, fov, aspectRatio, horizontalFov, projection, orthoHeight } = camera;
-    const { width, height } = system.app.graphicsDevice.clientRect;
-
-    // normalize deltas to device coord space
-    out.set(
-        -(dx / width) * 2,
-        (dy / height) * 2,
-        0
-    );
-
-    // calculate half size of the view frustum at the current distance
-    const halfSize = tmpV2.set(0, 0, 0);
-    if (projection === PROJECTION_PERSPECTIVE) {
-        const halfSlice = dz * Math.tan(0.5 * fov * math.DEG_TO_RAD);
-        if (horizontalFov) {
-            halfSize.set(
-                halfSlice,
-                halfSlice / aspectRatio,
-                0
-            );
-        } else {
-            halfSize.set(
-                halfSlice * aspectRatio,
-                halfSlice,
-                0
-            );
-        }
-    } else {
-        halfSize.set(
-            orthoHeight * aspectRatio,
-            orthoHeight,
-            0
-        );
-    }
-
-    // scale by device coord space
-    out.mul(halfSize);
-
-    return out;
+const forwardFromAngles = (pitch, yaw, out) => {
+    const cx = Math.cos(pitch * math.DEG_TO_RAD);
+    const sx = Math.sin(pitch * math.DEG_TO_RAD);
+    const sy = Math.sin(yaw * math.DEG_TO_RAD);
+    const cy = Math.cos(yaw * math.DEG_TO_RAD);
+    return out.set(-cx * sy, sx, -cx * cy);
 };
+
+const tmpV3 = new Vec3();
+const tmpDir = new Vec3();
+const tmpPivot = new Vec3();
+const tmpHit = new Vec3();
+const tmpRayO = new Vec3();
+const tmpRayD = new Vec3();
+const tmpAxis = new Vec3();
+const tmpTarget = new Vec3();
 
 /**
  * @enum {string}
@@ -127,12 +116,23 @@ const MobileInputLayout = {
 };
 
 /**
- * Provides orbit, fly and pan camera controls, driven by mouse, touch and gamepad input. Movement
- * and rotation are smoothed with configurable damping, and pitch, yaw and zoom distance can be
- * constrained to ranges. Orbit and fly modes can be toggled individually with
- * {@link CameraControls#enableOrbit} and {@link CameraControls#enableFly}. Use
- * {@link CameraControls#focus}, {@link CameraControls#look} and {@link CameraControls#reset} to
- * frame a point of interest programmatically.
+ * Drives the camera the way an online map does.
+ *
+ * The left button drags the ground: whatever spot was grabbed stays under the
+ * pointer. Holding Ctrl (or using the right or middle button) turns and tilts
+ * the view around whatever sits in the middle of the screen. The wheel dives
+ * towards the pointer, a double click dives one step, and the + and - keys
+ * zoom on the middle of the view. The arrow keys and W A S D slide the map
+ * about; with Ctrl held they turn and tilt it instead.
+ *
+ * On a touch screen one finger drags the map, two fingers pinch to zoom and a
+ * two finger drag turns and tilts. A gamepad slides with the left stick and
+ * turns with the right one.
+ *
+ * The view never tips up far enough to show the sky, and the camera stays
+ * between a floor and a ceiling, so the map is always underneath. Use
+ * {@link CameraControls#focus}, {@link CameraControls#look} and
+ * {@link CameraControls#reset} to frame a point of interest programmatically.
  *
  * Attach the script to an entity with a {@link CameraComponent}.
  *
@@ -178,7 +178,7 @@ class CameraControls extends Script {
      * @type {Vec2}
      * @private
      */
-    _pitchRange = new Vec2(-360, 360);
+    _pitchRange = new Vec2(-89.9, -15);
 
     /**
      * @type {Vec2}
@@ -265,6 +265,86 @@ class CameraControls extends Script {
         mouse: [0, 0, 0],
         touches: 0
     };
+
+    /**
+     * The height of the ground. The map is dragged, turned and zoomed against
+     * a flat plane at this height, the way a paper map lies on a table.
+     *
+     * @attribute
+     * @title Ground Height
+     * @type {number}
+     */
+    groundHeight = -6;
+
+    /**
+     * The last place the pointer was seen, in canvas pixels. Dragging the
+     * ground needs to know where the pointer is, not only how far it moved.
+     *
+     * @type {number}
+     * @private
+     */
+    _pointerX = 0;
+
+    /** @type {number} @private */
+    _pointerY = 0;
+
+    /** @type {boolean} @private */
+    _pointerSeen = false;
+
+    /**
+     * How far the wheel has turned since the last frame, in pixels. Browsers
+     * report scrolling in pixels, lines or pages, so it is brought to one
+     * scale here instead of trusting the raw number.
+     *
+     * @type {number}
+     * @private
+     */
+    _wheelDelta = 0;
+
+    /**
+     * Every finger currently on the canvas, so the middle of a two finger
+     * pinch can be found.
+     *
+     * @type {Map<number, {x: number, y: number}>}
+     * @private
+     */
+    _pointers = new Map();
+
+    /** @type {{x: number, y: number}} @private */
+    _middle = { x: 0, y: 0 };
+
+    /**
+     * The spot of ground being held under the pointer. Null when nothing is
+     * being dragged.
+     *
+     * @type {Vec3|null}
+     * @private
+     */
+    _grabPoint = null;
+
+    /**
+     * How fast the ground was travelling when it was let go, so the map keeps
+     * gliding for a moment.
+     *
+     * @type {Vec3}
+     * @private
+     */
+    _grabVelocity = new Vec3();
+
+    /**
+     * Zoom still left to travel. The camera eats into it a little each frame,
+     * so a turn of the wheel glides instead of jumping.
+     *
+     * @type {Vec3}
+     * @private
+     */
+    _pendingZoom = new Vec3();
+
+    /** @type {Vec3} @private */
+    _keyVelocity = new Vec3();
+
+    /** @type {string} @private */
+    _cursorShape = '';
 
     /**
      * Enable fly camera controls.
@@ -448,13 +528,14 @@ class CameraControls extends Script {
     }
 
     /**
-     * The touch zoom pinch sensitivity.
+     * How strongly a pinch zooms. One means the ground keeps pace with the
+     * fingers; higher exaggerates it.
      *
      * @attribute
      * @title Zoom
      * @type {number}
      */
-    zoomPinchSens = 5;
+    zoomPinchSens = 1;
 
     /**
      * The zoom range.
@@ -557,13 +638,13 @@ class CameraControls extends Script {
     zoomSpeed = 0.0006;
 
     /**
-     * The pitch range. In the range -360 to 360 degrees. The pitch range is applied to the fly mode
-     * and the orbit mode.
+     * How far the view may tilt, in degrees. Negative looks down at the
+     * ground. Like a map, it never tips up far enough to show the sky.
      *
      * @attribute
      * @title Pitch Range
      * @type {Vec2}
-     * @default [-360, 360]
+     * @default [-89.9, -15]
      */
     set pitchRange(range) {
         this._pitchRange.x = math.clamp(range.x, -360, 360);
@@ -659,23 +740,56 @@ class CameraControls extends Script {
         this._flyMobileInput.attach(this.app.graphicsDevice.canvas);
         this._gamepadInput.attach(this.app.graphicsDevice.canvas);
 
-        // Native wheel event for FOV Zoom - Attaching to window with capture to bypass engine suppression
-        if (typeof window !== 'undefined') {
-            window.addEventListener('wheel', (e) => {
-                if (!this._initialFov) {
-                    this._initialFov = this._camera?.fov || 60;
-                    this._targetFov = this._initialFov;
-                }
-                
-                const delta = Math.sign(e.deltaY);
-                if (delta !== 0) {
-                    // e.deltaY > 0 is scroll down (zoom out / increase FOV)
-                    // e.deltaY < 0 is scroll up (zoom in / decrease FOV)
-                    this._targetFov += delta * 5; 
-                    this._targetFov = Math.max(15, Math.min(this._initialFov, this._targetFov));
-                }
-            }, { passive: true, capture: true });
-        }
+        // Dragging the ground needs to know where the pointer is, and the
+        // engine's input only reports how far it moved. These listeners sit on
+        // the window so a drag that wanders off the canvas keeps working.
+        this._onPointerTrack = (e) => {
+            const rect = this.app.graphicsDevice.canvas.getBoundingClientRect();
+            this._pointerX = e.clientX - rect.left;
+            this._pointerY = e.clientY - rect.top;
+            this._pointerSeen = true;
+            if (e.pointerType !== 'mouse') {
+                this._pointers.set(e.pointerId, { x: this._pointerX, y: this._pointerY });
+            }
+        };
+        this._onPointerDrop = (e) => {
+            this._pointers.delete(e.pointerId);
+        };
+
+        // Two clicks in the same spot dive in one step, as on a map.
+        this._onDoubleClick = (e) => {
+            const rect = this.app.graphicsDevice.canvas.getBoundingClientRect();
+            this._queueZoom(0.5, e.clientX - rect.left, e.clientY - rect.top);
+        };
+
+        // The + and - keys zoom on the middle of the view.
+        this._onZoomKey = (e) => {
+            const tag = e.target && e.target.tagName;
+            if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') {
+                return;
+            }
+            const canvas = this.app.graphicsDevice.canvas;
+            const x = canvas.clientWidth * 0.5;
+            const y = canvas.clientHeight * 0.5;
+            if (e.key === '+' || e.key === '=') {
+                this._queueZoom(1 / 1.5, x, y);
+            } else if (e.key === '-' || e.key === '_') {
+                this._queueZoom(1.5, x, y);
+            }
+        };
+
+        this._onWheel = (e) => {
+            const unit = e.deltaMode === 1 ? 16 : (e.deltaMode === 2 ? 400 : 1);
+            this._wheelDelta += e.deltaY * unit;
+        };
+        this.app.graphicsDevice.canvas.addEventListener('wheel', this._onWheel, { passive: true });
+
+        window.addEventListener('pointerdown', this._onPointerTrack, true);
+        window.addEventListener('pointermove', this._onPointerTrack, true);
+        window.addEventListener('pointerup', this._onPointerDrop, true);
+        window.addEventListener('pointercancel', this._onPointerDrop, true);
+        window.addEventListener('keydown', this._onZoomKey);
+        this.app.graphicsDevice.canvas.addEventListener('dblclick', this._onDoubleClick);
 
         // expose ui events
         this._flyMobileInput.on('joystick:position:left', ([bx, by, sx, sy]) => {
@@ -702,6 +816,8 @@ class CameraControls extends Script {
         // state
         this.on('state', () => {
             // discard inputs
+            this._wheelDelta = 0;
+            this._stopMotion();
             this._desktopInput.read();
             this._orbitMobileInput.read();
             this._flyMobileInput.read();
@@ -716,6 +832,14 @@ class CameraControls extends Script {
      * @private
      */
     _destroy() {
+        window.removeEventListener('pointerdown', this._onPointerTrack, true);
+        window.removeEventListener('pointermove', this._onPointerTrack, true);
+        window.removeEventListener('pointerup', this._onPointerDrop, true);
+        window.removeEventListener('pointercancel', this._onPointerDrop, true);
+        window.removeEventListener('keydown', this._onZoomKey);
+        this.app.graphicsDevice.canvas.removeEventListener('dblclick', this._onDoubleClick);
+        this.app.graphicsDevice.canvas.removeEventListener('wheel', this._onWheel);
+
         this._desktopInput.destroy();
         this._orbitMobileInput.destroy();
         this._flyMobileInput.destroy();
@@ -781,6 +905,7 @@ class CameraControls extends Script {
      */
     focus(focus, resetZoom = false) {
         this._setMode('focus');
+        this._stopMotion();
         const zoomDist = resetZoom ?
             this._startZoomDist : this._camera.entity.getPosition().distance(focus);
         const position = tmpV1.copy(this._camera.entity.forward)
@@ -795,6 +920,7 @@ class CameraControls extends Script {
      */
     look(focus, resetZoom = false) {
         this._setMode('focus');
+        this._stopMotion();
         const position = resetZoom ?
             tmpV1.copy(this._camera.entity.getPosition())
             .sub(focus)
@@ -810,6 +936,7 @@ class CameraControls extends Script {
      */
     reset(focus, position) {
         this._setMode('focus');
+        this._stopMotion();
         this._controller.attach(pose.look(position, focus));
     }
 
@@ -828,105 +955,189 @@ class CameraControls extends Script {
         this._boundsArmed = false;
         this._entryLimit = null;
         this._lastInsideValid = false;
+        this._stopMotion();
         this._pose.look(position, focus);
         this._controller.attach(this._pose, false);
     }
 
     /**
-     * @param {number} dt - The time delta.
+     * Drops whatever the camera was still carrying: the glide left over from a
+     * drag, the zoom still on its way, the drift of a held key.
+     *
+     * @private
      */
-    update(dt) {
-        dt = Math.min(dt, 0.1);
-        const { keyCode } = KeyboardMouseSource;
+    _stopMotion() {
+        this._grabPoint = null;
+        this._grabVelocity.set(0, 0, 0);
+        this._pendingZoom.set(0, 0, 0);
+        this._keyVelocity.set(0, 0, 0);
+    }
 
-        const { key, button, mouse, wheel } = this._desktopInput.read();
-        const { touch, pinch, count } = this._orbitMobileInput.read();
-        const { leftInput, rightInput } = this._flyMobileInput.read();
-        const { leftStick, rightStick } = this._gamepadInput.read();
+    /**
+     * How far ahead the ground is, straight down the middle of the view. The
+     * rest of the code asks the pose for this, so it is kept up to date.
+     *
+     * @private
+     */
+    _syncDistance() {
+        const height = Math.max(0.01, this._pose.position.y - this.groundHeight);
+        const drop = -Math.sin(this._pose.angles.x * math.DEG_TO_RAD);
+        this._pose.distance = drop > 0.001 ?
+            Math.min(height / drop, height * MAX_REACH) : height * MAX_REACH;
+    }
 
-        // apply dead zone to gamepad sticks
-        applyDeadZone(leftStick, this.gamepadDeadZone.x, this.gamepadDeadZone.y);
-        applyDeadZone(rightStick, this.gamepadDeadZone.x, this.gamepadDeadZone.y);
+    /**
+     * The spot of ground sitting under a point of the screen.
+     *
+     * @param {number} sx - Screen x, in canvas pixels.
+     * @param {number} sy - Screen y, in canvas pixels.
+     * @param {Vec3} out - The vector to write into.
+     * @returns {Vec3} - A point on the ground plane.
+     * @private
+     */
+    _groundPoint(sx, sy, out) {
+        const camera = this._camera;
+        camera.screenToWorld(sx, sy, camera.nearClip, tmpRayO);
+        camera.screenToWorld(sx, sy, camera.farClip, tmpRayD);
+        tmpRayD.sub(tmpRayO).normalize();
 
-        // update state
-        this._state.axis.add(tmpV1.set(
-            (key[keyCode.D] - key[keyCode.A]) + (key[keyCode.RIGHT] - key[keyCode.LEFT]),
-            0, // Q and E keys disabled: (key[keyCode.E] - key[keyCode.Q]),
-            (key[keyCode.W] - key[keyCode.S]) + (key[keyCode.UP] - key[keyCode.DOWN])
-        ));
-        for (let i = 0; i < this._state.mouse.length; i++) {
-            this._state.mouse[i] += button[i];
+        const ground = this.groundHeight;
+        const reach = Math.max(0.01, tmpRayO.y - ground) * MAX_REACH;
+        const travel = tmpRayD.y < -0.0001 ?
+            Math.min((ground - tmpRayO.y) / tmpRayD.y, reach) : reach;
+
+        out.copy(tmpRayD).mulScalar(travel).add(tmpRayO);
+        out.y = ground;
+        return out;
+    }
+
+    /**
+     * Books a move towards a spot on the ground — or away from it, for zooming
+     * out. The spot stays where it is on screen while the camera closes in.
+     *
+     * @param {number} factor - Below 1 comes closer, above 1 pulls back.
+     * @param {number} sx - Screen x, in canvas pixels.
+     * @param {number} sy - Screen y, in canvas pixels.
+     * @param {boolean} [now] - Spend it straight away, for a pinch that has to
+     * keep up with the fingers.
+     * @private
+     */
+    _queueZoom(factor, sx, sy, now = false) {
+        const ground = this.groundHeight;
+        const from = tmpV1.copy(this._pose.position).add(this._pendingZoom);
+        const height = from.y - ground;
+        if (height <= 0.01) {
+            return;
         }
-        this._state.shift += key[keyCode.SHIFT];
-        this._state.ctrl += key[keyCode.CTRL];
-        this._state.touches += count[0];
 
-        // FPS: Always Fly Mode
-        this._setMode('fly');
-
-        const orbit = +(this._mode === 'orbit');
-        const fly = +(this._mode === 'fly');
-        const double = +(this._state.touches > 1);
-        const desktopPan = +(this._state.shift || this._state.mouse[1]);
-        const mobileJoystick = +(this._flyMobileInput.layout.endsWith('joystick'));
-
-        // rate-based multipliers (keyboard, gamepad, virtual joystick)
-        const moveMult = (this._state.shift ? this.moveFastSpeed : this._state.ctrl ?
-            this.moveSlowSpeed : this.moveSpeed) * dt;
-        const rotateJoystickMult = this.rotateSpeed * this.rotateJoystickSens * 60 * dt;
-
-        // delta-based multipliers (mouse, touch, wheel)
-        const rotateDeltaMult = this.rotateSpeed;
-        const zoomDeltaMult = this.zoomSpeed;
-        const zoomTouchDeltaMult = this.zoomSpeed * this.zoomPinchSens;
-
-        const { deltas } = frame;
-
-        // desktop move
-        const keyMove = this._state.axis.clone().normalize();
-        
-        const panMove = screenToWorld(this._camera, mouse[0], mouse[1], this._pose.distance);
-        const v = tmpV1.set(0, 0, 0); // Reuse v for rotate below
-        v.add(panMove.mulScalar(orbit * desktopPan * +this.enablePan));
-        
-        // FPS FOV Zoom (Mobile Pinch) and WASD Slide
-        if (!this._initialFov) {
-            this._initialFov = this._camera.fov || 60;
-            this._targetFov = this._initialFov;
+        // The floor and the ceiling decide how much of the turn of the wheel
+        // can actually be spent.
+        const scale = math.clamp(factor,
+            (MIN_HEIGHT - ground) / height, (MAX_HEIGHT - ground) / height);
+        if (Math.abs(scale - 1) < 0.0005) {
+            return;
         }
 
-        // Gesture Mutual Exclusion
-        let activePinch = pinch[0];
-        let activeTouchX = touch[0];
-        let activeTouchY = touch[1];
+        const anchor = this._groundPoint(sx, sy, tmpHit);
+        tmpV3.copy(from).sub(anchor).mulScalar(scale).add(anchor);
+        this._pendingZoom.add(tmpV3).sub(from);
 
-        if (double === 1) {
-            const slideMag = Math.sqrt(touch[0] * touch[0] + touch[1] * touch[1]);
-            const pinchMag = Math.abs(pinch[0]);
-            
+        if (now) {
+            this._pose.position.add(this._pendingZoom);
+            this._pendingZoom.set(0, 0, 0);
+        }
+    }
+
+    /**
+     * How far apart the fingers are, in canvas pixels.
+     *
+     * @returns {number} - The spread, or zero without two fingers down.
+     * @private
+     */
+    _fingerSpread() {
+        const spots = [];
+        this._pointers.forEach((p) => spots.push(p));
+        if (spots.length < 2) {
+            return 0;
+        }
+        const dx = spots[0].x - spots[1].x;
+        const dy = spots[0].y - spots[1].y;
+        return Math.sqrt(dx * dx + dy * dy);
+    }
+
+    /**
+     * The middle of the fingers on screen, for a pinch to zoom on.
+     *
+     * @returns {{x: number, y: number}} - A point in canvas pixels.
+     * @private
+     */
+    _pinchCentre() {
+        let x = 0;
+        let y = 0;
+        let count = 0;
+        this._pointers.forEach((p) => {
+            x += p.x;
+            y += p.y;
+            count++;
+        });
+        const canvas = this.app.graphicsDevice.canvas;
+        this._middle.x = count > 0 ? x / count : canvas.clientWidth * 0.5;
+        this._middle.y = count > 0 ? y / count : canvas.clientHeight * 0.5;
+        return this._middle;
+    }
+
+    /**
+     * Moves the camera the way a map moves.
+     *
+     * Drag with the left button and the ground follows the pointer. Hold Ctrl
+     * (or use the right button) and the view turns and tilts around whatever
+     * is in the middle of the screen. The wheel dives towards the pointer. On
+     * a screen, one finger drags and two fingers pinch to zoom or twist.
+     *
+     * @param {number} dt - The time delta.
+     * @param {number[]} mouse - How far the mouse moved while held down.
+     * @param {number[]} touch - How far the fingers moved.
+     * @param {number[]} pinch - How much the fingers came together.
+     * @param {number[]} leftStick - The left stick of the gamepad.
+     * @param {number[]} rightStick - The right stick of the gamepad.
+     * @private
+     */
+    _navigate(dt, mouse, touch, pinch, leftStick, rightStick) {
+        const pos = this._pose.position;
+        const angles = this._pose.angles;
+        const ground = this.groundHeight;
+
+        const left = this._state.mouse[0] > 0;
+        const middle = this._state.mouse[1] > 0;
+        const right = this._state.mouse[2] > 0;
+        const ctrl = this._state.ctrl > 0;
+        const fingers = this._state.touches;
+
+        const turning = middle || right || (left && ctrl);
+        const dragging = (left && !turning) || fingers === 1;
+
+        // Two fingers do one thing at a time: either a pinch or a drag. A
+        // small wobble should not count as either.
+        let slideX = 0;
+        let slideY = 0;
+        let squeeze = 0;
+        if (fingers > 1) {
             if (!this._twoFingerGesture) {
-                this._accumulatedSlide = (this._accumulatedSlide || 0) + slideMag;
-                this._accumulatedPinch = (this._accumulatedPinch || 0) + pinchMag;
-                
-                // Independent higher thresholds to ignore micro-displacements (wiggles)
-                // Anchor zoom produces 2x pinch compared to slide.
+                this._accumulatedSlide = (this._accumulatedSlide || 0) +
+                    Math.sqrt(touch[0] * touch[0] + touch[1] * touch[1]);
+                this._accumulatedPinch = (this._accumulatedPinch || 0) + Math.abs(pinch[0]);
+
                 if (this._accumulatedPinch > 25 && this._accumulatedPinch > this._accumulatedSlide) {
                     this._twoFingerGesture = 'pinch';
                 } else if (this._accumulatedSlide > 20) {
                     this._twoFingerGesture = 'slide';
                 }
             }
-            
-            if (this._twoFingerGesture === 'slide') {
-                activePinch = 0;
-            } else if (this._twoFingerGesture === 'pinch') {
-                activeTouchX = 0;
-                activeTouchY = 0;
-            } else {
-                // Not enough movement yet to decide, suppress both to avoid jitter
-                activePinch = 0;
-                activeTouchX = 0;
-                activeTouchY = 0;
+            if (this._twoFingerGesture === 'pinch') {
+                squeeze = pinch[0];
+            } else if (this._twoFingerGesture === 'slide') {
+                slideX = touch[0];
+                slideY = touch[1];
             }
         } else {
             this._twoFingerGesture = null;
@@ -934,222 +1145,193 @@ class CameraControls extends Script {
             this._accumulatedPinch = 0;
         }
 
-        // Apply continuous zoom
-        if (double === 1 && activePinch !== 0) {
-            this._targetFov += activePinch * 0.2; // Inverted zoom direction
-            this._targetFov = Math.max(15, Math.min(this._initialFov, this._targetFov));
+        // ---- turn and tilt ----
+        let yaw = 0;
+        let pitch = 0;
+        if (turning) {
+            yaw -= mouse[0] * this.rotateSpeed;
+            pitch -= mouse[1] * this.rotateSpeed;
+        }
+        yaw -= slideX * this.rotateSpeed;
+        pitch -= slideY * this.rotateSpeed;
+
+        const turnStep = this.rotateSpeed * this.rotateJoystickSens * 60 * dt;
+        if (ctrl) {
+            yaw -= this._state.axis.x * turnStep;
+            pitch += this._state.axis.z * turnStep;
+        }
+        yaw -= rightStick[0] * turnStep;
+        pitch -= rightStick[1] * turnStep;
+
+        if (yaw !== 0 || pitch !== 0) {
+            // Whatever sits in the middle of the view stays put: the camera is
+            // the one that swings around it.
+            const facing = forwardFromAngles(angles.x, angles.y, tmpDir);
+            const reach = Math.max(0.01, pos.y - ground) * MAX_REACH;
+            const travel = facing.y < -0.0001 ?
+                Math.min((ground - pos.y) / facing.y, reach) : reach;
+            const pivot = tmpPivot.copy(facing).mulScalar(travel).add(pos);
+
+            angles.y = (angles.y + yaw) % 360;
+            angles.x = math.clamp(angles.x + pitch, this._pitchRange.x, this._pitchRange.y);
+
+            // Tilting towards straight down lifts the camera, so it comes in
+            // closer instead of going through the ceiling.
+            const after = forwardFromAngles(angles.x, angles.y, tmpDir);
+            const drop = Math.max(0.0001, -after.y);
+            const low = (MIN_HEIGHT - pivot.y) / drop;
+            const high = (MAX_HEIGHT - pivot.y) / drop;
+            const dist = high > low ? math.clamp(travel, low, high) : travel;
+
+            pos.copy(pivot).sub(after.mulScalar(dist));
+            this._grabPoint = null;
+            this._grabVelocity.set(0, 0, 0);
         }
 
-        // Apply slide directly to keyMove for WASD mapping
-        if (double === 1 && (activeTouchX !== 0 || activeTouchY !== 0)) {
-            keyMove.x -= activeTouchX * 0.10; // Inverted X
-            keyMove.z += activeTouchY * 0.10; // Inverted Z
+        // ---- zoom ----
+        if (this._wheelDelta !== 0) {
+            const canvas = this.app.graphicsDevice.canvas;
+            const turn = math.clamp(this._wheelDelta, -400, 400);
+            this._wheelDelta = 0;
+            this._queueZoom(
+                Math.exp(math.clamp(turn * this.zoomSpeed * 5, -1.2, 1.2)),
+                this._pointerSeen ? this._pointerX : canvas.clientWidth * 0.5,
+                this._pointerSeen ? this._pointerY : canvas.clientHeight * 0.5
+            );
         }
-
-        // Interpolação suave (lerp)
-        if (Math.abs(this._targetFov - this._camera.fov) > 0.1) {
-            this._camera.fov = math.lerp(this._camera.fov, this._targetFov, 12.0 * dt);
-        } else {
-            this._camera.fov = this._targetFov;
-        }
-
-        // Dynamic LOD based on FOV (Zooming in increases LOD quality)
-        if (this._initialFov && this._camera) {
-            const fovRatio = this._initialFov / this._camera.fov; 
-            
-            if (!this._splatGsplat) {
-                const splatEl = document.querySelector('pc-entity[name="gsplat-scene"]');
-                if (splatEl && splatEl.entity && splatEl.entity.gsplat) {
-                    this._splatGsplat = splatEl.entity.gsplat;
-                }
-            }
-            
-            if (this._splatGsplat) {
-                const isLow = typeof window !== 'undefined' && window.actualQuality === 'low';
-                const isMed = typeof window !== 'undefined' && window.actualQuality === 'med';
-                
-                // Estes valores mandam mesmo (reescrevem a cada imagem os que
-                // ficam definidos no arranque da pagina) e tem de acompanhar
-                // os do index.html.
-                let baseDist = 350;
-                if (isLow) baseDist = 70;
-                else if (isMed) baseDist = 110;
-                
-                this._splatGsplat.lodBaseDistance = baseDist * fovRatio;
-            }
-        }
-
-        // desktop rotate (Drag to Look)
-        v.set(0, 0, 0);
-        
-        if (!this._smoothRotateVelocity) {
-            this._smoothRotateVelocity = new Vec3(0, 0, 0);
-        }
-        
-        // Target rotation based on mouse input with slight speed reduction (0.8)
-        const targetRotate = tmpV2.set(mouse[0] * 0.8, mouse[1] * 0.8, 0).mulScalar(rotateDeltaMult);
-        
-        // Apply ease in and out (inertia)
-        this._smoothRotateVelocity.lerp(this._smoothRotateVelocity, targetRotate, 5.0 * dt);
-        
-        v.add(this._smoothRotateVelocity);
-        deltas.rotate.append([v.x, v.y, v.z]);
-
-
-        // mobile rotate (1-finger drag -> Look around)
-        v.set(0, 0, 0);
-        const touchRotate = tmpV2.set(touch[0], touch[1], 0);
-        // Multiply by (1 - double) so it only activates when exactly 1 finger is down.
-        v.add(touchRotate.mulScalar((1 - double) * rotateDeltaMult));
-        deltas.rotate.append([v.x, v.y, v.z]);
-
-        // gamepad move
-        v.set(0, 0, 0);
-        const stickMove = tmpV2.set(leftStick[0], 0, -leftStick[1]);
-        v.add(stickMove.mulScalar(fly * moveMult));
-        deltas.move.append([v.x, v.y, v.z]);
-
-        // gamepad rotate
-        v.set(0, 0, 0);
-        const stickRotate = tmpV2.set(rightStick[0], rightStick[1], 0);
-        v.add(stickRotate.mulScalar(fly * rotateJoystickMult));
-        deltas.rotate.append([v.x, v.y, v.z]);
-
-        // check if XR is active for frame discard
-        if (this.app.xr?.active) {
-            frame.read();
-            return;
-        }
-
-        // check focus end
-        if (this._mode === 'focus') {
-            const focusInterrupt = deltas.move.length() + deltas.rotate.length() > 0;
-            const focusComplete = this._focusController.complete();
-            if (focusInterrupt || focusComplete) {
-                this._setMode('orbit');
-            }
-        }
-
-        if (!this._lastValidPos) {
-            this._lastValidPos = this._camera.entity.getPosition().clone();
-            this._lastValidAngles = this._camera.entity.getEulerAngles().clone();
-        }
-
-        const oldPosX = this._lastValidPos.x;
-        const oldPosY = this._lastValidPos.y;
-        const oldPosZ = this._lastValidPos.z;
-        const oldPitch = this._lastValidAngles.x;
-        const oldYaw = this._lastValidAngles.y;
-        const oldRoll = this._lastValidAngles.z;
-
-        // Save the manual position we maintained from the last frame
-        const currentPos = this._pose.position.clone();
-        
-        // update controller by consuming frame
-        this._pose.copy(this._controller.update(frame, dt));
-        
-        // --- FPS WASD MANUAL XZ MOVEMENT ---
-        if (this._mode === 'fly') {
-            // Restore our manual position (ignoring the controller's unaware position entirely!)
-            this._pose.position.copy(currentPos);
-            
-            if (!this._smoothMoveVelocity) {
-                this._smoothMoveVelocity = new Vec3(0, 0, 0);
-            }
-
-            const yaw = this._pose.angles.y * math.DEG_TO_RAD;
-            const flatForwardX = -Math.sin(yaw);
-            const flatForwardZ = -Math.cos(yaw);
-            const flatRightX = Math.cos(yaw);
-            const flatRightZ = -Math.sin(yaw);
-            
-            // Target movement based on input
-            let moveX = flatForwardX * keyMove.z + flatRightX * keyMove.x;
-            let moveZ = flatForwardZ * keyMove.z + flatRightZ * keyMove.x;
-            
-            const targetVec = tmpV1.set(moveX, 0, moveZ);
-            if (targetVec.length() > 0.0001) {
-                targetVec.mulScalar(fly * moveMult);
-            } else {
-                targetVec.set(0, 0, 0);
-            }
-            
-            // Apply ease in and out (inertia)
-            this._smoothMoveVelocity.lerp(this._smoothMoveVelocity, targetVec, 5.0 * dt);
-            
-            if (this._smoothMoveVelocity.length() > 0.00001) {
-                this._pose.position.add(this._smoothMoveVelocity);
-            }
-            // NO ATTACH HERE!
-        }
-        
-        // --- HARD CLAMP PITCH TO PREVENT FLIPPING ---
-        let currentPitch = this._pose.angles.x;
-        while (currentPitch > 180) currentPitch -= 360;
-        while (currentPitch < -180) currentPitch += 360;
-
-        if (currentPitch < -89.5 || currentPitch > 89.5) {
-            const targetPitch = Math.max(-89.5, Math.min(89.5, currentPitch));
-            this._pose.angles.x = targetPitch;
-            
-            if (this._mode === 'orbit') {
-                const focus = this._pose.getFocus(tmpV2).clone();
-                const dist = this._pose.position.distance(focus);
-                
-                // Recalculate position based on the clamped pitch
-                const ex = targetPitch * math.DEG_TO_RAD;
-                const ey = this._pose.angles.y * math.DEG_TO_RAD;
-                
-                const cx = Math.cos(ex);
-                const sx = Math.sin(ex);
-                const cy = Math.cos(ey);
-                const sy = Math.sin(ey);
-                
-                this._pose.position.set(
-                    focus.x + (cx * sy) * dist,
-                    focus.y + (-sx) * dist,
-                    focus.z + (cx * cy) * dist
+        if (squeeze !== 0) {
+            // Fingers spread twice as wide bring the ground twice as close,
+            // so the map keeps pace with the hands holding it.
+            const spread = this._fingerSpread();
+            if (spread > 1) {
+                const centre = this._pinchCentre();
+                this._queueZoom(
+                    Math.pow(math.clamp(1 + squeeze / spread, 0.2, 5), this.zoomPinchSens),
+                    centre.x, centre.y, true
                 );
-                
-                // Re-sync controller so it doesn't bounce back
-                this._controller.attach(this._pose, false);
             }
         }
-        
-        const rawPosX = this._pose.position.x;
-        const rawPosY = this._pose.position.y;
-        const rawPosZ = this._pose.position.z;
-        const rawPitch = this._pose.angles.x;
-        const rawYaw = this._pose.angles.y;
-        const rawRoll = this._pose.angles.z;
-
-        // Ground Collision Limit
-        if (this._pose.position.y < 1.0) {
-            this._pose.position.y = 1.0;
-            if (this._mode === 'orbit') {
-                const focus = this._pose.getFocus(tmpV2).clone();
-                this._pose.look(this._pose.position, focus);
-                this._controller.attach(this._pose, false);
-            }
+        if (this._pendingZoom.lengthSq() > 0.000001) {
+            tmpV1.copy(this._pendingZoom).mulScalar(damp(this.zoomDamping, dt));
+            pos.add(tmpV1);
+            this._pendingZoom.sub(tmpV1);
+        } else {
+            this._pendingZoom.set(0, 0, 0);
         }
 
-        // Ceiling Collision Limit (Max Y)
-        const MAX_Y = 63.28;
-        if (this._pose.position.y > MAX_Y) {
-            this._pose.position.y = MAX_Y;
-            if (this._mode === 'orbit') {
-                const focus = this._pose.getFocus(tmpV2).clone();
-                this._pose.look(this._pose.position, focus);
-                this._controller.attach(this._pose, false);
+        // ---- drag the ground ----
+        if (dragging && this.enablePan) {
+            const hit = this._groundPoint(this._pointerX, this._pointerY, tmpHit);
+            if (this._grabPoint) {
+                // Every frame the camera moves so the spot it grabbed lands
+                // back under the pointer. Held against an edge the map simply
+                // stops, and picks up again on the way back.
+                let dx = this._grabPoint.x - hit.x;
+                let dz = this._grabPoint.z - hit.z;
+                const step = Math.sqrt(dx * dx + dz * dz);
+                const limit = Math.max(1, pos.y - ground) * 2;
+                if (step > limit) {
+                    dx *= limit / step;
+                    dz *= limit / step;
+                }
+                pos.x += dx;
+                pos.z += dz;
+
+                if (dt > 0.0001) {
+                    // Kept in check so a flick of the wrist throws the map a
+                    // little way, not clean off the far side of the world.
+                    tmpV2.set(dx / dt, 0, dz / dt);
+                    const fastest = Math.max(4, (pos.y - ground) * 3);
+                    if (tmpV2.length() > fastest) {
+                        tmpV2.normalize().mulScalar(fastest);
+                    }
+                    this._grabVelocity.lerp(this._grabVelocity, tmpV2, 0.35);
+                }
+            } else {
+                this._grabPoint = new Vec3().copy(hit);
+                this._grabVelocity.set(0, 0, 0);
+            }
+        } else {
+            this._grabPoint = null;
+            if (this._grabVelocity.lengthSq() > 0.0004) {
+                // A short glide after the map is let go.
+                pos.x += this._grabVelocity.x * dt;
+                pos.z += this._grabVelocity.z * dt;
+                this._grabVelocity.mulScalar(Math.pow(0.0005, dt));
+            } else {
+                this._grabVelocity.set(0, 0, 0);
             }
         }
+
+        // ---- arrow keys and gamepad stick ----
+        const axis = tmpAxis.set(0, 0, 0);
+        if (!ctrl) {
+            axis.add(this._state.axis);
+        }
+        axis.x += leftStick[0];
+        axis.z -= leftStick[1];
+        axis.y = 0;
+
+        const target = tmpTarget.set(0, 0, 0);
+        if (axis.lengthSq() > 0.0001) {
+            axis.normalize();
+            const rad = angles.y * math.DEG_TO_RAD;
+            const sy = Math.sin(rad);
+            const cy = Math.cos(rad);
+
+            // Down low the map crawls, high up it sweeps: the same press of a
+            // key covers the same slice of what is on screen.
+            const height = Math.max(1, pos.y - ground);
+            const speed = this.moveSpeed * (this._state.shift > 0 ? 2 : 1) *
+                dt * math.clamp(height / 60, 0.12, 1.5);
+
+            target.set(
+                (cy * axis.x - sy * axis.z) * speed,
+                0,
+                (-sy * axis.x - cy * axis.z) * speed
+            );
+            this._grabVelocity.set(0, 0, 0);
+        }
+        this._keyVelocity.lerp(this._keyVelocity, target, math.clamp(8 * dt, 0, 1));
+        pos.x += this._keyVelocity.x;
+        pos.z += this._keyVelocity.z;
+
+        // ---- the pointer shows the map can be grabbed ----
+        const shape = (dragging || turning) ? 'grabbing' : 'grab';
+        if (shape !== this._cursorShape) {
+            this._cursorShape = shape;
+            this.app.graphicsDevice.canvas.style.cursor = shape;
+        }
+    }
+
+    /**
+     * Keeps the camera over the mapped ground, between the floor and the
+     * ceiling, and tells the page when it runs into the edge.
+     *
+     * @private
+     */
+    _applyLimits() {
+        const pos = this._pose.position;
+        const angles = this._pose.angles;
+
+        // Never roll over the top.
+        let pitch = angles.x;
+        while (pitch > 180) {
+            pitch -= 360;
+        }
+        while (pitch < -180) {
+            pitch += 360;
+        }
+        angles.x = math.clamp(pitch, this._pitchRange.x, this._pitchRange.y);
+
+        // Floor and ceiling.
+        pos.y = math.clamp(pos.y, MIN_HEIGHT, MAX_HEIGHT);
 
         let isAtBoundary = false;
         const EDGE_EPS = 0.01;
 
         if (this._playArea) {
             const area = this._playArea;
-            const pos = this._pose.position;
 
             // Opening frame: remember how far out the view starts, so the
             // camera can hold that viewpoint yet never retreat beyond it.
@@ -1183,40 +1365,113 @@ class CameraControls extends Script {
                 isAtBoundary = true;
                 this._lastInsideX = pos.x;
                 this._lastInsideZ = pos.z;
-
-                if (this._mode === 'orbit') {
-                    const focus = this._pose.getFocus(tmpV2).clone();
-                    this._pose.look(this._pose.position, focus);
-                    this._controller.attach(this._pose, false);
-                }
             }
-        } else if (this.maxDistance > 0 && this._pose.position.length() >= this.maxDistance - EDGE_EPS) {
+        } else if (this.maxDistance > 0 && pos.length() >= this.maxDistance - EDGE_EPS) {
             // Fallback until the map footprint is known
             isAtBoundary = true;
-            if (this._pose.position.length() > this.maxDistance) {
-                this._pose.position.normalize().mulScalar(this.maxDistance);
-                if (this._mode === 'orbit') {
-                    const focus = this._pose.getFocus(tmpV2).clone();
-                    this._pose.look(this._pose.position, focus);
-                    this._controller.attach(this._pose, false);
-                }
+            if (pos.length() > this.maxDistance) {
+                pos.normalize().mulScalar(this.maxDistance);
             }
         }
 
         if (isAtBoundary !== this._wasAtBoundary) {
             this._wasAtBoundary = isAtBoundary;
-            if (isAtBoundary) {
-                window.dispatchEvent(new CustomEvent('cameraBoundaryHit'));
-            } else {
-                window.dispatchEvent(new CustomEvent('cameraBoundaryLeft'));
+            window.dispatchEvent(new CustomEvent(isAtBoundary ?
+                'cameraBoundaryHit' : 'cameraBoundaryLeft'));
+        }
+    }
+
+    /**
+     * The model swaps in finer detail as the camera comes down. How close it
+     * has to be depends on the graphics setting.
+     *
+     * Estes valores mandam mesmo (reescrevem a cada imagem os que ficam
+     * definidos no arranque da pagina) e tem de acompanhar os do index.html.
+     *
+     * @private
+     */
+    _updateDetail() {
+        if (!this._splatGsplat) {
+            const splatEl = document.querySelector('pc-entity[name="gsplat-scene"]');
+            if (splatEl && splatEl.entity && splatEl.entity.gsplat) {
+                this._splatGsplat = splatEl.entity.gsplat;
             }
         }
+        if (!this._splatGsplat) {
+            return;
+        }
+
+        const quality = typeof window !== 'undefined' ? window.actualQuality : null;
+        let baseDist = 350;
+        if (quality === 'low') {
+            baseDist = 70;
+        } else if (quality === 'med') {
+            baseDist = 110;
+        }
+        this._splatGsplat.lodBaseDistance = baseDist;
+    }
+
+    /**
+     * @param {number} dt - The time delta.
+     */
+    update(dt) {
+        dt = Math.min(dt, 0.1);
+        const { keyCode } = KeyboardMouseSource;
+
+        const { key, button, mouse, wheel } = this._desktopInput.read();
+        const { touch, pinch, count } = this._orbitMobileInput.read();
+        const { leftStick, rightStick } = this._gamepadInput.read();
+        this._flyMobileInput.read();
+
+        // apply dead zone to gamepad sticks
+        applyDeadZone(leftStick, this.gamepadDeadZone.x, this.gamepadDeadZone.y);
+        applyDeadZone(rightStick, this.gamepadDeadZone.x, this.gamepadDeadZone.y);
+
+        // update state
+        this._state.axis.add(tmpV1.set(
+            (key[keyCode.D] - key[keyCode.A]) + (key[keyCode.RIGHT] - key[keyCode.LEFT]),
+            0,
+            (key[keyCode.W] - key[keyCode.S]) + (key[keyCode.UP] - key[keyCode.DOWN])
+        ));
+        for (let i = 0; i < this._state.mouse.length; i++) {
+            this._state.mouse[i] += button[i];
+        }
+        this._state.shift += key[keyCode.SHIFT];
+        this._state.ctrl += key[keyCode.CTRL];
+        this._state.touches += count[0];
+
+        // inside the headset the head drives the camera
+        if (this.app.xr?.active) {
+            frame.read();
+            return;
+        }
+
+        if (this._mode === 'focus') {
+            // A flight to a viewpoint, running on its own. Any touch of the
+            // controls hands the camera back.
+            this._pose.copy(this._controller.update(frame, dt));
+            const nudged = wheel[0] !== 0 || this._state.touches > 0 ||
+                this._state.axis.lengthSq() > 0 || this._state.mouse[0] > 0 ||
+                this._state.mouse[1] > 0 || this._state.mouse[2] > 0;
+            if (nudged || this._focusController.complete()) {
+                this._setMode('orbit');
+            }
+        } else {
+            this._setMode('orbit');
+            frame.read();
+            this._navigate(dt, mouse, touch, pinch, leftStick, rightStick);
+        }
+
+        this._applyLimits();
+        this._syncDistance();
+        this._updateDetail();
 
         this._camera.entity.setPosition(this._pose.position);
         this._camera.entity.setEulerAngles(this._pose.angles);
-        
-        this._lastValidPos.copy(this._pose.position);
-        this._lastValidAngles.copy(this._pose.angles);
+
+        if (this._mode !== 'focus') {
+            this._controller.attach(this._pose, false);
+        }
     }
 }
 

@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Controlos do Mapa — Malha Viva</title>
-    <meta name="description" content="Guia completo dos controlos do visualizador 3D Malha Viva. Aprende a navegar com rato, teclado, toque e gamepad.">
+    <meta name="description" content="Guia dos controlos do visualizador 3D Malha Viva. Navega como num mapa: arrasta com o rato, aproxima com o scroll, roda com Ctrl.">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -310,16 +310,32 @@
             </div>
             <div class="controls-table">
                 <div class="control-row">
-                    <span class="control-action">Olhar à volta</span>
+                    <span class="control-action">Arrastar o bairro</span>
                     <div class="control-keys">
-                        <span class="kbd">🖱️ Esquerdo</span>
+                        <span class="kbd accent">🖱️ Esquerdo</span>
                         <span class="key-separator">+ arrastar</span>
                     </div>
                 </div>
                 <div class="control-row">
-                    <span class="control-action">Aproximar visão (Zoom)</span>
+                    <span class="control-action">Rodar e inclinar</span>
+                    <div class="control-keys">
+                        <span class="kbd">Ctrl</span>
+                        <span class="key-separator">+ arrastar</span>
+                        <span class="key-separator">ou</span>
+                        <span class="kbd">🖱️ Direito</span>
+                    </div>
+                </div>
+                <div class="control-row">
+                    <span class="control-action">Aproximar / afastar</span>
                     <div class="control-keys">
                         <span class="kbd">Scroll</span>
+                        <span class="key-separator">sobre o ponto que quiseres</span>
+                    </div>
+                </div>
+                <div class="control-row">
+                    <span class="control-action">Aproximar num sítio</span>
+                    <div class="control-keys">
+                        <span class="kbd">Duplo clique</span>
                     </div>
                 </div>
             </div>
@@ -332,40 +348,38 @@
             </div>
             <div class="controls-table">
                 <div class="control-row">
-                    <span class="control-action">Avançar / Recuar</span>
+                    <span class="control-action">Deslocar o bairro</span>
                     <div class="control-keys">
                         <span class="kbd accent">W</span>
-                        <span class="key-separator">/</span>
-                        <span class="kbd accent">S</span>
-                        <span class="key-separator">ou</span>
-                        <span class="kbd">↑</span>
-                        <span class="key-separator">/</span>
-                        <span class="kbd">↓</span>
-                    </div>
-                </div>
-                <div class="control-row">
-                    <span class="control-action">Mover Lateralmente</span>
-                    <div class="control-keys">
                         <span class="kbd accent">A</span>
-                        <span class="key-separator">/</span>
+                        <span class="kbd accent">S</span>
                         <span class="kbd accent">D</span>
                         <span class="key-separator">ou</span>
                         <span class="kbd">←</span>
-                        <span class="key-separator">/</span>
+                        <span class="kbd">↑</span>
+                        <span class="kbd">↓</span>
                         <span class="kbd">→</span>
                     </div>
                 </div>
                 <div class="control-row">
-                    <span class="control-action">Movimento rápido</span>
+                    <span class="control-action">Rodar e inclinar</span>
                     <div class="control-keys">
-                        <span class="kbd">Shift</span>
-                        <span class="key-separator">+ tecla de movimento</span>
+                        <span class="kbd">Ctrl</span>
+                        <span class="key-separator">+ setas</span>
                     </div>
                 </div>
                 <div class="control-row">
-                    <span class="control-action">Movimento lento</span>
+                    <span class="control-action">Aproximar / afastar</span>
                     <div class="control-keys">
-                        <span class="kbd">Ctrl</span>
+                        <span class="kbd accent">+</span>
+                        <span class="key-separator">/</span>
+                        <span class="kbd accent">−</span>
+                    </div>
+                </div>
+                <div class="control-row">
+                    <span class="control-action">Deslocar mais depressa</span>
+                    <div class="control-keys">
+                        <span class="kbd">Shift</span>
                         <span class="key-separator">+ tecla de movimento</span>
                     </div>
                 </div>
@@ -379,21 +393,21 @@
             </div>
             <div class="controls-table">
                 <div class="control-row">
-                    <span class="control-action">Rodar a câmara</span>
+                    <span class="control-action">Arrastar o bairro</span>
                     <div class="control-keys">
-                        <span class="kbd">1 dedo</span>
+                        <span class="kbd accent">1 dedo</span>
                         <span class="key-separator">arrastar</span>
                     </div>
                 </div>
                 <div class="control-row">
-                    <span class="control-action">Zoom</span>
+                    <span class="control-action">Aproximar / afastar</span>
                     <div class="control-keys">
                         <span class="kbd">2 dedos</span>
                         <span class="key-separator">pinça</span>
                     </div>
                 </div>
                 <div class="control-row">
-                    <span class="control-action">Mover lateralmente (Pan)</span>
+                    <span class="control-action">Rodar e inclinar</span>
                     <div class="control-keys">
                         <span class="kbd">2 dedos</span>
                         <span class="key-separator">arrastar</span>
@@ -407,16 +421,16 @@
             <div class="section-header">
                 <h2 class="section-title">Gamepad</h2>
             </div>
-            <p class="section-desc">Liga um comando (Xbox, PlayStation, etc.) para navegação no modo de voo.</p>
+            <p class="section-desc">Liga um comando (Xbox, PlayStation, etc.) para andar pelo mapa sem rato.</p>
             <div class="controls-table">
                 <div class="control-row">
-                    <span class="control-action">Mover</span>
+                    <span class="control-action">Deslocar</span>
                     <div class="control-keys">
                         <span class="kbd">Stick Esquerdo</span>
                     </div>
                 </div>
                 <div class="control-row">
-                    <span class="control-action">Olhar / Rodar</span>
+                    <span class="control-action">Rodar e inclinar</span>
                     <div class="control-keys">
                         <span class="kbd">Stick Direito</span>
                     </div>
@@ -464,7 +478,7 @@
                     <p class="tip-text"><strong>Performance:</strong> Se o visualizador estiver lento num computador antigo, muda a qualidade gráfica para <em>Baixa</em> no ícone ⚙ do cabeçalho. Em mobile, a qualidade é ajustada automaticamente.</p>
                 </div>
                 <div class="tip-card">
-                    <p class="tip-text"><strong>Perdido?</strong> Se a câmara atingir o limite da simulação, aparecerá um botão para recentrar automaticamente.</p>
+                    <p class="tip-text"><strong>Perdido?</strong> Se chegares à borda do mapa aparece um botão para voltar à vista de abertura. A vista nunca sobe acima do horizonte: o bairro fica sempre por baixo, como num mapa.</p>
                 </div>
             </div>
         </section>
