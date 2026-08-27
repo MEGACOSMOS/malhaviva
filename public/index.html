@@ -129,12 +129,17 @@
         }
 
         /* ─── Header ─── */
+        /* O cabeçalho é só a arrumação: não leva camada própria nem se
+           prega ao ecrã com "fixed". Se levasse, fechava os ícones numa
+           bolha e eles deixavam de conseguir misturar-se com o mapa por
+           baixo — e é disso que vive a cor invertida. Quem precisa de
+           ficar por cima é cada peça, uma a uma, mais abaixo. A página
+           não rola, por isso "absolute" fica onde "fixed" ficava. */
         #header {
-            position: fixed;
+            position: absolute;
             top: 0;
             left: 0;
             right: 0;
-            z-index: 100;
             display: flex;
             align-items: center;
             justify-content: space-between;
@@ -148,11 +153,18 @@
 
         #header.visible {
             opacity: 1;
-            transform: translateY(0);
+            /* "none", e não "translateY(0)": qualquer deslocamento, mesmo de
+               zero, voltaria a fechar os ícones na bolha. */
+            transform: none;
         }
 
         #header > * {
             pointer-events: auto;
+        }
+
+        .brand {
+            position: relative;
+            z-index: 100;
         }
 
         .brand {
@@ -297,10 +309,16 @@
             position: relative;
         }
         
+        /* Sem caixa nenhuma até o rato lá chegar. Para se verem sempre,
+           os ícones passam a ser o negativo do que quer que lhes passe por
+           baixo: brancos sobre o escuro, escuros sobre o céu. */
         #definicoes-btn, #dev-btn, #idioma-btn, #help-btn, #fullscreen-main-btn, #vr-btn {
-            background: #05050a;
-            border: 1px solid rgba(255, 255, 255, 0.15);
-            color: var(--color-text);
+            position: relative;
+            z-index: 100;
+            background: transparent;
+            border: 1px solid transparent;
+            color: #ffffff;
+            mix-blend-mode: difference;
             width: 40px;
             height: 40px;
             border-radius: 0;
@@ -308,7 +326,7 @@
             align-items: center;
             justify-content: center;
             cursor: pointer;
-            transition: background 0.15s ease;
+            transition: background 0.15s ease, border-color 0.15s ease;
             text-decoration: none;
         }
 
@@ -382,15 +400,25 @@
            Antes cada ícone fazia à sua maneira — e os de Definições e
            Desenvolvedor não faziam nada, porque a regra deles tinha ficado
            colada à regra seguinte e nunca chegou a existir. */
+        /* Com o rato em cima — ou com o menu aberto, que é o mesmo que
+           estar escolhido — nasce a caixa escura, e o ícone volta a ser
+           branco em vez do negativo do fundo. É o mesmo aceso que a
+           página dos controlos usa nas suas linhas. */
         #definicoes-btn:hover, #dev-btn:hover, #idioma-btn:hover,
-        #help-btn:hover, #fullscreen-main-btn:hover, #vr-btn:hover {
+        #help-btn:hover, #fullscreen-main-btn:hover, #vr-btn:hover,
+        .settings:has(.open) > #definicoes-btn,
+        .settings:has(.open) > #dev-btn,
+        .settings:has(.open) > #idioma-btn {
             background: linear-gradient(rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.05)), #05050a;
+            border-color: rgba(255, 255, 255, 0.15);
+            mix-blend-mode: normal;
         }
         
         #definicoes-menu, #dev-menu, #idioma-menu {
             position: absolute;
             top: 50px;
             right: 0;
+            z-index: 110;
             background: linear-gradient(to bottom, rgba(255,255,255,0.05), transparent), #05050a;
             border: 1px solid rgba(255, 255, 255, 0.15);
             border-radius: 0;
@@ -793,6 +821,35 @@
         </div>
         
         <div style="display: flex; align-items: center; gap: 8px;">
+        <div class="settings">
+            <button id="idioma-btn" title="Idioma" data-i18n-title="cab.idioma">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" stroke="none">
+                    <path d="M12.87 15.07l-2.54-2.51.03-.03c1.74-1.94 2.98-4.17 3.71-6.53H17V4h-7V2H8v2H1v1.99h11.17C11.5 7.92 10.44 9.75 9 11.35 8.07 10.32 7.3 9.19 6.69 8h-2c.73 1.63 1.73 3.17 2.98 4.56l-5.09 5.02L4 19l5-5 3.11 3.11.76-2.04zM18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2l-4.5-12zm-2.62 7l1.62-4.33L19.12 17h-3.24z"></path>
+                </svg>
+            </button>
+            <div id="idioma-menu" class="hidden">
+                <div class="settings-title" data-i18n="idm.titulo">Idioma</div>
+                <div class="settings-options">
+                    <label class="settings-radio">
+                        <input type="radio" name="idioma" value="pt" id="idioma-pt">
+                        <span>Português</span>
+                    </label>
+                    <label class="settings-radio">
+                        <input type="radio" name="idioma" value="en" id="idioma-en">
+                        <span>English</span>
+                    </label>
+                    <label class="settings-radio">
+                        <input type="radio" name="idioma" value="es" id="idioma-es">
+                        <span>Español</span>
+                    </label>
+                    <label class="settings-radio">
+                        <input type="radio" name="idioma" value="kea" id="idioma-kea">
+                        <span>Kriolu</span>
+                    </label>
+                </div>
+            </div>
+        </div>
+
             <div class="settings" id="dev-menu-container">
                 <button id="dev-btn" title="Menu de Desenvolvedor">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter">
@@ -999,37 +1056,6 @@
                     <label class="settings-radio">
                         <input type="checkbox" id="paisagem-ligada" checked>
                         <span data-i18n="def.paisagem">Paisagem</span>
-                    </label>
-                </div>
-            </div>
-        </div>
-
-        <div class="settings">
-            <button id="idioma-btn" title="Idioma" data-i18n-title="cab.idioma">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter">
-                    <circle cx="12" cy="12" r="9"></circle>
-                    <line x1="3" y1="12" x2="21" y2="12"></line>
-                    <path d="M12 3a15 15 0 0 1 0 18a15 15 0 0 1 0-18z"></path>
-                </svg>
-            </button>
-            <div id="idioma-menu" class="hidden">
-                <div class="settings-title" data-i18n="idm.titulo">Idioma</div>
-                <div class="settings-options">
-                    <label class="settings-radio">
-                        <input type="radio" name="idioma" value="pt" id="idioma-pt">
-                        <span>Português</span>
-                    </label>
-                    <label class="settings-radio">
-                        <input type="radio" name="idioma" value="en" id="idioma-en">
-                        <span>English</span>
-                    </label>
-                    <label class="settings-radio">
-                        <input type="radio" name="idioma" value="es" id="idioma-es">
-                        <span>Español</span>
-                    </label>
-                    <label class="settings-radio">
-                        <input type="radio" name="idioma" value="kea" id="idioma-kea">
-                        <span>Kriolu</span>
                     </label>
                 </div>
             </div>
