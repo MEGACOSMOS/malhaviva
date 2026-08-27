@@ -1,55 +1,32 @@
 import { Vec3 } from 'playcanvas';
 
 /**
- * Afinações do detalhe do mapa.
+ * Detalhe do mapa gasto no que está no ecrã.
  *
- * Duas coisas ficam ligadas de origem, e ambas melhoram o que se vê:
+ * O motor reparte o tecto de manchas por uma bola à volta da câmara: um
+ * pedaço a cinquenta metros conta o mesmo esteja à frente do nariz ou
+ * atrás das costas. Mas só uma fatia dessa bola é que se vê — o resto do
+ * detalhe é comprado e nunca chega a ser olhado.
  *
- *  - o detalhe volta a ser recalculado ao virar a cabeça, e não só ao
- *    andar, senão olhar em volta parado deixava o mapa com a nitidez do
- *    sítio anterior;
- *  - quando o mapa passa do tecto de manchas, aperta-se a régua das
- *    distâncias toda de uma vez em vez de se empurrarem pedaços soltos
- *    para o nível seguinte — é o que mantém o degradé suave (ver
- *    corrigirRepartidorDoTecto, mais abaixo).
+ * Aqui, depois de o motor decidir a qualidade de cada pedaço, o que fica
+ * fora da vista desce de nível. O tecto passa a sobrar, o motor alarga
+ * sozinho as distâncias para o voltar a encher, e esse detalhe todo cai
+ * onde a pessoa está mesmo a olhar.
  *
- * Há uma terceira, o *ponto de atenção*, que fica desligada. A ideia era
- * medir as distâncias a partir do ponto para onde a câmara aponta em vez
- * da posição da câmara, para gastar o detalhe onde a pessoa está a olhar.
- * Sem tecto de manchas isso quase não se notava; com tecto estraga a
- * imagem, porque o que está ao pé da câmara fica *atrás* do ponto de
- * atenção e passa a contar como distante.
+ * A conta é feita a partir da câmara, e não de um ponto à frente dela.
+ * Uma versão anterior media as distâncias a partir do sítio para onde a
+ * câmara aponta: o que estava ao pé ficava *atrás* desse ponto e passava a
+ * contar como distante, o que enchia de manchas grosseiras o chão em volta
+ * de quem passeava. Aqui a distância manda como sempre mandou — só a
+ * direção do olhar é que decide o que pode ser sacrificado.
  *
- * Medido com a câmara dentro do bairro, a vinte e cinco metros de altura:
- * dos noventa e sete pedaços a menos de sessenta metros, só trinta e
- * quatro ficavam no detalhe fino, e o nível do meio começava a vinte e
- * seis metros da câmara enquanto o detalhe fino era gasto a cento e
- * cinquenta. Desligado, os noventa e sete ficam no detalhe fino e a troca
- * de níveis afasta-se para os noventa metros, que é onde deixa de se dar
- * por ela. Pode voltar a ligar-se com {@link ligarLodNoCentroDaVista}
- * passando `{ ativo: true }`.
+ * Fora do que se vê há ainda um anel de folga, onde os pedaços descem só
+ * um degrau em vez de caírem para o mais grosseiro. É esse anel que dá ao
+ * mapa tempo de ir buscar o detalhe enquanto se roda a vista.
  */
 
-// Até que distância à frente da câmara o ponto de atenção pode ir, em metros.
-// Está afinado a cada nível de qualidade: quanto mais fraco o equipamento,
-// mais perto se mantém o detalhe fino.
-const ALCANCE_MAXIMO = {
-    high: 250,
-    med: 150,
-    low: 80
-};
-
-// Altura do chão do bairro, em metros. É contra este plano que se calcula
-// para onde a câmara está a olhar.
-const ALTURA_DO_CHAO = 0;
-
-// A quem está rente ao chão, o que interessa é o que tem mesmo à frente;
-// a quem está no ar, interessa o terreno mais distante. O ponto de atenção
-// nunca se afasta mais do que a altura da câmara vezes este fator...
-const FATOR_DA_ALTURA = 3;
-
-// ...nem fica mais perto do que isto, para nunca colar à ponta do nariz.
-const ALCANCE_MINIMO = 30;
+// Largura do anel de folga à volta do que cabe no ecrã, em graus.
+const MARGEM_DE_ROTACAO = 25;
 
 // Quantos graus a câmara tem de rodar para o detalhe ser recalculado.
 // De origem o motor só reagia a deslocações; agora que a direção do olhar
@@ -61,20 +38,29 @@ const ANGULO_DE_ATUALIZACAO = 2;
 // vazios momentâneos onde o detalhe novo ainda não carregou.
 const NIVEIS_DE_RECURSO = 2;
 
-// Até onde a régua das distâncias pode ser apertada para caber no tecto de
-// pontos. É um travão de segurança: sem ele, um engano nas contas podia
-// encolher o detalhe até não sobrar nada.
+// Até onde a régua das distâncias pode ser apertada ou esticada para o
+// mapa caber no tecto de manchas. São travões de segurança: sem eles, um
+// engano nas contas podia encolher o detalhe até não sobrar nada, ou
+// esticar a régua até querer o mapa inteiro no detalhe fino.
 const ESCALA_MINIMA_DO_TECTO = 0.05;
+const ESCALA_MAXIMA_DO_TECTO = 20;
+
+// Quanto o total pode andar longe do tecto sem se mexer na régua. Sem esta
+// zona morta, a régua andaria a corrigir-se a cada imagem e via-se o mapa
+// a respirar.
+const FOLGA_DO_TECTO = 0.08;
+
+const GRAUS = Math.PI / 180;
 
 /**
- * Tira ao tecto de pontos o hábito de comer o nível de detalhe do meio.
+ * Tira ao tecto de manchas o hábito de comer o nível de detalhe do meio.
  *
- * Quando há tecto de pontos (níveis Médio e Baixo), o motor cumpre-o de
- * duas maneiras. Uma é boa: aperta ou alarga as distâncias a que cada
- * nível começa, e as três faixas — fina, média e grosseira — encolhem ou
- * crescem juntas, mantendo a passagem suave. A outra é gulosa: percorre os
- * pedaços do mapa e vai empurrando cada um, à vez, para o nível seguinte,
- * até as contas fecharem.
+ * Quando há tecto de manchas, o motor cumpre-o de duas maneiras. Uma é
+ * boa: aperta ou alarga as distâncias a que cada nível começa, e as três
+ * faixas — fina, média e grosseira — encolhem ou crescem juntas, mantendo
+ * a passagem suave. A outra é gulosa: percorre os pedaços do mapa e vai
+ * empurrando cada um, à vez, para o nível seguinte, até as contas
+ * fecharem.
  *
  * A segunda estraga o degradé, e é por isso que se via o mapa saltar do
  * detalhe fino para o mais grosseiro sem nada pelo meio: numa vista larga,
@@ -85,9 +71,7 @@ const ESCALA_MINIMA_DO_TECTO = 0.05;
  *
  * Aqui a segunda maneira é substituída pela primeira: quando se passa do
  * tecto, em vez de se empurrarem pedaços soltos, aperta-se a régua toda,
- * e a avaliação seguinte — uma fracção de segundo depois — já cabe. Nas
- * mesmas vistas, a faixa média volta a ter centenas de pedaços espalhados
- * por uma centena de metros, e continua a caber no tecto.
+ * e a avaliação seguinte — uma fracção de segundo depois — já cabe.
  *
  * @param {object} mundo - O gestor interno de mapas do motor.
  */
@@ -116,34 +100,155 @@ function corrigirRepartidorDoTecto(mundo) {
             }
         }
 
-        // Dentro do tecto não se mexe: o degradé fica como a régua o deixou.
-        if (total <= tecto) return;
+        if (total <= 0) return;
 
-        // Acima do tecto, encolhe-se a régua. A raiz cúbica é porque o
-        // detalhe cresce com o volume à volta do ponto de atenção: para
-        // gastar metade, basta encurtar as distâncias a uns quatro quintos.
+        // A régua acompanha o tecto nos dois sentidos: aperta quando se
+        // passa dele, alarga quando sobra. Alargar é o que faz falta desde
+        // que o detalhe deixou de ser gasto fora do ecrã — sem isso
+        // ficavam dois quintos do tecto por usar, com o mapa à frente da
+        // pessoa mais grosseiro do que podia estar.
+        //
+        // A raiz cúbica é porque o detalhe cresce com o volume à volta da
+        // câmara: para gastar metade, basta encurtar as distâncias a uns
+        // quatro quintos. É também ela que amortece a correção, para a
+        // régua assentar em vez de andar aos saltos.
         const excesso = total / tecto;
-        mundoDele._budgetScale = Math.max(
-            ESCALA_MINIMA_DO_TECTO,
-            mundoDele._budgetScale / Math.pow(excesso, 1 / 3)
+        if (Math.abs(excesso - 1) <= FOLGA_DO_TECTO) return;
+
+        mundoDele._budgetScale = Math.min(
+            ESCALA_MAXIMA_DO_TECTO,
+            Math.max(
+                ESCALA_MINIMA_DO_TECTO,
+                mundoDele._budgetScale / Math.pow(excesso, 1 / 3)
+            )
         );
     };
     modelo.tectoSuavizado = true;
 }
 
+const centroDoNo = new Vec3();
+
 /**
- * Liga o detalhe centrado na vista.
+ * Baixa o nível de detalhe de tudo o que fica fora da vista.
+ *
+ * É chamado logo a seguir à avaliação do motor, com os níveis já
+ * escolhidos por distância. Devolve o total corrigido de manchas, porque é
+ * por esse número que o motor decide se ainda cabe no tecto — e é por ele
+ * caber com folga que o detalhe fino se estica onde interessa.
+ *
+ * @param {object} instancia - O mapa a tratar.
+ * @param {object} camara - A câmara, tal como o motor a passou.
+ * @param {number} total - Quantas manchas o motor tinha contado.
+ * @param {object} definicoes - Afinações em vigor.
+ * @returns {number} Quantas manchas ficam depois de aparar o que não se vê.
+ */
+function pouparOQueNaoSeVe(instancia, camara, total, definicoes) {
+    const componente = camara && camara.camera;
+    const octree = instancia.octree;
+    if (!componente || !octree) return total;
+
+    const nivelMaximo = Math.min(
+        octree.lodLevels - 1,
+        instancia.rangeMax ?? (octree.lodLevels - 1)
+    );
+    if (nivelMaximo <= 0) return total;
+
+    // O cone que envolve o rectângulo do ecrã: metade da abertura na
+    // vertical e na horizontal, juntas pelo teorema de Pitágoras. Tudo o
+    // que caiba dentro deste cone pode estar à vista.
+    let tanV = Math.tan(componente.fov * 0.5 * GRAUS);
+    if (componente.horizontalFov) tanV /= componente.aspectRatio;
+    const tanH = tanV * componente.aspectRatio;
+    const meioCone = Math.atan(Math.sqrt(tanV * tanV + tanH * tanH));
+    const folga = meioCone + definicoes.margemGraus * GRAUS;
+
+    const matriz = instancia.placement.node.getWorldTransform();
+    const escala = matriz.getScale().x;
+    const olho = camara.getPosition();
+    const frente = camara.forward;
+
+    const nos = octree.nodes;
+    const infos = instancia.nodeInfos;
+
+    for (let i = 0; i < nos.length; i++) {
+        const nivel = infos[i].optimalLod;
+        if (nivel < 0 || nivel >= nivelMaximo) continue;
+
+        const caixa = nos[i].bounds;
+        matriz.transformPoint(caixa.center, centroDoNo);
+        const raio = caixa.halfExtents.length() * escala;
+
+        const dx = centroDoNo.x - olho.x;
+        const dy = centroDoNo.y - olho.y;
+        const dz = centroDoNo.z - olho.z;
+        const distancia = Math.sqrt(dx * dx + dy * dy + dz * dz);
+
+        // Com a câmara dentro do pedaço não há fora nem dentro da vista:
+        // fica como está.
+        if (distancia <= raio) continue;
+
+        // Ângulo entre o olhar e o pedaço, descontando o tamanho do
+        // pedaço: um quarteirão largo entra na conta pela ponta que
+        // aparece no ecrã, e não pelo meio.
+        const cosseno = (dx * frente.x + dy * frente.y + dz * frente.z) / distancia;
+        const angulo = Math.acos(Math.min(1, Math.max(-1, cosseno))) -
+            Math.asin(Math.min(1, raio / distancia));
+        if (angulo <= meioCone) continue;
+
+        // No anel de folga desce um degrau só; para lá dele cai logo para
+        // o mais grosseiro.
+        const novo = angulo <= folga ? Math.min(nivelMaximo, nivel + 1) : nivelMaximo;
+        if (novo === nivel) continue;
+
+        const antes = nos[i].lods[nivel];
+        const depois = nos[i].lods[novo];
+        total += (depois && depois.count ? depois.count : 0) -
+            (antes && antes.count ? antes.count : 0);
+        infos[i].optimalLod = novo;
+    }
+
+    return total;
+}
+
+/**
+ * Enxerta a poupança na avaliação de níveis do motor.
+ *
+ * @param {object} instancia - Um mapa carregado.
+ * @param {object} definicoes - Afinações em vigor.
+ * @returns {boolean} Verdadeiro se ficou ligado.
+ */
+function ligarPoupanca(instancia, definicoes) {
+    const modelo = Object.getPrototypeOf(instancia);
+    if (!modelo || typeof modelo.evaluateOptimalLods !== 'function') return false;
+    if (modelo.detalheNoQueSeVe) return true;
+
+    const original = modelo.evaluateOptimalLods;
+    modelo.evaluateOptimalLods = function (camara, ...resto) {
+        const total = original.call(this, camara, ...resto);
+        if (!definicoes.ativo) return total;
+        try {
+            return pouparOQueNaoSeVe(this, camara, total, definicoes);
+        } catch (e) {
+            // Uma conta falhada não pode deixar o mapa sem níveis: fica o
+            // que o motor tinha decidido.
+            return total;
+        }
+    };
+    modelo.detalheNoQueSeVe = true;
+    return true;
+}
+
+/**
+ * Liga o detalhe centrado no que se vê.
  *
  * @param {object} app - A aplicação 3D.
  * @param {object} [opcoes] - Afinações opcionais.
  * @returns {object} Definições que podem ser alteradas a qualquer momento.
  */
-export function ligarLodNoCentroDaVista(app, opcoes = {}) {
+export function ligarDetalheNoQueSeVe(app, opcoes = {}) {
     const definicoes = {
-        alcanceMaximo: opcoes.alcanceMaximo ??
-            ALCANCE_MAXIMO[window.actualQuality] ?? ALCANCE_MAXIMO.med,
-        alturaDoChao: opcoes.alturaDoChao ?? ALTURA_DO_CHAO,
-        ativo: opcoes.ativo ?? false
+        ativo: opcoes.ativo ?? true,
+        margemGraus: opcoes.margemGraus ?? MARGEM_DE_ROTACAO
     };
 
     // Sem isto o detalhe só seria recalculado ao andar, e olhar em volta
@@ -156,62 +261,8 @@ export function ligarLodNoCentroDaVista(app, opcoes = {}) {
         app.scene.gsplat.lodUnderfillLimit = Math.max(recurso, NIVEIS_DE_RECURSO);
     }
 
-    // Câmara de faz-de-conta: tem a mesma direção e a mesma abertura da
-    // câmara real, mas está pousada no ponto para onde se está a olhar.
-    const posicaoDeFoco = new Vec3();
-    const cameraDeFoco = {
-        camera: null,
-        forward: null,
-        getPosition() {
-            return posicaoDeFoco;
-        }
-    };
-
-    const calcularFoco = (cameraReal) => {
-        if (!definicoes.ativo || !cameraReal || !cameraReal.camera) {
-            return cameraReal;
-        }
-
-        const posicao = cameraReal.getPosition();
-        const frente = cameraReal.forward;
-
-        // Até onde o ponto de atenção pode ir: nunca além do alcance
-        // máximo, e para quem anda rente ao chão nem sequer tão longe —
-        // aí o que conta são as casas logo em frente.
-        const altura = Math.max(0, posicao.y - definicoes.alturaDoChao);
-        const limite = Math.min(
-            definicoes.alcanceMaximo,
-            Math.max(ALCANCE_MINIMO, altura * FATOR_DA_ALTURA)
-        );
-
-        // A olhar para baixo, o ponto assenta onde a vista toca o terreno;
-        // a olhar para o horizonte ou para cima, fica no limite.
-        let distancia = limite;
-        if (frente.y < -1e-4) {
-            const ateAoChao = (posicao.y - definicoes.alturaDoChao) / -frente.y;
-            if (ateAoChao < distancia) {
-                distancia = ateAoChao;
-            }
-        }
-        if (!(distancia > 0)) {
-            distancia = 0;
-        }
-
-        posicaoDeFoco.set(
-            posicao.x + frente.x * distancia,
-            posicao.y + frente.y * distancia,
-            posicao.z + frente.z * distancia
-        );
-
-        cameraDeFoco.camera = cameraReal.camera;
-        cameraDeFoco.forward = frente;
-        return cameraDeFoco;
-    };
-
-    // O motor só expõe estas contas lá por dentro, por isso a troca é feita
-    // assim que existe um mapa carregado: a partir daí, sempre que ele
-    // pergunta "que qualidade dou a este pedaço?", recebe o ponto de atenção
-    // em vez da posição da câmara.
+    // O motor só expõe estas contas lá por dentro, por isso a ligação é
+    // feita assim que existe um mapa carregado.
     const tentarLigar = () => {
         const director = app.renderer && app.renderer.gsplatDirector;
         if (!director || !director.camerasMap) return false;
@@ -228,16 +279,7 @@ export function ligarLodNoCentroDaVista(app, opcoes = {}) {
                     corrigirRepartidorDoTecto(mundo);
 
                     for (const instancia of instancias.values()) {
-                        const modelo = Object.getPrototypeOf(instancia);
-                        if (!modelo || typeof modelo.evaluateNodeLods !== 'function') continue;
-                        if (modelo.lodNoCentroDaVista) return true;
-
-                        const original = modelo.evaluateNodeLods;
-                        modelo.evaluateNodeLods = function (cameraReal, ...resto) {
-                            return original.call(this, calcularFoco(cameraReal), ...resto);
-                        };
-                        modelo.lodNoCentroDaVista = true;
-                        return true;
+                        if (ligarPoupanca(instancia, definicoes)) return true;
                     }
                 }
             }
