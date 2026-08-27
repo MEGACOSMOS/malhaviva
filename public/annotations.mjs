@@ -556,7 +556,8 @@ AnnotationController.prototype.openImage360 = function(caminho, titulo) {
         document.body.appendChild(this.imageModal);
     }
 
-    this.imageModalTitle.textContent = titulo || 'Fotografia 360º';
+    this.imageModalTitle.textContent = titulo ||
+        (window.Idiomas ? window.Idiomas.t('foto.titulo') : 'Fotografia 360º');
     this.imageFrame.innerHTML = '<iframe src="/image360.html?src=' + encodeURIComponent(caminho) +
         '" style="width: 100%; height: 100%; border: none; background: #000; display: block;" allow="xr-spatial-tracking; fullscreen" allowfullscreen></iframe>';
 
@@ -741,7 +742,8 @@ AnnotationController.prototype.setupModal = function() {
 
     const vrBtn = document.createElement('button');
     vrBtn.className = 'player-btn';
-    vrBtn.title = 'Ver com óculos';
+    vrBtn.title = (window.Idiomas ? window.Idiomas.t('video.oculos') : 'Ver com óculos');
+    vrBtn.setAttribute('data-i18n-title', 'video.oculos');
     vrBtn.style.display = 'none';
     vrBtn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a3 3 0 0 1 3-3h12a3 3 0 0 1 3 3v3a3 3 0 0 1-3 3h-2.5a2 2 0 0 1-1.7-1l-.9-1.4a1.2 1.2 0 0 0-2 0l-.9 1.4a2 2 0 0 1-1.7 1H6a3 3 0 0 1-3-3z"></path></svg>';
 
@@ -955,7 +957,7 @@ AnnotationController.prototype.setupModal = function() {
         if (overlay) {
             // Make overlay appear instantly without fade-in
             overlay.style.transition = 'none';
-            if (loadingText) loadingText.innerText = "A restaurar ambiente 3D…";
+            if (loadingText) loadingText.innerText = (window.Idiomas ? window.Idiomas.t('carga.restaurar') : 'A restaurar ambiente 3D…');
             overlay.classList.remove('hidden');
         }
 
@@ -982,7 +984,7 @@ AnnotationController.prototype.setupModal = function() {
                     overlay.classList.add('hidden');
                     // Reset text after fade out
                     setTimeout(() => {
-                        if (loadingText) loadingText.innerText = "A carregar modelo 3D…";
+                        if (loadingText) loadingText.innerText = (window.Idiomas ? window.Idiomas.t('carga.modelo') : 'A carregar modelo 3D…');
                     }, 800);
                 }
             }, 800);
@@ -1082,7 +1084,7 @@ AnnotationController.prototype.fecharCinemaVR = function() {
  */
 AnnotationController.prototype.desenharMenuDeQualidade = function(fontes) {
     this.qualityMenu.innerHTML = `
-        <div class="settings-title">Qualidade</div>
+        <div class="settings-title" data-i18n="video.qualidade">Qualidade</div>
         <div class="settings-options"></div>
     `;
     const optionsContainer = this.qualityMenu.querySelector('.settings-options');

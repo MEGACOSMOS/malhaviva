@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Controlos do Mapa — Malha Viva</title>
     <meta name="description" content="Guia dos controlos do visualizador 3D Malha Viva. Navega como num mapa: arrasta com o rato, aproxima com o scroll, roda com Ctrl.">
+    <script src="/idiomas.js?v=1"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -83,6 +84,67 @@
             border-radius: var(--radius-sm);
             border: 1px solid var(--color-border);
             transition: all 0.2s ease;
+        }
+
+        /* ─── Selector de língua ─── */
+        .idioma {
+            position: relative;
+        }
+
+        .idioma-botao {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: transparent;
+            color: var(--color-text-muted);
+            font-family: inherit;
+            font-size: 0.85rem;
+            font-weight: 500;
+            padding: 8px 16px;
+            border: 1px solid var(--color-border);
+            cursor: pointer;
+            transition: background 0.15s ease;
+        }
+
+        .idioma-botao:hover {
+            background: var(--color-surface-hover);
+        }
+
+        .idioma-lista {
+            position: absolute;
+            top: calc(100% + 6px);
+            right: 0;
+            min-width: 150px;
+            background: #05050a;
+            border: 1px solid var(--color-border);
+            display: none;
+            z-index: 20;
+        }
+
+        .idioma-lista.aberta {
+            display: block;
+        }
+
+        .idioma-opcao {
+            display: block;
+            width: 100%;
+            text-align: left;
+            background: transparent;
+            color: var(--color-text-muted);
+            font-family: inherit;
+            font-size: 0.85rem;
+            padding: 10px 16px;
+            border: none;
+            cursor: pointer;
+            transition: background 0.15s ease;
+        }
+
+        .idioma-opcao:hover {
+            background: var(--color-surface-hover);
+        }
+
+        .idioma-opcao[aria-current="true"] {
+            color: var(--color-accent);
         }
 
         .back-link:hover {
@@ -295,47 +357,58 @@
                 <line x1="19" y1="12" x2="5" y2="12"></line>
                 <polyline points="12 19 5 12 12 5"></polyline>
             </svg>
-            Voltar ao Mapa
+            <span data-i18n="ctl.voltar">Voltar ao Mapa</span>
         </a>
+        <div class="idioma">
+            <button type="button" class="idioma-botao" id="idioma-botao" data-i18n-title="cab.idioma" title="Idioma">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="9"></circle>
+                    <line x1="3" y1="12" x2="21" y2="12"></line>
+                    <path d="M12 3a15 15 0 0 1 0 18a15 15 0 0 1 0-18z"></path>
+                </svg>
+                <span id="idioma-nome">Português</span>
+            </button>
+            <div class="idioma-lista" id="idioma-lista"></div>
+        </div>
     </header>
 
     <main class="content">
-        <h1 class="page-title">Controlos do Mapa</h1>
-        <p class="page-subtitle">Guia completo para navegar pela reconstrução 3D do Bairro de Penajóia.</p>
+        <h1 class="page-title" data-i18n="ctl.titulo">Controlos do Mapa</h1>
+        <p class="page-subtitle" data-i18n="ctl.sub">Guia completo para navegar pela reconstrução 3D do Bairro de Penajóia.</p>
 
         <!-- ─── Rato ─── -->
         <section class="section" id="rato">
             <div class="section-header">
-                <h2 class="section-title">Rato</h2>
+                <h2 class="section-title" data-i18n="ctl.rato">Rato</h2>
             </div>
             <div class="controls-table">
                 <div class="control-row">
-                    <span class="control-action">Arrastar o bairro</span>
+                    <span class="control-action" data-i18n="ctl.arrastarBairro">Arrastar o bairro</span>
                     <div class="control-keys">
-                        <span class="kbd accent">🖱️ Esquerdo</span>
-                        <span class="key-separator">+ arrastar</span>
+                        <span class="kbd accent">🖱️ <span data-i18n="ctl.esquerdo">Esquerdo</span></span>
+                        <span class="key-separator" data-i18n="ctl.maisArrastar">+ arrastar</span>
                     </div>
                 </div>
                 <div class="control-row">
-                    <span class="control-action">Rodar e inclinar</span>
+                    <span class="control-action" data-i18n="ctl.rodar">Rodar e inclinar</span>
                     <div class="control-keys">
                         <span class="kbd">Ctrl</span>
-                        <span class="key-separator">+ arrastar</span>
-                        <span class="key-separator">ou</span>
-                        <span class="kbd">🖱️ Direito</span>
+                        <span class="key-separator" data-i18n="ctl.maisArrastar">+ arrastar</span>
+                        <span class="key-separator" data-i18n="ctl.ou">ou</span>
+                        <span class="kbd">🖱️ <span data-i18n="ctl.direito">Direito</span></span>
                     </div>
                 </div>
                 <div class="control-row">
-                    <span class="control-action">Aproximar / afastar</span>
+                    <span class="control-action" data-i18n="ctl.zoom">Aproximar / afastar</span>
                     <div class="control-keys">
                         <span class="kbd">Scroll</span>
-                        <span class="key-separator">sobre o ponto que quiseres</span>
+                        <span class="key-separator" data-i18n="ctl.scrollNota">sobre o ponto que quiseres</span>
                     </div>
                 </div>
                 <div class="control-row">
-                    <span class="control-action">Aproximar num sítio</span>
+                    <span class="control-action" data-i18n="ctl.zoomPonto">Aproximar num sítio</span>
                     <div class="control-keys">
-                        <span class="kbd">Duplo clique</span>
+                        <span class="kbd" data-i18n="ctl.duploClique">Duplo clique</span>
                     </div>
                 </div>
             </div>
@@ -344,17 +417,17 @@
         <!-- ─── Teclado ─── -->
         <section class="section" id="teclado">
             <div class="section-header">
-                <h2 class="section-title">Teclado</h2>
+                <h2 class="section-title" data-i18n="ctl.teclado">Teclado</h2>
             </div>
             <div class="controls-table">
                 <div class="control-row">
-                    <span class="control-action">Deslocar o bairro</span>
+                    <span class="control-action" data-i18n="ctl.deslocarBairro">Deslocar o bairro</span>
                     <div class="control-keys">
                         <span class="kbd accent">W</span>
                         <span class="kbd accent">A</span>
                         <span class="kbd accent">S</span>
                         <span class="kbd accent">D</span>
-                        <span class="key-separator">ou</span>
+                        <span class="key-separator" data-i18n="ctl.ou">ou</span>
                         <span class="kbd">←</span>
                         <span class="kbd">↑</span>
                         <span class="kbd">↓</span>
@@ -362,14 +435,14 @@
                     </div>
                 </div>
                 <div class="control-row">
-                    <span class="control-action">Rodar e inclinar</span>
+                    <span class="control-action" data-i18n="ctl.rodar">Rodar e inclinar</span>
                     <div class="control-keys">
                         <span class="kbd">Ctrl</span>
-                        <span class="key-separator">+ setas</span>
+                        <span class="key-separator" data-i18n="ctl.maisSetas">+ setas</span>
                     </div>
                 </div>
                 <div class="control-row">
-                    <span class="control-action">Aproximar / afastar</span>
+                    <span class="control-action" data-i18n="ctl.zoom">Aproximar / afastar</span>
                     <div class="control-keys">
                         <span class="kbd accent">+</span>
                         <span class="key-separator">/</span>
@@ -377,10 +450,10 @@
                     </div>
                 </div>
                 <div class="control-row">
-                    <span class="control-action">Deslocar mais depressa</span>
+                    <span class="control-action" data-i18n="ctl.maisDepressa">Deslocar mais depressa</span>
                     <div class="control-keys">
                         <span class="kbd">Shift</span>
-                        <span class="key-separator">+ tecla de movimento</span>
+                        <span class="key-separator" data-i18n="ctl.teclaMovimento">+ tecla de movimento</span>
                     </div>
                 </div>
             </div>
@@ -389,28 +462,28 @@
         <!-- ─── Touch ─── -->
         <section class="section" id="toque">
             <div class="section-header">
-                <h2 class="section-title">Ecrã Tátil</h2>
+                <h2 class="section-title" data-i18n="ctl.toque">Ecrã Tátil</h2>
             </div>
             <div class="controls-table">
                 <div class="control-row">
-                    <span class="control-action">Arrastar o bairro</span>
+                    <span class="control-action" data-i18n="ctl.arrastarBairro">Arrastar o bairro</span>
                     <div class="control-keys">
-                        <span class="kbd accent">1 dedo</span>
-                        <span class="key-separator">arrastar</span>
+                        <span class="kbd accent" data-i18n="ctl.umDedo">1 dedo</span>
+                        <span class="key-separator" data-i18n="ctl.arrastarGesto">arrastar</span>
                     </div>
                 </div>
                 <div class="control-row">
-                    <span class="control-action">Aproximar / afastar</span>
+                    <span class="control-action" data-i18n="ctl.zoom">Aproximar / afastar</span>
                     <div class="control-keys">
-                        <span class="kbd">2 dedos</span>
-                        <span class="key-separator">pinça</span>
+                        <span class="kbd" data-i18n="ctl.doisDedos">2 dedos</span>
+                        <span class="key-separator" data-i18n="ctl.pinca">pinça</span>
                     </div>
                 </div>
                 <div class="control-row">
-                    <span class="control-action">Rodar e inclinar</span>
+                    <span class="control-action" data-i18n="ctl.rodar">Rodar e inclinar</span>
                     <div class="control-keys">
-                        <span class="kbd">2 dedos</span>
-                        <span class="key-separator">arrastar</span>
+                        <span class="kbd" data-i18n="ctl.doisDedos">2 dedos</span>
+                        <span class="key-separator" data-i18n="ctl.arrastarGesto">arrastar</span>
                     </div>
                 </div>
             </div>
@@ -419,20 +492,20 @@
         <!-- ─── Gamepad ─── -->
         <section class="section" id="gamepad">
             <div class="section-header">
-                <h2 class="section-title">Gamepad</h2>
+                <h2 class="section-title" data-i18n="ctl.gamepad">Gamepad</h2>
             </div>
-            <p class="section-desc">Liga um comando (Xbox, PlayStation, etc.) para andar pelo mapa sem rato.</p>
+            <p class="section-desc" data-i18n="ctl.gamepadDesc">Liga um comando (Xbox, PlayStation, etc.) para andar pelo mapa sem rato.</p>
             <div class="controls-table">
                 <div class="control-row">
-                    <span class="control-action">Deslocar</span>
+                    <span class="control-action" data-i18n="ctl.deslocar">Deslocar</span>
                     <div class="control-keys">
-                        <span class="kbd">Stick Esquerdo</span>
+                        <span class="kbd" data-i18n="ctl.stickEsq">Stick Esquerdo</span>
                     </div>
                 </div>
                 <div class="control-row">
-                    <span class="control-action">Rodar e inclinar</span>
+                    <span class="control-action" data-i18n="ctl.rodar">Rodar e inclinar</span>
                     <div class="control-keys">
-                        <span class="kbd">Stick Direito</span>
+                        <span class="kbd" data-i18n="ctl.stickDir">Stick Direito</span>
                     </div>
                 </div>
             </div>
@@ -441,28 +514,28 @@
         <!-- ─── Interações ─── -->
         <section class="section" id="interacoes">
             <div class="section-header">
-                <h2 class="section-title">Interações</h2>
+                <h2 class="section-title" data-i18n="ctl.interacoes">Interações</h2>
             </div>
             <div class="controls-table">
                 <div class="control-row">
-                    <span class="control-action">Abrir testemunho em vídeo</span>
+                    <span class="control-action" data-i18n="ctl.abrirVideo">Abrir testemunho em vídeo</span>
                     <div class="control-keys">
-                        <span class="kbd accent">Clicar</span>
-                        <span class="key-separator">num marcador</span>
+                        <span class="kbd accent" data-i18n="ctl.clicar">Clicar</span>
+                        <span class="key-separator" data-i18n="ctl.numMarcador">num marcador</span>
                     </div>
                 </div>
                 <div class="control-row">
-                    <span class="control-action">Fechar vídeo</span>
+                    <span class="control-action" data-i18n="ctl.fecharVideo">Fechar vídeo</span>
                     <div class="control-keys">
                         <span class="kbd">ESC</span>
-                        <span class="key-separator">ou clicar fora</span>
+                        <span class="key-separator" data-i18n="ctl.ouClicarFora">ou clicar fora</span>
                     </div>
                 </div>
                 <div class="control-row">
-                    <span class="control-action">Alterar qualidade gráfica</span>
+                    <span class="control-action" data-i18n="ctl.mudarQualidade">Alterar qualidade gráfica</span>
                     <div class="control-keys">
                         <span class="kbd">⚙</span>
-                        <span class="key-separator">no cabeçalho</span>
+                        <span class="key-separator" data-i18n="ctl.noCabecalho">no cabeçalho</span>
                     </div>
                 </div>
             </div>
@@ -471,17 +544,66 @@
         <!-- ─── Dicas ─── -->
         <section class="section" id="dicas">
             <div class="section-header">
-                <h2 class="section-title">Dicas</h2>
+                <h2 class="section-title" data-i18n="ctl.dicas">Dicas</h2>
             </div>
             <div class="tips">
                 <div class="tip-card">
-                    <p class="tip-text"><strong>Performance:</strong> Se o visualizador estiver lento num computador antigo, muda a qualidade gráfica para <em>Baixa</em> no ícone ⚙ do cabeçalho. Em mobile, a qualidade é ajustada automaticamente.</p>
+                    <p class="tip-text"><strong data-i18n="ctl.dicaPerfTitulo">Performance:</strong> <span data-i18n="ctl.dicaPerf">Se o visualizador estiver lento num computador antigo, muda a qualidade gráfica para Baixa no ícone ⚙ do cabeçalho. Em mobile, a qualidade é ajustada automaticamente.</span></p>
                 </div>
                 <div class="tip-card">
-                    <p class="tip-text"><strong>Perdido?</strong> Se chegares à borda do mapa aparece um botão para voltar à vista de abertura. A vista nunca sobe acima do horizonte: o bairro fica sempre por baixo, como num mapa.</p>
+                    <p class="tip-text"><strong data-i18n="ctl.dicaPerdidoTitulo">Perdido?</strong> <span data-i18n="ctl.dicaPerdido">Se chegares à borda do mapa aparece um botão para voltar à vista de abertura. A vista nunca sobe acima do horizonte: o bairro fica sempre por baixo, como num mapa.</span></p>
                 </div>
             </div>
         </section>
     </main>
+
+    <script>
+        /* O mesmo botão de língua da página do mapa, na medida desta: quem
+           chega aqui por um endereço directo também consegue trocar. */
+        (function () {
+            if (!window.Idiomas) return;
+
+            var botao = document.getElementById('idioma-botao');
+            var lista = document.getElementById('idioma-lista');
+            var nome = document.getElementById('idioma-nome');
+
+            function mostrarNome() {
+                var actual = window.Idiomas.atual();
+                window.Idiomas.IDIOMAS.forEach(function (idioma) {
+                    if (idioma.codigo === actual) nome.textContent = idioma.nome;
+                });
+                lista.querySelectorAll('.idioma-opcao').forEach(function (opcao) {
+                    opcao.setAttribute('aria-current', String(opcao.dataset.codigo === actual));
+                });
+            }
+
+            window.Idiomas.IDIOMAS.forEach(function (idioma) {
+                var opcao = document.createElement('button');
+                opcao.type = 'button';
+                opcao.className = 'idioma-opcao';
+                opcao.dataset.codigo = idioma.codigo;
+                opcao.textContent = idioma.nome;
+                opcao.addEventListener('click', function () {
+                    window.Idiomas.definir(idioma.codigo);
+                    lista.classList.remove('aberta');
+                    mostrarNome();
+                });
+                lista.appendChild(opcao);
+            });
+
+            botao.addEventListener('click', function (e) {
+                e.stopPropagation();
+                lista.classList.toggle('aberta');
+            });
+
+            document.addEventListener('click', function (e) {
+                if (!botao.contains(e.target) && !lista.contains(e.target)) {
+                    lista.classList.remove('aberta');
+                }
+            });
+
+            mostrarNome();
+        })();
+    </script>
 </body>
 </html>

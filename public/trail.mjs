@@ -488,7 +488,7 @@ TrailController.prototype.distRaySegment = function(rayOrigin, rayDir, p1, p2) {
 // Painéis, botões e players sobrepostos ao mapa. Um clique num deles não
 // deve chegar à cena 3D, senão mexer nas definições ou nos controlos de um
 // vídeo abre outros vídeos sem querer.
-const UI_POR_CIMA = '#header, #settings-menu, #dev-menu, #filter-panel, #camera-stuck-popup, #trail-edit-ui, .annotation-marker, #video-modal, #trail-popup-360, #image-modal';
+const UI_POR_CIMA = '#header, #definicoes-menu, #idioma-menu, #dev-menu, #filter-panel, #camera-stuck-popup, #trail-edit-ui, .annotation-marker, #video-modal, #trail-popup-360, #image-modal';
 
 TrailController.prototype.cliqueEmUI = function(e) {
     const alvo = e && e.event && e.event.target;
@@ -863,7 +863,9 @@ TrailController.prototype.setupPopup360 = function() {
     this.popupTitle.style.color = '#fff';
     this.popupTitle.style.fontWeight = '600';
     this.popupTitle.style.fontSize = '1.1rem';
-    this.popupTitle.textContent = 'Esvarena — Rota 360º';
+    // "Esvarena" é nome de sítio: fica igual em qualquer língua.
+    this.popupTitle.textContent = 'Esvarena — ' +
+        (window.Idiomas ? window.Idiomas.t('rota.titulo') : 'Rota 360º');
 
     const closeBtn = document.createElement('button');
     closeBtn.innerHTML = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>';
@@ -891,7 +893,7 @@ TrailController.prototype.setupPopup360 = function() {
 
         if (overlay) {
             overlay.style.transition = 'none';
-            if (loadingText) loadingText.innerText = "A restaurar ambiente 3D…";
+            if (loadingText) loadingText.innerText = (window.Idiomas ? window.Idiomas.t('carga.restaurar') : 'A restaurar ambiente 3D…');
             overlay.classList.remove('hidden');
         }
 
@@ -910,7 +912,7 @@ TrailController.prototype.setupPopup360 = function() {
                     overlay.style.transition = '';
                     overlay.classList.add('hidden');
                     setTimeout(() => {
-                        if (loadingText) loadingText.innerText = "A carregar modelo 3D…";
+                        if (loadingText) loadingText.innerText = (window.Idiomas ? window.Idiomas.t('carga.modelo') : 'A carregar modelo 3D…');
                     }, 800);
                 }
             }, 800);
@@ -962,7 +964,8 @@ TrailController.prototype.showPopup360 = function(trailIndex) {
         const nome = 'Esvarena - 360 - ' + letra;
         container.innerHTML = `<iframe src="/video360.html?nome=${encodeURIComponent(nome)}" style="width: 100%; height: 100%; border: none; background: #000; display: block;" allow="xr-spatial-tracking; fullscreen; autoplay" allowfullscreen></iframe>`;
     }
-    if (this.popupTitle) this.popupTitle.textContent = 'Esvarena — Rota 360º ' + letra;
+    if (this.popupTitle) this.popupTitle.textContent = 'Esvarena — ' +
+        (window.Idiomas ? window.Idiomas.t('rota.titulo') : 'Rota 360º') + ' ' + letra;
 
     // A rota apaga-se e a etiqueta sai da frente: com a janela aberta por
     // cima, ficariam as duas esquecidas por baixo até se mexer o rato.
