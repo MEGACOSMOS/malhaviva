@@ -429,6 +429,41 @@
             transform: scale(0.95);
         }
         
+        /* Quatro nomes curtos não precisam da largura dos outros menus. */
+        #idioma-menu {
+            width: 170px;
+        }
+
+        /* ---- Fechar o menu ---- */
+        .menu-fechar {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: 26px;
+            height: 26px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: transparent;
+            border: none;
+            color: rgba(255, 255, 255, 0.55);
+            cursor: pointer;
+            padding: 0;
+            transition: color 0.15s ease, background 0.15s ease;
+        }
+
+        .menu-fechar:hover {
+            color: #ffffff;
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        /* O primeiro título de cada menu abre espaço à cruz. */
+        #definicoes-menu > .settings-title:first-child,
+        #dev-menu > .settings-title:first-child,
+        #idioma-menu > .settings-title:first-child {
+            padding-right: 28px;
+        }
+
         /* O menu de desenvolvedor cresceu com as afinações do céu e já não
            cabe em ecrãs baixos: ganha altura máxima e rola por dentro. A
            barra fica discreta, do tom do painel. */
@@ -826,6 +861,12 @@
                     </svg>
                 </button>
                 <div id="dev-menu" class="hidden">
+                    <button type="button" class="menu-fechar" aria-label="Fechar" title="Fechar">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="square" stroke-linejoin="miter">
+                            <line x1="5" y1="5" x2="19" y2="19"></line>
+                            <line x1="19" y1="5" x2="5" y2="19"></line>
+                        </svg>
+                    </button>
                     <div class="settings-title">Menu de Desenvolvedor</div>
                     <div class="settings-options">
                         <label class="settings-radio">
@@ -986,6 +1027,12 @@
                 </svg>
             </button>
             <div id="idioma-menu" class="hidden">
+                <button type="button" class="menu-fechar" aria-label="Fechar" title="Fechar">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="square" stroke-linejoin="miter">
+                        <line x1="5" y1="5" x2="19" y2="19"></line>
+                        <line x1="19" y1="5" x2="5" y2="19"></line>
+                    </svg>
+                </button>
                 <div class="settings-title" data-i18n="idm.titulo">Idioma</div>
                 <div class="settings-options">
                     <label class="settings-radio">
@@ -1016,6 +1063,12 @@
                 </svg>
             </button>
             <div id="definicoes-menu" class="hidden">
+                <button type="button" class="menu-fechar" aria-label="Fechar" title="Fechar">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="square" stroke-linejoin="miter">
+                        <line x1="5" y1="5" x2="19" y2="19"></line>
+                        <line x1="19" y1="5" x2="5" y2="19"></line>
+                    </svg>
+                </button>
                 <div class="settings-title" data-i18n="def.qualidade">Qualidade Gráfica</div>
                 <div class="settings-options">
                     <label class="settings-radio">
@@ -1743,6 +1796,17 @@ void modifySplatColor(vec3 center, inout vec4 color) {
             } else {
                 fpsInfo.classList.remove('visible');
             }
+        });
+
+        // A cruz no canto de cada menu fecha-o. É o mesmo que clicar fora,
+        // mas dá jeito a quem abriu o menu sem querer — e num telemóvel,
+        // onde "clicar fora" é mais difícil de acertar do que parece.
+        document.querySelectorAll('.menu-fechar').forEach((cruz) => {
+            cruz.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const menu = cruz.closest('#definicoes-menu, #idioma-menu, #dev-menu');
+                if (menu) menu.classList.remove('open');
+            });
         });
 
         document.addEventListener('click', (e) => {
