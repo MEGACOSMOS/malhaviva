@@ -352,6 +352,84 @@ AnnotationController.prototype.initialize = function() {
             transform: translate(-50%, -50%) scale(1.1);
             color: #ffffff;
         }
+
+        /* O aviso que aparece quando um testemunho acaba e já há outro à
+           espera. Cobre o vídeo, diz de quem é o próximo e deixa parar. */
+        .proximo-video {
+            position: absolute;
+            inset: 0;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 14px;
+            background: rgba(5, 5, 10, 0.88);
+            z-index: 5;
+            text-align: center;
+            padding: 20px;
+        }
+        .proximo-video.visivel {
+            display: flex;
+        }
+        .proximo-etiqueta {
+            font-size: 0.75rem;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+            color: rgba(255, 255, 255, 0.55);
+        }
+        .proximo-nome {
+            font-size: 1.6rem;
+            font-weight: 600;
+            color: #ffffff;
+        }
+        .proximo-botoes {
+            display: flex;
+            gap: 10px;
+            margin-top: 4px;
+        }
+        .proximo-botoes button {
+            font-family: inherit;
+            font-size: 0.85rem;
+            padding: 9px 18px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            background: transparent;
+            color: rgba(255, 255, 255, 0.85);
+            cursor: pointer;
+            transition: background 0.15s ease, color 0.15s ease;
+        }
+        .proximo-botoes button:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: #ffffff;
+        }
+        .proximo-botoes .proximo-agora {
+            background: #ffffff;
+            border-color: #ffffff;
+            color: #05050a;
+            font-weight: 600;
+        }
+        .proximo-botoes .proximo-agora:hover {
+            background: rgba(255, 255, 255, 0.85);
+            color: #05050a;
+        }
+        .proximo-barra {
+            width: 180px;
+            max-width: 60%;
+            height: 2px;
+            background: rgba(255, 255, 255, 0.15);
+            overflow: hidden;
+        }
+        .proximo-barra i {
+            display: block;
+            height: 100%;
+            width: 100%;
+            background: #ffffff;
+            transform-origin: left center;
+            transform: scaleX(0);
+        }
+        .proximo-barra.a-contar i {
+            transition: transform var(--espera) linear;
+            transform: scaleX(1);
+        }
     `;
     document.head.appendChild(style);
 
@@ -430,17 +508,7 @@ AnnotationController.prototype.initialize = function() {
         el.style.gap = '6px';
 
         el.addEventListener('click', () => {
-            // Mark as viewed
-            if (!this.viewedAnnotations.includes(annId)) {
-                this.viewedAnnotations.push(annId);
-                try {
-                    localStorage.setItem('viewedAnnotations', JSON.stringify(this.viewedAnnotations));
-                } catch (e) {
-                    console.warn("Could not save viewed annotations", e);
-                }
-                const dot = el.querySelector('.marker-dot');
-                if (dot) dot.classList.add('viewed');
-            }
+            this.marcarComoVisto(annId);
 
             if (ann.is360) {
                 if (ann.isImage) {
@@ -776,6 +844,22 @@ AnnotationController.prototype.setupModal = function() {
     controls.appendChild(progressContainer);
     controls.appendChild(controlsMain);
 
+    // Quando um testemunho acaba, o seguinte que ainda não foi visto
+    // entra sozinho. Este aviso dá tempo de travar antes disso.
+    const proximo = document.createElement('div');
+    proximo.className = 'proximo-video';
+    proximo.innerHTML = `
+        <div class="proximo-etiqueta"></div>
+        <div class="proximo-nome"></div>
+        <div class="proximo-botoes">
+            <button type="button" class="proximo-agora"></button>
+            <button type="button" class="proximo-parar"></button>
+        </div>
+        <div class="proximo-barra"><i></i></div>
+    `;
+    this.avisoDoProximo = proximo;
+    videoWrapper.appendChild(proximo);
+
     videoWrapper.appendChild(this.videoPlayer);
     videoWrapper.appendChild(bigPlayBtn);
     videoWrapper.appendChild(controls);
@@ -961,6 +1045,7 @@ AnnotationController.prototype.setupModal = function() {
             overlay.classList.remove('hidden');
         }
 
+        this.esconderProximo();
         this.modal.style.opacity = '0';
         this.modalContent.style.transform = 'scale(0.95)';
         
@@ -997,11 +1082,158 @@ AnnotationController.prototype.setupModal = function() {
         if (e.target === this.modal) closeModal();
     });
 
+    // O fecho do modal fica à mão para o aviso do próximo testemunho o
+    // poder usar.
+    this.fecharModal = closeModal;
+
+    // Um testemunho que chega ao fim conta como visto, e o seguinte que
+    // ainda ninguém viu entra a seguir.
+    this.videoPlayer.addEventListener('ended', () => {
+        if (!this.videoNome) return;
+        this.marcarComoVisto('video-' + this.videoNome);
+        this.mostrarProximo(this.proximoPorVer(this.videoNome));
+    });
+
     // Store references for the openVideoModal function
     this.videoSources = null;
 };
 
+/**
+ * O nome com que uma anotação é lembrada de uma visita para a outra.
+ *
+ * @param {object} ann - A anotação.
+ * @returns {string} O nome dela na memória do navegador.
+ */
+AnnotationController.prototype.idDaAnotacao = function(ann) {
+    return ann.is360 ? `360-${ann.trailIndex}` : `video-${ann.video}`;
+};
+
+/**
+ * Deixa uma anotação assinalada como vista — no ponto do mapa e na
+ * memória do navegador, para continuar apagada da próxima vez que se entre.
+ *
+ * @param {string} annId - O nome da anotação.
+ */
+AnnotationController.prototype.marcarComoVisto = function(annId) {
+    if (!annId || this.viewedAnnotations.includes(annId)) {
+        return;
+    }
+    this.viewedAnnotations.push(annId);
+    try {
+        localStorage.setItem('viewedAnnotations', JSON.stringify(this.viewedAnnotations));
+    } catch (e) {
+        console.warn("Could not save viewed annotations", e);
+    }
+    const ann = this.annotations.find(a => this.idDaAnotacao(a) === annId);
+    const ponto = ann && ann.element && ann.element.querySelector('.marker-dot');
+    if (ponto) ponto.classList.add('viewed');
+};
+
+/**
+ * O testemunho seguinte que ainda ninguém viu.
+ *
+ * As rotas 360º ficam de fora: abrem noutra janela, com outro tocador, e
+ * não se encadeiam com as entrevistas.
+ *
+ * @param {string} nomeAtual - O que está a dar agora, para não se repetir.
+ * @returns {object|null} A anotação seguinte, ou nada se já foram todas.
+ */
+AnnotationController.prototype.proximoPorVer = function(nomeAtual) {
+    return this.annotations.find(ann =>
+        !ann.is360 && ann.video && ann.video !== nomeAtual &&
+        !this.viewedAnnotations.includes(this.idDaAnotacao(ann))
+    ) || null;
+};
+
+/**
+ * Quanto tempo o aviso do próximo testemunho espera antes de avançar
+ * sozinho, em milésimos de segundo.
+ */
+const ESPERA_DO_PROXIMO = 6000;
+
+/**
+ * Mostra o aviso do próximo testemunho — ou, se já foram todos vistos,
+ * diz isso mesmo.
+ *
+ * @param {object|null} ann - A anotação seguinte, ou nada.
+ */
+AnnotationController.prototype.mostrarProximo = function(ann) {
+    const aviso = this.avisoDoProximo;
+    if (!aviso) {
+        return;
+    }
+    this.pararContagem();
+
+    const dizer = (chave, omissao) => (window.Idiomas ? window.Idiomas.t(chave) : omissao);
+    const etiqueta = aviso.querySelector('.proximo-etiqueta');
+    const nome = aviso.querySelector('.proximo-nome');
+    const agora = aviso.querySelector('.proximo-agora');
+    const parar = aviso.querySelector('.proximo-parar');
+    const barra = aviso.querySelector('.proximo-barra');
+
+    if (!ann) {
+        etiqueta.textContent = '';
+        nome.textContent = dizer('proximo.fim', 'Já viu todos os testemunhos.');
+        agora.style.display = 'none';
+        parar.textContent = dizer('proximo.fechar', 'Fechar');
+        parar.onclick = () => {
+            this.esconderProximo();
+            if (this.fecharModal) this.fecharModal();
+        };
+        barra.classList.remove('a-contar');
+        aviso.classList.add('visivel');
+        return;
+    }
+
+    etiqueta.textContent = dizer('proximo.aSeguir', 'A seguir');
+    // Nome de pessoa: fica como está em qualquer língua.
+    nome.textContent = ann.label;
+    agora.style.display = '';
+    agora.textContent = dizer('proximo.agora', 'Ver agora');
+    parar.textContent = dizer('proximo.ficar', 'Ficar aqui');
+
+    const seguir = () => {
+        this.esconderProximo();
+        this.openVideoModal(ann.video, ann.label);
+    };
+    agora.onclick = seguir;
+    parar.onclick = () => this.esconderProximo();
+
+    aviso.classList.add('visivel');
+    barra.style.setProperty('--espera', ESPERA_DO_PROXIMO + 'ms');
+    barra.classList.remove('a-contar');
+    void barra.offsetWidth;
+    barra.classList.add('a-contar');
+    this.contagemDoProximo = setTimeout(seguir, ESPERA_DO_PROXIMO);
+};
+
+/**
+ * Trava a contagem do próximo testemunho, sem esconder o aviso.
+ */
+AnnotationController.prototype.pararContagem = function() {
+    if (this.contagemDoProximo) {
+        clearTimeout(this.contagemDoProximo);
+        this.contagemDoProximo = null;
+    }
+};
+
+/**
+ * Arruma o aviso do próximo testemunho.
+ */
+AnnotationController.prototype.esconderProximo = function() {
+    this.pararContagem();
+    const aviso = this.avisoDoProximo;
+    if (!aviso) {
+        return;
+    }
+    aviso.classList.remove('visivel');
+    const barra = aviso.querySelector('.proximo-barra');
+    if (barra) barra.classList.remove('a-contar');
+};
+
 AnnotationController.prototype.openVideoModal = function(nome, title) {
+    this.esconderProximo();
+    this.marcarComoVisto('video-' + nome);
     this.modalTitle.textContent = title;
     this.videoNome = nome;
 

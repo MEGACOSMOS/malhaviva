@@ -64,6 +64,11 @@
             'foto.ecra': 'Ecrã inteiro',
 
             'rota.titulo': 'Rota 360º',
+            'proximo.aSeguir': 'A seguir',
+            'proximo.agora': 'Ver agora',
+            'proximo.ficar': 'Ficar aqui',
+            'proximo.fim': 'Já viu todos os testemunhos.',
+            'proximo.fechar': 'Fechar',
 
             'ctl.voltar': 'Voltar ao Mapa',
             'ctl.titulo': 'Controlos do Mapa',
@@ -147,6 +152,11 @@
             'foto.ecra': 'Fullscreen',
 
             'rota.titulo': '360º Route',
+            'proximo.aSeguir': 'Up next',
+            'proximo.agora': 'Watch now',
+            'proximo.ficar': 'Stay here',
+            'proximo.fim': 'You have watched every testimony.',
+            'proximo.fechar': 'Close',
 
             'ctl.voltar': 'Back to Map',
             'ctl.titulo': 'Map Controls',
@@ -230,6 +240,11 @@
             'foto.ecra': 'Pantalla completa',
 
             'rota.titulo': 'Ruta 360º',
+            'proximo.aSeguir': 'A continuación',
+            'proximo.agora': 'Ver ahora',
+            'proximo.ficar': 'Quedarme aquí',
+            'proximo.fim': 'Ya has visto todos los testimonios.',
+            'proximo.fechar': 'Cerrar',
 
             'ctl.voltar': 'Volver al Mapa',
             'ctl.titulo': 'Controles del Mapa',
@@ -313,6 +328,11 @@
             'foto.ecra': 'Ekran interu',
 
             'rota.titulo': 'Rota 360º',
+            'proximo.aSeguir': 'A sigi',
+            'proximo.agora': 'Odja gosi',
+            'proximo.ficar': 'Fika li',
+            'proximo.fim': 'Bu ja odja tudu tistimunhu.',
+            'proximo.fechar': 'Fitxa',
 
             'ctl.voltar': 'Volta pa Mapa',
             'ctl.titulo': 'Kontrolus di Mapa',
