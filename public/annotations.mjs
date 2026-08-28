@@ -273,6 +273,27 @@ AnnotationController.prototype.initialize = function() {
             width: 0%;
             border-radius: 0;
             pointer-events: none;
+            position: relative;
+        }
+        /* Um quadrado pousado na ponta do que já se viu, para se saber de
+           relance em que sítio do vídeo se vai. */
+        .progress-filled::after {
+            content: '';
+            position: absolute;
+            right: 0;
+            top: 50%;
+            transform: translate(50%, -50%);
+            width: 12px;
+            height: 12px;
+            background: #ffffff;
+        }
+
+        /* O tempo fica logo por cima da barra do tempo, encostado ao mesmo
+           lado por onde ela começa. */
+        .tempo-e-barra {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
         }
         .controls-main {
             display: flex;
@@ -483,6 +504,11 @@ AnnotationController.prototype.initialize = function() {
         .seta-do-palco:hover {
             color: #ffffff;
             transform: translate(-50%, -50%) scale(1.18);
+        }
+        /* Já não há nada de novo para o lado de lá: a seta dá lugar a uma
+           cruz, e quem carregar nela sai para o mapa. */
+        .seta-do-palco.a-sair {
+            color: rgba(255, 255, 255, 0.7);
         }
         .seta-do-palco.esquerda {
             left: calc(50% - var(--janela-largura) / 2 - var(--janela-espaco) / 2);
@@ -727,84 +753,6 @@ AnnotationController.prototype.initialize = function() {
             30% { opacity: 1; transform: translateY(-50%) scale(1); }
             100% { opacity: 0; transform: translateY(-50%) scale(1.05); }
         }
-
-        /* O aviso que aparece quando um testemunho acaba e já há outro à
-           espera. Cobre o vídeo, diz de quem é o próximo e deixa parar. */
-        .proximo-video {
-            position: absolute;
-            inset: 0;
-            display: none;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            gap: 14px;
-            background: rgba(5, 5, 10, 0.88);
-            z-index: 5;
-            text-align: center;
-            padding: 20px;
-        }
-        .proximo-video.visivel {
-            display: flex;
-        }
-        .proximo-etiqueta {
-            font-size: 0.75rem;
-            letter-spacing: 0.14em;
-            text-transform: uppercase;
-            color: rgba(255, 255, 255, 0.55);
-        }
-        .proximo-nome {
-            font-size: 1.6rem;
-            font-weight: 600;
-            color: #ffffff;
-        }
-        .proximo-botoes {
-            display: flex;
-            gap: 10px;
-            margin-top: 4px;
-        }
-        .proximo-botoes button {
-            font-family: inherit;
-            font-size: 0.85rem;
-            padding: 9px 18px;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            background: transparent;
-            color: rgba(255, 255, 255, 0.85);
-            cursor: pointer;
-            transition: background 0.15s ease, color 0.15s ease;
-        }
-        .proximo-botoes button:hover {
-            background: rgba(255, 255, 255, 0.1);
-            color: #ffffff;
-        }
-        .proximo-botoes .proximo-agora {
-            background: #ffffff;
-            border-color: #ffffff;
-            color: #05050a;
-            font-weight: 600;
-        }
-        .proximo-botoes .proximo-agora:hover {
-            background: rgba(255, 255, 255, 0.85);
-            color: #05050a;
-        }
-        .proximo-barra {
-            width: 180px;
-            max-width: 60%;
-            height: 2px;
-            background: rgba(255, 255, 255, 0.15);
-            overflow: hidden;
-        }
-        .proximo-barra i {
-            display: block;
-            height: 100%;
-            width: 100%;
-            background: #ffffff;
-            transform-origin: left center;
-            transform: scaleX(0);
-        }
-        .proximo-barra.a-contar i {
-            transition: transform var(--espera) linear;
-            transform: scaleX(1);
-        }
     `;
     document.head.appendChild(style);
 
@@ -912,6 +860,25 @@ AnnotationController.prototype.initialize = function() {
 // As três rotas são o mesmo sítio percorrido três vezes; a letra é o que
 // as distingue, tanto no nome do ficheiro como na barra de cima.
 const LETRAS_DAS_ROTAS = ['A', 'B', 'C'];
+
+// Os bicos das setas do palco, e a cruz que toma o lugar da seta da
+// direita quando já não há nada de novo para o lado de lá.
+const BICO_ESQUERDA = '15 18 9 12 15 6';
+const BICO_DIREITA = '9 18 15 12 9 6';
+
+/**
+ * O desenho de uma seta do palco.
+ *
+ * @param {string} bico - Os pontos do bico.
+ * @returns {string} O desenho.
+ */
+function desenhoDaSeta(bico) {
+    return '<svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter"><polyline points="' + bico + '"></polyline></svg>';
+}
+
+// A cruz é desenhada do mesmo tamanho do bico de uma seta, para tomar o
+// lugar dela sem o canto do ecrã dar um salto.
+const DESENHO_DA_CRUZ = '<svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter"><line x1="7" y1="7" x2="17" y2="17"></line><line x1="17" y1="7" x2="7" y2="17"></line></svg>';
 
 /**
  * As paragens 360º, pela ordem em que estão na lista das anotações.
@@ -1052,15 +1019,23 @@ AnnotationController.prototype.setupPalco360 = function() {
         const seta = document.createElement('button');
         seta.type = 'button';
         seta.className = 'seta-do-palco ' + lado;
-        seta.innerHTML = '<svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter"><polyline points="' + bico + '"></polyline></svg>';
+        seta.innerHTML = desenhoDaSeta(bico);
+        const chave = sentido < 0 ? 'palco.anterior' : 'palco.seguinte';
+        seta.setAttribute('data-i18n-title', chave);
+        seta.title = window.Idiomas ? window.Idiomas.t(chave) : '';
         seta.addEventListener('click', (e) => {
             e.stopPropagation();
+            // Vistas todas as paragens, esta seta já é a cruz de saída.
+            if (seta.classList.contains('a-sair')) {
+                this.fecharPalco360();
+                return;
+            }
             this.saltarParagem360(sentido);
         });
         return seta;
     };
-    const setaEsquerda = criarSeta('esquerda', '15 18 9 12 15 6', -1);
-    const setaDireita = criarSeta('direita', '9 18 15 12 9 6', 1);
+    const setaEsquerda = criarSeta('esquerda', BICO_ESQUERDA, -1);
+    const setaDireita = criarSeta('direita', BICO_DIREITA, 1);
 
     const fechar = document.createElement('button');
     fechar.className = 'fechar-do-palco';
@@ -1105,6 +1080,7 @@ AnnotationController.prototype.setupPalco360 = function() {
         meio: content,
         esquerda,
         direita,
+        setaDireita,
         barraDoNome: header,
         titulo,
         moldura
@@ -1176,6 +1152,8 @@ AnnotationController.prototype.mostrarParagem360 = function(ann) {
         .addEventListener('load', () => this.medirComandos360());
 
     const lista = this.paragens360();
+    this.arrumarSetaDaDireita(palco.setaDireita, this.coleccaoVista(lista));
+
     const onde = lista.indexOf(ann);
     if (onde >= 0 && lista.length > 1) {
         this.encherPrevia360(palco.esquerda, lista[(onde - 1 + lista.length) % lista.length]);
@@ -1457,7 +1435,6 @@ AnnotationController.prototype.setupModal = function() {
     controlsLeft.appendChild(playPauseBtn);
     controlsLeft.appendChild(avancarBtn);
     controlsLeft.appendChild(volumeContainer);
-    controlsLeft.appendChild(timeDisplay);
 
     // Right controls
     const controlsRight = document.createElement('div');
@@ -1513,24 +1490,15 @@ AnnotationController.prototype.setupModal = function() {
     controlsMain.appendChild(controlsLeft);
     controlsMain.appendChild(controlsRight);
 
-    controls.appendChild(progressContainer);
-    controls.appendChild(controlsMain);
+    // O tempo vive logo por cima da barra, e não no meio dos botões:
+    // assim começa onde a barra começa e lê-se sem procurar.
+    const tempoEBarra = document.createElement('div');
+    tempoEBarra.className = 'tempo-e-barra';
+    tempoEBarra.appendChild(timeDisplay);
+    tempoEBarra.appendChild(progressContainer);
 
-    // Quando um testemunho acaba, o seguinte que ainda não foi visto
-    // entra sozinho. Este aviso dá tempo de travar antes disso.
-    const proximo = document.createElement('div');
-    proximo.className = 'proximo-video';
-    proximo.innerHTML = `
-        <div class="proximo-etiqueta"></div>
-        <div class="proximo-nome"></div>
-        <div class="proximo-botoes">
-            <button type="button" class="proximo-agora"></button>
-            <button type="button" class="proximo-parar"></button>
-        </div>
-        <div class="proximo-barra"><i></i></div>
-    `;
-    this.avisoDoProximo = proximo;
-    videoWrapper.appendChild(proximo);
+    controls.appendChild(tempoEBarra);
+    controls.appendChild(controlsMain);
 
     // A roda que aparece quando o vídeo fica à espera de mais imagem.
     const espera = document.createElement('div');
@@ -1607,17 +1575,25 @@ AnnotationController.prototype.setupModal = function() {
         const seta = document.createElement('button');
         seta.type = 'button';
         seta.className = 'seta-do-palco ' + lado;
-        seta.innerHTML = '<svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter"><polyline points="' + bico + '"></polyline></svg>';
+        seta.innerHTML = desenhoDaSeta(bico);
+        const chave = sentido < 0 ? 'palco.anterior' : 'palco.seguinte';
+        seta.setAttribute('data-i18n-title', chave);
+        seta.title = window.Idiomas ? window.Idiomas.t(chave) : '';
         seta.addEventListener('click', (e) => {
             e.stopPropagation();
+            // Vista a colecção toda, esta seta já é a cruz de saída.
+            if (seta.classList.contains('a-sair')) {
+                if (this.fecharModal) this.fecharModal();
+                return;
+            }
             const vizinha = sentido < 0 ? this.previaEsquerda : this.previaDireita;
             const ann = this.annotations.find(a => a.video === vizinha.dataset.video);
             if (ann) this.openVideoModal(ann.video, ann.label, sentido);
         });
         return seta;
     };
-    this.setaEsquerda = criarSeta('esquerda', '15 18 9 12 15 6', -1);
-    this.setaDireita = criarSeta('direita', '9 18 15 12 9 6', 1);
+    this.setaEsquerda = criarSeta('esquerda', BICO_ESQUERDA, -1);
+    this.setaDireita = criarSeta('direita', BICO_DIREITA, 1);
 
     content.appendChild(header);
     content.appendChild(moldura);
@@ -1929,7 +1905,6 @@ AnnotationController.prototype.setupModal = function() {
             }
         }
 
-        this.esconderProximo();
         this.modal.style.opacity = '0';
         this.modalContent.classList.remove('aberta');
         
@@ -1960,16 +1935,21 @@ AnnotationController.prototype.setupModal = function() {
         if (this.modal.style.display !== 'none') this.medirPalco(this.palcoDosTestemunhos);
     });
 
-    // O fecho do modal fica à mão para o aviso do próximo testemunho o
-    // poder usar.
+    // O fecho do modal fica à mão para as setas do palco o poderem usar.
     this.fecharModal = closeModal;
 
     // Um testemunho que chega ao fim conta como visto, e o seguinte que
-    // ainda ninguém viu entra a seguir.
+    // ainda ninguém viu entra a seguir. Se era o último, não há mais nada
+    // a mostrar: a janela fecha-se e devolve o bairro.
     this.videoPlayer.addEventListener('ended', () => {
         if (!this.videoNome) return;
         this.marcarComoVisto('video-' + this.videoNome);
-        this.mostrarProximo(this.proximoPorVer(this.videoNome));
+        const seguinte = this.proximoPorVer(this.videoNome);
+        if (seguinte) {
+            this.openVideoModal(seguinte.video, seguinte.label, 1);
+        } else {
+            closeModal();
+        }
     });
 
     // Store references for the openVideoModal function
@@ -2018,6 +1998,8 @@ AnnotationController.prototype.medirPalco = function(palco) {
  */
 AnnotationController.prototype.atualizarPalco = function(nomeAtual, sentido, oldCenterFrame) {
     const lista = this.annotations.filter(ann => !ann.is360 && ann.video);
+    this.arrumarSetaDaDireita(this.setaDireita, this.coleccaoVista(lista));
+
     const onde = lista.findIndex(ann => ann.video === nomeAtual);
     if (onde < 0 || lista.length < 2) {
         return;
@@ -2146,6 +2128,38 @@ AnnotationController.prototype.marcarComoUltima = function(annId) {
 };
 
 /**
+ * Se já foram vistas todas as paragens de uma colecção.
+ *
+ * @param {object[]} lista - As paragens da colecção.
+ * @returns {boolean} Verdadeiro se não faltar nenhuma.
+ */
+AnnotationController.prototype.coleccaoVista = function(lista) {
+    return lista.length > 0 &&
+        lista.every(ann => this.viewedAnnotations.includes(this.idDaAnotacao(ann)));
+};
+
+/**
+ * Arruma a seta da direita conforme já se tenha visto tudo ou não.
+ *
+ * Enquanto houver coisa nova para o lado de lá, é uma seta e leva lá. Uma
+ * vez visto tudo o que ali havia, passa a ser uma cruz: continuar a andar
+ * em roda não leva a lado nenhum, e o que faz sentido é sair para o mapa.
+ *
+ * @param {HTMLElement} seta - A seta da direita.
+ * @param {boolean} tudoVisto - Se a colecção já foi vista até ao fim.
+ */
+AnnotationController.prototype.arrumarSetaDaDireita = function(seta, tudoVisto) {
+    if (!seta) {
+        return;
+    }
+    seta.classList.toggle('a-sair', tudoVisto);
+    seta.innerHTML = tudoVisto ? DESENHO_DA_CRUZ : desenhoDaSeta(BICO_DIREITA);
+    const chave = tudoVisto ? 'palco.sair' : 'palco.seguinte';
+    seta.setAttribute('data-i18n-title', chave);
+    seta.title = window.Idiomas ? window.Idiomas.t(chave) : '';
+};
+
+/**
  * O testemunho seguinte que ainda ninguém viu.
  *
  * As rotas 360º ficam de fora: abrem noutra janela, com outro tocador, e
@@ -2159,54 +2173,6 @@ AnnotationController.prototype.proximoPorVer = function(nomeAtual) {
         !ann.is360 && ann.video && ann.video !== nomeAtual &&
         !this.viewedAnnotations.includes(this.idDaAnotacao(ann))
     ) || null;
-};
-
-/**
- * Passa ao testemunho seguinte — ou, se já foram todos vistos, diz isso
- * mesmo e oferece fechar.
- *
- * Não há pergunta pelo meio: um testemunho que acaba dá lugar ao
- * seguinte como num alinhamento, e quem não quiser fecha a janela.
- *
- * @param {object|null} ann - A anotação seguinte, ou nada.
- */
-AnnotationController.prototype.mostrarProximo = function(ann) {
-    if (ann) {
-        this.esconderProximo();
-        this.openVideoModal(ann.video, ann.label, 1);
-        return;
-    }
-
-    const aviso = this.avisoDoProximo;
-    if (!aviso) {
-        return;
-    }
-    const dizer = (chave, omissao) => (window.Idiomas ? window.Idiomas.t(chave) : omissao);
-    aviso.querySelector('.proximo-etiqueta').textContent = '';
-    aviso.querySelector('.proximo-nome').textContent =
-        dizer('proximo.fim', 'Já viu todos os testemunhos.');
-    aviso.querySelector('.proximo-agora').style.display = 'none';
-    const parar = aviso.querySelector('.proximo-parar');
-    parar.textContent = dizer('proximo.fechar', 'Fechar');
-    parar.onclick = () => {
-        this.esconderProximo();
-        if (this.fecharModal) this.fecharModal();
-    };
-    aviso.querySelector('.proximo-barra').classList.remove('a-contar');
-    aviso.classList.add('visivel');
-};
-
-/**
- * Arruma o aviso do próximo testemunho.
- */
-AnnotationController.prototype.esconderProximo = function() {
-    const aviso = this.avisoDoProximo;
-    if (!aviso) {
-        return;
-    }
-    aviso.classList.remove('visivel');
-    const barra = aviso.querySelector('.proximo-barra');
-    if (barra) barra.classList.remove('a-contar');
 };
 
 /**
@@ -2289,7 +2255,6 @@ AnnotationController.prototype.deslizarPalco = function(palco, sentido, trocar) 
 };
 
 AnnotationController.prototype.abrirTestemunho = function(nome, title, sentido, oldCenterFrame) {
-    this.esconderProximo();
     this.marcarComoVisto('video-' + nome);
     this.modalTitle.textContent = title;
     this.videoNome = nome;

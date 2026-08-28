@@ -154,6 +154,27 @@
             border-radius: 0;
             pointer-events: none;
             transition: width 0.1s linear;
+            position: relative;
+        }
+        /* Um quadrado pousado na ponta do que já se viu, para se saber de
+           relance em que sítio do vídeo se vai. */
+        .progress-filled::after {
+            content: '';
+            position: absolute;
+            right: 0;
+            top: 50%;
+            transform: translate(50%, -50%);
+            width: 12px;
+            height: 12px;
+            background: #ffffff;
+        }
+
+        /* O tempo fica logo por cima da barra do tempo, encostado ao mesmo
+           lado por onde ela começa. */
+        .tempo-e-barra {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
         }
         .controls-main {
             display: flex;
@@ -464,8 +485,11 @@
 
     <!-- Controls Bar -->
     <div class="video-controls" id="video-controls">
-        <div class="progress-container" id="progress-container">
-            <div class="progress-filled" id="progress-filled"></div>
+        <div class="tempo-e-barra">
+            <div class="time-display" id="time-display">0:00 / 0:00</div>
+            <div class="progress-container" id="progress-container">
+                <div class="progress-filled" id="progress-filled"></div>
+            </div>
         </div>
         
         <div class="controls-main">
@@ -496,8 +520,6 @@
                         <div class="volume-percentage" id="volume-percentage">100%</div>
                     </div>
                 </div>
-                
-                <div class="time-display" id="time-display">0:00 / 0:00</div>
             </div>
             
             <div class="controls-right">
@@ -1050,6 +1072,24 @@
         });
 
         // ---- O aviso de como se vê um vídeo 360º ----
+        // Aparece uma vez só, na primeira rota que se abrir. Quem já
+        // percebeu como isto funciona não precisa de ouvir a explicação
+        // outra vez a cada rota — por isso fica escrito no navegador que
+        // já foi dado, e não apenas nesta visita.
+        const CHAVE_DA_AJUDA = 'ajuda360Dada';
+        const ajudaJaDada = () => {
+            try {
+                return localStorage.getItem(CHAVE_DA_AJUDA) === '1';
+            } catch (e) {
+                return false;
+            }
+        };
+        const guardarAjudaDada = () => {
+            try {
+                localStorage.setItem(CHAVE_DA_AJUDA, '1');
+            } catch (e) { /* sem memória no navegador: aparece outra vez */ }
+        };
+
         const ajuda = document.getElementById('ajuda-360');
         const ajudaFechar = document.getElementById('ajuda-fechar');
         let ajudaMostrada = false;
@@ -1063,8 +1103,9 @@
         const mostrarAjuda = () => {
             // Só nas rotas: uma entrevista em ecrã plano não tem volta a dar.
             // E não dentro dos óculos, onde este aviso não se vê.
-            if (ajudaMostrada || ecraPlano || pedidoDeVR || scene.is('vr-mode')) return;
+            if (ajudaMostrada || ajudaJaDada() || ecraPlano || pedidoDeVR || scene.is('vr-mode')) return;
             ajudaMostrada = true;
+            guardarAjudaDada();
 
             // Num ecrã de toque as palavras são outras.
             const toque = window.matchMedia('(pointer: coarse)').matches;
