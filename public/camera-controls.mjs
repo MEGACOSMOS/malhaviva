@@ -620,6 +620,20 @@ class CameraControls extends Script {
     margemDaCupula = 10;
 
     /**
+     * Se a câmara é travada quando chega ao fim do mundo.
+     *
+     * Desligada: não há parede, tecto nem chão — anda-se para onde se
+     * quiser, incluindo por baixo do terreno e para lá do céu. As medidas
+     * da cúpula continuam a ser lidas e as contas continuam todas de pé;
+     * basta voltar a pôr isto verdadeiro para o mundo ter fim outra vez.
+     *
+     * @attribute
+     * @title Travagem
+     * @type {boolean}
+     */
+    travagem = false;
+
+    /**
      * Diz à câmara onde estão as paredes da cúpula.
      *
      * @param {{limites: () => object|null}} ceu - O céu do bairro.
@@ -657,6 +671,9 @@ class CameraControls extends Script {
      * @private
      */
     _alturaMinima() {
+        if (!this.travagem) {
+            return -Infinity;
+        }
         const cupula = this._medidasDaCupula();
         // A folga vale para as paredes e para a abóbada, onde encostar
         // deixaria a fotografia à distância de um palmo. No chão não: aí o
@@ -671,6 +688,9 @@ class CameraControls extends Script {
      * @private
      */
     _alturaMaxima() {
+        if (!this.travagem) {
+            return Infinity;
+        }
         const cupula = this._medidasDaCupula();
         return cupula ? cupula.topo - this.margemDaCupula : MAX_HEIGHT;
     }
@@ -1417,6 +1437,16 @@ class CameraControls extends Script {
             pitch += 360;
         }
         angles.x = math.clamp(pitch, this._pitchRange.x, this._pitchRange.y);
+
+        if (!this.travagem) {
+            // Sem travagem não há fim do mundo: nada a apertar e nada a
+            // avisar. Se o aviso estava no ecrã, sai.
+            if (this._wasAtBoundary) {
+                this._wasAtBoundary = false;
+                window.dispatchEvent(new CustomEvent('cameraBoundaryLeft'));
+            }
+            return;
+        }
 
         // Chão e tecto: os da cúpula, quando ela existe.
         const baixo = this._alturaMinima();
