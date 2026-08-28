@@ -512,32 +512,62 @@ AnnotationController.prototype.initialize = function() {
            lados encolhem para uma seta pousada na borda da imagem. */
         @media (max-width: 900px) {
             #video-modal {
-                --janela-largura: 92vw;
+                --janela-largura: 100vw;
                 --janela-espaco: 0px;
+            }
+            .janela-do-palco {
+                border-radius: 0;
+                border-left: none;
+                border-right: none;
             }
             .previa {
                 position: absolute;
                 top: 50%;
-                width: 46px;
-                height: 92px;
+                width: 50px;
+                height: 70px;
                 transform: translateY(-50%);
                 opacity: 1;
                 border: none;
-                background: rgba(5, 5, 10, 0.55);
+                background: transparent;
                 z-index: 2100;
             }
-            .previa.esquerda { left: 4px; }
-            .previa.direita { right: 4px; }
+            .previa.esquerda { left: 0; border-top-left-radius: 0; border-bottom-left-radius: 0; }
+            .previa.direita { right: 0; border-top-right-radius: 0; border-bottom-right-radius: 0; }
             .previa-barra,
-            .previa-janela video { display: none; }
-            .previa-janela {
-                height: 100%;
-                aspect-ratio: auto;
-            }
+            .previa-janela { display: none; }
             .carrossel.a-deslizar .previa.entra,
             .carrossel.a-deslizar .janela-do-player {
                 transform: none;
                 opacity: 1;
+            }
+            
+            .seta-do-palco {
+                width: 50px;
+                height: 70px;
+                transform: translateY(-50%);
+                margin-top: 26px; /* Compensa a altura do cabeçalho do vídeo (padding + texto) */
+            }
+            .seta-do-palco:hover {
+                transform: translateY(-50%) scale(1.18);
+            }
+            .seta-do-palco.esquerda { left: 0; right: auto; }
+            .seta-do-palco.direita { right: 0; left: auto; }
+
+            .video-controls {
+                padding: 20px 10px 10px;
+            }
+            .controls-left, .controls-right {
+                gap: 8px;
+            }
+            .player-btn svg {
+                width: 18px;
+                height: 18px;
+            }
+            .time-display {
+                font-size: 0.75rem;
+            }
+            .volume-container {
+                display: none; /* Em mobile, o controlo é feito com os botões físicos */
             }
         }
 

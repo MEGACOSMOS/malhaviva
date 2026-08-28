@@ -375,6 +375,28 @@
         }
 
 
+        @media (max-width: 900px) {
+            .video-controls {
+                padding: 20px 10px 10px;
+            }
+            .controls-left, .controls-right {
+                gap: 8px;
+            }
+            .player-btn svg {
+                width: 18px;
+                height: 18px;
+            }
+            .time-display {
+                font-size: 0.75rem;
+            }
+            .volume-container {
+                display: none; /* Em mobile, o controlo é feito com os botões físicos */
+            }
+            .quality-menu {
+                right: -10px;
+                bottom: 45px;
+            }
+        }
     </style>
 </head>
 <body>
