@@ -353,67 +353,74 @@ AnnotationController.prototype.initialize = function() {
             color: #ffffff;
         }
 
-        /* ---- O palco: o testemunho a dar ao meio, na sua janela grande, e
-           o anterior e o seguinte em janelas mais altas e estreitas, de cada
-           lado e por fora dela.
+        /* ---- O palco ----
 
-           Das janelas dos lados vê-se só um terço da imagem, a tira do meio:
-           o resto fica cortado, como se o vídeo continuasse para lá da
-           moldura. Em cima de cada uma há uma barra com o nome de quem fala,
-           igual à barra do título da janela grande. ---- */
+           Três janelas iguais, lado a lado numa tira: o testemunho a dar ao
+           meio e o anterior e o seguinte de cada lado. A tira é mais larga
+           do que o ecrã, por isso as dos lados ficam cortadas pela borda —
+           espreitam, como nos carrosséis de há uns anos. São janelas do
+           mesmo feitio da do meio (barra do nome em cima, imagem, barra dos
+           controlos em baixo), só que mais pequenas e apagadas.
+
+           Todas as medidas saem daqui, e não de números espalhados pelo
+           meio: mudar uma destas linhas muda o palco todo. ---- */
         #video-modal {
-            gap: 18px;
-            /* Uma folga nas bordas para as janelas dos lados não ficarem
-               encostadas ao vidro do ecrã. */
-            padding: 0 18px;
-        }
-        /* A janela do meio leva o espaço todo que puder até mil pontos; as
-           dos lados ficam com o que sobrar. Quando o ecrã aperta, encolhem
-           todas, mas a do meio continua a ser de longe a maior. */
-        .janela-do-player {
-            flex: 1 1 auto;
-            width: 90%;
-            max-width: 1000px;
-            min-width: 0;
-        }
-        .previa {
-            display: flex;
-            flex-direction: column;
-            flex: 0 0 auto;
-            align-self: center;
-            padding: 0;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            background: #08080f;
-            cursor: pointer;
+            --janela-largura: min(62vw, 1000px);
+            --janela-espaco: 24px;
+            --previa-escala: 0.78;
+            --previa-opacidade: 0.5;
+            --passagem: 0.45s cubic-bezier(0.25, 0.9, 0.3, 1);
             overflow: hidden;
+        }
+
+        .carrossel {
+            display: flex;
+            align-items: center;
+            gap: var(--janela-espaco);
+            transition: transform var(--passagem);
+            will-change: transform;
+        }
+
+        .janela-do-palco {
+            flex: 0 0 auto;
+            width: var(--janela-largura);
+            background: #05050a;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            overflow: hidden;
+        }
+
+        .previa {
+            padding: 0;
             font-family: inherit;
-            transition: border-color 0.25s ease;
+            cursor: pointer;
+            display: block;
+            text-align: left;
+            transform: scale(var(--previa-escala));
+            opacity: var(--previa-opacidade);
+            transition: transform var(--passagem), opacity var(--passagem);
         }
         .previa:hover {
-            border-color: rgba(255, 255, 255, 0.3);
+            opacity: 0.8;
         }
 
-        /* A barra de cima, para onde o nome se muda quando o rato chega —
-           sobe de dentro da imagem e assenta aqui. */
+        /* A barra de cima, igual à da janela grande, para onde o nome se
+           mudou. Com o rato em cima sobe os últimos passos e acende. */
         .previa-barra {
-            flex: 0 0 auto;
-            padding: 7px 8px;
-            background: linear-gradient(to bottom, rgba(255,255,255,0.05), transparent), #05050a;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-            overflow: hidden;
+            padding: 16px 24px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            background: linear-gradient(to bottom, rgba(255,255,255,0.05), transparent);
         }
         .previa-nome {
             display: block;
-            font-size: 0.75rem;
-            font-weight: 500;
-            color: rgba(255, 255, 255, 0.6);
-            text-align: center;
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: rgba(255, 255, 255, 0.7);
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
-            transform: translateY(3px);
-            opacity: 0.75;
-            transition: transform 0.25s ease, opacity 0.25s ease, color 0.25s ease;
+            transform: translateY(4px);
+            opacity: 0.8;
+            transition: transform var(--passagem), opacity var(--passagem), color var(--passagem);
         }
         .previa:hover .previa-nome {
             transform: translateY(0);
@@ -421,87 +428,95 @@ AnnotationController.prototype.initialize = function() {
             color: #ffffff;
         }
 
-        /* A janela propriamente dita. Um terço de uma imagem de dezasseis
-           por nove dá esta forma: dezasseis a dividir por três, por nove. */
         .previa-janela {
             position: relative;
-            flex: 1 1 auto;
-            aspect-ratio: 16 / 27;
-            height: clamp(150px, 38vh, 400px);
+            aspect-ratio: 16 / 9;
+            background: #000;
             overflow: hidden;
         }
         .previa-janela video {
             width: 100%;
             height: 100%;
-            /* "cover" numa moldura três vezes mais estreita corta os lados e
-               deixa à vista exactamente o terço do meio, que é onde a pessoa
-               costuma estar. */
             object-fit: cover;
-            object-position: center;
-            opacity: 0.3;
-            filter: grayscale(0.5);
-            transition: opacity 0.25s ease, filter 0.25s ease, transform 0.25s ease;
             pointer-events: none;
         }
-        .previa:hover .previa-janela video {
-            opacity: 0.7;
-            filter: grayscale(0);
-            transform: scale(1.04);
-        }
+
         /* As setas são só o bico, sem cabo. */
         .previa-seta {
             position: absolute;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            color: rgba(255, 255, 255, 0.85);
+            color: rgba(255, 255, 255, 0.9);
             pointer-events: none;
-            transition: transform 0.25s ease;
+            transition: transform var(--passagem);
+            filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.8));
         }
         .previa:hover .previa-seta {
             transform: translate(-50%, -50%) scale(1.15);
         }
 
-        /* ---- A passagem de uma janela para a outra, como um diapositivo a
-           ser empurrado: sai para um lado, entra pelo outro. ---- */
-        #video-modal.a-sair > .previa,
-        #video-modal.a-sair > .janela-do-player {
-            animation: palco-a-sair 0.17s ease-in forwards;
+        /* A barra de baixo é só o desenho da que a janela grande tem: dá à
+           janela a forma de um tocador, sem prometer botões que não mexem. */
+        .previa-controlos {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 14px;
+            background: #05050a;
+            pointer-events: none;
         }
-        #video-modal.a-entrar > .previa,
-        #video-modal.a-entrar > .janela-do-player {
-            animation: palco-a-entrar 0.28s cubic-bezier(0.2, 0.7, 0.3, 1);
+        .previa-controlos i {
+            display: block;
+            height: 3px;
+            background: rgba(255, 255, 255, 0.18);
         }
-        @keyframes palco-a-sair {
-            to {
-                transform: translateX(calc(var(--sentido, 1) * -70px));
-                opacity: 0;
-            }
+        .previa-controlos i:first-child {
+            flex: 1 1 auto;
         }
-        @keyframes palco-a-entrar {
-            from {
-                transform: translateX(calc(var(--sentido, 1) * 70px));
-                opacity: 0;
-            }
-            to {
-                transform: translateX(0);
-                opacity: 1;
-            }
+        .previa-controlos i:last-child {
+            flex: 0 0 34px;
         }
 
-        /* Num ecrã estreito não há lugar de sobra ao lado do player: as
-           janelas encostam-se às bordas da imagem e ficam só com a seta. */
+        /* ---- A passagem de uma janela para a outra: a tira desliza um
+           lugar, a que vinha de lado cresce e acende, a do meio encolhe e
+           apaga-se. ---- */
+        .carrossel.sem-passagem,
+        .carrossel.sem-passagem .previa,
+        .carrossel.sem-passagem .janela-do-player {
+            transition: none;
+        }
+        .carrossel.a-deslizar .previa.entra {
+            transform: scale(1);
+            opacity: 1;
+        }
+        .carrossel.a-deslizar .janela-do-player {
+            transform: scale(var(--previa-escala));
+            opacity: var(--previa-opacidade);
+        }
+        /* A janela do meio nasce um pouco encolhida e assenta ao abrir. */
+        .janela-do-player {
+            transform: scale(0.95);
+            transition: transform var(--passagem), opacity var(--passagem);
+        }
+        .janela-do-player.aberta {
+            transform: scale(1);
+        }
+
+        /* Num ecrã estreito não sobra nada para espreitar: as janelas dos
+           lados encolhem para uma seta pousada na borda da imagem. */
         @media (max-width: 900px) {
             #video-modal {
-                gap: 0;
+                --janela-largura: 92vw;
+                --janela-espaco: 0px;
             }
             .previa {
                 position: absolute;
                 top: 50%;
-                transform: translateY(-50%);
                 width: 46px;
                 height: 92px;
-                flex: none;
+                transform: translateY(-50%);
+                opacity: 1;
                 border: none;
                 background: rgba(5, 5, 10, 0.55);
                 z-index: 2100;
@@ -509,10 +524,16 @@ AnnotationController.prototype.initialize = function() {
             .previa.esquerda { left: 4px; }
             .previa.direita { right: 4px; }
             .previa-barra,
+            .previa-controlos,
             .previa-janela video { display: none; }
             .previa-janela {
                 height: 100%;
                 aspect-ratio: auto;
+            }
+            .carrossel.a-deslizar .previa.entra,
+            .carrossel.a-deslizar .janela-do-player {
+                transform: none;
+                opacity: 1;
             }
         }
 
@@ -867,15 +888,13 @@ AnnotationController.prototype.setupModal = function() {
     this.modal.style.transition = 'opacity 0.3s ease';
 
     const content = document.createElement('div');
-    content.className = 'janela-do-player';
+    content.className = 'janela-do-palco janela-do-player';
     content.style.position = 'relative';
     content.style.backgroundColor = '#05050a';
     content.style.borderRadius = '0';
     content.style.overflow = 'hidden';
     content.style.boxShadow = '0 20px 60px rgba(0,0,0,0.6)';
     content.style.border = '1px solid rgba(255,255,255,0.1)';
-    content.style.transform = 'scale(0.95)';
-    content.style.transition = 'transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)';
     this.modalContent = content;
 
     const header = document.createElement('div');
@@ -1116,7 +1135,7 @@ AnnotationController.prototype.setupModal = function() {
     const criarPrevia = (lado, bico, sentido) => {
         const previa = document.createElement('button');
         previa.type = 'button';
-        previa.className = 'previa ' + lado;
+        previa.className = 'janela-do-palco previa ' + lado;
 
         const barra = document.createElement('div');
         barra.className = 'previa-barra';
@@ -1135,9 +1154,15 @@ AnnotationController.prototype.setupModal = function() {
         janela.appendChild(filme);
         const seta = document.createElement('div');
         seta.className = 'previa-seta';
-        seta.innerHTML = '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter"><polyline points="' + bico + '"></polyline></svg>';
+        seta.innerHTML = '<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter"><polyline points="' + bico + '"></polyline></svg>';
         janela.appendChild(seta);
         previa.appendChild(janela);
+
+        // O desenho da barra dos controlos, sem botões a fingir.
+        const controlos = document.createElement('div');
+        controlos.className = 'previa-controlos';
+        controlos.innerHTML = '<i></i><i></i>';
+        previa.appendChild(controlos);
 
         previa.addEventListener('click', () => {
             const escolhido = previa.dataset.video;
@@ -1153,12 +1178,16 @@ AnnotationController.prototype.setupModal = function() {
     content.appendChild(header);
     content.appendChild(videoWrapper);
 
-    // As janelas dos lados ficam por fora do player, e não dentro dele: a
-    // do meio fica com o tamanho todo que sempre teve, e as outras duas
-    // pousam ao lado, no escuro.
-    this.modal.appendChild(this.previaEsquerda);
-    this.modal.appendChild(content);
-    this.modal.appendChild(this.previaDireita);
+    // As três janelas vivem numa tira, e é a tira que desliza quando se
+    // muda de testemunho. Ela é mais larga do que o ecrã de propósito: as
+    // dos lados ficam cortadas pela borda, a espreitar.
+    const carrossel = document.createElement('div');
+    carrossel.className = 'carrossel';
+    carrossel.appendChild(this.previaEsquerda);
+    carrossel.appendChild(content);
+    carrossel.appendChild(this.previaDireita);
+    this.carrossel = carrossel;
+    this.modal.appendChild(carrossel);
     document.body.appendChild(this.modal);
 
     // --- Player Logic ---
@@ -1430,7 +1459,7 @@ AnnotationController.prototype.setupModal = function() {
 
         this.esconderProximo();
         this.modal.style.opacity = '0';
-        this.modalContent.style.transform = 'scale(0.95)';
+        this.modalContent.classList.remove('aberta');
         
         setTimeout(() => {
             this.modal.style.display = 'none';
@@ -1654,27 +1683,41 @@ AnnotationController.prototype.openVideoModal = function(nome, title, sentido) {
  * @param {Function} trocar - O que fazer no instante em que se troca.
  */
 AnnotationController.prototype.deslizar = function(sentido, trocar) {
-    const palco = this.modal;
+    const tira = this.carrossel;
+    const entra = sentido > 0 ? this.previaDireita : this.previaEsquerda;
+    if (!tira || !entra) {
+        trocar();
+        return;
+    }
+
     this.aDeslizar = true;
-    palco.style.setProperty('--sentido', String(sentido));
-    palco.classList.remove('a-entrar');
-    palco.classList.add('a-sair');
+
+    // O passo é medido no próprio palco, e não escrito à mão: assim
+    // acompanha o tamanho do ecrã sem ninguém lhe tocar.
+    const largura = this.modalContent.offsetWidth;
+    const espaco = parseFloat(getComputedStyle(tira).gap) || 0;
+    const passo = largura + espaco;
+
+    entra.classList.add('entra');
+    tira.classList.add('a-deslizar');
+    tira.style.transform = 'translateX(' + (-sentido * passo) + 'px)';
+
+    const demora = (parseFloat(getComputedStyle(tira).transitionDuration) || 0.45) * 1000;
 
     setTimeout(() => {
+        // Chegada: troca-se o que está nas janelas e põe-se a tira no
+        // sítio outra vez, tudo no mesmo instante e sem animação, para a
+        // volta ao lugar não se ver.
+        tira.classList.add('sem-passagem');
+        tira.classList.remove('a-deslizar');
+        entra.classList.remove('entra');
+        tira.style.transform = 'none';
         trocar();
-        palco.classList.remove('a-sair');
-        // Obrigar o navegador a refazer as contas aqui, senão ele não dá
-        // pela troca de animação e a segunda nem chega a correr. É feito
-        // à força, e não à espera da imagem seguinte: numa janela que
-        // esteja em segundo plano essa imagem podia nunca chegar, e a
-        // passagem ficava a meio para sempre.
-        void palco.offsetWidth;
-        palco.classList.add('a-entrar');
-        setTimeout(() => {
-            palco.classList.remove('a-entrar');
-            this.aDeslizar = false;
-        }, 300);
-    }, 170);
+
+        void tira.offsetWidth;
+        tira.classList.remove('sem-passagem');
+        this.aDeslizar = false;
+    }, demora);
 };
 
 AnnotationController.prototype.abrirTestemunho = function(nome, title) {
@@ -1710,10 +1753,13 @@ AnnotationController.prototype.abrirTestemunho = function(nome, title) {
     this.gestorDeQualidade.arrancar();
     this.videoPlayer.play().catch(e => console.log('Autoplay prevented:', e));
 
-    requestAnimationFrame(() => {
-        this.modal.style.opacity = '1';
-        this.modalContent.style.transform = 'scale(1)';
-    });
+    // Obrigar o navegador a refazer as contas antes de mandar assentar,
+    // senão ele não dá pela mudança e a janela nasce já no sítio, sem
+    // entrada nenhuma. À força, e não à espera da imagem seguinte: numa
+    // janela em segundo plano essa imagem pode nunca chegar.
+    void this.modal.offsetWidth;
+    this.modal.style.opacity = '1';
+    this.modalContent.classList.add('aberta');
 
     const gsplat = this.app.root.findByName('gsplat-scene');
     if (gsplat) gsplat.enabled = false;
