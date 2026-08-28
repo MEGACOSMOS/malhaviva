@@ -798,6 +798,18 @@ AnnotationController.prototype.initialize = function() {
     }
     this.viewedAnnotations = viewedAnnotations;
 
+    // Quem volta ao bairro com tudo já visto encontra-o todo apagado, e um
+    // bairro todo cinzento não aponta caminho nenhum a ninguém. A memória
+    // do que se viu serve para guiar quem anda a meio; chegado ao fim,
+    // deixa de ter serventia e limpa-se. Quem volta encontra o bairro como
+    // o viu da primeira vez.
+    if (this.coleccaoVista(this.annotations)) {
+        this.viewedAnnotations = [];
+        try {
+            localStorage.removeItem('viewedAnnotations');
+        } catch (e) { /* sem memória no navegador: já estava tudo limpo */ }
+    }
+
     this.annotations.forEach(ann => {
         const el = document.createElement('div');
         el.className = 'annotation-marker';
@@ -1170,13 +1182,13 @@ AnnotationController.prototype.mostrarParagem360 = function(ann) {
         .addEventListener('load', () => this.medirComandos360());
 
     const lista = this.paragens360();
-    const tudoVisto = this.coleccaoVista(lista);
-    this.arrumarLadoDireito(palco.setaDireita, palco.direita, tudoVisto);
-
     const onde = lista.indexOf(ann);
+    const noFim = this.noFimDaFila(lista, onde);
+    this.arrumarLadoDireito(palco.setaDireita, palco.direita, noFim);
+
     if (onde >= 0 && lista.length > 1) {
         this.encherPrevia360(palco.esquerda, lista[(onde - 1 + lista.length) % lista.length]);
-        if (!tudoVisto) {
+        if (!noFim) {
             this.encherPrevia360(palco.direita, lista[(onde + 1) % lista.length]);
         }
     }
@@ -2019,10 +2031,10 @@ AnnotationController.prototype.medirPalco = function(palco) {
  */
 AnnotationController.prototype.atualizarPalco = function(nomeAtual, sentido, oldCenterFrame) {
     const lista = this.annotations.filter(ann => !ann.is360 && ann.video);
-    const tudoVisto = this.coleccaoVista(lista);
-    this.arrumarLadoDireito(this.setaDireita, this.previaDireita, tudoVisto);
-
     const onde = lista.findIndex(ann => ann.video === nomeAtual);
+    const noFim = this.noFimDaFila(lista, onde);
+    this.arrumarLadoDireito(this.setaDireita, this.previaDireita, noFim);
+
     if (onde < 0 || lista.length < 2) {
         return;
     }
@@ -2040,9 +2052,9 @@ AnnotationController.prototype.atualizarPalco = function(nomeAtual, sentido, old
     }
 
     this.encherPrevia(this.previaEsquerda, annEsq, posterEsq);
-    // Com a colecção toda vista, a janela da direita está fora da vista:
-    // não vale a pena ir buscar o vídeo que ela mostraria.
-    if (!tudoVisto) {
+    // No fim da fila a janela da direita está fora da vista: não vale a
+    // pena ir buscar o vídeo que ela mostraria.
+    if (!noFim) {
         this.encherPrevia(this.previaDireita, annDir, posterDir);
     }
 };
@@ -2165,29 +2177,45 @@ AnnotationController.prototype.coleccaoVista = function(lista) {
 };
 
 /**
- * Arruma o lado direito do palco conforme já se tenha visto tudo ou não.
+ * Arruma o lado direito do palco: ou a seta e a janela do que vem a
+ * seguir, ou a cruz de saída.
  *
- * Enquanto houver coisa nova para o lado de lá, está lá a seta e a janela
- * que deixa espreitar o que vem a seguir. Uma vez visto tudo o que ali
- * havia, as duas saem: continuar a andar em roda não leva a lado nenhum,
- * e o que faz sentido é sair para o mapa. Fica só a cruz.
+ * A cruz é do fim da fila, e não da colecção: só aparece a quem esteja na
+ * última paragem de uma colecção já vista de ponta a ponta. Quem voltar
+ * atrás sai do fim, e a seta e a janela do lado voltam com ele — dali
+ * ainda há para onde ir.
  *
  * @param {HTMLElement} seta - A seta da direita.
  * @param {HTMLElement} previa - A janela do lado direito.
- * @param {boolean} tudoVisto - Se a colecção já foi vista até ao fim.
+ * @param {boolean} noFimDaFila - Se se está na última paragem e já se viu tudo.
  */
-AnnotationController.prototype.arrumarLadoDireito = function(seta, previa, tudoVisto) {
+AnnotationController.prototype.arrumarLadoDireito = function(seta, previa, noFimDaFila) {
     if (previa) {
-        previa.classList.toggle('sem-seguinte', tudoVisto);
+        previa.classList.toggle('sem-seguinte', noFimDaFila);
     }
     if (!seta) {
         return;
     }
-    seta.classList.toggle('a-sair', tudoVisto);
-    seta.innerHTML = tudoVisto ? DESENHO_DA_CRUZ : desenhoDaSeta(BICO_DIREITA);
-    const chave = tudoVisto ? 'palco.sair' : 'palco.seguinte';
+    seta.classList.toggle('a-sair', noFimDaFila);
+    seta.innerHTML = noFimDaFila ? DESENHO_DA_CRUZ : desenhoDaSeta(BICO_DIREITA);
+    const chave = noFimDaFila ? 'palco.sair' : 'palco.seguinte';
     seta.setAttribute('data-i18n-title', chave);
     seta.title = window.Idiomas ? window.Idiomas.t(chave) : '';
+};
+
+/**
+ * Se se está na última paragem de uma colecção já vista de ponta a ponta.
+ *
+ * É esta a única situação em que a seta da direita dá lugar à cruz: dali
+ * para a frente a lista dava a volta e voltava ao princípio, e não há
+ * nada de novo do lado de lá.
+ *
+ * @param {object[]} lista - As paragens da colecção, pela ordem delas.
+ * @param {number} onde - Em qual delas se está.
+ * @returns {boolean} Verdadeiro se for o fim da fila.
+ */
+AnnotationController.prototype.noFimDaFila = function(lista, onde) {
+    return onde === lista.length - 1 && this.coleccaoVista(lista);
 };
 
 /**
