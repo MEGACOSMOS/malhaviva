@@ -353,6 +353,143 @@ AnnotationController.prototype.initialize = function() {
             color: #ffffff;
         }
 
+        /* ---- O palco: o testemunho a dar ao meio, e uma janela do
+           anterior e do seguinte de cada lado, como nos tocadores de há uns
+           anos. As duas janelas dos lados são vídeos parados no primeiro
+           instante, apagados, que acendem quando o rato passa por cima. ---- */
+        .palco-videos {
+            display: flex;
+            align-items: stretch;
+            position: relative;
+            background: #05050a;
+        }
+        .palco-videos .custom-video-container {
+            flex: 1 1 auto;
+            min-width: 0;
+        }
+        .previa {
+            position: relative;
+            flex: 0 0 13%;
+            padding: 0;
+            border: none;
+            background: #08080f;
+            cursor: pointer;
+            overflow: hidden;
+            font-family: inherit;
+        }
+        .previa video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            opacity: 0.3;
+            filter: grayscale(0.5);
+            transition: opacity 0.25s ease, filter 0.25s ease, transform 0.25s ease;
+            pointer-events: none;
+        }
+        .previa:hover video {
+            opacity: 0.65;
+            filter: grayscale(0);
+            transform: scale(1.04);
+        }
+        .previa-nome {
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: 10px;
+            text-align: center;
+            font-size: 0.72rem;
+            font-weight: 500;
+            color: rgba(255, 255, 255, 0.75);
+            text-shadow: 0 1px 4px rgba(0, 0, 0, 0.9);
+            pointer-events: none;
+            padding: 0 4px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        /* As setas são só o bico, sem cabo. */
+        .previa-seta {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: rgba(255, 255, 255, 0.85);
+            pointer-events: none;
+            transition: transform 0.25s ease;
+        }
+        .previa:hover .previa-seta {
+            transform: translate(-50%, -50%) scale(1.15);
+        }
+
+        /* Num ecrã estreito as janelas dos lados não cabem: fica só a seta,
+           pousada na borda da imagem. */
+        @media (max-width: 700px) {
+            .previa {
+                position: absolute;
+                top: 0;
+                bottom: 0;
+                width: 46px;
+                flex: none;
+                background: linear-gradient(to right, rgba(5,5,10,0.75), transparent);
+                z-index: 3;
+            }
+            .previa.direita {
+                right: 0;
+                background: linear-gradient(to left, rgba(5,5,10,0.75), transparent);
+            }
+            .previa.esquerda { left: 0; }
+            .previa video,
+            .previa-nome { display: none; }
+        }
+
+        /* A roda de espera, ao centro, enquanto o vídeo carrega mais imagem. */
+        .espera-video {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 30px;
+            height: 30px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-top-color: #fff;
+            border-radius: 50%;
+            animation: espera-a-rodar 1s linear infinite;
+            display: none;
+            z-index: 4;
+        }
+        .espera-video.a-esperar {
+            display: block;
+        }
+        @keyframes espera-a-rodar { 100% { transform: translate(-50%, -50%) rotate(360deg); } }
+
+        /* O sinal que pisca de cada lado quando se dá um duplo clique para
+           saltar dez segundos. */
+        .salto-sinal {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            color: #fff;
+            opacity: 0;
+            pointer-events: none;
+            z-index: 4;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+        .salto-sinal.esquerda { left: 12%; }
+        .salto-sinal.direita { right: 12%; }
+        .salto-sinal.a-piscar {
+            animation: salto-a-piscar 0.6s ease-out;
+        }
+        @keyframes salto-a-piscar {
+            0% { opacity: 0; transform: translateY(-50%) scale(0.8); }
+            30% { opacity: 1; transform: translateY(-50%) scale(1); }
+            100% { opacity: 0; transform: translateY(-50%) scale(1.05); }
+        }
+
         /* O aviso que aparece quando um testemunho acaba e já há outro à
            espera. Cobre o vídeo, diz de quem é o próximo e deixa parar. */
         .proximo-video {
@@ -783,7 +920,25 @@ AnnotationController.prototype.setupModal = function() {
     volumeContainer.appendChild(volumeBtn);
     volumeContainer.appendChild(volumeSliderWrapper);
 
+    // Recuar e avançar dez segundos, como no tocador das rotas 360º.
+    const recuarBtn = document.createElement('button');
+    recuarBtn.className = 'player-btn';
+    recuarBtn.setAttribute('data-i18n-title', 'v360.recuar');
+    recuarBtn.title = (window.Idiomas ? window.Idiomas.t('v360.recuar') : 'Recuar 10 segundos');
+    recuarBtn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter"><polyline points="11 19 2 12 11 5"></polyline><polyline points="21 19 12 12 21 5"></polyline></svg>';
+
+    const avancarBtn = document.createElement('button');
+    avancarBtn.className = 'player-btn';
+    avancarBtn.setAttribute('data-i18n-title', 'v360.avancar');
+    avancarBtn.title = (window.Idiomas ? window.Idiomas.t('v360.avancar') : 'Avançar 10 segundos');
+    avancarBtn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter"><polyline points="13 19 22 12 13 5"></polyline><polyline points="3 19 12 12 3 5"></polyline></svg>';
+
+    playPauseBtn.setAttribute('data-i18n-title', 'v360.tocar');
+    playPauseBtn.title = (window.Idiomas ? window.Idiomas.t('v360.tocar') : 'Tocar / Pausar');
+
+    controlsLeft.appendChild(recuarBtn);
     controlsLeft.appendChild(playPauseBtn);
+    controlsLeft.appendChild(avancarBtn);
     controlsLeft.appendChild(volumeContainer);
     controlsLeft.appendChild(timeDisplay);
 
@@ -860,12 +1015,67 @@ AnnotationController.prototype.setupModal = function() {
     this.avisoDoProximo = proximo;
     videoWrapper.appendChild(proximo);
 
+    // A roda que aparece quando o vídeo fica à espera de mais imagem.
+    const espera = document.createElement('div');
+    espera.className = 'espera-video';
+    videoWrapper.appendChild(espera);
+
+    // Os dois sinais que piscam ao saltar dez segundos com duplo clique.
+    const setaDupla = (paraTras) => paraTras
+        ? '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter"><polyline points="11 19 2 12 11 5"></polyline><polyline points="21 19 12 12 21 5"></polyline></svg>'
+        : '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter"><polyline points="13 19 22 12 13 5"></polyline><polyline points="3 19 12 12 3 5"></polyline></svg>';
+
+    const sinalEsquerda = document.createElement('div');
+    sinalEsquerda.className = 'salto-sinal esquerda';
+    sinalEsquerda.innerHTML = setaDupla(true) + '<span>10 s</span>';
+    const sinalDireita = document.createElement('div');
+    sinalDireita.className = 'salto-sinal direita';
+    sinalDireita.innerHTML = setaDupla(false) + '<span>10 s</span>';
+    videoWrapper.appendChild(sinalEsquerda);
+    videoWrapper.appendChild(sinalDireita);
+
     videoWrapper.appendChild(this.videoPlayer);
     videoWrapper.appendChild(bigPlayBtn);
     videoWrapper.appendChild(controls);
 
+    // O palco: o testemunho a dar ao meio, e uma janela do anterior e do
+    // seguinte de cada lado, para se ver quem vem a caminho.
+    const criarPrevia = (lado, bico) => {
+        const previa = document.createElement('button');
+        previa.type = 'button';
+        previa.className = 'previa ' + lado;
+        const filme = document.createElement('video');
+        filme.muted = true;
+        filme.playsInline = true;
+        filme.preload = 'metadata';
+        filme.crossOrigin = 'anonymous';
+        previa.appendChild(filme);
+        const seta = document.createElement('div');
+        seta.className = 'previa-seta';
+        seta.innerHTML = '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter"><polyline points="' + bico + '"></polyline></svg>';
+        previa.appendChild(seta);
+        const nome = document.createElement('div');
+        nome.className = 'previa-nome';
+        previa.appendChild(nome);
+        previa.addEventListener('click', () => {
+            const escolhido = previa.dataset.video;
+            const ann = this.annotations.find(a => a.video === escolhido);
+            if (ann) this.openVideoModal(ann.video, ann.label);
+        });
+        return previa;
+    };
+
+    this.previaEsquerda = criarPrevia('esquerda', '15 18 9 12 15 6');
+    this.previaDireita = criarPrevia('direita', '9 18 15 12 9 6');
+
+    const palco = document.createElement('div');
+    palco.className = 'palco-videos';
+    palco.appendChild(this.previaEsquerda);
+    palco.appendChild(videoWrapper);
+    palco.appendChild(this.previaDireita);
+
     content.appendChild(header);
-    content.appendChild(videoWrapper);
+    content.appendChild(palco);
     this.modal.appendChild(content);
     document.body.appendChild(this.modal);
 
@@ -954,7 +1164,13 @@ AnnotationController.prototype.setupModal = function() {
 
     playPauseBtn.addEventListener('click', togglePlay);
     bigPlayBtn.addEventListener('click', togglePlay);
-    this.videoPlayer.addEventListener('click', togglePlay);
+    // O clique único espera um instante antes de pausar: se vier um
+    // segundo atrás dele, o que se queria era saltar e não pausar.
+    let cliqueSozinho = null;
+    this.videoPlayer.addEventListener('click', () => {
+        clearTimeout(cliqueSozinho);
+        cliqueSozinho = setTimeout(togglePlay, 260);
+    });
 
     this.videoPlayer.addEventListener('timeupdate', () => {
         const percent = (this.videoPlayer.currentTime / this.videoPlayer.duration) * 100;
@@ -966,10 +1182,95 @@ AnnotationController.prototype.setupModal = function() {
         timeDisplay.innerText = `${formatTime(this.videoPlayer.currentTime)} / ${formatTime(this.videoPlayer.duration)}`;
     });
 
-    progressContainer.addEventListener('click', (e) => {
+    // ---- Procurar um sítio na barra do tempo ----
+    // Antes só se podia clicar num ponto; agora arrasta-se por ela fora,
+    // que é como toda a gente espera procurar um sítio no vídeo.
+    let aArrastarTempo = false;
+    const tempoNaBarra = (clientX) => {
         const rect = progressContainer.getBoundingClientRect();
-        const pos = (e.clientX - rect.left) / rect.width;
-        this.videoPlayer.currentTime = pos * this.videoPlayer.duration;
+        const parte = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width));
+        if (isFinite(this.videoPlayer.duration)) {
+            this.videoPlayer.currentTime = parte * this.videoPlayer.duration;
+            progressFilled.style.width = (parte * 100) + '%';
+        }
+    };
+    progressContainer.addEventListener('pointerdown', (e) => {
+        aArrastarTempo = true;
+        progressContainer.setPointerCapture(e.pointerId);
+        tempoNaBarra(e.clientX);
+    });
+    progressContainer.addEventListener('pointermove', (e) => {
+        if (aArrastarTempo) tempoNaBarra(e.clientX);
+    });
+    const largarBarra = () => { aArrastarTempo = false; };
+    progressContainer.addEventListener('pointerup', largarBarra);
+    progressContainer.addEventListener('pointercancel', largarBarra);
+
+    // ---- Saltar dez segundos ----
+    const SALTO = 10;
+    const saltar = (segundos) => {
+        if (!isFinite(this.videoPlayer.duration)) return;
+        this.videoPlayer.currentTime = Math.min(
+            Math.max(0, this.videoPlayer.currentTime + segundos),
+            this.videoPlayer.duration
+        );
+        const sinal = segundos < 0 ? sinalEsquerda : sinalDireita;
+        sinal.classList.remove('a-piscar');
+        void sinal.offsetWidth;
+        sinal.classList.add('a-piscar');
+        showControls();
+    };
+    recuarBtn.addEventListener('click', (e) => { e.stopPropagation(); saltar(-SALTO); });
+    avancarBtn.addEventListener('click', (e) => { e.stopPropagation(); saltar(SALTO); });
+
+    // Duplo clique de um dos lados da imagem: para trás do lado esquerdo,
+    // para a frente do direito, como em qualquer tocador de telemóvel.
+    this.videoPlayer.addEventListener('dblclick', (e) => {
+        e.preventDefault();
+        clearTimeout(cliqueSozinho);
+        const rect = this.videoPlayer.getBoundingClientRect();
+        const meio = rect.left + rect.width / 2;
+        saltar(e.clientX < meio ? -SALTO : SALTO);
+    });
+
+    // ---- À espera de mais imagem ----
+    this.videoPlayer.addEventListener('waiting', () => espera.classList.add('a-esperar'));
+    this.videoPlayer.addEventListener('stalled', () => espera.classList.add('a-esperar'));
+    ['playing', 'canplay', 'pause', 'seeked'].forEach((quando) => {
+        this.videoPlayer.addEventListener(quando, () => espera.classList.remove('a-esperar'));
+    });
+
+    // ---- Teclas ----
+    // Só valem com a janela do vídeo aberta, para não roubarem as teclas
+    // ao mapa que está por trás.
+    document.addEventListener('keydown', (e) => {
+        if (this.modal.style.display === 'none') return;
+        if (e.target && /^(?:INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) return;
+        const tecla = e.key.toLowerCase();
+        if (tecla === ' ' || tecla === 'k') {
+            e.preventDefault();
+            togglePlay();
+        } else if (e.key === 'ArrowLeft') {
+            e.preventDefault();
+            saltar(-5);
+        } else if (e.key === 'ArrowRight') {
+            e.preventDefault();
+            saltar(5);
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            volumeSlider.value = Math.min(3, parseFloat(volumeSlider.value) + 0.1);
+            volumeSlider.dispatchEvent(new Event('input'));
+            showControls();
+        } else if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            volumeSlider.value = Math.max(0, parseFloat(volumeSlider.value) - 0.1);
+            volumeSlider.dispatchEvent(new Event('input'));
+            showControls();
+        } else if (tecla === 'm') {
+            volumeBtn.click();
+        } else if (tecla === 'f') {
+            fullscreenBtn.click();
+        }
     });
 
     // Auto-hide controls logic
@@ -1099,6 +1400,57 @@ AnnotationController.prototype.setupModal = function() {
 };
 
 /**
+ * Põe nas janelas dos lados o testemunho anterior e o seguinte.
+ *
+ * A lista dá a volta: depois do último vem o primeiro, para nunca ficar um
+ * lado vazio.
+ *
+ * @param {string} nomeAtual - O testemunho que está a dar.
+ */
+AnnotationController.prototype.atualizarPalco = function(nomeAtual) {
+    const lista = this.annotations.filter(ann => !ann.is360 && ann.video);
+    const onde = lista.findIndex(ann => ann.video === nomeAtual);
+    if (onde < 0 || lista.length < 2) {
+        return;
+    }
+    this.encherPrevia(this.previaEsquerda, lista[(onde - 1 + lista.length) % lista.length]);
+    this.encherPrevia(this.previaDireita, lista[(onde + 1) % lista.length]);
+};
+
+/**
+ * Enche uma das janelas dos lados com o primeiro instante de um vídeo.
+ *
+ * Vai buscar a versão mais leve que exista, e pede só o suficiente para
+ * mostrar uma imagem parada: não é para ser visto, é para se saber quem é.
+ *
+ * @param {HTMLElement} previa - A janela.
+ * @param {object} ann - A anotação a mostrar.
+ */
+AnnotationController.prototype.encherPrevia = function(previa, ann) {
+    if (!previa || !ann) {
+        return;
+    }
+    previa.dataset.video = ann.video;
+    // Nome de pessoa: fica como está em qualquer língua.
+    previa.querySelector('.previa-nome').textContent = ann.label;
+    previa.title = ann.label;
+
+    const fontes = fontesDeVideo(ann.video);
+    const leve = fontes['480p'] || fontes['720p'] || Object.values(fontes)[0];
+    if (!leve) {
+        return;
+    }
+    // O "#t=1" pede ao navegador a imagem do primeiro segundo, senão a
+    // janela ficava preta até alguém carregar nela.
+    const desejado = leve + '#t=1';
+    const filme = previa.querySelector('video');
+    if (filme.getAttribute('src') !== desejado) {
+        filme.setAttribute('src', desejado);
+        filme.load();
+    }
+};
+
+/**
  * O nome com que uma anotação é lembrada de uma visita para a outra.
  *
  * @param {object} ann - A anotação.
@@ -1146,82 +1498,44 @@ AnnotationController.prototype.proximoPorVer = function(nomeAtual) {
 };
 
 /**
- * Quanto tempo o aviso do próximo testemunho espera antes de avançar
- * sozinho, em milésimos de segundo.
- */
-const ESPERA_DO_PROXIMO = 6000;
-
-/**
- * Mostra o aviso do próximo testemunho — ou, se já foram todos vistos,
- * diz isso mesmo.
+ * Passa ao testemunho seguinte — ou, se já foram todos vistos, diz isso
+ * mesmo e oferece fechar.
+ *
+ * Não há pergunta pelo meio: um testemunho que acaba dá lugar ao
+ * seguinte como num alinhamento, e quem não quiser fecha a janela.
  *
  * @param {object|null} ann - A anotação seguinte, ou nada.
  */
 AnnotationController.prototype.mostrarProximo = function(ann) {
+    if (ann) {
+        this.esconderProximo();
+        this.openVideoModal(ann.video, ann.label);
+        return;
+    }
+
     const aviso = this.avisoDoProximo;
     if (!aviso) {
         return;
     }
-    this.pararContagem();
-
     const dizer = (chave, omissao) => (window.Idiomas ? window.Idiomas.t(chave) : omissao);
-    const etiqueta = aviso.querySelector('.proximo-etiqueta');
-    const nome = aviso.querySelector('.proximo-nome');
-    const agora = aviso.querySelector('.proximo-agora');
+    aviso.querySelector('.proximo-etiqueta').textContent = '';
+    aviso.querySelector('.proximo-nome').textContent =
+        dizer('proximo.fim', 'Já viu todos os testemunhos.');
+    aviso.querySelector('.proximo-agora').style.display = 'none';
     const parar = aviso.querySelector('.proximo-parar');
-    const barra = aviso.querySelector('.proximo-barra');
-
-    if (!ann) {
-        etiqueta.textContent = '';
-        nome.textContent = dizer('proximo.fim', 'Já viu todos os testemunhos.');
-        agora.style.display = 'none';
-        parar.textContent = dizer('proximo.fechar', 'Fechar');
-        parar.onclick = () => {
-            this.esconderProximo();
-            if (this.fecharModal) this.fecharModal();
-        };
-        barra.classList.remove('a-contar');
-        aviso.classList.add('visivel');
-        return;
-    }
-
-    etiqueta.textContent = dizer('proximo.aSeguir', 'A seguir');
-    // Nome de pessoa: fica como está em qualquer língua.
-    nome.textContent = ann.label;
-    agora.style.display = '';
-    agora.textContent = dizer('proximo.agora', 'Ver agora');
-    parar.textContent = dizer('proximo.ficar', 'Ficar aqui');
-
-    const seguir = () => {
+    parar.textContent = dizer('proximo.fechar', 'Fechar');
+    parar.onclick = () => {
         this.esconderProximo();
-        this.openVideoModal(ann.video, ann.label);
+        if (this.fecharModal) this.fecharModal();
     };
-    agora.onclick = seguir;
-    parar.onclick = () => this.esconderProximo();
-
+    aviso.querySelector('.proximo-barra').classList.remove('a-contar');
     aviso.classList.add('visivel');
-    barra.style.setProperty('--espera', ESPERA_DO_PROXIMO + 'ms');
-    barra.classList.remove('a-contar');
-    void barra.offsetWidth;
-    barra.classList.add('a-contar');
-    this.contagemDoProximo = setTimeout(seguir, ESPERA_DO_PROXIMO);
-};
-
-/**
- * Trava a contagem do próximo testemunho, sem esconder o aviso.
- */
-AnnotationController.prototype.pararContagem = function() {
-    if (this.contagemDoProximo) {
-        clearTimeout(this.contagemDoProximo);
-        this.contagemDoProximo = null;
-    }
 };
 
 /**
  * Arruma o aviso do próximo testemunho.
  */
 AnnotationController.prototype.esconderProximo = function() {
-    this.pararContagem();
     const aviso = this.avisoDoProximo;
     if (!aviso) {
         return;
@@ -1253,6 +1567,7 @@ AnnotationController.prototype.openVideoModal = function(nome, title) {
     });
 
     this.desenharMenuDeQualidade(fontes);
+    this.atualizarPalco(nome);
 
     this.modal.style.display = 'flex';
 

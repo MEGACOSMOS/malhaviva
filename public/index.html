@@ -429,9 +429,16 @@
             transform: scale(0.95);
         }
         
-        /* Quatro nomes curtos não precisam da largura dos outros menus. */
+        /* Os outros menus têm uma largura fixa porque têm dentro coisas de
+           medida variável — cursores, caixas, linhas que dão a volta. Este
+           só tem quatro nomes, por isso toma a medida do mais comprido
+           deles e soma a mesma folga dos outros: a largura sai da conta e
+           não de um número à sorte, e acompanha a língua escolhida sem
+           ninguém lhe mexer. */
         #idioma-menu {
-            width: 170px;
+            width: max-content;
+            min-width: 150px;
+            max-width: 260px;
         }
 
         /* ---- Fechar o menu ---- */
@@ -1149,7 +1156,7 @@
         <pc-asset id="splat-scene" src="splat/lod-meta.json" type="gsplat"></pc-asset>
         <pc-asset id="camera-controls-script" src="./camera-controls.mjs?v=12" type="script"></pc-asset>
         <pc-asset id="camera-coords-script" src="./coords.mjs?v=7" type="script"></pc-asset>
-        <pc-asset id="annotations-script" src="./annotations.mjs?v=30" type="script"></pc-asset>
+        <pc-asset id="annotations-script" src="./annotations.mjs?v=31" type="script"></pc-asset>
         <pc-asset id="trail-script" src="./trail.mjs?v=21" type="script"></pc-asset>
 
         <!-- Scene -->
