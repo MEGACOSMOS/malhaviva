@@ -603,6 +603,99 @@ class CameraControls extends Script {
     _lastInsideValid = false;
 
     /**
+     * A cúpula do céu, que é quem manda nos limites quando existe.
+     *
+     * @type {{limites: () => object|null}|null}
+     * @private
+     */
+    _cupula = null;
+
+    /**
+     * A folga entre a câmara e a parede da cúpula, em metros. Encostar
+     * mesmo à parede punha a fotografia do céu à distância de um palmo, e
+     * vê-se-lhe o grão.
+     *
+     * @type {number}
+     */
+    margemDaCupula = 10;
+
+    /**
+     * Diz à câmara onde estão as paredes da cúpula.
+     *
+     * @param {{limites: () => object|null}} ceu - O céu do bairro.
+     */
+    setCupula(ceu) {
+        this._cupula = ceu || null;
+    }
+
+    /**
+     * As medidas da cúpula neste instante, ou nada se ela estiver
+     * desligada — nesse caso valem os limites antigos, os do terreno.
+     *
+     * @returns {object|null} As medidas.
+     * @private
+     */
+    _medidasDaCupula() {
+        // A página diz-lhe qual é o céu mal ele nasce; se por alguma razão
+        // isso ainda não aconteceu, procura-o onde ele está sempre.
+        const ceu = this._cupula ||
+            (typeof window !== 'undefined' ? window.ceu : null);
+        if (!ceu || typeof ceu.limites !== 'function') {
+            return null;
+        }
+        try {
+            return ceu.limites();
+        } catch (e) {
+            return null;
+        }
+    }
+
+    /**
+     * Até onde a câmara pode descer.
+     *
+     * @returns {number} A altura mínima.
+     * @private
+     */
+    _alturaMinima() {
+        const cupula = this._medidasDaCupula();
+        // A folga vale para as paredes e para a abóbada, onde encostar
+        // deixaria a fotografia à distância de um palmo. No chão não: aí o
+        // que se quer é poder descer até às ruas como sempre se desceu.
+        return cupula ? Math.max(MIN_HEIGHT, cupula.chao) : MIN_HEIGHT;
+    }
+
+    /**
+     * Até onde a câmara pode subir.
+     *
+     * @returns {number} A altura máxima.
+     * @private
+     */
+    _alturaMaxima() {
+        const cupula = this._medidasDaCupula();
+        return cupula ? cupula.topo - this.margemDaCupula : MAX_HEIGHT;
+    }
+
+    /**
+     * A que distância do eixo da cúpula está a parede, à altura dada.
+     *
+     * Abaixo da barriga a parede sobe a direito; acima dela é uma abóbada,
+     * e vai-se fechando até ao alto.
+     *
+     * @param {object} cupula - As medidas da cúpula.
+     * @param {number} altura - A altura a que se está.
+     * @returns {number} O raio da parede a essa altura.
+     * @private
+     */
+    _paredeA(cupula, altura) {
+        const acima = altura - cupula.barriga;
+        if (acima <= 0) {
+            return cupula.raio;
+        }
+        const sobra = cupula.raio * cupula.raio - acima * acima;
+        return sobra > 0 ? Math.sqrt(sobra) : 0;
+    }
+
+    /**
      * Restricts the camera to the shape of the mapped terrain.
      *
      * @param {{contains: (x: number, z: number) => boolean,
@@ -1030,10 +1123,11 @@ class CameraControls extends Script {
             return;
         }
 
-        // The floor and the ceiling decide how much of the turn of the wheel
-        // can actually be spent.
+        // O chão e o tecto — os da cúpula, quando ela existe — decidem
+        // quanto da volta da roda pode mesmo ser gasto.
         const scale = math.clamp(factor,
-            (MIN_HEIGHT - ground) / height, (MAX_HEIGHT - ground) / height);
+            (this._alturaMinima() - ground) / height,
+            (this._alturaMaxima() - ground) / height);
         if (Math.abs(scale - 1) < 0.0005) {
             return;
         }
@@ -1179,8 +1273,8 @@ class CameraControls extends Script {
             // closer instead of going through the ceiling.
             const after = forwardFromAngles(angles.x, angles.y, tmpDir);
             const drop = Math.max(0.0001, -after.y);
-            const low = (MIN_HEIGHT - pivot.y) / drop;
-            const high = (MAX_HEIGHT - pivot.y) / drop;
+            const low = (this._alturaMinima() - pivot.y) / drop;
+            const high = (this._alturaMaxima() - pivot.y) / drop;
             const dist = high > low ? math.clamp(travel, low, high) : travel;
 
             pos.copy(pivot).sub(after.mulScalar(dist));
@@ -1324,13 +1418,32 @@ class CameraControls extends Script {
         }
         angles.x = math.clamp(pitch, this._pitchRange.x, this._pitchRange.y);
 
-        // Floor and ceiling.
-        pos.y = math.clamp(pos.y, MIN_HEIGHT, MAX_HEIGHT);
+        // Chão e tecto: os da cúpula, quando ela existe.
+        const baixo = this._alturaMinima();
+        const alto = this._alturaMaxima();
+        pos.y = math.clamp(pos.y, baixo, Math.max(baixo, alto));
 
         let isAtBoundary = false;
         const EDGE_EPS = 0.01;
 
-        if (this._playArea) {
+        const cupula = this._medidasDaCupula();
+        if (cupula) {
+            // A parede da taça é o fim do mundo visível: passar dela seria
+            // sair da fotografia e ver o céu pelo lado de fora.
+            const dx = pos.x - cupula.centroX;
+            const dz = pos.z - cupula.centroZ;
+            const distancia = Math.sqrt(dx * dx + dz * dz);
+            const parede = Math.max(1, this._paredeA(cupula, pos.y) - this.margemDaCupula);
+
+            if (distancia > parede) {
+                isAtBoundary = true;
+                const encolher = parede / distancia;
+                pos.x = cupula.centroX + dx * encolher;
+                pos.z = cupula.centroZ + dz * encolher;
+            } else if (distancia > parede - EDGE_EPS) {
+                isAtBoundary = true;
+            }
+        } else if (this._playArea) {
             const area = this._playArea;
 
             // Opening frame: remember how far out the view starts, so the

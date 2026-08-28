@@ -125,8 +125,12 @@ AnnotationController.prototype.initialize = function() {
            falta ver sem que o que já se viu desapareça. */
         .marker-dot.viewed,
         .marker-dot.is-360.viewed {
-            background-color: rgba(138, 143, 152, 0.55);
-            color: rgba(255, 255, 255, 0.85);
+            background-color: #8a8f98;
+            color: #ffffff;
+        }
+        .marker-dot.last-viewed {
+            box-shadow: 0 0 0 4px #ffffff;
+            z-index: 10;
         }
         .marker-text-360 {
             font-size: 11px;
@@ -368,8 +372,8 @@ AnnotationController.prototype.initialize = function() {
             --janela-largura: min(62vw, 1000px);
             /* O intervalo entre janelas tem de dar para a seta caber lá
                dentro com folga. */
-            --janela-espaco: 76px;
-            --previa-escala: 0.78;
+            --janela-espaco: 110px;
+            --previa-escala: 0.88;
             --previa-opacidade: 0.5;
             --passagem: 0.45s cubic-bezier(0.25, 0.9, 0.3, 1);
             overflow: hidden;
@@ -399,8 +403,8 @@ AnnotationController.prototype.initialize = function() {
             top: 50%;
             transform: translate(-50%, -50%);
             z-index: 2150;
-            width: 44px;
-            height: 44px;
+            width: 100px;
+            height: 100px;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -445,9 +449,6 @@ AnnotationController.prototype.initialize = function() {
             opacity: var(--previa-opacidade);
             transition: transform var(--passagem), opacity var(--passagem);
         }
-        .previa:hover {
-            opacity: 0.8;
-        }
 
         /* A barra de cima, igual à da janela grande, para onde o nome se
            mudou. Com o rato em cima sobe os últimos passos e acende. */
@@ -464,14 +465,7 @@ AnnotationController.prototype.initialize = function() {
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
-            transform: translateY(4px);
             opacity: 0.8;
-            transition: transform var(--passagem), opacity var(--passagem), color var(--passagem);
-        }
-        .previa:hover .previa-nome {
-            transform: translateY(0);
-            opacity: 1;
-            color: #ffffff;
         }
 
         .previa-janela {
@@ -488,27 +482,6 @@ AnnotationController.prototype.initialize = function() {
             pointer-events: none;
         }
 
-        /* A barra de baixo é só o desenho da que a janela grande tem: dá à
-           janela a forma de um tocador, sem prometer botões que não mexem. */
-        .previa-controlos {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            padding: 10px 14px;
-            background: #05050a;
-            pointer-events: none;
-        }
-        .previa-controlos i {
-            display: block;
-            height: 3px;
-            background: rgba(255, 255, 255, 0.18);
-        }
-        .previa-controlos i:first-child {
-            flex: 1 1 auto;
-        }
-        .previa-controlos i:last-child {
-            flex: 0 0 34px;
-        }
 
         /* ---- A passagem de uma janela para a outra: a tira desliza um
            lugar, a que vinha de lado cresce e acende, a do meio encolhe e
@@ -556,7 +529,6 @@ AnnotationController.prototype.initialize = function() {
             .previa.esquerda { left: 4px; }
             .previa.direita { right: 4px; }
             .previa-barra,
-            .previa-controlos,
             .previa-janela video { display: none; }
             .previa-janela {
                 height: 100%;
@@ -1188,11 +1160,7 @@ AnnotationController.prototype.setupModal = function() {
         janela.appendChild(filme);
         previa.appendChild(janela);
 
-        // O desenho da barra dos controlos, sem botões a fingir.
-        const controlos = document.createElement('div');
-        controlos.className = 'previa-controlos';
-        controlos.innerHTML = '<i></i><i></i>';
-        previa.appendChild(controlos);
+
 
         previa.addEventListener('click', () => {
             const escolhido = previa.dataset.video;
@@ -1210,7 +1178,7 @@ AnnotationController.prototype.setupModal = function() {
         const seta = document.createElement('button');
         seta.type = 'button';
         seta.className = 'seta-do-palco ' + lado;
-        seta.innerHTML = '<svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter"><polyline points="' + bico + '"></polyline></svg>';
+        seta.innerHTML = '<svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter"><polyline points="' + bico + '"></polyline></svg>';
         seta.addEventListener('click', (e) => {
             e.stopPropagation();
             const vizinha = sentido < 0 ? this.previaEsquerda : this.previaDireita;
@@ -1507,6 +1475,39 @@ AnnotationController.prototype.setupModal = function() {
             overlay.classList.remove('hidden');
         }
 
+        if (this.videoNome) {
+            this.marcarComoUltima('video-' + this.videoNome);
+            
+            const ann = this.annotations.find(a => a.video === this.videoNome);
+            if (ann && this.entity.script && this.entity.script.cameraControls) {
+                const angulo = Math.random() * Math.PI * 2;
+                // Bem mais longe: 80 a 120 unidades
+                const dist = 80 + Math.random() * 40;
+                const posX = ann.position.x + Math.cos(angulo) * dist;
+                const posZ = ann.position.z + Math.sin(angulo) * dist;
+                const posY = ann.position.y + 25 + Math.random() * 25;
+                const novaPos = new pc.Vec3(posX, Math.max(1, posY), posZ);
+                
+                // Enquadramento da regra dos terços (interseção inferior esquerda/direita)
+                const UP = new pc.Vec3(0, 1, 0);
+                const forward = new pc.Vec3().sub2(ann.position, novaPos).normalize();
+                const right = new pc.Vec3().cross(forward, UP).normalize();
+                const up = new pc.Vec3().cross(right, forward).normalize();
+                
+                // Para a anotação ficar no terço de baixo, o foco tem de estar acima
+                const shiftY = 0.14 * dist;
+                // Para ficar num dos lados, o foco tem de estar no lado oposto
+                const sinalX = Math.random() < 0.5 ? -1 : 1;
+                const shiftX = 0.25 * dist * sinalX;
+                
+                const focus = new pc.Vec3().copy(ann.position);
+                focus.add(up.mulScalar(shiftY));
+                focus.add(right.mulScalar(shiftX));
+                
+                this.entity.script.cameraControls.recenter(novaPos, focus);
+            }
+        }
+
         this.esconderProximo();
         this.modal.style.opacity = '0';
         this.modalContent.classList.remove('aberta');
@@ -1591,14 +1592,27 @@ AnnotationController.prototype.medirPalco = function() {
  *
  * @param {string} nomeAtual - O testemunho que está a dar.
  */
-AnnotationController.prototype.atualizarPalco = function(nomeAtual) {
+AnnotationController.prototype.atualizarPalco = function(nomeAtual, sentido, oldCenterFrame) {
     const lista = this.annotations.filter(ann => !ann.is360 && ann.video);
     const onde = lista.findIndex(ann => ann.video === nomeAtual);
     if (onde < 0 || lista.length < 2) {
         return;
     }
-    this.encherPrevia(this.previaEsquerda, lista[(onde - 1 + lista.length) % lista.length]);
-    this.encherPrevia(this.previaDireita, lista[(onde + 1) % lista.length]);
+    
+    const annEsq = lista[(onde - 1 + lista.length) % lista.length];
+    const annDir = lista[(onde + 1) % lista.length];
+
+    let posterEsq = null;
+    let posterDir = null;
+
+    if (sentido === 1) {
+        posterEsq = oldCenterFrame;
+    } else if (sentido === -1) {
+        posterDir = oldCenterFrame;
+    }
+
+    this.encherPrevia(this.previaEsquerda, annEsq, posterEsq);
+    this.encherPrevia(this.previaDireita, annDir, posterDir);
 };
 
 /**
@@ -1610,7 +1624,7 @@ AnnotationController.prototype.atualizarPalco = function(nomeAtual) {
  * @param {HTMLElement} previa - A janela.
  * @param {object} ann - A anotação a mostrar.
  */
-AnnotationController.prototype.encherPrevia = function(previa, ann) {
+AnnotationController.prototype.encherPrevia = function(previa, ann, posterDataUrl) {
     if (!previa || !ann) {
         return;
     }
@@ -1624,13 +1638,38 @@ AnnotationController.prototype.encherPrevia = function(previa, ann) {
     if (!leve) {
         return;
     }
-    // O "#t=1" pede ao navegador a imagem do primeiro segundo, senão a
+    // O "#t=0.001" pede ao navegador a imagem do primeiro instante, senão a
     // janela ficava preta até alguém carregar nela.
-    const desejado = leve + '#t=1';
+    const desejado = leve + '#t=0.001';
     const filme = previa.querySelector('.previa-janela video');
     if (filme.getAttribute('src') !== desejado) {
+        filme.removeAttribute('poster');
+        
+        if (posterDataUrl) {
+            filme.poster = posterDataUrl;
+            filme.style.opacity = '1';
+            filme.style.transition = 'none';
+        } else {
+            // Se for um vídeo novo sem poster da transição, começa transparente
+            // para não piscar preto e depois desvanece suavemente.
+            filme.style.opacity = '0';
+            filme.style.transition = 'none';
+        }
+
         filme.setAttribute('src', desejado);
         filme.load();
+
+        if (!posterDataUrl) {
+            const onLoaded = () => {
+                filme.removeEventListener('loadeddata', onLoaded);
+                filme.removeEventListener('error', onLoaded);
+                filme.style.transition = 'opacity 0.4s ease';
+                filme.style.opacity = '1';
+                setTimeout(() => { filme.style.transition = ''; }, 450);
+            };
+            filme.addEventListener('loadeddata', onLoaded);
+            filme.addEventListener('error', onLoaded);
+        }
     }
 };
 
@@ -1663,6 +1702,23 @@ AnnotationController.prototype.marcarComoVisto = function(annId) {
     const ann = this.annotations.find(a => this.idDaAnotacao(a) === annId);
     const ponto = ann && ann.element && ann.element.querySelector('.marker-dot');
     if (ponto) ponto.classList.add('viewed');
+};
+
+/**
+ * Destaca a última anotação de onde o utilizador saiu, com um contorno branco.
+ *
+ * @param {string} annId - O nome da anotação.
+ */
+AnnotationController.prototype.marcarComoUltima = function(annId) {
+    this.annotations.forEach(a => {
+        const dot = a.element && a.element.querySelector('.marker-dot');
+        if (dot) dot.classList.remove('last-viewed');
+    });
+    if (annId) {
+        const ann = this.annotations.find(a => this.idDaAnotacao(a) === annId);
+        const ponto = ann && ann.element && ann.element.querySelector('.marker-dot');
+        if (ponto) ponto.classList.add('last-viewed');
+    }
 };
 
 /**
@@ -1743,7 +1799,18 @@ AnnotationController.prototype.esconderProximo = function() {
 AnnotationController.prototype.openVideoModal = function(nome, title, sentido) {
     const jaAberta = this.modal.style.display !== 'none';
     if (jaAberta && sentido && !this.aDeslizar) {
-        this.deslizar(sentido, () => this.abrirTestemunho(nome, title));
+        let oldCenterFrame = null;
+        if (this.videoPlayer.readyState >= 2 && this.videoPlayer.videoWidth) {
+            try {
+                const canvas = document.createElement('canvas');
+                canvas.width = this.videoPlayer.videoWidth;
+                canvas.height = this.videoPlayer.videoHeight;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(this.videoPlayer, 0, 0, canvas.width, canvas.height);
+                oldCenterFrame = canvas.toDataURL();
+            } catch(e) {}
+        }
+        this.deslizar(sentido, () => this.abrirTestemunho(nome, title, sentido, oldCenterFrame));
         return;
     }
     this.abrirTestemunho(nome, title);
@@ -1793,7 +1860,7 @@ AnnotationController.prototype.deslizar = function(sentido, trocar) {
     }, demora);
 };
 
-AnnotationController.prototype.abrirTestemunho = function(nome, title) {
+AnnotationController.prototype.abrirTestemunho = function(nome, title, sentido, oldCenterFrame) {
     this.esconderProximo();
     this.marcarComoVisto('video-' + nome);
     this.modalTitle.textContent = title;
@@ -1801,6 +1868,28 @@ AnnotationController.prototype.abrirTestemunho = function(nome, title) {
 
     const fontes = fontesDeVideo(nome);
     this.videoSources = fontes;
+
+    // Evita a piscada em preto antes do vídeo começar, copiando a imagem da pré-visualização.
+    this.videoPlayer.removeAttribute('poster');
+    const previas = [this.previaEsquerda, this.previaDireita];
+    for (const previa of previas) {
+        if (previa && previa.dataset.video === nome) {
+            const filme = previa.querySelector('video');
+            if (filme && filme.readyState >= 2 && filme.videoWidth) {
+                try {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = filme.videoWidth;
+                    canvas.height = filme.videoHeight;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(filme, 0, 0, canvas.width, canvas.height);
+                    this.videoPlayer.poster = canvas.toDataURL();
+                } catch (e) {
+                    console.log('Poster falhou:', e);
+                }
+            }
+            break;
+        }
+    }
 
     if (this.gestorDeQualidade) this.gestorDeQualidade.parar();
 
@@ -1815,7 +1904,7 @@ AnnotationController.prototype.abrirTestemunho = function(nome, title) {
     });
 
     this.desenharMenuDeQualidade(fontes);
-    this.atualizarPalco(nome);
+    this.atualizarPalco(nome, sentido, oldCenterFrame);
 
     this.modal.style.display = 'flex';
     this.medirPalco();

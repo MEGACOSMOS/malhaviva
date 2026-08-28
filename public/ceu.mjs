@@ -236,6 +236,37 @@ export function ligarCeu(app) {
         afinar,
         afinarFotografia,
         aplicar,
+
+        /**
+         * Onde ficam as paredes da cúpula, em metros do mundo.
+         *
+         * O motor desenha a cúpula a partir de uma esfera de meio metro:
+         * corta-lhe a metade de baixo num chão chato, sobe tudo um décimo e
+         * só depois multiplica pelo tamanho que aqui se escolhe. Daí saírem
+         * estes três números: o chão fica a zero, a barriga mais larga a
+         * cinco centésimos do tamanho, e o alto da abóbada a cinquenta e
+         * cinco centésimos.
+         *
+         * Serve à câmara para saber até onde pode andar: as paredes da taça
+         * são o fim do mundo visível, e passar delas seria sair da fotografia.
+         *
+         * @returns {object|null} As medidas, ou nada se não houver cúpula.
+         */
+        limites() {
+            if (!definicoes.ligado || !definicoes.cupula) {
+                return null;
+            }
+            const tamanho = definicoes.tamanhoDaCupula;
+            const base = definicoes.alturaDaCupula;
+            return {
+                centroX: definicoes.deslocamentoX,
+                centroZ: definicoes.deslocamentoZ,
+                raio: tamanho * 0.5,
+                chao: base,
+                barriga: base + tamanho * 0.05,
+                topo: base + tamanho * 0.55
+            };
+        },
         /** Volta a pôr tudo como veio de fábrica. */
         reiniciar() {
             Object.assign(definicoes, PADRAO);
