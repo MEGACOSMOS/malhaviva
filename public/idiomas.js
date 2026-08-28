@@ -107,6 +107,14 @@
             'ctl.doisDedos': '2 dedos',
             'ctl.arrastarGesto': 'arrastar',
             'ctl.pinca': 'pinça',
+            'ctl.olhar': 'Olhar à volta',
+            'ctl.zoomVista': 'Aproximar visão (Zoom)',
+            'ctl.avancarRecuar': 'Avançar / Recuar',
+            'ctl.lateralmente': 'Mover lateralmente',
+            'ctl.movimentoRapido': 'Movimento rápido',
+            'ctl.movimentoLento': 'Movimento lento',
+            'ctl.rodarCamara': 'Rodar a câmara',
+            'ctl.panDoisDedos': 'Mover lateralmente (Pan)',
             'ctl.gamepadDesc': 'Liga um comando (Xbox, PlayStation, etc.) para andar pelo mapa sem rato.',
             'ctl.deslocar': 'Deslocar',
             'ctl.stickEsq': 'Stick Esquerdo',
@@ -121,8 +129,8 @@
             'ctl.dicaPerfTitulo': 'Performance:',
             'ctl.dicaPerf': 'Se o visualizador estiver lento num computador antigo, muda a qualidade gráfica para Baixa no ícone ⚙ do cabeçalho. Em mobile, a qualidade é ajustada automaticamente.',
             'ctl.dicaPerdidoTitulo': 'Perdido?',
-            'ctl.dicaPerdido': 'Se chegares à borda do mapa aparece um botão para voltar à vista de abertura. A vista nunca sobe acima do horizonte: o bairro fica sempre por baixo, como num mapa.',
-            'ctl.descricao': 'Guia dos controlos do visualizador 3D Malha Viva. Navega como num mapa: arrasta com o rato, aproxima com o scroll, roda com Ctrl.'
+            'ctl.dicaPerdido': 'Se a câmara atingir o limite da simulação, aparecerá um botão para recentrar automaticamente.',
+            'ctl.descricao': 'Guia completo dos controlos do visualizador 3D Malha Viva. Aprende a navegar com rato, teclado, toque e gamepad.'
         },
 
         en: {
@@ -205,6 +213,14 @@
             'ctl.doisDedos': '2 fingers',
             'ctl.arrastarGesto': 'drag',
             'ctl.pinca': 'pinch',
+            'ctl.olhar': 'Look around',
+            'ctl.zoomVista': 'Zoom the view',
+            'ctl.avancarRecuar': 'Forward / Back',
+            'ctl.lateralmente': 'Move sideways',
+            'ctl.movimentoRapido': 'Fast movement',
+            'ctl.movimentoLento': 'Slow movement',
+            'ctl.rodarCamara': 'Turn the camera',
+            'ctl.panDoisDedos': 'Move sideways (Pan)',
             'ctl.gamepadDesc': 'Plug in a controller (Xbox, PlayStation, etc.) to move around the map without a mouse.',
             'ctl.deslocar': 'Move',
             'ctl.stickEsq': 'Left Stick',
@@ -219,8 +235,8 @@
             'ctl.dicaPerfTitulo': 'Performance:',
             'ctl.dicaPerf': 'If the viewer runs slowly on an older computer, switch the graphics quality to Low using the ⚙ icon in the header. On mobile, the quality is set automatically.',
             'ctl.dicaPerdidoTitulo': 'Lost?',
-            'ctl.dicaPerdido': 'If you reach the edge of the map, a button appears to take you back to the opening view. The view never rises above the horizon: the neighbourhood always stays below you, as on a map.',
-            'ctl.descricao': 'Guide to the controls of the Malha Viva 3D viewer. Navigate as you would a map: drag with the mouse, zoom with the wheel, turn with Ctrl.'
+            'ctl.dicaPerdido': 'If the camera reaches the edge of the simulation, a button appears to recentre it automatically.',
+            'ctl.descricao': 'Complete guide to the controls of the Malha Viva 3D viewer. Learn to navigate with mouse, keyboard, touch and gamepad.'
         },
 
         es: {
@@ -303,6 +319,14 @@
             'ctl.doisDedos': '2 dedos',
             'ctl.arrastarGesto': 'arrastrar',
             'ctl.pinca': 'pellizcar',
+            'ctl.olhar': 'Mirar alrededor',
+            'ctl.zoomVista': 'Acercar la vista (Zoom)',
+            'ctl.avancarRecuar': 'Avanzar / Retroceder',
+            'ctl.lateralmente': 'Moverse lateralmente',
+            'ctl.movimentoRapido': 'Movimiento rápido',
+            'ctl.movimentoLento': 'Movimiento lento',
+            'ctl.rodarCamara': 'Girar la cámara',
+            'ctl.panDoisDedos': 'Moverse lateralmente (Pan)',
             'ctl.gamepadDesc': 'Conecta un mando (Xbox, PlayStation, etc.) para moverte por el mapa sin ratón.',
             'ctl.deslocar': 'Desplazar',
             'ctl.stickEsq': 'Stick Izquierdo',
@@ -317,8 +341,8 @@
             'ctl.dicaPerfTitulo': 'Rendimiento:',
             'ctl.dicaPerf': 'Si el visor va lento en un ordenador antiguo, cambia la calidad gráfica a Baja en el icono ⚙ de la cabecera. En el móvil, la calidad se ajusta automáticamente.',
             'ctl.dicaPerdidoTitulo': '¿Perdido?',
-            'ctl.dicaPerdido': 'Si llegas al borde del mapa aparece un botón para volver a la vista inicial. La vista nunca sube por encima del horizonte: el barrio queda siempre por debajo, como en un mapa.',
-            'ctl.descricao': 'Guía de los controles del visor 3D Malha Viva. Navega como en un mapa: arrastra con el ratón, acerca con la rueda, gira con Ctrl.'
+            'ctl.dicaPerdido': 'Si la cámara llega al límite de la simulación, aparecerá un botón para recentrarla automáticamente.',
+            'ctl.descricao': 'Guía completa de los controles del visor 3D Malha Viva. Aprende a navegar con ratón, teclado, tacto y mando.'
         },
 
         kea: {
@@ -401,6 +425,14 @@
             'ctl.doisDedos': '2 dedu',
             'ctl.arrastarGesto': 'rasta',
             'ctl.pinca': 'pinsa',
+            'ctl.olhar': 'Odja na roda',
+            'ctl.zoomVista': 'Xiga pertu (Zoom)',
+            'ctl.avancarRecuar': 'Bai pa frenti / pa tras',
+            'ctl.lateralmente': 'Move pa ladu',
+            'ctl.movimentoRapido': 'Movimentu rápidu',
+            'ctl.movimentoLento': 'Movimentu lentu',
+            'ctl.rodarCamara': 'Roda kámara',
+            'ctl.panDoisDedos': 'Move pa ladu (Pan)',
             'ctl.gamepadDesc': 'Liga un komandu (Xbox, PlayStation, etc.) pa anda na mapa sen ratu.',
             'ctl.deslocar': 'Move',
             'ctl.stickEsq': 'Stick Skerdu',
@@ -415,8 +447,8 @@
             'ctl.dicaPerfTitulo': 'Rapidez:',
             'ctl.dicaPerf': 'Si vizualizador sta lentu na un komputador bedju, muda kualidadi di imajen pa Baxu na íkoni ⚙ na kabesa di pájina. Na telemóvel, kualidadi ta ajusta si própi.',
             'ctl.dicaPerdidoTitulo': 'Bu perde?',
-            'ctl.dicaPerdido': 'Si bu txiga na borda di mapa, un buton ta parse pa volta pa vista di kumesu. Vista nunka ta subi riba di orizonti: bairu ta fika senpri di baxu, sima na un mapa.',
-            'ctl.descricao': 'Gia di kontrolus di vizualizador 3D Malha Viva. Navega sima na un mapa: rasta ku ratu, xiga pertu ku roda, roda ku Ctrl.'
+            'ctl.dicaPerdido': 'Si kámara txiga na limiti di simulason, un buton ta parse pa rekoloka-l otomatikamenti.',
+            'ctl.descricao': 'Gia kompletu di kontrolus di vizualizador 3D Malha Viva. Prende navega ku ratu, tekladu, toki i komandu.'
         }
     };
 
