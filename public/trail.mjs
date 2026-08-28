@@ -185,7 +185,6 @@ TrailController.prototype.initialize = function() {
     }
 
     // UI Setup
-    this.setupPopup360();
     this.setupEditModeUI();
     this.setupCursorAnnotation();
 };
@@ -488,7 +487,7 @@ TrailController.prototype.distRaySegment = function(rayOrigin, rayDir, p1, p2) {
 // Painéis, botões e players sobrepostos ao mapa. Um clique num deles não
 // deve chegar à cena 3D, senão mexer nas definições ou nos controlos de um
 // vídeo abre outros vídeos sem querer.
-const UI_POR_CIMA = '#header, #definicoes-menu, #idioma-menu, #dev-menu, #filter-panel, #camera-stuck-popup, #trail-edit-ui, .annotation-marker, #video-modal, #trail-popup-360, #image-modal';
+const UI_POR_CIMA = '#header, #definicoes-menu, #idioma-menu, #dev-menu, #filter-panel, #camera-stuck-popup, #trail-edit-ui, .annotation-marker, #video-modal, #modal-360';
 
 TrailController.prototype.cliqueEmUI = function(e) {
     const alvo = e && e.event && e.event.target;
@@ -509,7 +508,7 @@ TrailController.prototype.playerAberto = function() {
     const aberto = (elemento) => !!elemento && elemento.style.display !== 'none' &&
         getComputedStyle(elemento).display !== 'none';
     return aberto(document.getElementById('video-modal')) ||
-        aberto(document.getElementById('image-modal')) || aberto(this.popup);
+        aberto(document.getElementById('modal-360'));
 };
 
 TrailController.prototype.onMouseDown = function(e) {
@@ -813,127 +812,6 @@ TrailController.prototype.handleInteraction = function(x, y) {
 };
 
 
-/**
- * A janela onde a rota 360º é vista.
- *
- * É a mesma janela dos vídeos das pessoas: mesma moldura, mesma barra de
- * cima com o nome à esquerda e a cruz à direita, mesma entrada a crescer
- * devagar. Antes tinha cantos redondos, não tinha nome nenhum e a cruz
- * andava a flutuar por cima da imagem — pareciam duas coisas de sítios
- * diferentes.
- */
-TrailController.prototype.setupPopup360 = function() {
-    this.popup = document.createElement('div');
-    this.popup.id = 'trail-popup-360';
-    this.popup.style.position = 'fixed';
-    this.popup.style.top = '0';
-    this.popup.style.left = '0';
-    this.popup.style.width = '100%';
-    this.popup.style.height = '100%';
-    this.popup.style.backgroundColor = '#05050a';
-    this.popup.style.display = 'none';
-    this.popup.style.alignItems = 'center';
-    this.popup.style.justifyContent = 'center';
-    this.popup.style.zIndex = '2000';
-    this.popup.style.opacity = '0';
-    this.popup.style.transition = 'opacity 0.3s ease';
-
-    const content = document.createElement('div');
-    content.style.position = 'relative';
-    content.style.width = '90%';
-    content.style.maxWidth = '1000px';
-    content.style.backgroundColor = '#05050a';
-    content.style.borderRadius = '0';
-    content.style.overflow = 'hidden';
-    content.style.boxShadow = '0 20px 60px rgba(0,0,0,0.6)';
-    content.style.border = '1px solid rgba(255,255,255,0.1)';
-    content.style.transform = 'scale(0.95)';
-    content.style.transition = 'transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)';
-    this.popupContent = content;
-
-    const header = document.createElement('div');
-    header.style.padding = '16px 24px';
-    header.style.display = 'flex';
-    header.style.justifyContent = 'space-between';
-    header.style.alignItems = 'center';
-    header.style.borderBottom = '1px solid rgba(255,255,255,0.05)';
-    header.style.background = 'linear-gradient(to bottom, rgba(255,255,255,0.05), transparent)';
-
-    this.popupTitle = document.createElement('div');
-    this.popupTitle.style.color = '#fff';
-    this.popupTitle.style.fontWeight = '600';
-    this.popupTitle.style.fontSize = '1.1rem';
-    // "Esvarena" é nome de sítio: fica igual em qualquer língua.
-    this.popupTitle.textContent = 'Esvarena — ' +
-        (window.Idiomas ? window.Idiomas.t('rota.titulo') : 'Rota 360º');
-
-    const closeBtn = document.createElement('button');
-    closeBtn.innerHTML = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>';
-    closeBtn.style.background = 'none';
-    closeBtn.style.border = 'none';
-    closeBtn.style.color = '#fff';
-    closeBtn.style.cursor = 'pointer';
-    closeBtn.style.opacity = '0.6';
-    closeBtn.style.transition = 'opacity 0.2s ease, transform 0.2s ease';
-    closeBtn.style.display = 'flex';
-    closeBtn.style.alignItems = 'center';
-    closeBtn.style.justifyContent = 'center';
-    closeBtn.addEventListener('mouseenter', () => {
-        closeBtn.style.opacity = '1';
-        closeBtn.style.transform = 'scale(1.1)';
-    });
-    closeBtn.addEventListener('mouseleave', () => {
-        closeBtn.style.opacity = '0.6';
-        closeBtn.style.transform = 'scale(1)';
-    });
-
-    closeBtn.addEventListener('click', () => {
-        const overlay = document.getElementById('loading-overlay');
-        const loadingText = overlay ? overlay.querySelector('.loading-text') : null;
-
-        if (overlay) {
-            overlay.style.transition = 'none';
-            if (loadingText) loadingText.innerText = (window.Idiomas ? window.Idiomas.t('carga.restaurar') : 'A restaurar ambiente 3D…');
-            overlay.classList.remove('hidden');
-        }
-
-        this.popup.style.opacity = '0';
-        this.popupContent.style.transform = 'scale(0.95)';
-        setTimeout(() => { 
-            this.popup.style.display = 'none'; 
-            const container = this.popup.querySelector('#trail-video-container');
-            if (container) container.innerHTML = '';
-            
-            const gsplat = this.app.root.findByName('gsplat-scene');
-            if (gsplat) gsplat.enabled = true;
-            
-            setTimeout(() => {
-                if (overlay) {
-                    overlay.style.transition = '';
-                    overlay.classList.add('hidden');
-                    setTimeout(() => {
-                        if (loadingText) loadingText.innerText = (window.Idiomas ? window.Idiomas.t('carga.modelo') : 'A carregar modelo 3D…');
-                    }, 800);
-                }
-            }, 800);
-        }, 300);
-    });
-
-    header.appendChild(this.popupTitle);
-    header.appendChild(closeBtn);
-
-    const caixa = document.createElement('div');
-    caixa.id = 'trail-video-container';
-    caixa.style.width = '100%';
-    caixa.style.aspectRatio = '16 / 9';
-    caixa.style.backgroundColor = '#000';
-
-    content.appendChild(header);
-    content.appendChild(caixa);
-    this.popup.appendChild(content);
-    document.body.appendChild(this.popup);
-};
-
 TrailController.prototype.setupCursorAnnotation = function() {
     this.cursorAnnotation = document.createElement('div');
     this.cursorAnnotation.style.position = 'fixed';
@@ -954,32 +832,28 @@ TrailController.prototype.setupCursorAnnotation = function() {
     document.body.appendChild(this.cursorAnnotation);
 };
 
+/**
+ * Abre uma rota 360º no palco das paragens.
+ *
+ * A janela é a mesma dos testemunhos, e quem a monta é o guarda das
+ * anotações: assim há um palco só, e passa-se de uma paragem 360º para a
+ * do lado sem voltar ao mapa.
+ *
+ * @param {number} trailIndex - Qual das três rotas.
+ */
 TrailController.prototype.showPopup360 = function(trailIndex) {
-    const container = this.popup.querySelector('#trail-video-container');
-    const letra = (trailIndex === 1 || trailIndex === '1') ? 'B'
-        : (trailIndex === 2 || trailIndex === '2') ? 'C' : 'A';
-    if (container) {
-        // Passa-se o nome da rota; é o player que decide as resoluções a
-        // oferecer e por qual começar.
-        const nome = 'Esvarena - 360 - ' + letra;
-        container.innerHTML = `<iframe src="/video360.html?nome=${encodeURIComponent(nome)}" style="width: 100%; height: 100%; border: none; background: #000; display: block;" allow="xr-spatial-tracking; fullscreen; autoplay" allowfullscreen></iframe>`;
-    }
-    if (this.popupTitle) this.popupTitle.textContent = 'Esvarena — ' +
-        (window.Idiomas ? window.Idiomas.t('rota.titulo') : 'Rota 360º') + ' ' + letra;
-
     // A rota apaga-se e a etiqueta sai da frente: com a janela aberta por
     // cima, ficariam as duas esquecidas por baixo até se mexer o rato.
     this.trailRenderData.forEach(t => this.setTrailHoverState(t, false));
     this.updateGlobalCursor(false, []);
 
-    this.popup.style.display = 'flex';
-    setTimeout(() => {
-        this.popup.style.opacity = '1';
-        if (this.popupContent) this.popupContent.style.transform = 'scale(1)';
-    }, 10);
-    
-    const gsplat = this.app.root.findByName('gsplat-scene');
-    if (gsplat) gsplat.enabled = false;
+    const anotacoes = this.entity.script && this.entity.script.annotationController;
+    if (!anotacoes) {
+        return;
+    }
+    const numero = Number(trailIndex);
+    const paragem = anotacoes.paragens360().find(ann => ann.trailIndex === numero);
+    if (paragem) anotacoes.abrirParagem360(paragem);
 };
 
 TrailController.prototype.setupEditModeUI = function() {

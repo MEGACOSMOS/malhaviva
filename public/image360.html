@@ -7,9 +7,22 @@
     <script src="/idiomas.js?v=2"></script>
     <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
     <style>
-        body, html {
+        html { margin: 0; padding: 0; width: 100%; height: 100%; }
+
+        /* A fotografia em cima e a barra dos comandos em baixo, uma por
+           cima da outra: a barra deixa de tapar a paisagem. */
+        body {
             margin: 0; padding: 0; width: 100%; height: 100%;
             background: #05050a; overflow: hidden; font-family: sans-serif;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Onde a fotografia vive. A cena enche isto por inteiro. */
+        #palco-360 {
+            position: relative;
+            flex: 1 1 auto;
+            min-height: 0;
         }
 
         /* Enquanto a fotografia não chega, gira a mesma roda dos vídeos. */
@@ -33,22 +46,21 @@
             font-size: 0.85rem;
         }
 
-        /* Barra de baixo com o mesmo desenho da dos vídeos. */
+        /* A barra dos comandos, com o mesmo desenho da dos vídeos: por
+           baixo da fotografia, e não por cima dela. Traz o mesmo véu de
+           luz da barra do nome da janela onde esta página é vista, virado
+           ao contrário. */
         .video-controls {
-            position: absolute;
-            bottom: 0; left: 0; right: 0;
-            background: linear-gradient(transparent, rgba(0,0,0,0.9));
-            padding: 30px 15px 10px;
+            flex: 0 0 auto;
+            background: linear-gradient(to top, rgba(255,255,255,0.05), transparent);
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            padding: 14px 24px 16px;
             display: flex;
             justify-content: flex-end;
             align-items: center;
             gap: 16px;
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity 0.3s ease;
             z-index: 1000;
         }
-        .video-controls.active { opacity: 1; pointer-events: auto; }
 
         .player-btn {
             background: none;
@@ -66,7 +78,7 @@
 
         @media (max-width: 900px) {
             .video-controls {
-                padding: 20px 10px 10px;
+                padding: 12px 12px 14px;
                 gap: 8px;
             }
             .player-btn svg {
@@ -77,9 +89,18 @@
     </style>
 </head>
 <body>
-    <div id="loading-overlay">
-        <div class="spinner"></div>
-        <div class="aviso" data-i18n="foto.carregar">A carregar fotografia 360º…</div>
+    <!-- A fotografia em cima, os comandos em baixo. A cena é "embedded"
+         para caber neste sítio em vez de tomar a página toda. -->
+    <div id="palco-360">
+        <a-scene embedded loading-screen="enabled: false" vr-mode-ui="enabled: false">
+            <a-entity id="camera" camera look-controls="reverseMouseDrag: true"></a-entity>
+            <a-sky id="ceu" rotation="0 -90 0"></a-sky>
+        </a-scene>
+
+        <div id="loading-overlay">
+            <div class="spinner"></div>
+            <div class="aviso" data-i18n="foto.carregar">A carregar fotografia 360º…</div>
+        </div>
     </div>
 
     <div class="video-controls" id="controlos">
@@ -91,18 +112,12 @@
         </button>
     </div>
 
-    <a-scene loading-screen="enabled: false" vr-mode-ui="enabled: false">
-        <a-entity id="camera" camera look-controls="reverseMouseDrag: true"></a-entity>
-        <a-sky id="ceu" rotation="0 -90 0"></a-sky>
-    </a-scene>
-
     <script>
         const parametros = new URLSearchParams(window.location.search);
         const endereco = parametros.get('src') || '/ceu-olho-de-aguia.jpg';
 
         const ceu = document.getElementById('ceu');
         const overlay = document.getElementById('loading-overlay');
-        const controlos = document.getElementById('controlos');
         const cena = document.querySelector('a-scene');
 
         // A fotografia é trazida à parte para se saber ao certo quando está
@@ -163,16 +178,8 @@
             else cena.enterVR().catch(() => {});
         });
 
-        // A barra aparece com o rato e some-se sozinha, como nos vídeos.
-        let relogio;
-        const mostrarControlos = () => {
-            controlos.classList.add('active');
-            clearTimeout(relogio);
-            relogio = setTimeout(() => controlos.classList.remove('active'), 5000);
-        };
-        window.addEventListener('mousemove', mostrarControlos);
-        window.addEventListener('touchstart', mostrarControlos);
-        mostrarControlos();
+        // A barra fica sempre à vista: está fora da fotografia e não tapa
+        // nada, por isso não há razão para se esconder sozinha.
     </script>
 </body>
 </html>

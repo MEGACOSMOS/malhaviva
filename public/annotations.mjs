@@ -4,6 +4,51 @@ import { criarGestorDeQualidade } from './qualidade-video.mjs?v=8';
 
 export const AnnotationController = pc.createScript('annotationController');
 
+/**
+ * Avisa que o bairro está a voltar.
+ *
+ * Fechar um vídeo é acender outra vez as manchas 3D, e isso demora um
+ * instante. Sem este aviso ficava um ecrã preto pelo meio, como se a
+ * página tivesse encravado.
+ *
+ * @returns {HTMLElement|null} O aviso, para depois se poder arrumar.
+ */
+function avisarQueOBairroVolta() {
+    const overlay = document.getElementById('loading-overlay');
+    if (!overlay) {
+        return null;
+    }
+    const letreiro = overlay.querySelector('.loading-text');
+    // Sem desvanecer: o aviso tem de estar no ecrã já a seguir ao clique.
+    overlay.style.transition = 'none';
+    if (letreiro) {
+        letreiro.innerText = (window.Idiomas ? window.Idiomas.t('carga.restaurar') : 'A restaurar ambiente 3D…');
+    }
+    overlay.classList.remove('hidden');
+    return overlay;
+}
+
+/**
+ * Arruma o aviso, depois de dar tempo ao bairro para se desenhar.
+ *
+ * @param {HTMLElement|null} overlay - O aviso que estava no ecrã.
+ */
+function arrumarAvisoDoBairro(overlay) {
+    if (!overlay) {
+        return;
+    }
+    setTimeout(() => {
+        overlay.style.transition = '';
+        overlay.classList.add('hidden');
+        setTimeout(() => {
+            const letreiro = overlay.querySelector('.loading-text');
+            if (letreiro) {
+                letreiro.innerText = (window.Idiomas ? window.Idiomas.t('carga.modelo') : 'A carregar modelo 3D…');
+            }
+        }, 800);
+    }, 800);
+}
+
 AnnotationController.prototype.initialize = function() {
     this.annotations = [
         {
@@ -178,22 +223,41 @@ AnnotationController.prototype.initialize = function() {
             display: block;
             object-fit: contain;
         }
+        /* ---- A barra dos comandos ----
+
+           Vive por baixo da imagem, e não por cima dela: nada do que se
+           carrega tapa o que se está a ver, e deixa de ser preciso esperar
+           que a barra se esconda sozinha para o vídeo ficar limpo.
+
+           Traz o mesmo véu de luz da barra do nome, virado ao contrário —
+           as duas fecham a janela, uma em cima e outra em baixo. */
         .video-controls {
-            position: absolute;
-            bottom: 0; left: 0; right: 0;
-            background: linear-gradient(transparent, rgba(0,0,0,0.9));
-            padding: 30px 15px 10px;
+            position: relative;
+            background: linear-gradient(to top, rgba(255,255,255,0.05), transparent);
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            padding: 14px 24px 16px;
             display: flex;
             flex-direction: column;
             gap: 12px;
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity 0.3s ease;
             z-index: 10;
         }
-        .video-controls.active {
-            opacity: 1;
-            pointer-events: auto;
+
+        /* A imagem e a barra são uma peça só, e é essa peça que vai a ecrã
+           inteiro: assim os comandos vão juntos em vez de ficarem para
+           trás na janela. */
+        .moldura-do-player {
+            display: flex;
+            flex-direction: column;
+            background: #05050a;
+        }
+        .moldura-do-player:fullscreen {
+            width: 100vw;
+            height: 100vh;
+        }
+        .moldura-do-player:fullscreen .custom-video-container {
+            flex: 1 1 auto;
+            aspect-ratio: auto;
+            min-height: 0;
         }
         .progress-container {
             width: 100%;
@@ -368,7 +432,8 @@ AnnotationController.prototype.initialize = function() {
 
            Todas as medidas saem daqui, e não de números espalhados pelo
            meio: mudar uma destas linhas muda o palco todo. ---- */
-        #video-modal {
+        #video-modal,
+        #modal-360 {
             --janela-largura: min(62vw, 1000px);
             /* O intervalo entre janelas tem de dar para a seta caber lá
                dentro com folga. */
@@ -475,11 +540,45 @@ AnnotationController.prototype.initialize = function() {
             background: #000;
             overflow: hidden;
         }
-        .previa-janela video {
+        .previa-janela video,
+        .previa-janela img {
             width: 100%;
             height: 100%;
             object-fit: cover;
             pointer-events: none;
+        }
+
+        /* A janela para a página da paragem 360º. A imagem lá dentro é
+           16:9 como a dos testemunhos, e a barra dos comandos vem a
+           seguir — daí a altura ser a conta dos dois. A altura da barra é
+           medida na própria página, porque muda com o tamanho do ecrã e
+           não é a mesma na fotografia e nas rotas. */
+        .moldura-360 {
+            position: relative;
+            width: 100%;
+            height: 0;
+            padding-bottom: calc(56.25% + var(--altura-controlos, 0px));
+            background: #000;
+        }
+        .moldura-360 iframe {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            border: none;
+            background: #000;
+            display: block;
+        }
+
+        /* O rodapé, vazio: é o lugar que a barra dos comandos ocupa na
+           janela do meio. Sem ele, a janela que desliza para o centro
+           assentava mais alta do que a que estava lá. A altura vem medida
+           da barra verdadeira, e não escrita à mão. */
+        .previa-rodape {
+            flex: 0 0 auto;
+            height: var(--altura-controlos, 0px);
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            background: linear-gradient(to top, rgba(255,255,255,0.05), transparent);
         }
 
 
@@ -511,7 +610,8 @@ AnnotationController.prototype.initialize = function() {
         /* Num ecrã estreito não sobra nada para espreitar: as janelas dos
            lados encolhem para uma seta pousada na borda da imagem. */
         @media (max-width: 900px) {
-            #video-modal {
+            #video-modal,
+            #modal-360 {
                 --janela-largura: 100vw;
                 --janela-espaco: 0px;
             }
@@ -519,6 +619,15 @@ AnnotationController.prototype.initialize = function() {
                 border-radius: 0;
                 border-left: none;
                 border-right: none;
+            }
+            /* O meio da imagem não é o meio da janela: há uma barra com o
+               nome em cima e outra com os comandos em baixo, e não têm a
+               mesma altura. Esta conta desce as setas e as janelas dos
+               lados até ao meio da imagem, seja qual for a altura das
+               barras. */
+            .previa,
+            .seta-do-palco {
+                margin-top: calc((var(--altura-barra-nome, 0px) - var(--altura-controlos, 0px)) / 2);
             }
             .previa {
                 position: absolute;
@@ -534,6 +643,7 @@ AnnotationController.prototype.initialize = function() {
             .previa.esquerda { left: 0; border-top-left-radius: 0; border-bottom-left-radius: 0; }
             .previa.direita { right: 0; border-top-right-radius: 0; border-bottom-right-radius: 0; }
             .previa-barra,
+            .previa-rodape,
             .previa-janela { display: none; }
             .carrossel.a-deslizar .previa.entra,
             .carrossel.a-deslizar .janela-do-player {
@@ -545,7 +655,6 @@ AnnotationController.prototype.initialize = function() {
                 width: 50px;
                 height: 70px;
                 transform: translateY(-50%);
-                margin-top: 26px; /* Compensa a altura do cabeçalho do vídeo (padding + texto) */
             }
             .seta-do-palco:hover {
                 transform: translateY(-50%) scale(1.18);
@@ -554,7 +663,7 @@ AnnotationController.prototype.initialize = function() {
             .seta-do-palco.direita { right: 0; left: auto; }
 
             .video-controls {
-                padding: 20px 10px 10px;
+                padding: 12px 12px 14px;
             }
             .controls-left, .controls-right {
                 gap: 8px;
@@ -777,11 +886,7 @@ AnnotationController.prototype.initialize = function() {
             this.marcarComoVisto(annId);
 
             if (ann.is360) {
-                if (ann.isImage) {
-                    this.openImage360(ann.imagePath, ann.label);
-                } else if (this.entity.script && this.entity.script.trailController) {
-                    this.entity.script.trailController.showPopup360(ann.trailIndex);
-                }
+                this.abrirParagem360(ann);
             } else {
                 this.openVideoModal(ann.video, ann.label);
             }
@@ -792,118 +897,402 @@ AnnotationController.prototype.initialize = function() {
     });
 };
 
+/* ---- O palco das paragens 360º ----
+
+   A fotografia do alto do bairro e as três rotas são, para quem vê, a
+   mesma coisa: uma imagem que dá a volta toda a quem está no meio dela.
+   Por isso partilham o palco dos testemunhos — a tira de três janelas,
+   com a anterior e a seguinte a espreitar de cada lado — e passa-se de
+   uma para a outra sem ter de voltar ao mapa.
+
+   A janela do meio é uma janela para outra página: a das fotografias ou a
+   das rotas, conforme a paragem. Os comandos de cada uma vivem lá
+   dentro. ---- */
+
+// As três rotas são o mesmo sítio percorrido três vezes; a letra é o que
+// as distingue, tanto no nome do ficheiro como na barra de cima.
+const LETRAS_DAS_ROTAS = ['A', 'B', 'C'];
+
 /**
- * Abre uma fotografia 360º na mesma janela dos vídeos.
+ * As paragens 360º, pela ordem em que estão na lista das anotações.
  *
- * Antes esta janela era um ecrã preto de ponta a ponta com uma cruz a
- * flutuar a um canto; agora tem a moldura, a barra de cima com o nome e a
- * mesma entrada dos vídeos das pessoas, para ser a mesma casa.
- *
- * @param {string} caminho - Onde está a fotografia.
- * @param {string} [titulo] - Nome a mostrar na barra de cima.
+ * @returns {object[]} A fotografia do alto e as três rotas.
  */
-AnnotationController.prototype.openImage360 = function(caminho, titulo) {
-    if (!this.imageModal) {
-        this.imageModal = document.createElement('div');
-        this.imageModal.id = 'image-modal';
-        this.imageModal.style.position = 'fixed';
-        this.imageModal.style.top = '0';
-        this.imageModal.style.left = '0';
-        this.imageModal.style.width = '100%';
-        this.imageModal.style.height = '100%';
-        this.imageModal.style.backgroundColor = '#05050a';
-        this.imageModal.style.display = 'none';
-        this.imageModal.style.alignItems = 'center';
-        this.imageModal.style.justifyContent = 'center';
-        this.imageModal.style.zIndex = '3000';
-        this.imageModal.style.opacity = '0';
-        this.imageModal.style.transition = 'opacity 0.3s ease';
+AnnotationController.prototype.paragens360 = function() {
+    return this.annotations.filter(ann => ann.is360);
+};
 
-        const content = document.createElement('div');
-        content.style.position = 'relative';
-        content.style.width = '90%';
-        content.style.maxWidth = '1000px';
-        content.style.backgroundColor = '#05050a';
-        content.style.borderRadius = '0';
-        content.style.overflow = 'hidden';
-        content.style.boxShadow = '0 20px 60px rgba(0,0,0,0.6)';
-        content.style.border = '1px solid rgba(255,255,255,0.1)';
-        content.style.transform = 'scale(0.95)';
-        content.style.transition = 'transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)';
-        this.imageModalContent = content;
+/**
+ * O nome de uma paragem, tal como se lê na barra de cima.
+ *
+ * @param {object} ann - A paragem.
+ * @returns {string} O nome a mostrar.
+ */
+AnnotationController.prototype.nomeDaParagem360 = function(ann) {
+    // "Esvarena" e "Olho de Águia" são nomes de sítios: ficam iguais em
+    // qualquer língua. O que se traduz é só "Rota 360º".
+    if (ann.isImage) {
+        return ann.label;
+    }
+    const letra = LETRAS_DAS_ROTAS[ann.trailIndex] || LETRAS_DAS_ROTAS[0];
+    return ann.label + ' — ' +
+        (window.Idiomas ? window.Idiomas.t('rota.titulo') : 'Rota 360º') + ' ' + letra;
+};
 
-        const header = document.createElement('div');
-        header.style.padding = '16px 24px';
-        header.style.display = 'flex';
-        header.style.justifyContent = 'space-between';
-        header.style.alignItems = 'center';
-        header.style.borderBottom = '1px solid rgba(255,255,255,0.05)';
-        header.style.background = 'linear-gradient(to bottom, rgba(255,255,255,0.05), transparent)';
+/**
+ * O nome do ficheiro de vídeo de uma rota.
+ *
+ * @param {object} ann - A rota.
+ * @returns {string} O nome do vídeo.
+ */
+AnnotationController.prototype.videoDaRota360 = function(ann) {
+    return 'Esvarena - 360 - ' + (LETRAS_DAS_ROTAS[ann.trailIndex] || LETRAS_DAS_ROTAS[0]);
+};
 
-        this.imageModalTitle = document.createElement('div');
-        this.imageModalTitle.style.color = '#fff';
-        this.imageModalTitle.style.fontWeight = '600';
-        this.imageModalTitle.style.fontSize = '1.1rem';
+/**
+ * A página que mostra uma paragem.
+ *
+ * @param {object} ann - A paragem.
+ * @returns {string} O endereço a pôr na janela do meio.
+ */
+AnnotationController.prototype.enderecoDaParagem360 = function(ann) {
+    if (ann.isImage) {
+        return '/image360.html?src=' + encodeURIComponent(ann.imagePath);
+    }
+    return '/video360.html?nome=' + encodeURIComponent(this.videoDaRota360(ann));
+};
 
-        const closeBtn = document.createElement('button');
-        closeBtn.innerHTML = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>';
-        closeBtn.style.background = 'none';
-        closeBtn.style.border = 'none';
-        closeBtn.style.color = '#fff';
-        closeBtn.style.cursor = 'pointer';
-        closeBtn.style.opacity = '0.6';
-        closeBtn.style.transition = 'opacity 0.2s ease, transform 0.2s ease';
-        closeBtn.style.display = 'flex';
-        closeBtn.style.alignItems = 'center';
-        closeBtn.style.justifyContent = 'center';
-        closeBtn.addEventListener('mouseenter', () => {
-            closeBtn.style.opacity = '1';
-            closeBtn.style.transform = 'scale(1.1)';
+/**
+ * Monta o palco das paragens 360º: a tira das três janelas, as setas nos
+ * intervalos e a cruz ao canto do ecrã.
+ */
+AnnotationController.prototype.setupPalco360 = function() {
+    const modal = document.createElement('div');
+    modal.id = 'modal-360';
+    modal.style.position = 'fixed';
+    modal.style.top = '0';
+    modal.style.left = '0';
+    modal.style.width = '100%';
+    modal.style.height = '100%';
+    modal.style.backgroundColor = '#05050a';
+    modal.style.display = 'none';
+    modal.style.alignItems = 'center';
+    modal.style.justifyContent = 'center';
+    modal.style.zIndex = '2000';
+    modal.style.opacity = '0';
+    modal.style.transition = 'opacity 0.3s ease';
+
+    const content = document.createElement('div');
+    content.className = 'janela-do-palco janela-do-player';
+    content.style.position = 'relative';
+    content.style.backgroundColor = '#05050a';
+    content.style.boxShadow = '0 20px 60px rgba(0,0,0,0.6)';
+
+    const header = document.createElement('div');
+    header.style.padding = '16px 24px';
+    header.style.display = 'flex';
+    header.style.justifyContent = 'space-between';
+    header.style.alignItems = 'center';
+    header.style.borderBottom = '1px solid rgba(255,255,255,0.05)';
+    header.style.background = 'linear-gradient(to bottom, rgba(255,255,255,0.05), transparent)';
+
+    const titulo = document.createElement('div');
+    titulo.style.color = '#fff';
+    titulo.style.fontWeight = '600';
+    titulo.style.fontSize = '1.1rem';
+    header.appendChild(titulo);
+
+    const moldura = document.createElement('div');
+    moldura.className = 'moldura-360';
+
+    content.appendChild(header);
+    content.appendChild(moldura);
+
+    // As janelas dos lados. Numa paragem há duas coisas possíveis a
+    // espreitar: a fotografia do alto, que é um ficheiro de imagem, ou o
+    // primeiro instante de uma rota, que é um vídeo. Cabem as duas na
+    // janela, e mostra-se a que for da vez.
+    const criarPrevia = (lado, sentido) => {
+        const previa = document.createElement('button');
+        previa.type = 'button';
+        previa.className = 'janela-do-palco previa ' + lado;
+
+        const barra = document.createElement('div');
+        barra.className = 'previa-barra';
+        const nome = document.createElement('span');
+        nome.className = 'previa-nome';
+        barra.appendChild(nome);
+        previa.appendChild(barra);
+
+        const janela = document.createElement('div');
+        janela.className = 'previa-janela';
+        const filme = document.createElement('video');
+        filme.muted = true;
+        filme.playsInline = true;
+        filme.preload = 'metadata';
+        filme.crossOrigin = 'anonymous';
+        const foto = document.createElement('img');
+        foto.alt = '';
+        janela.appendChild(filme);
+        janela.appendChild(foto);
+        previa.appendChild(janela);
+
+        const rodape = document.createElement('div');
+        rodape.className = 'previa-rodape';
+        previa.appendChild(rodape);
+
+        previa.addEventListener('click', () => this.saltarParagem360(sentido));
+        return previa;
+    };
+
+    const esquerda = criarPrevia('esquerda', -1);
+    const direita = criarPrevia('direita', 1);
+
+    const criarSeta = (lado, bico, sentido) => {
+        const seta = document.createElement('button');
+        seta.type = 'button';
+        seta.className = 'seta-do-palco ' + lado;
+        seta.innerHTML = '<svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter"><polyline points="' + bico + '"></polyline></svg>';
+        seta.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.saltarParagem360(sentido);
         });
-        closeBtn.addEventListener('mouseleave', () => {
-            closeBtn.style.opacity = '0.6';
-            closeBtn.style.transform = 'scale(1)';
-        });
+        return seta;
+    };
+    const setaEsquerda = criarSeta('esquerda', '15 18 9 12 15 6', -1);
+    const setaDireita = criarSeta('direita', '9 18 15 12 9 6', 1);
 
-        closeBtn.addEventListener('click', () => {
-            this.imageModal.style.opacity = '0';
-            this.imageModalContent.style.transform = 'scale(0.95)';
-            setTimeout(() => {
-                this.imageModal.style.display = 'none';
-                this.imageFrame.innerHTML = '';
-                const gsplat = this.app.root.findByName('gsplat-scene');
-                if (gsplat) gsplat.enabled = true;
-            }, 300);
-        });
+    const fechar = document.createElement('button');
+    fechar.className = 'fechar-do-palco';
+    fechar.innerHTML = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>';
+    fechar.style.background = 'none';
+    fechar.style.border = 'none';
+    fechar.style.color = '#fff';
+    fechar.style.cursor = 'pointer';
+    fechar.style.opacity = '0.6';
+    fechar.style.transition = 'opacity 0.2s ease, transform 0.2s ease';
+    fechar.style.display = 'flex';
+    fechar.style.alignItems = 'center';
+    fechar.style.justifyContent = 'center';
+    fechar.addEventListener('mouseenter', () => {
+        fechar.style.opacity = '1';
+        fechar.style.transform = 'scale(1.1)';
+    });
+    fechar.addEventListener('mouseleave', () => {
+        fechar.style.opacity = '0.6';
+        fechar.style.transform = 'scale(1)';
+    });
+    fechar.addEventListener('click', () => this.fecharPalco360());
 
-        header.appendChild(this.imageModalTitle);
-        header.appendChild(closeBtn);
+    const carrossel = document.createElement('div');
+    carrossel.className = 'carrossel';
+    carrossel.appendChild(esquerda);
+    carrossel.appendChild(content);
+    carrossel.appendChild(direita);
 
-        this.imageFrame = document.createElement('div');
-        this.imageFrame.style.width = '100%';
-        this.imageFrame.style.aspectRatio = '16 / 9';
-        this.imageFrame.style.backgroundColor = '#000';
+    modal.appendChild(carrossel);
+    modal.appendChild(setaEsquerda);
+    modal.appendChild(setaDireita);
+    modal.appendChild(fechar);
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) this.fecharPalco360();
+    });
+    document.body.appendChild(modal);
 
-        content.appendChild(header);
-        content.appendChild(this.imageFrame);
-        this.imageModal.appendChild(content);
-        document.body.appendChild(this.imageModal);
+    this.palco360 = {
+        modal,
+        tira: carrossel,
+        meio: content,
+        esquerda,
+        direita,
+        barraDoNome: header,
+        titulo,
+        moldura
+    };
+
+    // Com o ecrã a mudar de tamanho, as três janelas voltam a ficar do
+    // mesmo feitio.
+    window.addEventListener('resize', () => {
+        if (modal.style.display !== 'none') this.medirComandos360();
+    });
+};
+
+/**
+ * Abre uma paragem 360º no palco.
+ *
+ * Com o palco já aberto e um sentido dado, a troca faz-se com a tira a
+ * deslizar um lugar, como nos testemunhos.
+ *
+ * @param {object} ann - A paragem a abrir.
+ * @param {number} [sentido] - -1 para a anterior, 1 para a seguinte.
+ */
+AnnotationController.prototype.abrirParagem360 = function(ann, sentido) {
+    if (!ann) {
+        return;
+    }
+    if (!this.palco360) {
+        this.setupPalco360();
+    }
+    const palco = this.palco360;
+    const jaAberto = palco.modal.style.display !== 'none';
+    if (jaAberto && sentido && !palco.aDeslizar) {
+        this.deslizarPalco(palco, sentido, () => this.mostrarParagem360(ann));
+        return;
+    }
+    this.mostrarParagem360(ann);
+};
+
+/**
+ * Passa à paragem do lado.
+ *
+ * A lista dá a volta: depois da última vem a primeira, para nunca ficar
+ * um lado vazio.
+ *
+ * @param {number} sentido - -1 para a anterior, 1 para a seguinte.
+ */
+AnnotationController.prototype.saltarParagem360 = function(sentido) {
+    const lista = this.paragens360();
+    const onde = lista.indexOf(this.paragem360);
+    if (onde < 0 || lista.length < 2) {
+        return;
+    }
+    this.abrirParagem360(lista[(onde + sentido + lista.length) % lista.length], sentido);
+};
+
+/**
+ * Põe uma paragem na janela do meio e as vizinhas nas dos lados.
+ *
+ * @param {object} ann - A paragem a mostrar.
+ */
+AnnotationController.prototype.mostrarParagem360 = function(ann) {
+    const palco = this.palco360;
+    this.paragem360 = ann;
+    this.marcarComoVisto(this.idDaAnotacao(ann));
+
+    palco.titulo.textContent = this.nomeDaParagem360(ann);
+    palco.moldura.innerHTML = '<iframe src="' + this.enderecoDaParagem360(ann) +
+        '" allow="xr-spatial-tracking; fullscreen; autoplay" allowfullscreen></iframe>';
+    palco.moldura.querySelector('iframe')
+        .addEventListener('load', () => this.medirComandos360());
+
+    const lista = this.paragens360();
+    const onde = lista.indexOf(ann);
+    if (onde >= 0 && lista.length > 1) {
+        this.encherPrevia360(palco.esquerda, lista[(onde - 1 + lista.length) % lista.length]);
+        this.encherPrevia360(palco.direita, lista[(onde + 1) % lista.length]);
     }
 
-    this.imageModalTitle.textContent = titulo ||
-        (window.Idiomas ? window.Idiomas.t('foto.titulo') : 'Fotografia 360º');
-    this.imageFrame.innerHTML = '<iframe src="/image360.html?src=' + encodeURIComponent(caminho) +
-        '" style="width: 100%; height: 100%; border: none; background: #000; display: block;" allow="xr-spatial-tracking; fullscreen" allowfullscreen></iframe>';
+    palco.modal.style.display = 'flex';
+    this.medirPalco(palco);
 
-    this.imageModal.style.display = 'flex';
-    setTimeout(() => {
-        this.imageModal.style.opacity = '1';
-        this.imageModalContent.style.transform = 'scale(1)';
-    }, 10);
+    // Obrigar o navegador a refazer as contas antes de mandar assentar,
+    // senão a janela nasce já no sítio e não se vê entrada nenhuma.
+    void palco.modal.offsetWidth;
+    palco.modal.style.opacity = '1';
+    palco.meio.classList.add('aberta');
 
     const gsplat = this.app.root.findByName('gsplat-scene');
     if (gsplat) gsplat.enabled = false;
 };
+
+/**
+ * Enche uma das janelas dos lados com uma paragem.
+ *
+ * Da fotografia mostra-se a própria imagem; de uma rota, o primeiro
+ * instante da versão mais leve que exista — não é para ser vista, é para
+ * se saber o que vem a seguir.
+ *
+ * @param {HTMLElement} previa - A janela do lado.
+ * @param {object} ann - A paragem a mostrar.
+ */
+AnnotationController.prototype.encherPrevia360 = function(previa, ann) {
+    if (!previa || !ann) {
+        return;
+    }
+    const nome = this.nomeDaParagem360(ann);
+    previa.querySelector('.previa-nome').textContent = nome;
+    previa.title = nome;
+
+    const filme = previa.querySelector('.previa-janela video');
+    const foto = previa.querySelector('.previa-janela img');
+
+    if (ann.isImage) {
+        filme.style.display = 'none';
+        filme.removeAttribute('src');
+        foto.style.display = '';
+        if (foto.getAttribute('src') !== ann.imagePath) {
+            foto.setAttribute('src', ann.imagePath);
+        }
+        return;
+    }
+
+    foto.style.display = 'none';
+    foto.removeAttribute('src');
+    filme.style.display = '';
+
+    const fontes = fontesDeVideo(this.videoDaRota360(ann));
+    const leve = fontes['480p'] || fontes['720p'] || Object.values(fontes)[0];
+    if (!leve) {
+        return;
+    }
+    // O "#t=0.001" pede ao navegador a imagem do primeiro instante, senão
+    // a janela ficava preta.
+    const desejado = leve + '#t=0.001';
+    if (filme.getAttribute('src') !== desejado) {
+        filme.setAttribute('src', desejado);
+        filme.load();
+    }
+};
+
+/**
+ * Mede a barra dos comandos que vive dentro da janela da paragem.
+ *
+ * A barra é desenhada na outra página, e a altura dela muda com o tamanho
+ * do ecrã e com o que a paragem é — uma fotografia tem menos botões do
+ * que uma rota. Sem esta medida, a imagem 360º ficaria mais baixa do que
+ * a dos testemunhos: a barra roubava-lhe o espaço em vez de vir a seguir.
+ */
+AnnotationController.prototype.medirComandos360 = function() {
+    const palco = this.palco360;
+    if (!palco) {
+        return;
+    }
+    const janela = palco.moldura.querySelector('iframe');
+    let barra = null;
+    try {
+        barra = janela && janela.contentDocument &&
+            janela.contentDocument.querySelector('.video-controls');
+    } catch (e) { /* outra origem: fica a altura de omissão */ }
+    if (barra && barra.offsetHeight > 0) {
+        palco.modal.style.setProperty('--altura-controlos', barra.offsetHeight + 'px');
+    }
+    this.medirPalco(palco);
+};
+
+/**
+ * Fecha o palco das paragens e devolve o bairro a quem estava a ver.
+ */
+AnnotationController.prototype.fecharPalco360 = function() {
+    const palco = this.palco360;
+    if (!palco) {
+        return;
+    }
+    const overlay = avisarQueOBairroVolta();
+    if (this.paragem360) {
+        this.marcarComoUltima(this.idDaAnotacao(this.paragem360));
+    }
+
+    palco.modal.style.opacity = '0';
+    palco.meio.classList.remove('aberta');
+    setTimeout(() => {
+        palco.modal.style.display = 'none';
+        palco.moldura.innerHTML = '';
+        const gsplat = this.app.root.findByName('gsplat-scene');
+        if (gsplat) gsplat.enabled = true;
+        arrumarAvisoDoBairro(overlay);
+    }, 300);
+};
+
 
 AnnotationController.prototype.setupModal = function() {
     this.modal = document.createElement('div');
@@ -1164,7 +1553,14 @@ AnnotationController.prototype.setupModal = function() {
 
     videoWrapper.appendChild(this.videoPlayer);
     videoWrapper.appendChild(bigPlayBtn);
-    videoWrapper.appendChild(controls);
+
+    // A imagem e a barra dos comandos, uma peça só. É esta peça que vai a
+    // ecrã inteiro, para os comandos irem com ela.
+    const moldura = document.createElement('div');
+    moldura.className = 'moldura-do-player';
+    moldura.appendChild(videoWrapper);
+    moldura.appendChild(controls);
+    this.barraDeComandos = controls;
 
     // O palco: o testemunho a dar ao meio, e uma janela do anterior e do
     // seguinte de cada lado, para se ver quem vem a caminho.
@@ -1189,6 +1585,10 @@ AnnotationController.prototype.setupModal = function() {
         filme.crossOrigin = 'anonymous';
         janela.appendChild(filme);
         previa.appendChild(janela);
+
+        const rodape = document.createElement('div');
+        rodape.className = 'previa-rodape';
+        previa.appendChild(rodape);
 
 
 
@@ -1221,7 +1621,7 @@ AnnotationController.prototype.setupModal = function() {
     this.setaDireita = criarSeta('direita', '9 18 15 12 9 6', 1);
 
     content.appendChild(header);
-    content.appendChild(videoWrapper);
+    content.appendChild(moldura);
 
     // As três janelas vivem numa tira, e é a tira que desliza quando se
     // muda de testemunho. Ela é mais larga do que o ecrã de propósito: as
@@ -1232,6 +1632,17 @@ AnnotationController.prototype.setupModal = function() {
     carrossel.appendChild(content);
     carrossel.appendChild(this.previaDireita);
     this.carrossel = carrossel;
+    // O palco dos testemunhos, arrumado como o das paragens 360º: é o
+    // mesmo desenho, e por isso as passagens são feitas pelo mesmo sítio.
+    this.palcoDosTestemunhos = {
+        modal: this.modal,
+        tira: carrossel,
+        meio: content,
+        esquerda: this.previaEsquerda,
+        direita: this.previaDireita,
+        barra: controls,
+        barraDoNome: header
+    };
     this.modal.appendChild(carrossel);
     this.modal.appendChild(this.setaEsquerda);
     this.modal.appendChild(this.setaDireita);
@@ -1432,41 +1843,31 @@ AnnotationController.prototype.setupModal = function() {
         }
     });
 
-    // Auto-hide controls logic
-    let controlsTimeout;
+    // A barra está fora da imagem e não tapa nada, por isso fica sempre
+    // à vista. O que continua a sumir-se é o rato: parado em cima do
+    // vídeo, ao fim de uns segundos sai da frente.
+    let ratoParado;
     const showControls = () => {
-        controls.classList.add('active');
         videoWrapper.classList.remove('hide-cursor');
-        clearTimeout(controlsTimeout);
-        
-        controlsTimeout = setTimeout(() => {
-            if (!this.videoPlayer.paused) {
-                controls.classList.remove('active');
-                this.qualityMenu.classList.remove('show');
-                if (videoWrapper.matches(':hover') || document.fullscreenElement) {
-                    videoWrapper.classList.add('hide-cursor');
-                }
+        clearTimeout(ratoParado);
+
+        ratoParado = setTimeout(() => {
+            if (!this.videoPlayer.paused &&
+                (videoWrapper.matches(':hover') || document.fullscreenElement)) {
+                videoWrapper.classList.add('hide-cursor');
             }
         }, 5000);
     };
 
-    const hideControlsImmediate = () => {
-        if (!this.videoPlayer.paused) {
-            controls.classList.remove('active');
-            this.qualityMenu.classList.remove('show');
-        }
+    const mostrarRato = () => {
+        clearTimeout(ratoParado);
+        videoWrapper.classList.remove('hide-cursor');
     };
 
     videoWrapper.addEventListener('mousemove', showControls);
     videoWrapper.addEventListener('click', showControls);
-    videoWrapper.addEventListener('mouseleave', hideControlsImmediate);
-    
-    // Always show controls when paused
-    this.videoPlayer.addEventListener('pause', () => {
-        clearTimeout(controlsTimeout);
-        controls.classList.add('active');
-        videoWrapper.classList.remove('hide-cursor');
-    });
+    videoWrapper.addEventListener('mouseleave', mostrarRato);
+    this.videoPlayer.addEventListener('pause', mostrarRato);
 
     settingsBtn.addEventListener('click', (e) => {
         e.stopPropagation();
@@ -1479,7 +1880,7 @@ AnnotationController.prototype.setupModal = function() {
 
     fullscreenBtn.addEventListener('click', () => {
         if (!document.fullscreenElement) {
-            videoWrapper.requestFullscreen().catch(err => console.log(err));
+            moldura.requestFullscreen().catch(err => console.log(err));
         } else {
             document.exitFullscreen();
         }
@@ -1487,7 +1888,7 @@ AnnotationController.prototype.setupModal = function() {
 
     document.addEventListener('fullscreenchange', () => {
         if (!fullscreenBtn) return;
-        if (document.fullscreenElement === videoWrapper) {
+        if (document.fullscreenElement === moldura) {
             fullscreenBtn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter"><path d="M3 9h6V3 M21 9h-6V3 M21 15h-6v6 M3 15h6v6"></path></svg>';
         } else {
             fullscreenBtn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter"><path d="M8 3H3v5m18 0V3h-5m0 18h5v-5M3 16v5h5"></path></svg>';
@@ -1495,15 +1896,7 @@ AnnotationController.prototype.setupModal = function() {
     });
 
     const closeModal = () => {
-        const overlay = document.getElementById('loading-overlay');
-        const loadingText = overlay ? overlay.querySelector('.loading-text') : null;
-        
-        if (overlay) {
-            // Make overlay appear instantly without fade-in
-            overlay.style.transition = 'none';
-            if (loadingText) loadingText.innerText = (window.Idiomas ? window.Idiomas.t('carga.restaurar') : 'A restaurar ambiente 3D…');
-            overlay.classList.remove('hidden');
-        }
+        const overlay = avisarQueOBairroVolta();
 
         if (this.videoNome) {
             this.marcarComoUltima('video-' + this.videoNome);
@@ -1553,20 +1946,8 @@ AnnotationController.prototype.setupModal = function() {
             this.videoPlayer.src = ''; 
             const gsplat = this.app.root.findByName('gsplat-scene');
             if (gsplat) gsplat.enabled = true;
-            
-            // Wait for 3D scene to re-render, then hide loading overlay
-            setTimeout(() => {
-                if (overlay) {
-                    // Restore transition so it fades out smoothly
-                    overlay.style.transition = '';
-                    overlay.classList.add('hidden');
-                    // Reset text after fade out
-                    setTimeout(() => {
-                        if (loadingText) loadingText.innerText = (window.Idiomas ? window.Idiomas.t('carga.modelo') : 'A carregar modelo 3D…');
-                    }, 800);
-                }
-            }, 800);
-            
+
+            arrumarAvisoDoBairro(overlay);
         }, 300);
     };
 
@@ -1578,7 +1959,7 @@ AnnotationController.prototype.setupModal = function() {
     // Com o ecrã a mudar de tamanho, as três janelas têm de voltar a
     // ficar do mesmo feitio.
     window.addEventListener('resize', () => {
-        if (this.modal.style.display !== 'none') this.medirPalco();
+        if (this.modal.style.display !== 'none') this.medirPalco(this.palcoDosTestemunhos);
     });
 
     // O fecho do modal fica à mão para o aviso do próximo testemunho o
@@ -1604,13 +1985,28 @@ AnnotationController.prototype.setupModal = function() {
  * assenta um pouco acima ou abaixo do sítio onde a do meio começa — e
  * vê-se o salto. A conta é feita na própria janela, e não escrita à mão.
  */
-AnnotationController.prototype.medirPalco = function() {
-    if (!this.modalContent || !this.modal) {
+AnnotationController.prototype.medirPalco = function(palco) {
+    if (!palco || !palco.modal || !palco.meio) {
         return;
     }
-    const altura = this.modalContent.offsetHeight;
+    // Primeiro a barra dos comandos, que é o rodapé que as janelas dos
+    // lados vão copiar; depois a janela inteira. Nas paragens 360º não há
+    // barra nenhuma a medir: os comandos vivem dentro da janela.
+    if (palco.barra) {
+        const barra = palco.barra.offsetHeight;
+        if (barra > 0) {
+            palco.modal.style.setProperty('--altura-controlos', barra + 'px');
+        }
+    }
+    if (palco.barraDoNome) {
+        const nome = palco.barraDoNome.offsetHeight;
+        if (nome > 0) {
+            palco.modal.style.setProperty('--altura-barra-nome', nome + 'px');
+        }
+    }
+    const altura = palco.meio.offsetHeight;
     if (altura > 0) {
-        this.modal.style.setProperty('--altura-janela', altura + 'px');
+        palco.modal.style.setProperty('--altura-janela', altura + 'px');
     }
 };
 
@@ -1827,8 +2223,9 @@ AnnotationController.prototype.esconderProximo = function() {
  * @param {number} [sentido] - -1 para o anterior, 1 para o seguinte.
  */
 AnnotationController.prototype.openVideoModal = function(nome, title, sentido) {
+    const palco = this.palcoDosTestemunhos;
     const jaAberta = this.modal.style.display !== 'none';
-    if (jaAberta && sentido && !this.aDeslizar) {
+    if (jaAberta && sentido && !palco.aDeslizar) {
         let oldCenterFrame = null;
         if (this.videoPlayer.readyState >= 2 && this.videoPlayer.videoWidth) {
             try {
@@ -1840,7 +2237,7 @@ AnnotationController.prototype.openVideoModal = function(nome, title, sentido) {
                 oldCenterFrame = canvas.toDataURL();
             } catch(e) {}
         }
-        this.deslizar(sentido, () => this.abrirTestemunho(nome, title, sentido, oldCenterFrame));
+        this.deslizarPalco(palco, sentido, () => this.abrirTestemunho(nome, title, sentido, oldCenterFrame));
         return;
     }
     this.abrirTestemunho(nome, title);
@@ -1849,22 +2246,25 @@ AnnotationController.prototype.openVideoModal = function(nome, title, sentido) {
 /**
  * A passagem de uma janela para a outra, como um diapositivo empurrado.
  *
+ * Serve os dois palcos: o dos testemunhos e o das paragens 360º.
+ *
+ * @param {object} palco - A tira, a janela do meio e as dos lados.
  * @param {number} sentido - -1 para a esquerda, 1 para a direita.
  * @param {Function} trocar - O que fazer no instante em que se troca.
  */
-AnnotationController.prototype.deslizar = function(sentido, trocar) {
-    const tira = this.carrossel;
-    const entra = sentido > 0 ? this.previaDireita : this.previaEsquerda;
+AnnotationController.prototype.deslizarPalco = function(palco, sentido, trocar) {
+    const tira = palco.tira;
+    const entra = sentido > 0 ? palco.direita : palco.esquerda;
     if (!tira || !entra) {
         trocar();
         return;
     }
 
-    this.aDeslizar = true;
+    palco.aDeslizar = true;
 
     // O passo é medido no próprio palco, e não escrito à mão: assim
     // acompanha o tamanho do ecrã sem ninguém lhe tocar.
-    const largura = this.modalContent.offsetWidth;
+    const largura = palco.meio.offsetWidth;
     const espaco = parseFloat(getComputedStyle(tira).gap) || 0;
     const passo = largura + espaco;
 
@@ -1886,7 +2286,7 @@ AnnotationController.prototype.deslizar = function(sentido, trocar) {
 
         void tira.offsetWidth;
         tira.classList.remove('sem-passagem');
-        this.aDeslizar = false;
+        palco.aDeslizar = false;
     }, demora);
 };
 
@@ -1937,7 +2337,7 @@ AnnotationController.prototype.abrirTestemunho = function(nome, title, sentido, 
     this.atualizarPalco(nome, sentido, oldCenterFrame);
 
     this.modal.style.display = 'flex';
-    this.medirPalco();
+    this.medirPalco(this.palcoDosTestemunhos);
 
     // Só com o player já visível é que se sabe o tamanho que vai ter, e a
     // escolha da versão depende disso. Ler a altura obriga o navegador a
