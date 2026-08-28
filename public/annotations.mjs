@@ -366,7 +366,9 @@ AnnotationController.prototype.initialize = function() {
            meio: mudar uma destas linhas muda o palco todo. ---- */
         #video-modal {
             --janela-largura: min(62vw, 1000px);
-            --janela-espaco: 24px;
+            /* O intervalo entre janelas tem de dar para a seta caber lá
+               dentro com folga. */
+            --janela-espaco: 76px;
             --previa-escala: 0.78;
             --previa-opacidade: 0.5;
             --passagem: 0.45s cubic-bezier(0.25, 0.9, 0.3, 1);
@@ -381,6 +383,45 @@ AnnotationController.prototype.initialize = function() {
             will-change: transform;
         }
 
+        /* A cruz, na ponta do ecrã. */
+        .fechar-do-palco {
+            position: absolute;
+            top: 18px;
+            right: 18px;
+            z-index: 2200;
+        }
+
+        /* As setas, só o bico e sem cabo, pousadas no intervalo entre a
+           janela do meio e a de cada lado. O sítio sai da conta das mesmas
+           medidas do palco, e não de números à parte. */
+        .seta-do-palco {
+            position: absolute;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 2150;
+            width: 44px;
+            height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+            border: none;
+            background: transparent;
+            color: rgba(255, 255, 255, 0.55);
+            cursor: pointer;
+            transition: color var(--passagem), transform var(--passagem);
+        }
+        .seta-do-palco:hover {
+            color: #ffffff;
+            transform: translate(-50%, -50%) scale(1.18);
+        }
+        .seta-do-palco.esquerda {
+            left: calc(50% - var(--janela-largura) / 2 - var(--janela-espaco) / 2);
+        }
+        .seta-do-palco.direita {
+            left: calc(50% + var(--janela-largura) / 2 + var(--janela-espaco) / 2);
+        }
+
         .janela-do-palco {
             flex: 0 0 auto;
             width: var(--janela-largura);
@@ -393,7 +434,12 @@ AnnotationController.prototype.initialize = function() {
             padding: 0;
             font-family: inherit;
             cursor: pointer;
-            display: block;
+            /* A altura é a mesma da janela do meio, medida nela: senão a
+               janela que desliza para o centro assentava um pouco acima ou
+               abaixo do sítio onde a do meio começa. */
+            height: var(--altura-janela, auto);
+            display: flex;
+            flex-direction: column;
             text-align: left;
             transform: scale(var(--previa-escala));
             opacity: var(--previa-opacidade);
@@ -430,7 +476,8 @@ AnnotationController.prototype.initialize = function() {
 
         .previa-janela {
             position: relative;
-            aspect-ratio: 16 / 9;
+            flex: 1 1 auto;
+            min-height: 0;
             background: #000;
             overflow: hidden;
         }
@@ -439,21 +486,6 @@ AnnotationController.prototype.initialize = function() {
             height: 100%;
             object-fit: cover;
             pointer-events: none;
-        }
-
-        /* As setas são só o bico, sem cabo. */
-        .previa-seta {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            color: rgba(255, 255, 255, 0.9);
-            pointer-events: none;
-            transition: transform var(--passagem);
-            filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.8));
-        }
-        .previa:hover .previa-seta {
-            transform: translate(-50%, -50%) scale(1.15);
         }
 
         /* A barra de baixo é só o desenho da que a janela grande tem: dá à
@@ -910,7 +942,10 @@ AnnotationController.prototype.setupModal = function() {
     this.modalTitle.style.fontWeight = '600';
     this.modalTitle.style.fontSize = '1.1rem';
     
+    // A cruz de fechar vive na ponta do ecrã, e não em cima do tocador:
+    // fechar a janela é sair dali, não é mexer no vídeo.
     const closeBtn = document.createElement('button');
+    closeBtn.className = 'fechar-do-palco';
     closeBtn.innerHTML = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>';
     closeBtn.style.background = 'none';
     closeBtn.style.border = 'none';
@@ -933,7 +968,6 @@ AnnotationController.prototype.setupModal = function() {
     });
     
     header.appendChild(this.modalTitle);
-    header.appendChild(closeBtn);
 
     // Custom Video Player UI
     const videoWrapper = document.createElement('div');
@@ -1132,7 +1166,7 @@ AnnotationController.prototype.setupModal = function() {
 
     // O palco: o testemunho a dar ao meio, e uma janela do anterior e do
     // seguinte de cada lado, para se ver quem vem a caminho.
-    const criarPrevia = (lado, bico, sentido) => {
+    const criarPrevia = (lado, sentido) => {
         const previa = document.createElement('button');
         previa.type = 'button';
         previa.className = 'janela-do-palco previa ' + lado;
@@ -1152,10 +1186,6 @@ AnnotationController.prototype.setupModal = function() {
         filme.preload = 'metadata';
         filme.crossOrigin = 'anonymous';
         janela.appendChild(filme);
-        const seta = document.createElement('div');
-        seta.className = 'previa-seta';
-        seta.innerHTML = '<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter"><polyline points="' + bico + '"></polyline></svg>';
-        janela.appendChild(seta);
         previa.appendChild(janela);
 
         // O desenho da barra dos controlos, sem botões a fingir.
@@ -1172,8 +1202,25 @@ AnnotationController.prototype.setupModal = function() {
         return previa;
     };
 
-    this.previaEsquerda = criarPrevia('esquerda', '15 18 9 12 15 6', -1);
-    this.previaDireita = criarPrevia('direita', '9 18 15 12 9 6', 1);
+    this.previaEsquerda = criarPrevia('esquerda', -1);
+    this.previaDireita = criarPrevia('direita', 1);
+
+    // As setas vivem no intervalo entre as janelas, e não por cima delas.
+    const criarSeta = (lado, bico, sentido) => {
+        const seta = document.createElement('button');
+        seta.type = 'button';
+        seta.className = 'seta-do-palco ' + lado;
+        seta.innerHTML = '<svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter"><polyline points="' + bico + '"></polyline></svg>';
+        seta.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const vizinha = sentido < 0 ? this.previaEsquerda : this.previaDireita;
+            const ann = this.annotations.find(a => a.video === vizinha.dataset.video);
+            if (ann) this.openVideoModal(ann.video, ann.label, sentido);
+        });
+        return seta;
+    };
+    this.setaEsquerda = criarSeta('esquerda', '15 18 9 12 15 6', -1);
+    this.setaDireita = criarSeta('direita', '9 18 15 12 9 6', 1);
 
     content.appendChild(header);
     content.appendChild(videoWrapper);
@@ -1188,6 +1235,9 @@ AnnotationController.prototype.setupModal = function() {
     carrossel.appendChild(this.previaDireita);
     this.carrossel = carrossel;
     this.modal.appendChild(carrossel);
+    this.modal.appendChild(this.setaEsquerda);
+    this.modal.appendChild(this.setaDireita);
+    this.modal.appendChild(closeBtn);
     document.body.appendChild(this.modal);
 
     // --- Player Logic ---
@@ -1494,6 +1544,12 @@ AnnotationController.prototype.setupModal = function() {
         if (e.target === this.modal) closeModal();
     });
 
+    // Com o ecrã a mudar de tamanho, as três janelas têm de voltar a
+    // ficar do mesmo feitio.
+    window.addEventListener('resize', () => {
+        if (this.modal.style.display !== 'none') this.medirPalco();
+    });
+
     // O fecho do modal fica à mão para o aviso do próximo testemunho o
     // poder usar.
     this.fecharModal = closeModal;
@@ -1508,6 +1564,23 @@ AnnotationController.prototype.setupModal = function() {
 
     // Store references for the openVideoModal function
     this.videoSources = null;
+};
+
+/**
+ * Mede a janela do meio e passa a altura dela às dos lados.
+ *
+ * As três têm de ter o mesmo feitio, senão a que desliza para o centro
+ * assenta um pouco acima ou abaixo do sítio onde a do meio começa — e
+ * vê-se o salto. A conta é feita na própria janela, e não escrita à mão.
+ */
+AnnotationController.prototype.medirPalco = function() {
+    if (!this.modalContent || !this.modal) {
+        return;
+    }
+    const altura = this.modalContent.offsetHeight;
+    if (altura > 0) {
+        this.modal.style.setProperty('--altura-janela', altura + 'px');
+    }
 };
 
 /**
@@ -1745,6 +1818,7 @@ AnnotationController.prototype.abrirTestemunho = function(nome, title) {
     this.atualizarPalco(nome);
 
     this.modal.style.display = 'flex';
+    this.medirPalco();
 
     // Só com o player já visível é que se sabe o tamanho que vai ter, e a
     // escolha da versão depende disso. Ler a altura obriga o navegador a
