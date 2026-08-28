@@ -506,9 +506,27 @@ AnnotationController.prototype.initialize = function() {
             transform: translate(-50%, -50%) scale(1.18);
         }
         /* Já não há nada de novo para o lado de lá: a seta dá lugar a uma
-           cruz, e quem carregar nela sai para o mapa. */
+           cruz, e quem carregar nela sai para o mapa.
+
+           O apagado é dado à cruz inteira, e não à cor de cada traço: com
+           a cor meio transparente, o sítio onde os dois se cruzam ficava
+           mais claro do que o resto e a cruz parecia dois riscos pousados
+           um por cima do outro. */
         .seta-do-palco.a-sair {
-            color: rgba(255, 255, 255, 0.7);
+            color: #ffffff;
+            opacity: 0.55;
+            transition: opacity var(--passagem), transform var(--passagem);
+        }
+        .seta-do-palco.a-sair:hover {
+            opacity: 1;
+        }
+
+        /* Com a colecção toda vista não há nada de novo à espera do lado
+           direito, e a janela que espreitava de lá sai da frente. Fica a
+           ocupar o lugar dela, para a janela do meio não escorregar do
+           centro do ecrã. */
+        .previa.sem-seguinte {
+            visibility: hidden;
         }
         .seta-do-palco.esquerda {
             left: calc(50% - var(--janela-largura) / 2 - var(--janela-espaco) / 2);
@@ -878,7 +896,7 @@ function desenhoDaSeta(bico) {
 
 // A cruz é desenhada do mesmo tamanho do bico de uma seta, para tomar o
 // lugar dela sem o canto do ecrã dar um salto.
-const DESENHO_DA_CRUZ = '<svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter"><line x1="7" y1="7" x2="17" y2="17"></line><line x1="17" y1="7" x2="7" y2="17"></line></svg>';
+const DESENHO_DA_CRUZ = '<svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter"><path d="M7 7L17 17M17 7L7 17"></path></svg>';
 
 /**
  * As paragens 360º, pela ordem em que estão na lista das anotações.
@@ -1152,12 +1170,15 @@ AnnotationController.prototype.mostrarParagem360 = function(ann) {
         .addEventListener('load', () => this.medirComandos360());
 
     const lista = this.paragens360();
-    this.arrumarSetaDaDireita(palco.setaDireita, this.coleccaoVista(lista));
+    const tudoVisto = this.coleccaoVista(lista);
+    this.arrumarLadoDireito(palco.setaDireita, palco.direita, tudoVisto);
 
     const onde = lista.indexOf(ann);
     if (onde >= 0 && lista.length > 1) {
         this.encherPrevia360(palco.esquerda, lista[(onde - 1 + lista.length) % lista.length]);
-        this.encherPrevia360(palco.direita, lista[(onde + 1) % lista.length]);
+        if (!tudoVisto) {
+            this.encherPrevia360(palco.direita, lista[(onde + 1) % lista.length]);
+        }
     }
 
     palco.modal.style.display = 'flex';
@@ -1998,7 +2019,8 @@ AnnotationController.prototype.medirPalco = function(palco) {
  */
 AnnotationController.prototype.atualizarPalco = function(nomeAtual, sentido, oldCenterFrame) {
     const lista = this.annotations.filter(ann => !ann.is360 && ann.video);
-    this.arrumarSetaDaDireita(this.setaDireita, this.coleccaoVista(lista));
+    const tudoVisto = this.coleccaoVista(lista);
+    this.arrumarLadoDireito(this.setaDireita, this.previaDireita, tudoVisto);
 
     const onde = lista.findIndex(ann => ann.video === nomeAtual);
     if (onde < 0 || lista.length < 2) {
@@ -2018,7 +2040,11 @@ AnnotationController.prototype.atualizarPalco = function(nomeAtual, sentido, old
     }
 
     this.encherPrevia(this.previaEsquerda, annEsq, posterEsq);
-    this.encherPrevia(this.previaDireita, annDir, posterDir);
+    // Com a colecção toda vista, a janela da direita está fora da vista:
+    // não vale a pena ir buscar o vídeo que ela mostraria.
+    if (!tudoVisto) {
+        this.encherPrevia(this.previaDireita, annDir, posterDir);
+    }
 };
 
 /**
@@ -2139,16 +2165,21 @@ AnnotationController.prototype.coleccaoVista = function(lista) {
 };
 
 /**
- * Arruma a seta da direita conforme já se tenha visto tudo ou não.
+ * Arruma o lado direito do palco conforme já se tenha visto tudo ou não.
  *
- * Enquanto houver coisa nova para o lado de lá, é uma seta e leva lá. Uma
- * vez visto tudo o que ali havia, passa a ser uma cruz: continuar a andar
- * em roda não leva a lado nenhum, e o que faz sentido é sair para o mapa.
+ * Enquanto houver coisa nova para o lado de lá, está lá a seta e a janela
+ * que deixa espreitar o que vem a seguir. Uma vez visto tudo o que ali
+ * havia, as duas saem: continuar a andar em roda não leva a lado nenhum,
+ * e o que faz sentido é sair para o mapa. Fica só a cruz.
  *
  * @param {HTMLElement} seta - A seta da direita.
+ * @param {HTMLElement} previa - A janela do lado direito.
  * @param {boolean} tudoVisto - Se a colecção já foi vista até ao fim.
  */
-AnnotationController.prototype.arrumarSetaDaDireita = function(seta, tudoVisto) {
+AnnotationController.prototype.arrumarLadoDireito = function(seta, previa, tudoVisto) {
+    if (previa) {
+        previa.classList.toggle('sem-seguinte', tudoVisto);
+    }
     if (!seta) {
         return;
     }
