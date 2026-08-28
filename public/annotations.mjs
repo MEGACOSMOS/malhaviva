@@ -353,29 +353,42 @@ AnnotationController.prototype.initialize = function() {
             color: #ffffff;
         }
 
-        /* ---- O palco: o testemunho a dar ao meio, e uma janela do
-           anterior e do seguinte de cada lado, como nos tocadores de há uns
-           anos. As duas janelas dos lados são vídeos parados no primeiro
-           instante, apagados, que acendem quando o rato passa por cima. ---- */
-        .palco-videos {
-            display: flex;
-            align-items: stretch;
-            position: relative;
-            background: #05050a;
+        /* ---- O palco: o testemunho a dar ao meio, na sua janela grande, e
+           o anterior e o seguinte em janelas mais pequenas, de cada lado e
+           por fora dela. São vídeos parados no primeiro instante, apagados,
+           que acendem quando o rato passa por cima. ---- */
+        #video-modal {
+            gap: 18px;
+            /* Uma folga nas bordas para as janelas dos lados não ficarem
+               encostadas ao vidro do ecrã. */
+            padding: 0 18px;
         }
-        .palco-videos .custom-video-container {
+        /* A janela do meio leva o espaço todo que puder até mil pontos; as
+           dos lados ficam com o que sobrar. Quando o ecrã aperta, encolhem
+           todas, mas a do meio continua a ser de longe a maior. */
+        .janela-do-player {
             flex: 1 1 auto;
+            width: 90%;
+            max-width: 1000px;
             min-width: 0;
         }
         .previa {
             position: relative;
-            flex: 0 0 13%;
+            /* Mais pequenas do que a principal, mas não miniaturas: encolhem
+               com o ecrã e nunca comem espaço à janela do meio. */
+            flex: 0 1 clamp(90px, 22vw, 360px);
+            align-self: center;
+            aspect-ratio: 16 / 9;
             padding: 0;
-            border: none;
+            border: 1px solid rgba(255, 255, 255, 0.1);
             background: #08080f;
             cursor: pointer;
             overflow: hidden;
             font-family: inherit;
+            transition: border-color 0.25s ease;
+        }
+        .previa:hover {
+            border-color: rgba(255, 255, 255, 0.3);
         }
         .previa video {
             width: 100%;
@@ -421,23 +434,26 @@ AnnotationController.prototype.initialize = function() {
             transform: translate(-50%, -50%) scale(1.15);
         }
 
-        /* Num ecrã estreito as janelas dos lados não cabem: fica só a seta,
-           pousada na borda da imagem. */
-        @media (max-width: 700px) {
+        /* Num ecrã estreito não há lugar de sobra ao lado do player: as
+           janelas encostam-se às bordas da imagem e ficam só com a seta. */
+        @media (max-width: 900px) {
+            #video-modal {
+                gap: 0;
+            }
             .previa {
                 position: absolute;
-                top: 0;
-                bottom: 0;
+                top: 50%;
+                transform: translateY(-50%);
                 width: 46px;
+                height: 92px;
                 flex: none;
-                background: linear-gradient(to right, rgba(5,5,10,0.75), transparent);
-                z-index: 3;
+                aspect-ratio: auto;
+                border: none;
+                background: rgba(5, 5, 10, 0.55);
+                z-index: 2100;
             }
-            .previa.direita {
-                right: 0;
-                background: linear-gradient(to left, rgba(5,5,10,0.75), transparent);
-            }
-            .previa.esquerda { left: 0; }
+            .previa.esquerda { left: 4px; }
+            .previa.direita { right: 4px; }
             .previa video,
             .previa-nome { display: none; }
         }
@@ -793,9 +809,8 @@ AnnotationController.prototype.setupModal = function() {
     this.modal.style.transition = 'opacity 0.3s ease';
 
     const content = document.createElement('div');
+    content.className = 'janela-do-player';
     content.style.position = 'relative';
-    content.style.width = '90%';
-    content.style.maxWidth = '1000px';
     content.style.backgroundColor = '#05050a';
     content.style.borderRadius = '0';
     content.style.overflow = 'hidden';
@@ -1068,15 +1083,15 @@ AnnotationController.prototype.setupModal = function() {
     this.previaEsquerda = criarPrevia('esquerda', '15 18 9 12 15 6');
     this.previaDireita = criarPrevia('direita', '9 18 15 12 9 6');
 
-    const palco = document.createElement('div');
-    palco.className = 'palco-videos';
-    palco.appendChild(this.previaEsquerda);
-    palco.appendChild(videoWrapper);
-    palco.appendChild(this.previaDireita);
-
     content.appendChild(header);
-    content.appendChild(palco);
+    content.appendChild(videoWrapper);
+
+    // As janelas dos lados ficam por fora do player, e não dentro dele: a
+    // do meio fica com o tamanho todo que sempre teve, e as outras duas
+    // pousam ao lado, no escuro.
+    this.modal.appendChild(this.previaEsquerda);
     this.modal.appendChild(content);
+    this.modal.appendChild(this.previaDireita);
     document.body.appendChild(this.modal);
 
     // --- Player Logic ---
