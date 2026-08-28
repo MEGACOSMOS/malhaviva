@@ -1560,7 +1560,6 @@ AnnotationController.prototype.setupModal = function() {
     moldura.className = 'moldura-do-player';
     moldura.appendChild(videoWrapper);
     moldura.appendChild(controls);
-    this.barraDeComandos = controls;
 
     // O palco: o testemunho a dar ao meio, e uma janela do anterior e do
     // seguinte de cada lado, para se ver quem vem a caminho.
@@ -1631,7 +1630,6 @@ AnnotationController.prototype.setupModal = function() {
     carrossel.appendChild(this.previaEsquerda);
     carrossel.appendChild(content);
     carrossel.appendChild(this.previaDireita);
-    this.carrossel = carrossel;
     // O palco dos testemunhos, arrumado como o das paragens 360º: é o
     // mesmo desenho, e por isso as passagens são feitas pelo mesmo sítio.
     this.palcoDosTestemunhos = {
