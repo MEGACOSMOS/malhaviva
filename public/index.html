@@ -1927,21 +1927,27 @@ void modifySplatColor(vec3 center, inout vec4 color) {
 
             // --- Tecto de manchas no ecrã ---
             //
-            // O bairro guardado tem dezasseis milhões de manchas. Sem um
-            // tecto, o nível Alto acabava a desenhar e a ordenar as catorze
-            // milhões do detalhe fino de uma vez, o mapa inteiro, mesmo o
-            // que está longe de mais para se distinguir.
+            // O bairro guardado tem dezasseis milhões de manchas. Com um
+            // tecto, o motor aperta ou alarga sozinho as distâncias a que
+            // cada nível de detalhe começa, para o que está no ecrã caber
+            // sempre nessa conta.
             //
-            // Com tecto, o motor aperta ou alarga sozinho as distâncias a
-            // que cada nível começa, para o que está no ecrã caber sempre
-            // nesta conta. É o mesmo tecto que o visualizador do SuperSplat
-            // usa para o mesmo modelo.
+            // No Médio e no Baixo há tecto, e apertado: são máquinas em que
+            // a folga é pouca e mais vale gastá-la a andar sem solavancos.
+            //
+            // No Alto não há: quem chega a este nível tem máquina para isso,
+            // e o que se quer aqui é o bairro com todo o pormenor que ele
+            // tiver, sem ninguém a decidir por ele. A folga para isso veio
+            // de travar a densidade do ecrã a um ponto por ponto, que era
+            // onde se estava mesmo a perder o tempo — quatro vezes os pixeis
+            // num ecrã Retina custam muito mais do que estas manchas.
             //
             // Fica aqui, e não depois de a página abrir, para o bairro nunca
             // chegar a pedir mais detalhe do que aquele que vai desenhar.
             if (app.scene && app.scene.gsplat) {
-                const tecto = isHigh ? 4000000 : (isMed ? 1200000 : 500000);
-                app.scene.gsplat.splatBudget = tecto;
+                if (!isHigh) {
+                    app.scene.gsplat.splatBudget = isMed ? 1200000 : 500000;
+                }
             }
 
             // Junta os tracinhos das rotas num punhado de desenhos. Este
