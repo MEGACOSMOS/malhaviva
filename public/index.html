@@ -884,6 +884,16 @@
                         </svg>
                     </button>
                     <div class="settings-title">Menu de Desenvolvedor</div>
+
+                    <!-- O que o comando de jogo está a mandar, neste
+                         instante. Só aparece com um comando ligado, e serve
+                         para uma coisa: quando alguma coisa não responde,
+                         ver aqui se o problema é do comando ou nosso. -->
+                    <div id="comando-espia" class="ceu-afinacao" style="display: none;">
+                        <span>Comando <b id="comando-espia-nome">—</b></span>
+                        <div class="ceu-nota" id="comando-espia-eixos" style="font-variant-numeric: tabular-nums;">—</div>
+                    </div>
+
                     <div class="settings-options">
                         <label class="settings-radio">
                             <input type="checkbox" id="dev-trail-edit">
@@ -1313,7 +1323,7 @@
                 const controls = camera && camera.script && camera.script.cameraControls;
                 if (!splat) return;
 
-        import { ligarComando } from './comando.mjs?v=1';
+        import { ligarComando } from './comando.mjs?v=2';
                 // O modelo divide-se numa árvore de zonas; as pontas dessa
                 // árvore dizem onde há terreno de facto.
                 const zonas = [];
@@ -2012,6 +2022,7 @@ void modifySplatColor(vec3 center, inout vec4 color) {
             // resto do site — marcadores, menus, vídeo — passa a andar
             // também. Quem não tiver comando ligado não dá por isto.
             window.comando = ligarComando(app);
+            espiarOComando(app);
 
                 botaoVR.addEventListener('click', async () => {
                     if (modoVR.activo) {
@@ -2025,6 +2036,61 @@ void modifySplatColor(vec3 center, inout vec4 color) {
                     }
                 });
             });
+
+            /**
+             * Mostra, no menu de desenvolvedor, o que o comando de jogo
+             * está a mandar.
+             *
+             * Um comando é uma caixa fechada: quando alguma coisa não
+             * responde, não se sabe se ele não está a dizer nada ou se
+             * somos nós que não o estamos a ouvir. Isto responde a essa
+             * pergunta — e a mais uma, calada, que é se os sticks dele
+             * estão onde nós julgamos: o padrão manda o esquerdo nos dois
+             * primeiros números e o direito nos dois seguintes, mas há
+             * comandos que os arrumam de outra maneira.
+             *
+             * @param {object} app - A aplicação 3D.
+             */
+            function espiarOComando(app) {
+                const caixa = document.getElementById('comando-espia');
+                const nome = document.getElementById('comando-espia-nome');
+                const eixos = document.getElementById('comando-espia-eixos');
+                if (!caixa) return;
+
+                // Os números saem sempre com a mesma largura, com sinal
+                // ou sem ele, para não andarem a saltar de sítio enquanto
+                // a mão mexe no stick.
+                const arredondar = (n) => n.toFixed(2).padStart(5, ' ');
+
+                app.on('update', () => {
+                    const todos = navigator.getGamepads ? navigator.getGamepads() : [];
+                    let pad = null;
+                    for (let i = 0; i < todos.length; i++) {
+                        if (todos[i] && todos[i].connected) { pad = todos[i]; break; }
+                    }
+                    if (!pad) {
+                        if (caixa.style.display !== 'none') caixa.style.display = 'none';
+                        return;
+                    }
+                    caixa.style.display = '';
+                    nome.innerText = (pad.mapping === 'standard' ? 'padrão' : 'FORA DO PADRÃO') +
+                        ', ' + pad.axes.length + ' eixos, ' + pad.buttons.length + ' botões';
+                    const carregados = [];
+                    for (let i = 0; i < pad.buttons.length; i++) {
+                        const b = pad.buttons[i];
+                        if ((typeof b === 'object' ? b.pressed : b > 0.12)) carregados.push(i);
+                    }
+                    // Duas linhas: os quatro eixos em cima, os botões que
+                    // estiverem carregados em baixo. As crases são de
+                    // propósito — são o que deixa o texto mudar de linha
+                    // sem ter de se escrever a mudança por símbolos.
+                    const sobra = pad.axes.length > 4 ? '   +' + (pad.axes.length - 4) : '';
+                    eixos.innerText =
+                        `esq ${arredondar(pad.axes[0] || 0)} ${arredondar(pad.axes[1] || 0)}` +
+                        `   dir ${arredondar(pad.axes[2] || 0)} ${arredondar(pad.axes[3] || 0)}${sobra}` +
+                        `\nbotões ${carregados.length ? carregados.join(' ') : '—'}`;
+                });
+            }
 
             /**
              * Liga os comandos do céu do menu de desenvolvedor.

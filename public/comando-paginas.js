@@ -13,13 +13,16 @@
  * menu de línguas, a cruz anda por ele; se houver uma porta de saída, o B
  * sai por ela.
  *
- * Nas paragens 360º há duas páginas a ouvir o mesmo comando ao mesmo
- * tempo: esta, por dentro da janela, e a do mapa, por fora. A divisão está
- * combinada — fechar a janela e passar à paragem seguinte é lá fora, que é
- * quem sabe onde elas estão na fila; virar a cabeça e mandar no filme é cá
- * dentro. Como nenhum dos dois usa os botões do outro, não há choque. É
- * também por isso que o B só sai daqui onde não há janela por fora que o
- * apanhe — quer dizer, na folha dos controlos.
+ * Uma paragem 360º aberta a partir do mapa é uma página destas dentro de
+ * uma moldura, e aí há uma coisa que o navegador não deixa: um comando só
+ * aparece a uma página depois de alguém lhe ter tocado com a página à
+ * frente, e ninguém toca dentro da moldura. Perguntar por comandos lá
+ * dentro dá sempre vazio, por muito que haja um ligado.
+ *
+ * Por isso, quando esta página está dentro de uma moldura, quem manda é o
+ * mapa: ele vê o comando, e chama cá para dentro o que for preciso pelas
+ * duas portas abaixo. Aberta sozinha, no seu próprio endereço, esta página
+ * volta a olhar pelo comando por si mesma.
  *
  * Isto é um ficheiro comum, e não um módulo, para ser lido pelas três
  * páginas do mesmo modo que o ficheiro das línguas.
@@ -224,6 +227,25 @@
     }
 
     /**
+     * Vira a cabeça da vista 360º.
+     *
+     * @param {number} x - Quanto para o lado, de menos um a um.
+     * @param {number} y - Quanto para cima e para baixo.
+     * @param {number} dt - O tempo desde a imagem anterior, em segundos.
+     */
+    function virarACabeca(x, y, dt) {
+        if (Math.abs(x) <= FOLGA_DO_STICK && Math.abs(y) <= FOLGA_DO_STICK) return;
+        var peca = olhar();
+        if (!peca) return;
+        var angulo = GRAUS_POR_SEGUNDO * Math.PI / 180 * dt;
+        if (Math.abs(x) > FOLGA_DO_STICK) peca.yawObject.rotation.y -= x * angulo;
+        if (Math.abs(y) > FOLGA_DO_STICK) {
+            peca.pitchObject.rotation.x = Math.max(-LIMITE_VERTICAL, Math.min(
+                LIMITE_VERTICAL, peca.pitchObject.rotation.x - y * angulo));
+        }
+    }
+
+    /**
      * Uma imagem de trabalho.
      *
      * @param {number} agora - O instante, em milésimos de segundo.
@@ -240,21 +262,7 @@
         var menu = menuAberto();
 
         // --- Virar a cabeça, com o stick direito ---
-        if (!menu) {
-            var x = pad.axes[2] || 0;
-            var y = pad.axes[3] || 0;
-            if (Math.abs(x) > FOLGA_DO_STICK || Math.abs(y) > FOLGA_DO_STICK) {
-                var peca = olhar();
-                if (peca) {
-                    var angulo = GRAUS_POR_SEGUNDO * Math.PI / 180 * dt;
-                    if (Math.abs(x) > FOLGA_DO_STICK) peca.yawObject.rotation.y -= x * angulo;
-                    if (Math.abs(y) > FOLGA_DO_STICK) {
-                        peca.pitchObject.rotation.x = Math.max(-LIMITE_VERTICAL, Math.min(
-                            LIMITE_VERTICAL, peca.pitchObject.rotation.x - y * angulo));
-                    }
-                }
-            }
-        }
+        if (!menu) virarACabeca(pad.axes[2] || 0, pad.axes[3] || 0, dt);
 
         var esquerdo = pad.axes[0] || 0;
         var vertical = pad.axes[1] || 0;
@@ -312,6 +320,43 @@
         for (var i = 0; i < pad.buttons.length; i++) antes[i] = carregado(pad, i);
     }
 
+    /**
+     * As duas portas por onde o mapa manda cá para dentro.
+     *
+     * Virar a cabeça é preciso a cada imagem, com o quanto e o quanto tempo;
+     * carregar num botão é de uma vez. São as duas únicas coisas que de
+     * fora se não alcançam de outra maneira.
+     */
+    window.comandoDaJanela = {
+        /**
+         * Vira a cabeça, como se o stick direito estivesse a ser empurrado.
+         *
+         * @param {number} x - Quanto para o lado, de menos um a um.
+         * @param {number} y - Quanto para cima e para baixo.
+         * @param {number} dt - O tempo desde a imagem anterior, em segundos.
+         */
+        olhar: function (x, y, dt) {
+            virarACabeca(x, y, dt);
+        },
+        /**
+         * Carrega num botão desta página.
+         *
+         * @param {string} nome - O nome do botão, sem o cardinal.
+         * @returns {boolean} Se chegou a carregar.
+         */
+        botao: function (nome) {
+            if (nome === 'tocar') {
+                return carregarEm('#play-pause-btn') || carregarEm('#play-btn-initial');
+            }
+            return carregarEm('#' + nome);
+        }
+    };
+
     vestirOFoco();
-    window.requestAnimationFrame(passo);
+
+    // Dentro de uma moldura não vale a pena andar a perguntar por comandos:
+    // o navegador nunca os mostra aqui. Quem trata disso é o mapa, lá fora.
+    if (window.parent === window) {
+        window.requestAnimationFrame(passo);
+    }
 })();

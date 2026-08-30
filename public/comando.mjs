@@ -508,6 +508,44 @@ export function ligarComando(app) {
             if (paraDireita) mandarTecla('ArrowRight');
             if (paraCima) mandarTecla('ArrowUp');
             if (paraBaixo) mandarTecla('ArrowDown');
+            return;
+        }
+
+        // Uma paragem 360º é uma página dentro de uma moldura, e o
+        // navegador não mostra o comando a quem está lá dentro: um comando
+        // só aparece a uma página depois de alguém lhe ter tocado, e
+        // ninguém toca dentro da moldura. Quem o vê somos nós, aqui fora —
+        // por isso é daqui que se lhe vira a cabeça e se lhe carrega nos
+        // botões, por duas portas que a página de dentro deixa abertas.
+        const dentro = janelaDoPalco(janela);
+        if (!dentro) return;
+
+        dentro.olhar(pad.axes[2] || 0, pad.axes[3] || 0, dt);
+        if (bateuAgora(pad, BOTAO.A)) dentro.botao('tocar');
+        if (bateuAgora(pad, BOTAO.X)) dentro.botao('volume-btn');
+        if (bateuAgora(pad, BOTAO.Y)) dentro.botao('fullscreen-btn');
+        if (paraEsquerda) dentro.botao('recuar-btn');
+        if (paraDireita) dentro.botao('avancar-btn');
+    }
+
+    /**
+     * As portas da página que está dentro da moldura da paragem 360º.
+     *
+     * A página é nossa e vem do mesmo sítio, por isso pode ser alcançada;
+     * mas pode ainda não ter acabado de nascer, e nesse caso não há portas
+     * nenhumas — espera-se pela imagem seguinte.
+     *
+     * @param {Element} palco - A janela do palco.
+     * @returns {object|null} As portas, ou nada.
+     */
+    function janelaDoPalco(palco) {
+        const moldura = palco && palco.querySelector('iframe');
+        if (!moldura) return null;
+        try {
+            const porta = moldura.contentWindow && moldura.contentWindow.comandoDaJanela;
+            return (porta && typeof porta.olhar === 'function') ? porta : null;
+        } catch (e) {
+            return null;
         }
     }
 
