@@ -934,6 +934,13 @@
                             <input type="range" id="ceu-altura" min="-100" max="200" step="0.1" value="0">
                         </label>
 
+                        <label class="ceu-afinacao" id="ceu-fundo-linha">
+                            <span>Fundo da cúpula
+                                <input type="text" inputmode="decimal" id="ceu-fundo-valor" class="ceu-numero" value="400">
+                            </span>
+                            <input type="range" id="ceu-fundo" min="0" max="1500" step="0.1" value="400">
+                        </label>
+
                         <label class="ceu-afinacao" id="ceu-x-linha">
                             <span>Deslocar em X
                                 <input type="text" inputmode="decimal" id="ceu-x-valor" class="ceu-numero" value="0">
@@ -1257,7 +1264,7 @@
         } from 'playcanvas';
         import { ligarLodNoCentroDaVista } from './lod-foco.mjs?v=4';
         import { criarModoVR } from './vr.mjs?v=3';
-        import { ligarCeu } from './ceu.mjs?v=11';
+        import { ligarCeu } from './ceu.mjs?v=12';
 
         // Resolução da grelha usada para medir o mapa, em metros.
         const RESOLUCAO_LIMITE = 4;
@@ -2002,7 +2009,7 @@ void modifySplatColor(vec3 center, inout vec4 color) {
                 const tamanho = document.getElementById('ceu-tamanho');
                 const altura = document.getElementById('ceu-altura');
                 const deslocX = document.getElementById('ceu-x');
-                const deslocY = document.getElementById('ceu-y');
+                const fundo = document.getElementById('ceu-fundo');
                 const deslocZ = document.getElementById('ceu-z');
                 const reiniciar = document.getElementById('ceu-reiniciar');
                 if (!ligado) return;
@@ -2010,7 +2017,7 @@ void modifySplatColor(vec3 center, inout vec4 color) {
                 const tamanhoEscrito = document.getElementById('ceu-tamanho-valor');
                 const alturaEscrita = document.getElementById('ceu-altura-valor');
                 const xEscrito = document.getElementById('ceu-x-valor');
-                const yEscrito = document.getElementById('ceu-y-valor');
+                const fundoEscrito = document.getElementById('ceu-fundo-valor');
                 const zEscrito = document.getElementById('ceu-z-valor');
 
                 /**
@@ -2035,12 +2042,12 @@ void modifySplatColor(vec3 center, inout vec4 color) {
                     acomodar(tamanho, d.tamanhoDaCupula);
                     acomodar(altura, d.alturaDaCupula);
                     acomodar(deslocX, d.deslocamentoX);
-                    acomodar(deslocY, d.deslocamentoY);
+                    acomodar(fundo, d.fundoDaCupula);
                     acomodar(deslocZ, d.deslocamentoZ);
                     tamanho.value = d.tamanhoDaCupula;
                     altura.value = d.alturaDaCupula;
                     deslocX.value = d.deslocamentoX;
-                    deslocY.value = d.deslocamentoY;
+                    fundo.value = d.fundoDaCupula;
                     deslocZ.value = d.deslocamentoZ;
                     document.getElementById('ceu-rotacao-valor').innerText = Math.round(d.rotacao) + '°';
                     document.getElementById('ceu-brilho-valor').innerText = Number(d.brilho).toFixed(2);
@@ -2049,11 +2056,11 @@ void modifySplatColor(vec3 center, inout vec4 color) {
                     if (document.activeElement !== tamanhoEscrito) tamanhoEscrito.value = arredondar(d.tamanhoDaCupula);
                     if (document.activeElement !== alturaEscrita) alturaEscrita.value = arredondar(d.alturaDaCupula);
                     if (document.activeElement !== xEscrito) xEscrito.value = arredondar(d.deslocamentoX);
-                    if (document.activeElement !== yEscrito) yEscrito.value = arredondar(d.deslocamentoY);
+                    if (document.activeElement !== fundoEscrito) fundoEscrito.value = arredondar(d.fundoDaCupula);
                     if (document.activeElement !== zEscrito) zEscrito.value = arredondar(d.deslocamentoZ);
                     // As medidas da cúpula só interessam com a cúpula ligada.
                     const visivel = d.cupula ? '' : 'none';
-                    ['ceu-tamanho-linha', 'ceu-altura-linha', 'ceu-x-linha', 'ceu-y-linha', 'ceu-z-linha']
+                    ['ceu-tamanho-linha', 'ceu-altura-linha', 'ceu-fundo-linha', 'ceu-x-linha', 'ceu-z-linha']
                         .forEach(id => { document.getElementById(id).style.display = visivel; });
                 };
 
@@ -2103,12 +2110,12 @@ void modifySplatColor(vec3 center, inout vec4 color) {
                 tamanho.addEventListener('input', () => { ceu.afinar('tamanhoDaCupula', parseFloat(tamanho.value)); mostrar(); });
                 altura.addEventListener('input', () => { ceu.afinar('alturaDaCupula', parseFloat(altura.value)); mostrar(); });
                 deslocX.addEventListener('input', () => { ceu.afinar('deslocamentoX', parseFloat(deslocX.value)); mostrar(); });
-                deslocY.addEventListener('input', () => { ceu.afinar('deslocamentoY', parseFloat(deslocY.value)); mostrar(); });
+                fundo.addEventListener('input', () => { ceu.afinar('fundoDaCupula', parseFloat(fundo.value)); mostrar(); });
                 deslocZ.addEventListener('input', () => { ceu.afinar('deslocamentoZ', parseFloat(deslocZ.value)); mostrar(); });
                 ligarEscrita(tamanhoEscrito, tamanho, 'tamanhoDaCupula');
                 ligarEscrita(alturaEscrita, altura, 'alturaDaCupula');
                 ligarEscrita(xEscrito, deslocX, 'deslocamentoX');
-                ligarEscrita(yEscrito, deslocY, 'deslocamentoY');
+                ligarEscrita(fundoEscrito, fundo, 'fundoDaCupula');
                 ligarEscrita(zEscrito, deslocZ, 'deslocamentoZ');
                 reiniciar.addEventListener('click', () => { ceu.reiniciar(); mostrar(); mostrarFotografia(); });
 
