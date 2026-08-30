@@ -327,6 +327,40 @@
      * carregar num botão é de uma vez. São as duas únicas coisas que de
      * fora se não alcançam de outra maneira.
      */
+    // --- As setas a olhar, com o Alt em baixo ---
+    // É a mesma combinação do mapa, e pela mesma razão: aqui as setas
+    // sozinhas já servem para saltar no filme e mexer no som, e o Alt é o
+    // que as põe a virar a cabeça sem tirar nada a ninguém.
+    (function ligarAsSetas() {
+        var SETAS = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
+        var carregadas = {};
+        var ultimo = 0;
+
+        window.addEventListener('keydown', function (e) {
+            if (!e.altKey || !SETAS[e.key]) return;
+            carregadas[e.key] = true;
+            e.preventDefault();
+        });
+        window.addEventListener('keyup', function (e) {
+            if (SETAS[e.key]) delete carregadas[e.key];
+            if (!e.altKey) carregadas = {};
+        });
+        window.addEventListener('blur', function () { carregadas = {}; });
+
+        (function volta(agora) {
+            window.requestAnimationFrame(volta);
+            var dt = ultimo ? Math.min((agora - ultimo) / 1000, 0.1) : 0;
+            ultimo = agora;
+            var x = 0, y = 0;
+            for (var tecla in carregadas) {
+                if (!SETAS[tecla]) continue;
+                x += SETAS[tecla][0];
+                y += SETAS[tecla][1];
+            }
+            if (x || y) virarACabeca(x, y, dt);
+        })(0);
+    })();
+
     window.comandoDaJanela = {
         /**
          * Vira a cabeça, como se o stick direito estivesse a ser empurrado.

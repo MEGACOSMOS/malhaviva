@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Controlos do Mapa — Malha Viva</title>
     <meta name="description" content="Guia dos controlos do visualizador 3D Malha Viva. Navega como num mapa: arrasta com o rato, aproxima com o scroll, roda com Ctrl.">
-    <script src="/idiomas.js?v=4"></script>
+    <script src="/idiomas.js?v=5"></script>
     <script src="/comando-paginas.js?v=2" defer></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -421,16 +421,16 @@
             <div class="section-header">
                 <h2 class="section-title" data-i18n="ctl.teclado">Teclado</h2>
             </div>
+            <p class="section-desc" data-i18n="ctl.tecladoDesc">Dá para tudo sem rato. As setas andam, como o WASD; com o Alt em baixo passam a olhar à volta, que é a única coisa que antes só o rato fazia.</p>
+            <div class="grupo-titulo" data-i18n="ctl.gpNoBairro">No bairro</div>
             <div class="controls-table">
                 <div class="control-row">
                     <span class="control-action" data-i18n="ctl.avancarRecuar">Avançar / Recuar</span>
                     <div class="control-keys">
                         <span class="kbd accent">W</span>
-                        <span class="key-separator">/</span>
                         <span class="kbd accent">S</span>
                         <span class="key-separator" data-i18n="ctl.ou">ou</span>
                         <span class="kbd">↑</span>
-                        <span class="key-separator">/</span>
                         <span class="kbd">↓</span>
                     </div>
                 </div>
@@ -438,26 +438,177 @@
                     <span class="control-action" data-i18n="ctl.lateralmente">Mover lateralmente</span>
                     <div class="control-keys">
                         <span class="kbd accent">A</span>
-                        <span class="key-separator">/</span>
                         <span class="kbd accent">D</span>
                         <span class="key-separator" data-i18n="ctl.ou">ou</span>
                         <span class="kbd">←</span>
-                        <span class="key-separator">/</span>
                         <span class="kbd">→</span>
+                    </div>
+                </div>
+                <div class="control-row">
+                    <span class="control-action" data-i18n="ctl.olhar">Olhar à volta</span>
+                    <div class="control-keys">
+                        <span class="kbd accent" data-i18n="ctl.tecAltSetas">Alt + setas</span>
                     </div>
                 </div>
                 <div class="control-row">
                     <span class="control-action" data-i18n="ctl.movimentoRapido">Movimento rápido</span>
                     <div class="control-keys">
-                        <span class="kbd">Shift</span>
-                        <span class="key-separator" data-i18n="ctl.teclaMovimento">+ tecla de movimento</span>
+                        <span class="kbd accent">Shift</span>
                     </div>
                 </div>
                 <div class="control-row">
                     <span class="control-action" data-i18n="ctl.movimentoLento">Movimento lento</span>
                     <div class="control-keys">
-                        <span class="kbd">Ctrl</span>
-                        <span class="key-separator" data-i18n="ctl.teclaMovimento">+ tecla de movimento</span>
+                        <span class="kbd accent">Ctrl</span>
+                    </div>
+                </div>
+                <div class="control-row">
+                    <span class="control-action" data-i18n="ctl.gpEscolher">Escolher um marcador</span>
+                    <div class="control-keys">
+                        <span class="kbd accent">Tab</span>
+                        <span class="key-separator" data-i18n="ctl.ou">ou</span>
+                        <span class="kbd">Shift + Tab</span>
+                    </div>
+                </div>
+                <div class="control-row">
+                    <span class="control-action" data-i18n="ctl.gpAbrir">Abrir o marcador</span>
+                    <div class="control-keys">
+                        <span class="kbd accent">Enter</span>
+                    </div>
+                </div>
+                <div class="control-row">
+                    <span class="control-action" data-i18n="ctl.gpLargar">Largar a escolha</span>
+                    <div class="control-keys">
+                        <span class="kbd accent">Esc</span>
+                    </div>
+                </div>
+            </div>
+            <div class="grupo-titulo" data-i18n="ctl.gpNosMenus">Nos menus</div>
+            <div class="controls-table">
+                <div class="control-row">
+                    <span class="control-action" data-i18n="ctl.gpSubirDescer">Subir e descer</span>
+                    <div class="control-keys">
+                        <span class="kbd accent">↑ ↓</span>
+                    </div>
+                </div>
+                <div class="control-row">
+                    <span class="control-action" data-i18n="ctl.gpCursor">Mexer num cursor</span>
+                    <div class="control-keys">
+                        <span class="kbd accent">← →</span>
+                    </div>
+                </div>
+                <div class="control-row">
+                    <span class="control-action" data-i18n="ctl.gpConfirmar">Escolher</span>
+                    <div class="control-keys">
+                        <span class="kbd accent">Enter</span>
+                    </div>
+                </div>
+                <div class="control-row">
+                    <span class="control-action" data-i18n="ctl.gpFechar">Fechar</span>
+                    <div class="control-keys">
+                        <span class="kbd accent">Esc</span>
+                    </div>
+                </div>
+            </div>
+            <div class="grupo-titulo" data-i18n="ctl.gpNoVideo">Na janela do vídeo</div>
+            <div class="controls-table">
+                <div class="control-row">
+                    <span class="control-action" data-i18n="ctl.gpTocar">Tocar / pausar</span>
+                    <div class="control-keys">
+                        <span class="kbd accent" data-i18n="ctl.tecEspaco">Espaço</span>
+                        <span class="key-separator" data-i18n="ctl.ou">ou</span>
+                        <span class="kbd">K</span>
+                    </div>
+                </div>
+                <div class="control-row">
+                    <span class="control-action" data-i18n="ctl.gpSaltar">Saltar 5 segundos</span>
+                    <div class="control-keys">
+                        <span class="kbd accent">← →</span>
+                    </div>
+                </div>
+                <div class="control-row">
+                    <span class="control-action" data-i18n="ctl.gpVolume">Volume</span>
+                    <div class="control-keys">
+                        <span class="kbd accent">↑ ↓</span>
+                    </div>
+                </div>
+                <div class="control-row">
+                    <span class="control-action" data-i18n="ctl.gpSilenciar">Silenciar</span>
+                    <div class="control-keys">
+                        <span class="kbd accent">M</span>
+                    </div>
+                </div>
+                <div class="control-row">
+                    <span class="control-action" data-i18n="ctl.gpEcra">Ecrã inteiro</span>
+                    <div class="control-keys">
+                        <span class="kbd accent">F</span>
+                    </div>
+                </div>
+                <div class="control-row">
+                    <span class="control-action" data-i18n="ctl.gpAnteriorSeguinte">Testemunho anterior / seguinte</span>
+                    <div class="control-keys">
+                        <span class="kbd accent">Page Up</span>
+                        <span class="kbd accent">Page Down</span>
+                    </div>
+                </div>
+                <div class="control-row">
+                    <span class="control-action" data-i18n="ctl.gpFechar">Fechar</span>
+                    <div class="control-keys">
+                        <span class="kbd accent">Esc</span>
+                    </div>
+                </div>
+            </div>
+            <div class="grupo-titulo" data-i18n="ctl.gpNas360">Nas paragens 360º</div>
+            <div class="controls-table">
+                <div class="control-row">
+                    <span class="control-action" data-i18n="ctl.gpVirar">Virar a cabeça</span>
+                    <div class="control-keys">
+                        <span class="kbd accent" data-i18n="ctl.tecAltSetas">Alt + setas</span>
+                    </div>
+                </div>
+                <div class="control-row">
+                    <span class="control-action" data-i18n="ctl.gpTocar">Tocar / pausar</span>
+                    <div class="control-keys">
+                        <span class="kbd accent" data-i18n="ctl.tecEspaco">Espaço</span>
+                        <span class="key-separator" data-i18n="ctl.ou">ou</span>
+                        <span class="kbd">K</span>
+                    </div>
+                </div>
+                <div class="control-row">
+                    <span class="control-action" data-i18n="ctl.gpSaltar">Saltar 5 segundos</span>
+                    <div class="control-keys">
+                        <span class="kbd accent">← →</span>
+                    </div>
+                </div>
+                <div class="control-row">
+                    <span class="control-action" data-i18n="ctl.gpSilenciar">Silenciar</span>
+                    <div class="control-keys">
+                        <span class="kbd accent">M</span>
+                    </div>
+                </div>
+                <div class="control-row">
+                    <span class="control-action" data-i18n="ctl.tecEndireitar">Endireitar a vista</span>
+                    <div class="control-keys">
+                        <span class="kbd accent">R</span>
+                    </div>
+                </div>
+                <div class="control-row">
+                    <span class="control-action" data-i18n="ctl.gpEcra">Ecrã inteiro</span>
+                    <div class="control-keys">
+                        <span class="kbd accent">F</span>
+                    </div>
+                </div>
+                <div class="control-row">
+                    <span class="control-action" data-i18n="ctl.gpParagem">Paragem anterior / seguinte</span>
+                    <div class="control-keys">
+                        <span class="kbd accent">Page Up</span>
+                        <span class="kbd accent">Page Down</span>
+                    </div>
+                </div>
+                <div class="control-row">
+                    <span class="control-action" data-i18n="ctl.gpFechar">Fechar</span>
+                    <div class="control-keys">
+                        <span class="kbd accent">Esc</span>
                     </div>
                 </div>
             </div>

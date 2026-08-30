@@ -11,7 +11,7 @@
 
     <!-- As línguas do site. Fica antes de tudo o resto para o texto
          nascer já na língua certa, sem piscar em português primeiro. -->
-    <script src="/idiomas.js?v=4"></script>
+    <script src="/idiomas.js?v=5"></script>
 
     <!-- A tinta do cabeçalho segue o brilho do bairro por trás dela. -->
     <script src="/contraste.js?v=1"></script>
@@ -1196,9 +1196,9 @@
 
         <!-- Assets -->
         <pc-asset id="splat-scene" src="splat/lod-meta.json" type="gsplat"></pc-asset>
-        <pc-asset id="camera-controls-script" src="./camera-controls.mjs?v=18" type="script"></pc-asset>
+        <pc-asset id="camera-controls-script" src="./camera-controls.mjs?v=20" type="script"></pc-asset>
         <pc-asset id="camera-coords-script" src="./coords.mjs?v=7" type="script"></pc-asset>
-        <pc-asset id="annotations-script" src="./annotations.mjs?v=35" type="script"></pc-asset>
+        <pc-asset id="annotations-script" src="./annotations.mjs?v=36" type="script"></pc-asset>
         <pc-asset id="trail-script" src="./trail.mjs?v=21" type="script"></pc-asset>
 
         <!-- Scene -->
@@ -1323,7 +1323,7 @@
                 const controls = camera && camera.script && camera.script.cameraControls;
                 if (!splat) return;
 
-        import { ligarComando } from './comando.mjs?v=2';
+        import { ligarComando } from './comando.mjs?v=5';
                 // O modelo divide-se numa árvore de zonas; as pontas dessa
                 // árvore dizem onde há terreno de facto.
                 const zonas = [];

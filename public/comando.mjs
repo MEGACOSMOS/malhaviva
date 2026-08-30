@@ -1,10 +1,15 @@
 /**
- * O comando de jogo.
+ * O comando de jogo, e as teclas que faltavam ao teclado.
  *
  * O mapa já andava com os dois sticks — isso vem do próprio motor. O que
  * faltava era o resto do site: escolher um marcador e abri-lo, mexer nos
  * menus, mandar no vídeo, fechar o que está aberto. Sem isso, quem pegasse
  * num comando andava pelo bairro mas tinha de largá-lo para tudo o resto.
+ *
+ * O teclado tinha o mesmo buraco, e por isso entra pela mesma porta: as
+ * teclas mandam nas mesmas acções que os botões, acendem os mesmos sinais
+ * e obedecem ao mesmo sítio onde se está. Duas maquinarias para o mesmo
+ * trabalho seriam dois sítios onde corrigir cada engano.
  *
  * A ideia aqui é não duplicar nada. O site já sabe responder a cliques e a
  * teclas — a janela do vídeo, por exemplo, já anda com o espaço e com as
@@ -120,6 +125,10 @@ export function ligarComando(app) {
     // de um menu e volta a ele encontrar a linha onde estava.
     const foco = { mapa: 0, menu: 0 };
     let ultimoContexto = '';
+    // As setas que estão carregadas com o Alt em baixo. Servem para virar a
+    // cabeça nas paragens 360º, e têm de ser sabidas a cada imagem: uma
+    // tecla carregada é uma coisa que dura, não um aviso que passa.
+    const setasDeOlhar = { ArrowLeft: false, ArrowRight: false, ArrowUp: false, ArrowDown: false };
     let alvoAceso = null;
     let camaraDesligadaPorNos = false;
     let velocidadeDeBase = null;
@@ -434,22 +443,31 @@ export function ligarComando(app) {
      * @param {number} dt - O tempo desde a imagem anterior.
      */
     function passo(dt) {
-        const pad = comandoLigado();
-        if (!pad) {
-            if (alvoAceso) acender(null);
-            deixarAndarOMapa(true);
-            return;
-        }
-
+        // Isto vale haja comando ou não: com uma janela ou um menu aberto,
+        // o mapa não anda. Não é só pelos sticks — as setas do teclado
+        // fazem o mesmo, e sem isto andavam a passear a câmara por trás da
+        // janela do vídeo enquanto se escolhia uma linha do menu.
         const onde = contexto();
         deixarAndarOMapa(onde === 'mapa');
-        if (onde === 'mapa') afinarVelocidade(pad);
 
         // Ao mudar de sítio, o foco antigo já não quer dizer nada.
         if (onde !== ultimoContexto) {
             ultimoContexto = onde;
             acender(null);
         }
+
+        const pad = comandoLigado();
+        if (!pad) {
+            antes = [];
+            // Sem comando ligado, as setas com o Alt continuam a ter de
+            // virar a cabeça de quem está numa paragem 360º.
+            if (onde === 'palco360' && (olharX() || olharY())) {
+                const so = janelaDoPalco(document.getElementById('modal-360'));
+                if (so) so.olhar(olharX(), olharY(), dt);
+            }
+            return;
+        }
+        if (onde === 'mapa') afinarVelocidade(pad);
 
         // O stick esquerdo faz as vezes da cruz onde ele não serve para
         // andar — nos menus e nas janelas.
@@ -520,7 +538,11 @@ export function ligarComando(app) {
         const dentro = janelaDoPalco(janela);
         if (!dentro) return;
 
-        dentro.olhar(pad.axes[2] || 0, pad.axes[3] || 0, dt);
+        dentro.olhar(
+            (pad.axes[2] || 0) + olharX(),
+            (pad.axes[3] || 0) + olharY(),
+            dt
+        );
         if (bateuAgora(pad, BOTAO.A)) dentro.botao('tocar');
         if (bateuAgora(pad, BOTAO.X)) dentro.botao('volume-btn');
         if (bateuAgora(pad, BOTAO.Y)) dentro.botao('fullscreen-btn');
@@ -572,6 +594,140 @@ export function ligarComando(app) {
 
     app.on('update', aCadaImagem);
 
+    /**
+     * Quanto as setas com Alt estão a pedir para o lado, de menos um a um.
+     *
+     * @returns {number} O pedido.
+     */
+    function olharX() {
+        return (setasDeOlhar.ArrowRight ? 1 : 0) - (setasDeOlhar.ArrowLeft ? 1 : 0);
+    }
+
+    /**
+     * Quanto as setas com Alt estão a pedir para cima e para baixo.
+     *
+     * O sinal é o do stick de um comando — para cima é negativo — porque
+     * é pelo mesmo cano que isto vai sair.
+     *
+     * @returns {number} O pedido.
+     */
+    function olharY() {
+        return (setasDeOlhar.ArrowDown ? 1 : 0) - (setasDeOlhar.ArrowUp ? 1 : 0);
+    }
+
+    /**
+     * Toma nota das setas que estão carregadas com o Alt em baixo.
+     *
+     * @param {KeyboardEvent} e - A tecla.
+     * @param {boolean} carregada - Se está a ser carregada ou largada.
+     */
+    function anotarSetaDeOlhar(e, carregada) {
+        if (!(e.key in setasDeOlhar)) return;
+        setasDeOlhar[e.key] = carregada && e.altKey;
+        if (!e.altKey) {
+            for (const k in setasDeOlhar) setasDeOlhar[k] = false;
+        }
+    }
+
+    /**
+     * As teclas que faltavam ao site.
+     *
+     * O teclado já andava pelo bairro — isso é da câmara — e já mandava no
+     * vídeo. O que não fazia era alcançar o resto: escolher um marcador,
+     * andar por um menu, fechar o que estivesse aberto. Como o comando de
+     * jogo já sabe fazer tudo isso, o teclado entra pela mesma porta em vez
+     * de levar uma maquinaria sua: as mesmas acções, os mesmos sinais à
+     * vista, um sítio só para as corrigir.
+     *
+     * @param {KeyboardEvent} e - A tecla carregada.
+     */
+    function aoCarregarNumaTecla(e) {
+        anotarSetaDeOlhar(e, true);
+        if (e.ctrlKey || e.metaKey) return;
+        // Quem está a escrever num campo está a escrever, não a comandar.
+        const alvo = e.target;
+        if (alvo && /^(?:INPUT|TEXTAREA|SELECT)$/.test(alvo.tagName) &&
+            !(alvo.type === 'radio' || alvo.type === 'checkbox')) {
+            return;
+        }
+
+        const onde = contexto();
+
+        // O Escape fecha o que estiver aberto, de fora para dentro, que é
+        // o que ele faz em qualquer sítio.
+        if (e.key === 'Escape') {
+            if (onde === 'video' || onde === 'palco360') {
+                const janela = document.getElementById(
+                    onde === 'video' ? 'video-modal' : 'modal-360');
+                if (carregarEm('.fechar-palco-btn', janela)) e.preventDefault();
+                return;
+            }
+            const menu = menuAberto();
+            if (menu) {
+                menu.classList.remove('open');
+                acender(null);
+                e.preventDefault();
+                return;
+            }
+            if (alvoAceso) {
+                acender(null);
+                e.preventDefault();
+            }
+            return;
+        }
+
+        // O anterior e o seguinte do palco, seja o dos testemunhos ou o das
+        // paragens. São as mesmas setas dos lados em que o comando carrega.
+        if (onde === 'video' || onde === 'palco360') {
+            const janela = document.getElementById(
+                onde === 'video' ? 'video-modal' : 'modal-360');
+            if (e.key === 'PageUp') {
+                if (carregarEm('.seta-do-palco.esquerda', janela)) e.preventDefault();
+            } else if (e.key === 'PageDown') {
+                if (carregarEm('.seta-do-palco.direita', janela)) e.preventDefault();
+            }
+            return;
+        }
+
+        // Dentro de um menu, as setas andam pelas linhas e o Enter escolhe.
+        if (onde === 'menu') {
+            const menu = menuAberto();
+            if (e.key === 'ArrowUp') { andarComOFoco(onde, -1); e.preventDefault(); }
+            else if (e.key === 'ArrowDown') { andarComOFoco(onde, 1); e.preventDefault(); }
+            else if (e.key === 'Enter' || e.key === ' ') {
+                if (alvoAceso) { activar(alvoAceso); e.preventDefault(); }
+            } else if (alvoAceso && alvoAceso.tagName === 'INPUT' && alvoAceso.type === 'range') {
+                if (e.key === 'ArrowLeft') { empurrarCursor(alvoAceso, -1); e.preventDefault(); }
+                else if (e.key === 'ArrowRight') { empurrarCursor(alvoAceso, 1); e.preventDefault(); }
+            }
+            if (menu) { /* o menu continua aberto */ }
+            return;
+        }
+
+        // No bairro: o Tab passa de marcador em marcador e o Enter abre o
+        // que estiver escolhido. Os marcadores não são botões — são pontos
+        // desenhados por cima do mapa — e por isso o Tab do próprio
+        // navegador não lhes chega.
+        if (e.key === 'Tab' && marcadoresAVista().length) {
+            andarComOFoco('mapa', e.shiftKey ? -1 : 1);
+            e.preventDefault();
+            return;
+        }
+        if ((e.key === 'Enter' || e.key === ' ') && alvoAceso &&
+            alvoAceso.classList.contains('annotation-marker')) {
+            activar(alvoAceso);
+            e.preventDefault();
+        }
+    }
+
+    const aoLargarUmaTecla = (e) => anotarSetaDeOlhar(e, false);
+    const aoSairDaJanela = () => {
+        for (const k in setasDeOlhar) setasDeOlhar[k] = false;
+    };
+    document.addEventListener('keydown', aoCarregarNumaTecla);
+    document.addEventListener('keyup', aoLargarUmaTecla);
+    window.addEventListener('blur', aoSairDaJanela);
+
     return {
         /** Onde o comando julga que estamos. */
         get contexto() {
@@ -584,6 +740,9 @@ export function ligarComando(app) {
         /** Desliga tudo e deixa a página como estava. */
         desligar() {
             app.off('update', aCadaImagem);
+            document.removeEventListener('keydown', aoCarregarNumaTecla);
+            document.removeEventListener('keyup', aoLargarUmaTecla);
+            window.removeEventListener('blur', aoSairDaJanela);
             acender(null);
             deixarAndarOMapa(true);
             const c = camara();

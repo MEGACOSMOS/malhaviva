@@ -29,6 +29,42 @@ import {
 const tmpV1 = new Vec3();
 const tmpV2 = new Vec3();
 
+/**
+ * Se a tecla Alt está a ser carregada.
+ *
+ * O motor conhece o Shift e o Ctrl, mas não o Alt — e é o Alt que aqui
+ * faz as setas deixarem de andar e passarem a olhar. Fica portanto por
+ * nossa conta, numa escuta só, posta à primeira vez que alguém precise
+ * dela.
+ *
+ * De caminho trava o que o navegador faria com Alt e uma seta, que é ir
+ * para a página anterior ou seguinte. Sem isso, quem tentasse olhar para
+ * a esquerda saía do bairro.
+ *
+ * @returns {boolean} Se o Alt está em baixo.
+ */
+let altEmBaixo = false;
+let altEscutado = false;
+function altCarregado() {
+    if (!altEscutado && typeof window !== 'undefined') {
+        altEscutado = true;
+        const SETAS = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'];
+        window.addEventListener('keydown', (e) => {
+            altEmBaixo = e.altKey;
+            if (e.altKey && SETAS.indexOf(e.key) >= 0) {
+                e.preventDefault();
+            }
+        });
+        window.addEventListener('keyup', (e) => {
+            altEmBaixo = e.altKey;
+        });
+        // Quem sai da janela com o Alt em baixo não o larga cá dentro: sem
+        // isto, as setas ficavam a olhar para sempre.
+        window.addEventListener('blur', () => { altEmBaixo = false; });
+    }
+    return altEmBaixo;
+}
+
 const pose = new Pose();
 
 const frame = new InputFrame({
@@ -258,6 +294,18 @@ class CameraControls extends Script {
      * @type {CameraControlsState}
      * @private
      */
+    /**
+     * O que as setas estão a pedir, somado à parte do WASD.
+     *
+     * Fica à parte porque as setas têm dois trabalhos — andar, ou olhar
+     * com o Alt em baixo — e só assim se lhes pode dar um ou outro sem
+     * partir a soma.
+     *
+     * @type {Vec3}
+     * @private
+     */
+    _setas = new Vec3();
+
     _state = {
         axis: new Vec3(),
         shift: 0,
@@ -961,11 +1009,29 @@ class CameraControls extends Script {
         applyDeadZone(leftStick, this.gamepadDeadZone.x, this.gamepadDeadZone.y);
         applyDeadZone(rightStick, this.gamepadDeadZone.x, this.gamepadDeadZone.y);
 
-        // update state
+        // Com o Alt em baixo, as setas deixam de andar: passam a olhar, e
+        // é isso que dá a volta à vista a quem não tem rato. O WASD anda
+        // na mesma, para se poder andar e olhar ao mesmo tempo.
+        const aOlhar = altCarregado() ? 1 : 0;
+
+        // As setas têm conta à parte, e não se lhes trava a soma.
+        //
+        // O motor não diz que teclas estão em baixo: diz o que mudou desde
+        // a imagem anterior — mais um ao carregar, menos um ao largar — e é
+        // somando isso que se sabe o que está a ser premido. Uma soma
+        // dessas tem de ficar sempre completa: travá-la a meio, só na
+        // metade de carregar, deixava o largar por descontar e a câmara
+        // ficava com um empurrão fantasma para sempre. Somam-se as duas,
+        // portanto, e o Alt só decide para onde é que a das setas vai.
         this._state.axis.add(tmpV1.set(
             (key[keyCode.D] - key[keyCode.A]) + (key[keyCode.RIGHT] - key[keyCode.LEFT]),
             0, // Q and E keys disabled: (key[keyCode.E] - key[keyCode.Q]),
-            (key[keyCode.W] - key[keyCode.S]) + (key[keyCode.UP] - key[keyCode.DOWN])
+            key[keyCode.W] - key[keyCode.S]
+        ));
+        this._setas.add(tmpV1.set(
+            key[keyCode.RIGHT] - key[keyCode.LEFT],
+            0,
+            key[keyCode.UP] - key[keyCode.DOWN]
         ));
         for (let i = 0; i < this._state.mouse.length; i++) {
             this._state.mouse[i] += button[i];
@@ -995,8 +1061,12 @@ class CameraControls extends Script {
 
         const { deltas } = frame;
 
-        // desktop move
-        const keyMove = this._state.axis.clone().normalize();
+        // O que anda é o WASD mais, se o Alt não estiver em baixo, as setas.
+        const keyMove = this._state.axis.clone();
+        if (!aOlhar) {
+            keyMove.add(this._setas);
+        }
+        keyMove.normalize();
         
         const panMove = screenToWorld(this._camera, mouse[0], mouse[1], this._pose.distance);
         const v = tmpV1.set(0, 0, 0); // Reuse v for rotate below
@@ -1148,6 +1218,16 @@ class CameraControls extends Script {
         // gamepad rotate
         v.set(0, 0, 0);
         const stickRotate = tmpV2.set(rightStick[0], rightStick[1], 0);
+        // As setas a olhar, com o Alt em baixo. Entram pelo mesmo sítio que
+        // o stick direito do comando, e à mesma velocidade: é a mesma
+        // volta, dada por outra mão.
+        if (aOlhar) {
+            v.set(0, 0, 0);
+            const setaOlhar = tmpV2.set(this._setas.x, -this._setas.z, 0);
+            v.add(setaOlhar.mulScalar(fly * rotateJoystickMult));
+            deltas.rotate.append([v.x, v.y, v.z]);
+        }
+
         v.add(stickRotate.mulScalar(fly * rotateJoystickMult));
         deltas.rotate.append([v.x, v.y, v.z]);
 
