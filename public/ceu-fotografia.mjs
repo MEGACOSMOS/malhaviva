@@ -29,6 +29,11 @@ export const AJUSTES_PADRAO = {
     // meio, esbate-se — serve para a paisagem deixar de competir com o
     // bairro sem ter de se desligar de vez.
     opacidade: 1,
+    // Até que distância do drone, em metros, a fotografia deixa de ter chão.
+    // Mais perto do que isto está tudo apagado; ao dobro da distância está
+    // tudo lá; pelo meio, esbate-se. A zero não se apaga nada e o chão
+    // volta todo.
+    apagarChao: 350,
     exposicao: 1,
     gama: 1,
     contraste: 0,
@@ -44,6 +49,14 @@ export const AJUSTES_PADRAO = {
 // aqui que a paisagem se esbate quando se lhe baixa a opacidade — assim,
 // a zero, o resultado é igual a não haver paisagem nenhuma.
 export const FUNDO = [5, 5, 10];
+
+// A que altura do chão a panorâmica foi tirada, em metros. É uma medida da
+// própria fotografia, e não uma afinação: serve para poder falar do chão
+// dela em metros — que é como se olha para o bairro — em vez de em graus
+// abaixo do horizonte, que é como a imagem está arrumada. Um ponto do chão
+// a tantos metros do drone cai tantos graus abaixo do horizonte quantos a
+// conta disser.
+const ALTURA_DA_VISTA = 86;
 
 export const LARGURA_RAPIDA = 1024;
 export const LARGURA_FINAL = 4096;
@@ -179,6 +192,60 @@ function suave(a, b, x) {
 }
 
 /**
+ * Apaga o chão da fotografia, esbatendo-o até ao fundo do bairro.
+ *
+ * Uma panorâmica destas cobre o mundo todo de uma vez: a linha do meio da
+ * imagem é o horizonte, a de cima é o zénite e a de baixo é o ponto mesmo
+ * debaixo do drone. Tudo o que está abaixo do meio é, portanto, chão — e
+ * quanto mais abaixo, mais perto do drone esse chão estava.
+ *
+ * O número que manda é dado em metros, que é como se olha para o bairro:
+ * dentro dessa distância o chão vai-se todo, ao dobro dela está todo lá, e
+ * pelo meio esbate-se.
+ *
+ * É esse chão que aqui se apaga, de baixo para cima, até à mesma cor de
+ * fundo a que a opacidade já esbatia a paisagem toda. Assim, sem tocar na
+ * forma da taça, o fundo dela deixa de ter o que mostrar: o que era o
+ * chão da fotografia passa a ser o fundo do bairro, e quem faz de chão
+ * passa a ser o modelo. A paisagem ao longe fica — essa está logo abaixo
+ * do horizonte, e a estas distâncias já não escorrega com a câmara.
+ *
+ * O trabalho é feito com dois traços de pincel, um deles com um gradiente,
+ * e não ponto a ponto: não custa nada mesmo na fotografia grande.
+ *
+ * @param {CanvasRenderingContext2D} pincel - O pincel da tela.
+ * @param {number} largura - Largura da tela.
+ * @param {number} altura - Altura da tela.
+ * @param {number} metros - Distância dentro da qual o chão é apagado.
+ */
+function apagarOChao(pincel, largura, altura, metros) {
+    if (!(metros > 0)) return;
+
+    const cor = `rgb(${FUNDO[0]}, ${FUNDO[1]}, ${FUNDO[2]})`;
+    // A imagem vai de noventa graus acima a noventa abaixo, de alto a
+    // baixo: cada grau vale uma fatia de cento e oitenta avos da altura.
+    // E um ponto do chão a tantos metros do drone está tantos graus abaixo
+    // do horizonte — quanto mais perto, mais fundo na imagem.
+    const linhaDe = (m) => {
+        const graus = Math.atan2(ALTURA_DA_VISTA, Math.max(m, 1e-3)) * 180 / Math.PI;
+        return (0.5 + Math.min(graus, 90) / 180) * altura;
+    };
+    const comeca = linhaDe(metros * 2);
+    const acaba = linhaDe(metros);
+
+    const gradiente = pincel.createLinearGradient(0, comeca, 0, acaba);
+    gradiente.addColorStop(0, `rgba(${FUNDO[0]}, ${FUNDO[1]}, ${FUNDO[2]}, 0)`);
+    gradiente.addColorStop(1, `rgba(${FUNDO[0]}, ${FUNDO[1]}, ${FUNDO[2]}, 1)`);
+    pincel.fillStyle = gradiente;
+    pincel.fillRect(0, comeca, largura, acaba - comeca);
+
+    if (acaba < altura) {
+        pincel.fillStyle = cor;
+        pincel.fillRect(0, acaba, largura, altura - acaba);
+    }
+}
+
+/**
  * Trata a fotografia e devolve-a pronta a virar céu.
  *
  * @param {HTMLImageElement} original - A fotografia como veio.
@@ -204,7 +271,10 @@ export function tratarFotografia(original, ajustes, largura) {
     // Sem acertos por fazer — que é o caso desde que a luz e a cor passaram
     // a vir assadas na própria imagem — fica-se por aqui, sem tocar num
     // único dos oito milhões de pontos.
-    if (neutro) return tela;
+    if (neutro) {
+        apagarOChao(pincel, largura, altura, a.apagarChao);
+        return tela;
+    }
 
     const imagem = pincel.getImageData(0, 0, largura, altura);
     const dados = imagem.data;
@@ -252,5 +322,9 @@ export function tratarFotografia(original, ajustes, largura) {
     if (algumDesfoque) desfocar(dados, largura, altura, raios);
 
     pincel.putImageData(imagem, 0, 0);
+
+    // O chão é apagado no fim, e não antes: assim não passa pela tabela de
+    // tons nem pelo desfoque, e a cor de fundo sai exactamente a que é.
+    apagarOChao(pincel, largura, altura, a.apagarChao);
     return tela;
 }
