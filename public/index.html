@@ -1164,7 +1164,16 @@
     </div>
 
     <!-- PlayCanvas Application -->
-    <pc-app id="main-app" antialias="false" max-pixel-ratio="2">
+    <!-- Um ponto desenhado por cada ponto do ecrã, e nunca mais do que
+         isso. Num ecrã de alta densidade — um Retina, um 4K — o navegador
+         diz que tem dois pontos por cada ponto de ecrã, e desenhar a essa
+         densidade é desenhar quatro vezes mais pixeis. Um bairro em manchas
+         gasta-se quase todo a pintar pixeis, por isso esses quatro vezes
+         sentem-se logo. O visualizador do SuperSplat, que corre um modelo
+         maior do que este e corre-o melhor, faz exactamente isto: trava a
+         densidade a um. Os níveis Médio e Baixo já a travavam; faltava o
+         Alto. -->
+    <pc-app id="main-app" antialias="false" max-pixel-ratio="1">
 
         <!-- Assets -->
         <pc-asset id="splat-scene" src="splat/lod-meta.json" type="gsplat"></pc-asset>
