@@ -5,7 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Controlos do Mapa — Malha Viva</title>
     <meta name="description" content="Guia dos controlos do visualizador 3D Malha Viva. Navega como num mapa: arrasta com o rato, aproxima com o scroll, roda com Ctrl.">
-    <script src="/idiomas.js?v=3"></script>
+    <script src="/idiomas.js?v=4"></script>
+    <script src="/comando-paginas.js?v=1" defer></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -261,6 +262,23 @@
             background: var(--color-bg);
             border: 1px solid var(--color-border);
             border-radius: 0;
+        /* Dentro da secção do comando há vários grupos — no bairro, nos
+           menus, na janela do vídeo — e cada um leva um título mais miúdo
+           do que o da secção. */
+        .grupo-titulo {
+            font-size: 0.75rem;
+            font-weight: 600;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: var(--color-text-muted);
+            padding: 0 20px;
+            margin: 24px 0 10px;
+        }
+
+        .grupo-titulo:first-of-type {
+            margin-top: 0;
+        }
+
             font-size: 0.75rem;
             font-weight: 600;
             font-family: var(--font-main);
@@ -480,18 +498,193 @@
             <div class="section-header">
                 <h2 class="section-title" data-i18n="ctl.gamepad">Gamepad</h2>
             </div>
-            <p class="section-desc" data-i18n="ctl.gamepadDesc">Liga um comando (Xbox, PlayStation, etc.) para andar pelo mapa sem rato.</p>
+            <p class="section-desc" data-i18n="ctl.gamepadDesc">Liga um comando (Xbox, PlayStation, etc.) e carrega num botão qualquer para o acordar. Daqui em diante dá para tudo: andar pelo bairro, abrir os testemunhos, mexer nos menus e mandar no vídeo, sem tocar no rato.</p>
+            <p class="section-desc" data-i18n="ctl.gpNomes">Os nomes dos botões são os da Xbox. Num comando da PlayStation, A é o X, B é o círculo, X é o quadrado, Y é o triângulo, Start é Options e Select é Share.</p>
+            <div class="grupo-titulo" data-i18n="ctl.gpNoBairro">No bairro</div>
             <div class="controls-table">
                 <div class="control-row">
                     <span class="control-action" data-i18n="ctl.deslocar">Deslocar</span>
                     <div class="control-keys">
-                        <span class="kbd" data-i18n="ctl.stickEsq">Stick Esquerdo</span>
+                        <span class="kbd accent" data-i18n="ctl.stickEsq">Stick esquerdo</span>
                     </div>
                 </div>
                 <div class="control-row">
                     <span class="control-action" data-i18n="ctl.rodar">Rodar e inclinar</span>
                     <div class="control-keys">
-                        <span class="kbd" data-i18n="ctl.stickDir">Stick Direito</span>
+                        <span class="kbd accent" data-i18n="ctl.stickDir">Stick direito</span>
+                    </div>
+                </div>
+                <div class="control-row">
+                    <span class="control-action" data-i18n="ctl.gpDepressa">Andar depressa</span>
+                    <div class="control-keys">
+                        <span class="kbd accent">RT</span>
+                    </div>
+                </div>
+                <div class="control-row">
+                    <span class="control-action" data-i18n="ctl.gpDevagar">Andar devagar</span>
+                    <div class="control-keys">
+                        <span class="kbd accent">LT</span>
+                    </div>
+                </div>
+                <div class="control-row">
+                    <span class="control-action" data-i18n="ctl.gpEscolher">Escolher um marcador</span>
+                    <div class="control-keys">
+                        <span class="kbd accent" data-i18n="ctl.gpCruzLados">Cruz ← →</span>
+                    </div>
+                </div>
+                <div class="control-row">
+                    <span class="control-action" data-i18n="ctl.gpAbrir">Abrir o marcador</span>
+                    <div class="control-keys">
+                        <span class="kbd accent">A</span>
+                    </div>
+                </div>
+                <div class="control-row">
+                    <span class="control-action" data-i18n="ctl.gpLargar">Largar a escolha</span>
+                    <div class="control-keys">
+                        <span class="kbd accent">B</span>
+                    </div>
+                </div>
+                <div class="control-row">
+                    <span class="control-action" data-i18n="ctl.gpRecentrar">Recentrar, no aviso de limite</span>
+                    <div class="control-keys">
+                        <span class="kbd accent">X</span>
+                    </div>
+                </div>
+                <div class="control-row">
+                    <span class="control-action" data-i18n="ctl.gpEcra">Ecrã inteiro</span>
+                    <div class="control-keys">
+                        <span class="kbd accent">Y</span>
+                    </div>
+                </div>
+                <div class="control-row">
+                    <span class="control-action" data-i18n="ctl.gpDefinicoes">Abrir as definições</span>
+                    <div class="control-keys">
+                        <span class="kbd accent">Start</span>
+                    </div>
+                </div>
+                <div class="control-row">
+                    <span class="control-action" data-i18n="ctl.gpIdioma">Abrir o idioma</span>
+                    <div class="control-keys">
+                        <span class="kbd accent">Select</span>
+                    </div>
+                </div>
+            </div>
+            <div class="grupo-titulo" data-i18n="ctl.gpNosMenus">Nos menus</div>
+            <div class="controls-table">
+                <div class="control-row">
+                    <span class="control-action" data-i18n="ctl.gpSubirDescer">Subir e descer</span>
+                    <div class="control-keys">
+                        <span class="kbd accent" data-i18n="ctl.gpCruzCima">Cruz ↑ ↓</span>
+                    </div>
+                </div>
+                <div class="control-row">
+                    <span class="control-action" data-i18n="ctl.gpCursor">Mexer num cursor</span>
+                    <div class="control-keys">
+                        <span class="kbd accent" data-i18n="ctl.gpCruzLados">Cruz ← →</span>
+                    </div>
+                </div>
+                <div class="control-row">
+                    <span class="control-action" data-i18n="ctl.gpConfirmar">Escolher</span>
+                    <div class="control-keys">
+                        <span class="kbd accent">A</span>
+                    </div>
+                </div>
+                <div class="control-row">
+                    <span class="control-action" data-i18n="ctl.gpFechar">Fechar</span>
+                    <div class="control-keys">
+                        <span class="kbd accent">B</span>
+                    </div>
+                </div>
+            </div>
+            <div class="grupo-titulo" data-i18n="ctl.gpNoVideo">Na janela do vídeo</div>
+            <div class="controls-table">
+                <div class="control-row">
+                    <span class="control-action" data-i18n="ctl.gpTocar">Tocar / pausar</span>
+                    <div class="control-keys">
+                        <span class="kbd accent">A</span>
+                    </div>
+                </div>
+                <div class="control-row">
+                    <span class="control-action" data-i18n="ctl.gpSaltar">Saltar 5 segundos</span>
+                    <div class="control-keys">
+                        <span class="kbd accent" data-i18n="ctl.gpCruzLados">Cruz ← →</span>
+                    </div>
+                </div>
+                <div class="control-row">
+                    <span class="control-action" data-i18n="ctl.gpVolume">Volume</span>
+                    <div class="control-keys">
+                        <span class="kbd accent" data-i18n="ctl.gpCruzCima">Cruz ↑ ↓</span>
+                    </div>
+                </div>
+                <div class="control-row">
+                    <span class="control-action" data-i18n="ctl.gpSilenciar">Silenciar</span>
+                    <div class="control-keys">
+                        <span class="kbd accent">X</span>
+                    </div>
+                </div>
+                <div class="control-row">
+                    <span class="control-action" data-i18n="ctl.gpEcra">Ecrã inteiro</span>
+                    <div class="control-keys">
+                        <span class="kbd accent">Y</span>
+                    </div>
+                </div>
+                <div class="control-row">
+                    <span class="control-action" data-i18n="ctl.gpAnteriorSeguinte">Testemunho anterior / seguinte</span>
+                    <div class="control-keys">
+                        <span class="kbd accent">LB</span>
+                        <span class="kbd accent">RB</span>
+                    </div>
+                </div>
+                <div class="control-row">
+                    <span class="control-action" data-i18n="ctl.gpFechar">Fechar</span>
+                    <div class="control-keys">
+                        <span class="kbd accent">B</span>
+                    </div>
+                </div>
+            </div>
+            <div class="grupo-titulo" data-i18n="ctl.gpNas360">Nas paragens 360º</div>
+            <div class="controls-table">
+                <div class="control-row">
+                    <span class="control-action" data-i18n="ctl.gpVirar">Virar a cabeça</span>
+                    <div class="control-keys">
+                        <span class="kbd accent" data-i18n="ctl.stickDir">Stick direito</span>
+                    </div>
+                </div>
+                <div class="control-row">
+                    <span class="control-action" data-i18n="ctl.gpTocar">Tocar / pausar</span>
+                    <div class="control-keys">
+                        <span class="kbd accent">A</span>
+                    </div>
+                </div>
+                <div class="control-row">
+                    <span class="control-action" data-i18n="ctl.gpSaltar">Saltar 5 segundos</span>
+                    <div class="control-keys">
+                        <span class="kbd accent" data-i18n="ctl.gpCruzLados">Cruz ← →</span>
+                    </div>
+                </div>
+                <div class="control-row">
+                    <span class="control-action" data-i18n="ctl.gpSilenciar">Silenciar</span>
+                    <div class="control-keys">
+                        <span class="kbd accent">X</span>
+                    </div>
+                </div>
+                <div class="control-row">
+                    <span class="control-action" data-i18n="ctl.gpEcra">Ecrã inteiro</span>
+                    <div class="control-keys">
+                        <span class="kbd accent">Y</span>
+                    </div>
+                </div>
+                <div class="control-row">
+                    <span class="control-action" data-i18n="ctl.gpParagem">Paragem anterior / seguinte</span>
+                    <div class="control-keys">
+                        <span class="kbd accent">LB</span>
+                        <span class="kbd accent">RB</span>
+                    </div>
+                </div>
+                <div class="control-row">
+                    <span class="control-action" data-i18n="ctl.gpFechar">Fechar</span>
+                    <div class="control-keys">
+                        <span class="kbd accent">B</span>
                     </div>
                 </div>
             </div>

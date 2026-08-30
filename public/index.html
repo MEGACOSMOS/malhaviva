@@ -11,7 +11,7 @@
 
     <!-- As línguas do site. Fica antes de tudo o resto para o texto
          nascer já na língua certa, sem piscar em português primeiro. -->
-    <script src="/idiomas.js?v=3"></script>
+    <script src="/idiomas.js?v=4"></script>
 
     <!-- A tinta do cabeçalho segue o brilho do bairro por trás dela. -->
     <script src="/contraste.js?v=1"></script>
@@ -604,6 +604,15 @@
             border: 1px solid rgba(255, 255, 255, 0.15);
             box-shadow: 0 4px 15px rgba(0,0,0,0.4);
             z-index: 1050;
+        /* ─── O que o comando de jogo tem escolhido ───
+           Um risco branco à volta da linha onde se está. Sem ele,
+           carregar em A seria adivinhar. Os marcadores do bairro não
+           precisam disto: acendem-se com a mesma classe que o rato usa. */
+        .comando-foco {
+            outline: 2px solid rgba(255, 255, 255, 0.9);
+            outline-offset: 2px;
+        }
+
             padding: 20px;
             display: none;
             font-family: var(--font-main);
@@ -1304,6 +1313,7 @@
                 const controls = camera && camera.script && camera.script.cameraControls;
                 if (!splat) return;
 
+        import { ligarComando } from './comando.mjs?v=1';
                 // O modelo divide-se numa árvore de zonas; as pontas dessa
                 // árvore dizem onde há terreno de facto.
                 const zonas = [];
@@ -1996,6 +2006,12 @@ void modifySplatColor(vec3 center, inout vec4 color) {
                     botaoVR.classList.add('a-pedir-toque');
                     botaoVR.title = 'Tocar para entrar em VR';
                 }
+
+            // --- Comando de jogo ---
+            // Os dois sticks já andavam pelo bairro por conta do motor; o
+            // resto do site — marcadores, menus, vídeo — passa a andar
+            // também. Quem não tiver comando ligado não dá por isto.
+            window.comando = ligarComando(app);
 
                 botaoVR.addEventListener('click', async () => {
                     if (modoVR.activo) {
