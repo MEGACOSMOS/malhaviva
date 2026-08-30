@@ -1059,6 +1059,29 @@ class CameraControls extends Script {
             keyMove.z += activeTouchY * 0.10; // Inverted Z
         }
 
+        // O stick esquerdo entra pelo mesmo sítio que as teclas, e não pelo
+        // do motor.
+        //
+        // Mais abaixo, no bloco do movimento à moda dos jogos, a posição
+        // que o motor calculou é deitada fora e refeita à mão a partir
+        // deste keyMove. Enquanto o stick só falasse ao motor, o que ele
+        // dissesse morria ali: a vista rodava com o stick direito, mas a
+        // câmara nunca saía do sítio com o esquerdo.
+        //
+        // O comprimento é limitado a um porque o stick vem multiplicado
+        // pela conta da zona morta e chega a passar dos dois — sem isto,
+        // andava-se com o comando ao dobro da velocidade das teclas.
+        if (leftStick[0] !== 0 || leftStick[1] !== 0) {
+            keyMove.x += leftStick[0];
+            keyMove.z -= leftStick[1];
+            const passo = Math.sqrt(keyMove.x * keyMove.x + keyMove.z * keyMove.z);
+            if (passo > 1) {
+                keyMove.x /= passo;
+                keyMove.z /= passo;
+            }
+        }
+
+
         // Interpolação suave (lerp)
         if (Math.abs(this._targetFov - this._camera.fov) > 0.1) {
             this._camera.fov = math.lerp(this._camera.fov, this._targetFov, 12.0 * dt);
