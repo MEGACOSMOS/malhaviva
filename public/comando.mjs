@@ -677,13 +677,16 @@ export function ligarComando(app) {
         }
 
         // O anterior e o seguinte do palco, seja o dos testemunhos ou o das
-        // paragens. São as mesmas setas dos lados em que o comando carrega.
+        // paragens: as setas dos lados, que são as mesmas em que o comando
+        // carrega e as mesmas que se vêem desenhadas de cada lado da
+        // janela. Quem quiser saltar dentro do filme tem o J e o L.
         if (onde === 'video' || onde === 'palco360') {
+            if (e.altKey) return;
             const janela = document.getElementById(
                 onde === 'video' ? 'video-modal' : 'modal-360');
-            if (e.key === 'PageUp') {
+            if (e.key === 'ArrowLeft') {
                 if (carregarEm('.seta-do-palco.esquerda', janela)) e.preventDefault();
-            } else if (e.key === 'PageDown') {
+            } else if (e.key === 'ArrowRight') {
                 if (carregarEm('.seta-do-palco.direita', janela)) e.preventDefault();
             }
             return;

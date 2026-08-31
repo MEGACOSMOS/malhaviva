@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>360 Video Player</title>
-    <script src="/idiomas.js?v=5"></script>
+    <script src="/idiomas.js?v=6"></script>
     <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
     <script src="/comando-paginas.js?v=3" defer></script>
     <script>
@@ -1041,16 +1041,25 @@
         // ---- Teclas ----
         // As mesmas de qualquer tocador de vídeo, mais o R de endireitar a
         // vista, que só aqui faz sentido.
+        //
+        // Saltar dentro do filme é no J e no L, ao lado do K que toca e
+        // pára. As setas dos lados ficam livres porque, quando esta página
+        // está dentro do palco das paragens, servem para mudar de paragem —
+        // e quem trata disso é o mapa, lá fora. Aberta sozinha, no seu
+        // próprio endereço, não há paragem nenhuma para onde ir, e aí as
+        // setas voltam a saltar no filme.
+        const sozinha = window.parent === window;
         window.addEventListener('keydown', (e) => {
             if (e.target && /^(?:INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) return;
+            if (e.altKey || e.ctrlKey || e.metaKey) return;
             const tecla = e.key.toLowerCase();
             if (tecla === ' ' || tecla === 'k') {
                 e.preventDefault();
                 togglePlay();
-            } else if (e.key === 'ArrowLeft') {
+            } else if (tecla === 'j' || (sozinha && e.key === 'ArrowLeft')) {
                 e.preventDefault();
                 saltar(-5);
-            } else if (e.key === 'ArrowRight') {
+            } else if (tecla === 'l' || (sozinha && e.key === 'ArrowRight')) {
                 e.preventDefault();
                 saltar(5);
             } else if (e.key === 'ArrowUp') {

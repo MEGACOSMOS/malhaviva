@@ -50,8 +50,11 @@ function altCarregado() {
         altEscutado = true;
         const SETAS = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'];
         window.addEventListener('keydown', (e) => {
-            altEmBaixo = e.altKey;
-            if (e.altKey && SETAS.indexOf(e.key) >= 0) {
+            altEmBaixo = e.altKey || e.key === 'Alt';
+            // O Alt sozinho, no Windows, chama o menu do navegador — e a
+            // janela perde o foco, o que apagaria já a seguir a nota de que
+            // ele está em baixo. Travando-o aqui, ele fica para nós.
+            if (e.key === 'Alt' || (e.altKey && SETAS.indexOf(e.key) >= 0)) {
                 e.preventDefault();
             }
         });

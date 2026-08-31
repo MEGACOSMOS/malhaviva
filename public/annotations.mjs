@@ -1820,17 +1820,23 @@ AnnotationController.prototype.setupModal = function() {
     // ---- Teclas ----
     // Só valem com a janela do vídeo aberta, para não roubarem as teclas
     // ao mapa que está por trás.
+    //
+    // As setas dos lados não estão aqui: passaram a mudar de testemunho, o
+    // que é o que as setas desenhadas de cada lado da janela fazem, e é
+    // tratado com o resto dos comandos. Saltar dentro do filme fica no J e
+    // no L, ao lado do K que já tocava e parava.
     document.addEventListener('keydown', (e) => {
         if (this.modal.style.display === 'none') return;
         if (e.target && /^(?:INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) return;
+        if (e.altKey || e.ctrlKey || e.metaKey) return;
         const tecla = e.key.toLowerCase();
         if (tecla === ' ' || tecla === 'k') {
             e.preventDefault();
             togglePlay();
-        } else if (e.key === 'ArrowLeft') {
+        } else if (tecla === 'j') {
             e.preventDefault();
             saltar(-5);
-        } else if (e.key === 'ArrowRight') {
+        } else if (tecla === 'l') {
             e.preventDefault();
             saltar(5);
         } else if (e.key === 'ArrowUp') {
