@@ -969,6 +969,13 @@ AnnotationController.prototype.nomeAcessivel = function(ann) {
     const diz = (chave, alternativa) =>
         (window.Idiomas && window.Idiomas.t(chave)) || alternativa;
 
+    // Sem etiqueta não há nome possível, e mais vale dizer que não há do
+    // que devolver "Testemunho de undefined" — que passaria despercebido a
+    // olho e seria lido em voz alta a quem depende dele.
+    if (!ann.label) {
+        return '';
+    }
+
     if (ann.is360) {
         if (ann.isImage) {
             return ann.label + ' — ' + diz('mapa.fotografia360', 'fotografia 360º');
@@ -987,9 +994,26 @@ AnnotationController.prototype.nomeAcessivel = function(ann) {
  */
 AnnotationController.prototype.baptizarMarcadores = function() {
     this.annotations.forEach((ann) => {
-        if (ann.element) {
-            ann.element.setAttribute('aria-label', this.nomeAcessivel(ann));
+        if (!ann.element) {
+            return;
         }
+        const nome = this.nomeAcessivel(ann);
+
+        // Uma anotação sem nome é uma anotação que ninguém que não veja o
+        // ecrã consegue abrir. Isso não pode passar em silêncio: quem
+        // acrescentar um tipo de anotação novo e se esquecer de o ensinar a
+        // nomeAcessivel fica a saber aqui, e não daqui a um ano por um
+        // visitante que não conseguiu entrar.
+        if (!nome || !nome.trim() || /undefined|null|\{nome\}/.test(nome)) {
+            console.error(
+                'Anotação sem nome para quem não vê o ecrã. Toda a anotação ' +
+                'precisa de um nome em nomeAcessivel() — ver AGENTS.md.',
+                ann
+            );
+            return;
+        }
+
+        ann.element.setAttribute('aria-label', nome);
     });
 };
 

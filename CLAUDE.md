@@ -1,5 +1,22 @@
 # Curoflow Site
 
+## Rules — read `AGENTS.md` first
+
+`AGENTS.md`, at the root of the repository, holds rules that are **not
+optional** and apply to every change, whether or not the user mentions
+them. Read it before touching `public/annotations.mjs` or adding anything
+to the map.
+
+The one that is broken most often, stated here so it cannot be missed:
+
+> **Every new annotation must be reachable by someone who cannot see the
+> screen.** A new testimony, stop, or map point is not finished until it
+> has a spoken name in `nomeAcessivel()` ("Testemunho de Dulce", not
+> "Dulce"), that name translated in all four languages in
+> `public/idiomas.js`, `role="button"` with `tabindex="0"`, and
+> `aria-hidden`/`tabindex="-1"` while it is off screen. `AGENTS.md` has the
+> detail and a ten-second way to check it.
+
 ## Project Overview
 
 This is a React website deployed on Cloudflare Workers.
