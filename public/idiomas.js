@@ -46,6 +46,8 @@
             'def.paisagem': 'Paisagem',
 
             'idm.titulo': 'Idioma',
+            'mapa.testemunhoDe': 'Testemunho de {nome}',
+            'mapa.fotografia360': 'fotografia 360º',
 
             'carga.modelo': 'A carregar modelo 3D…',
             'carga.restaurar': 'A restaurar ambiente 3D…',
@@ -183,6 +185,8 @@
             'def.paisagem': 'Landscape',
 
             'idm.titulo': 'Language',
+            'mapa.testemunhoDe': 'Testimony from {nome}',
+            'mapa.fotografia360': '360º photograph',
 
             'carga.modelo': 'Loading 3D model…',
             'carga.restaurar': 'Restoring 3D environment…',
@@ -320,6 +324,8 @@
             'def.paisagem': 'Paisaje',
 
             'idm.titulo': 'Idioma',
+            'mapa.testemunhoDe': 'Testimonio de {nome}',
+            'mapa.fotografia360': 'fotografía 360º',
 
             'carga.modelo': 'Cargando modelo 3D…',
             'carga.restaurar': 'Restaurando entorno 3D…',
@@ -457,6 +463,8 @@
             'def.paisagem': 'Paizajen',
 
             'idm.titulo': 'Lingua',
+            'mapa.testemunhoDe': 'Tistimunhu di {nome}',
+            'mapa.fotografia360': 'fotografia 360º',
 
             'carga.modelo': 'Ta karega modelu 3D…',
             'carga.restaurar': 'Ta restaura anbienti 3D…',

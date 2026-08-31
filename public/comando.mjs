@@ -673,6 +673,13 @@ export function ligarComando(app) {
                 acender(null);
                 e.preventDefault();
             }
+            // E larga também o marcador em que o Tab tenha parado.
+            const comFoco = document.activeElement;
+            if (comFoco && comFoco.classList &&
+                comFoco.classList.contains('annotation-marker')) {
+                comFoco.blur();
+                e.preventDefault();
+            }
             return;
         }
 
@@ -707,20 +714,17 @@ export function ligarComando(app) {
             return;
         }
 
-        // No bairro: o Tab passa de marcador em marcador e o Enter abre o
-        // que estiver escolhido. Os marcadores não são botões — são pontos
-        // desenhados por cima do mapa — e por isso o Tab do próprio
-        // navegador não lhes chega.
-        if (e.key === 'Tab' && marcadoresAVista().length) {
-            andarComOFoco('mapa', e.shiftKey ? -1 : 1);
-            e.preventDefault();
-            return;
-        }
-        if ((e.key === 'Enter' || e.key === ' ') && alvoAceso &&
-            alvoAceso.classList.contains('annotation-marker')) {
-            activar(alvoAceso);
-            e.preventDefault();
-        }
+        // No bairro não há aqui nada a fazer com o Tab nem com o Enter.
+        //
+        // Houve, durante um tempo: os marcadores eram caixas soltas, o Tab
+        // do navegador não lhes chegava, e era este ficheiro que o desviava
+        // para andar por eles. Desde que passaram a ser botões a sério — com
+        // papel, com nome e ao alcance do Tab — quem faz isso é o próprio
+        // navegador, e fá-lo melhor: a mesma tecla passa também pelos botões
+        // do cabeçalho, que dantes ficavam de fora.
+        //
+        // O comando de jogo continua com a cruz direccional, que é outra
+        // coisa e não mexe no foco do navegador.
     }
 
     const aoLargarUmaTecla = (e) => anotarSetaDeOlhar(e, false);

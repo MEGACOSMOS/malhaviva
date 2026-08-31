@@ -11,7 +11,7 @@
 
     <!-- As línguas do site. Fica antes de tudo o resto para o texto
          nascer já na língua certa, sem piscar em português primeiro. -->
-    <script src="/idiomas.js?v=6"></script>
+    <script src="/idiomas.js?v=7"></script>
 
     <!-- A tinta do cabeçalho segue o brilho do bairro por trás dela. -->
     <script src="/contraste.js?v=1"></script>
@@ -422,11 +422,18 @@
             padding: 16px;
             width: 260px;
             box-shadow: 0 4px 15px rgba(0,0,0,0.4);
-            transition: opacity 0.2s, transform 0.2s;
+            transition: opacity 0.2s, transform 0.2s, visibility 0.2s;
             transform-origin: top right;
             pointer-events: none;
             opacity: 0;
             transform: scale(0.95);
+            /* Fechado quer dizer fechado também para a tecla Tab e para
+               quem ouve a página em vez de a ver. Só com transparência,
+               os comandos aqui dentro continuavam alcançáveis: quem
+               andasse de Tab passava por dezenas deles, invisíveis, antes
+               de chegar ao bairro. A demora igual à do esbatimento deixa
+               o menu ver-se enquanto se apaga. */
+            visibility: hidden;
         }
         
         /* Os outros menus têm uma largura fixa porque têm dentro coisas de
@@ -501,6 +508,7 @@
             pointer-events: auto;
             opacity: 1;
             transform: scale(1);
+            visibility: visible;
         }
         
         .settings-title {
@@ -1198,7 +1206,7 @@
         <pc-asset id="splat-scene" src="splat/lod-meta.json" type="gsplat"></pc-asset>
         <pc-asset id="camera-controls-script" src="./camera-controls.mjs?v=21" type="script"></pc-asset>
         <pc-asset id="camera-coords-script" src="./coords.mjs?v=7" type="script"></pc-asset>
-        <pc-asset id="annotations-script" src="./annotations.mjs?v=37" type="script"></pc-asset>
+        <pc-asset id="annotations-script" src="./annotations.mjs?v=38" type="script"></pc-asset>
         <pc-asset id="trail-script" src="./trail.mjs?v=21" type="script"></pc-asset>
 
         <!-- Scene -->
@@ -1323,7 +1331,7 @@
                 const controls = camera && camera.script && camera.script.cameraControls;
                 if (!splat) return;
 
-        import { ligarComando } from './comando.mjs?v=6';
+        import { ligarComando } from './comando.mjs?v=7';
                 // O modelo divide-se numa árvore de zonas; as pontas dessa
                 // árvore dizem onde há terreno de facto.
                 const zonas = [];

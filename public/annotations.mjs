@@ -143,9 +143,21 @@ AnnotationController.prototype.initialize = function() {
             align-items: center;
         }
         .annotation-marker:hover .marker-dot, .annotation-marker.force-hover .marker-dot,
-        .annotation-marker:hover .marker-label, .annotation-marker.force-hover .marker-label {
+        .annotation-marker:focus-visible .marker-dot,
+        .annotation-marker:hover .marker-label, .annotation-marker.force-hover .marker-label,
+        .annotation-marker:focus-visible .marker-label {
             transform: scale(1.15);
             transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        /* Quem chega ao marcador pela tecla Tab tem de ver onde está. Acende
+           como se o rato lá estivesse, e leva um risco por cima — só o
+           acender não chega sobre uma fotografia cheia de contrastes. */
+        .annotation-marker:focus {
+            outline: none;
+        }
+        .annotation-marker:focus-visible {
+            outline: 2px solid rgba(255, 255, 255, 0.95);
+            outline-offset: 3px;
         }
         .marker-dot, .marker-label {
             transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
@@ -813,6 +825,12 @@ AnnotationController.prototype.initialize = function() {
     this.annotations.forEach(ann => {
         const el = document.createElement('div');
         el.className = 'annotation-marker';
+        // Para quem vê, isto é um ponto desenhado por cima do bairro. Para
+        // quem não vê, tem de ser o que de facto é: um botão, com nome, ao
+        // alcance da tecla Tab. O nome é posto mais abaixo, de uma vez para
+        // todos, por ele mudar com a língua.
+        el.setAttribute('role', 'button');
+        el.setAttribute('tabindex', '0');
         el.dataset.tipo = ann.is360 ? '360' : 'testemunho';
         if (ann.label === "Esvarena") el.classList.add('esvarena-marker');
         if (ann.trailIndex !== undefined) el.dataset.trailIndex = ann.trailIndex;
@@ -870,9 +888,20 @@ AnnotationController.prototype.initialize = function() {
             }
         });
 
+        // Um botão de verdade abre-se com o Enter e com o espaço. Uma caixa
+        // com um clique agarrado, não — tem de se lhe ensinar.
+        el.addEventListener('keydown', (e) => {
+            if (e.key !== 'Enter' && e.key !== ' ') return;
+            e.preventDefault();
+            el.click();
+        });
+
         this.container.appendChild(el);
         ann.element = el;
     });
+
+    this.baptizarMarcadores();
+    window.addEventListener('idiomamudou', () => this.baptizarMarcadores());
 };
 
 /* ---- O palco das paragens 360º ----
@@ -925,6 +954,45 @@ AnnotationController.prototype.paragens360 = function() {
  * @param {object} ann - A paragem.
  * @returns {string} O nome a mostrar.
  */
+/**
+ * O nome por que um marcador se dá a conhecer a quem não o vê.
+ *
+ * O que está desenhado no mapa — um microfone, um olho, a palavra 360º —
+ * não diz nada a um leitor de ecrã. Este é o nome que ele lê em voz alta,
+ * e por isso tem de dizer as duas coisas: de quem é e o que é. "Dulce"
+ * sozinho não chega; "Testemunho de Dulce" chega.
+ *
+ * @param {object} ann - A anotação.
+ * @returns {string} O nome, na língua em vigor.
+ */
+AnnotationController.prototype.nomeAcessivel = function(ann) {
+    const diz = (chave, alternativa) =>
+        (window.Idiomas && window.Idiomas.t(chave)) || alternativa;
+
+    if (ann.is360) {
+        if (ann.isImage) {
+            return ann.label + ' — ' + diz('mapa.fotografia360', 'fotografia 360º');
+        }
+        return this.nomeDaParagem360(ann);
+    }
+    return diz('mapa.testemunhoDe', 'Testemunho de {nome}').replace('{nome}', ann.label);
+};
+
+/**
+ * Escreve nos marcadores o nome por que se dão a conhecer.
+ *
+ * Feito à parte por ser preciso duas vezes: quando os marcadores nascem, e
+ * outra vez sempre que se troca de língua — senão um leitor de ecrã
+ * continuava a dizer "Testemunho de" a quem escolheu inglês.
+ */
+AnnotationController.prototype.baptizarMarcadores = function() {
+    this.annotations.forEach((ann) => {
+        if (ann.element) {
+            ann.element.setAttribute('aria-label', this.nomeAcessivel(ann));
+        }
+    });
+};
+
 AnnotationController.prototype.nomeDaParagem360 = function(ann) {
     // "Esvarena" e "Olho de Águia" são nomes de sítios: ficam iguais em
     // qualquer língua. O que se traduz é só "Rota 360º".
@@ -2546,12 +2614,20 @@ AnnotationController.prototype.update = function(dt) {
             if (ann._visible !== false) {
                 el.style.opacity = '0';
                 el.style.pointerEvents = 'none';
+                // Um marcador que ficou para trás da câmara não está no mapa,
+                // e por isso também não pode estar na fila do Tab: quem anda
+                // de tecla acabava a carregar em coisas que não vê.
+                el.setAttribute('aria-hidden', 'true');
+                el.setAttribute('tabindex', '-1');
+                if (el === document.activeElement) el.blur();
                 ann._visible = false;
             }
         } else {
             if (ann._visible !== true) {
                 el.style.opacity = '1';
                 el.style.pointerEvents = 'auto';
+                el.removeAttribute('aria-hidden');
+                el.setAttribute('tabindex', '0');
                 ann._visible = true;
             }
             // O marcador é ancorado pelo centro do ícone, e não pelo centro do
