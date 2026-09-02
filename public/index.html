@@ -98,11 +98,20 @@
             gap: 28px;
         }
 
+        .loading-brand {
+            display: flex;
+            flex-direction: column;
+            gap: 28px;
+            align-items: stretch;
+            width: max-content;
+        }
+
         .loading-logo {
             font-size: 1.6rem;
             font-weight: 700;
             letter-spacing: -0.02em;
             color: var(--color-accent);
+            text-align: center;
         }
 
         /* A espera do bairro é contada em quadrados: a barra vai-se
@@ -110,12 +119,13 @@
            toda quando o mapa está pronto a entrar. */
         .loading-bar {
             display: flex;
-            gap: 5px;
+            gap: 4px;
+            height: 10px;
         }
 
         .loading-bar span {
-            width: 10px;
-            height: 10px;
+            flex: 1;
+            height: 100%;
             background: var(--color-border);
             transition: background 0.25s ease;
         }
@@ -602,6 +612,15 @@
             transform: scale(0.95);
         }
 
+        /* ─── O que o comando de jogo tem escolhido ───
+           Um risco branco à volta da linha onde se está. Sem ele,
+           carregar em A seria adivinhar. Os marcadores do bairro não
+           precisam disto: acendem-se com a mesma classe que o rato usa. */
+        .comando-foco {
+            outline: 2px solid rgba(255, 255, 255, 0.9);
+            outline-offset: 2px;
+        }
+
         /* ─── Filter Panel ─── */
         #filter-panel {
             position: fixed;
@@ -612,15 +631,6 @@
             border: 1px solid rgba(255, 255, 255, 0.15);
             box-shadow: 0 4px 15px rgba(0,0,0,0.4);
             z-index: 1050;
-        /* ─── O que o comando de jogo tem escolhido ───
-           Um risco branco à volta da linha onde se está. Sem ele,
-           carregar em A seria adivinhar. Os marcadores do bairro não
-           precisam disto: acendem-se com a mesma classe que o rato usa. */
-        .comando-foco {
-            outline: 2px solid rgba(255, 255, 255, 0.9);
-            outline-offset: 2px;
-        }
-
             padding: 20px;
             display: none;
             font-family: var(--font-main);
@@ -714,11 +724,36 @@
                que está à volta do bairro. */
             background: radial-gradient(
                 ellipse at center,
-                transparent 58%,
-                rgba(5, 5, 10, 0.12) 76%,
-                rgba(5, 5, 10, 0.32) 90%,
-                rgba(5, 5, 10, 0.55) 100%
+                transparent 50%,
+                rgba(5, 5, 10, 0.25) 70%,
+                rgba(5, 5, 10, 0.55) 85%,
+                rgba(5, 5, 10, 0.85) 100%
             );
+        }
+
+        /* ─── Premium Gradient Borders ─── */
+        .panel-glass, .btn-glass, .action-btn, .settings-panel, .filter-btn, 
+        #coordinates-info, #camera-info, #loading-bar-container,
+        #definicoes-menu, #dev-menu, #idioma-menu {
+            border-color: transparent !important;
+        }
+        .panel-glass, .btn-glass, .action-btn, .filter-btn {
+            position: relative;
+        }
+        .panel-glass::after, .btn-glass::after, .action-btn::after, .settings-panel::after, .filter-btn::after, 
+        #coordinates-info::after, #camera-info::after, #loading-bar-container::after,
+        #definicoes-menu::after, #dev-menu::after, #idioma-menu::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            border-radius: inherit;
+            padding: 1px;
+            background: linear-gradient(to bottom right, rgba(255,255,255,0.7) 0%, rgba(255,255,255,0.3) 50%, rgba(255,255,255,0.7) 100%);
+            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor;
+            mask-composite: exclude;
+            pointer-events: none;
+            z-index: 10;
         }
     </style>
 </head>
@@ -769,8 +804,10 @@
     <!-- Loading Overlay -->
     <div id="loading-overlay">
         <div class="loading-content">
-            <div class="loading-logo">Malha Viva</div>
-            <div class="loading-bar" id="loading-bar" aria-hidden="true"></div>
+            <div class="loading-brand">
+                <div class="loading-logo">Malha Viva</div>
+                <div class="loading-bar" id="loading-bar" aria-hidden="true"></div>
+            </div>
             <div class="loading-text" data-i18n="carga.modelo">A carregar modelo 3D…</div>
         </div>
     </div>
@@ -968,13 +1005,6 @@
                             <input type="range" id="ceu-x" min="-500" max="500" step="0.1" value="0">
                         </label>
 
-                        <label class="ceu-afinacao" id="ceu-y-linha">
-                            <span>Levantar o chão da fotografia
-                                <input type="text" inputmode="decimal" id="ceu-y-valor" class="ceu-numero" value="5.3">
-                            </span>
-                            <input type="range" id="ceu-y" min="-30" max="30" step="0.1" value="5.3">
-                        </label>
-
                         <label class="ceu-afinacao" id="ceu-z-linha">
                             <span>Deslocar em Z
                                 <input type="text" inputmode="decimal" id="ceu-z-valor" class="ceu-numero" value="0">
@@ -1005,9 +1035,9 @@
 
                         <label class="ceu-afinacao">
                             <span>Apagar o chão
-                                <input type="text" inputmode="decimal" id="foto-apagar-chao-valor" class="ceu-numero" value="350">
+                                <input type="text" inputmode="decimal" id="foto-apagar-chao-valor" class="ceu-numero" value="390">
                             </span>
-                            <input type="range" id="foto-apagar-chao" min="0" max="1500" step="5" value="350">
+                            <input type="range" id="foto-apagar-chao" min="0" max="1500" step="5" value="390">
                         </label>
 
                         <label class="ceu-afinacao">
@@ -1026,9 +1056,9 @@
 
                         <label class="ceu-afinacao">
                             <span>Cor
-                                <input type="text" inputmode="decimal" id="foto-saturacao-valor" class="ceu-numero" value="1">
+                                <input type="text" inputmode="decimal" id="foto-saturacao-valor" class="ceu-numero" value="0.36">
                             </span>
-                            <input type="range" id="foto-saturacao" min="0" max="1.6" step="0.01" value="1">
+                            <input type="range" id="foto-saturacao" min="0" max="1.6" step="0.01" value="0.36">
                         </label>
 
                         <label class="ceu-afinacao">
@@ -1152,7 +1182,7 @@
                 <div class="settings-title" style="margin-top: 18px;" data-i18n="def.cenario">Cenário</div>
                 <div class="settings-options">
                     <label class="settings-radio">
-                        <input type="checkbox" id="paisagem-ligada" checked>
+                        <input type="checkbox" id="paisagem-ligada">
                         <span data-i18n="def.paisagem">Paisagem</span>
                     </label>
                 </div>
@@ -1213,7 +1243,7 @@
         <pc-scene>
 
             <!-- Camera -->
-            <pc-entity name="camera" position="-144.27 63.28 129.01" rotation="-24.6 -30 0">
+            <pc-entity name="camera" position="-88.74 62.03 294.91" rotation="-19.4 -19.7 0">
                 <pc-camera
                     clear-color="0.02 0.02 0.04 1"
                     far-clip="50000"
@@ -1221,7 +1251,7 @@
                     fov="60">
                 </pc-camera>
                 <pc-scripts>
-                    <pc-script name="cameraControls" move-speed="50" move-fast-speed="130" move-slow-speed="15" pitch-range="-89.9 89.9" zoom-range="0.01 800" max-distance="800"></pc-script>
+                    <pc-script name="cameraControls" travagem="true" move-speed="25" move-fast-speed="65" move-slow-speed="7" pitch-range="-89.9 89.9" zoom-range="0.01 800" max-distance="800"></pc-script>
                     <pc-script name="cameraCoordinates"></pc-script>
                     <pc-script name="annotationController"></pc-script>
                     <pc-script name="trailController"></pc-script>
@@ -1301,6 +1331,7 @@
         import { ligarLodNoCentroDaVista } from './lod-foco.mjs?v=4';
         import { criarModoVR } from './vr.mjs?v=3';
         import { ligarCeu } from './ceu.mjs?v=13';
+        import { ligarComando } from './comando.mjs?v=7';
 
         // Resolução da grelha usada para medir o mapa, em metros.
         const RESOLUCAO_LIMITE = 4;
@@ -1331,7 +1362,6 @@
                 const controls = camera && camera.script && camera.script.cameraControls;
                 if (!splat) return;
 
-        import { ligarComando } from './comando.mjs?v=7';
                 // O modelo divide-se numa árvore de zonas; as pontas dessa
                 // árvore dizem onde há terreno de facto.
                 const zonas = [];
@@ -1995,6 +2025,13 @@ void modifySplatColor(vec3 center, inout vec4 color) {
             const ceu = ligarCeu(app);
             window.ceu = ceu;
 
+            // --- Comando de jogo ---
+            // Os dois sticks já andavam pelo bairro por conta do motor; o
+            // resto do site — marcadores, menus, vídeo — passa a andar
+            // também. Quem não tiver comando ligado não dá por isto.
+            window.comando = ligarComando(app);
+            espiarOComando(app);
+
             // A partir daqui é a cúpula do céu que diz à câmara até onde pode
             // andar: as paredes da taça são o fim do mundo visível, e passar
             // delas seria sair da fotografia. Com a cúpula desligada valem
@@ -2024,13 +2061,6 @@ void modifySplatColor(vec3 center, inout vec4 color) {
                     botaoVR.classList.add('a-pedir-toque');
                     botaoVR.title = 'Tocar para entrar em VR';
                 }
-
-            // --- Comando de jogo ---
-            // Os dois sticks já andavam pelo bairro por conta do motor; o
-            // resto do site — marcadores, menus, vídeo — passa a andar
-            // também. Quem não tiver comando ligado não dá por isto.
-            window.comando = ligarComando(app);
-            espiarOComando(app);
 
                 botaoVR.addEventListener('click', async () => {
                     if (modoVR.activo) {

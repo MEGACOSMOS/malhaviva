@@ -6,7 +6,7 @@
     <title>Controlos do Mapa — Malha Viva</title>
     <meta name="description" content="Guia dos controlos do visualizador 3D Malha Viva. Navega como num mapa: arrasta com o rato, aproxima com o scroll, roda com Ctrl.">
     <script src="/idiomas.js?v=7"></script>
-    <script src="/comando-paginas.js?v=2" defer></script>
+    <script src="/comando-paginas.js?v=3" defer></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -111,41 +111,93 @@
             background: var(--color-surface-hover);
         }
 
-        .idioma-lista {
+        #idioma-menu {
             position: absolute;
-            top: calc(100% + 6px);
+            top: calc(100% + 10px);
             right: 0;
-            min-width: 150px;
-            background: #05050a;
+            background: linear-gradient(to bottom, rgba(255,255,255,0.05), transparent), #05050a;
             border: 1px solid var(--color-border);
-            display: none;
+            border-radius: 0;
+            padding: 16px;
+            width: max-content;
+            min-width: 150px;
+            max-width: 260px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+            transition: opacity 0.2s, transform 0.2s, visibility 0.2s;
+            transform-origin: top right;
+            pointer-events: none;
+            opacity: 0;
+            transform: scale(0.95);
+            /* Fechado quer dizer fechado também para a tecla Tab e para
+               quem ouve a página em vez de a ver. Só com transparência,
+               os comandos aqui dentro continuavam alcançáveis: quem
+               andasse de Tab passava por dezenas deles, invisíveis, antes
+               de chegar ao bairro. A demora igual à do esbatimento deixa
+               o menu ver-se enquanto se apaga. */
+            visibility: hidden;
             z-index: 20;
         }
 
-        .idioma-lista.aberta {
-            display: block;
+        #idioma-menu.open {
+            pointer-events: auto;
+            opacity: 1;
+            transform: scale(1);
+                    visibility: visible;
         }
 
-        .idioma-opcao {
-            display: block;
-            width: 100%;
-            text-align: left;
+        .menu-fechar {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: 26px;
+            height: 26px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             background: transparent;
-            color: var(--color-text-muted);
-            font-family: inherit;
-            font-size: 0.85rem;
-            padding: 10px 16px;
             border: none;
+            color: rgba(255, 255, 255, 0.55);
             cursor: pointer;
-            transition: background 0.15s ease;
+            padding: 0;
+            transition: color 0.15s ease, background 0.15s ease;
+        }
+        .menu-fechar:hover {
+            color: #ffffff;
+            background: rgba(255, 255, 255, 0.08);
         }
 
-        .idioma-opcao:hover {
-            background: var(--color-surface-hover);
+        #idioma-menu > .settings-title:first-child {
+            padding-right: 28px;
         }
 
-        .idioma-opcao[aria-current="true"] {
-            color: var(--color-accent);
+        .settings-title {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--color-text-muted);
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .settings-options {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .settings-radio {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.85rem;
+            cursor: pointer;
+        }
+
+        .settings-radio input {
+            accent-color: #05050a;
+            width: 16px;
+            height: 16px;
+            cursor: pointer;
         }
 
         .back-link:hover {
@@ -218,6 +270,23 @@
         }
 
         /* ─── Controls Table ─── */
+        /* Dentro da secção do comando há vários grupos — no bairro, nos
+           menus, na janela do vídeo — e cada um leva um título mais miúdo
+           do que o da secção. */
+        .grupo-titulo {
+            font-size: 0.75rem;
+            font-weight: 600;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: var(--color-text-muted);
+            padding: 0 20px;
+            margin: 24px 0 10px;
+        }
+
+        .grupo-titulo:first-of-type {
+            margin-top: 0;
+        }
+
         .controls-table {
             display: flex;
             flex-direction: column;
@@ -262,23 +331,6 @@
             background: var(--color-bg);
             border: 1px solid var(--color-border);
             border-radius: 0;
-        /* Dentro da secção do comando há vários grupos — no bairro, nos
-           menus, na janela do vídeo — e cada um leva um título mais miúdo
-           do que o da secção. */
-        .grupo-titulo {
-            font-size: 0.75rem;
-            font-weight: 600;
-            letter-spacing: 0.08em;
-            text-transform: uppercase;
-            color: var(--color-text-muted);
-            padding: 0 20px;
-            margin: 24px 0 10px;
-        }
-
-        .grupo-titulo:first-of-type {
-            margin-top: 0;
-        }
-
             font-size: 0.75rem;
             font-weight: 600;
             font-family: var(--font-main);
@@ -362,6 +414,26 @@
                 padding: 0 14px;
             }
         }
+        /* ─── Premium Gradient Borders ─── */
+        .back-link, .section, #idioma-menu, .joystick-base {
+            border-color: transparent !important;
+        }
+        .back-link, .section, .joystick-base {
+            position: relative;
+        }
+        .back-link::after, .section::after, #idioma-menu::after, .joystick-base::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            border-radius: inherit;
+            padding: 1px;
+            background: linear-gradient(to bottom right, rgba(255,255,255,0.7) 0%, rgba(255,255,255,0.3) 50%, rgba(255,255,255,0.7) 100%);
+            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor;
+            mask-composite: exclude;
+            pointer-events: none;
+            z-index: 10;
+        }
     </style>
 </head>
 <body>
@@ -379,14 +451,38 @@
         </a>
         <div class="idioma">
             <button type="button" class="idioma-botao" id="idioma-botao" data-i18n-title="cab.idioma" title="Idioma">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <circle cx="12" cy="12" r="9"></circle>
-                    <line x1="3" y1="12" x2="21" y2="12"></line>
-                    <path d="M12 3a15 15 0 0 1 0 18a15 15 0 0 1 0-18z"></path>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="none">
+                    <path d="M12.87 15.07l-2.54-2.51.03-.03c1.74-1.94 2.98-4.17 3.71-6.53H17V4h-7V2H8v2H1v1.99h11.17C11.5 7.92 10.44 9.75 9 11.35 8.07 10.32 7.3 9.19 6.69 8h-2c.73 1.63 1.73 3.17 2.98 4.56l-5.09 5.02L4 19l5-5 3.11 3.11.76-2.04zM18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2l-4.5-12zm-2.62 7l1.62-4.33L19.12 17h-3.24z"></path>
                 </svg>
                 <span id="idioma-nome">Português</span>
             </button>
-            <div class="idioma-lista" id="idioma-lista"></div>
+            <div id="idioma-menu">
+                <button type="button" class="menu-fechar" aria-label="Fechar" title="Fechar">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="square" stroke-linejoin="miter">
+                        <line x1="5" y1="5" x2="19" y2="19"></line>
+                        <line x1="19" y1="5" x2="5" y2="19"></line>
+                    </svg>
+                </button>
+                <div class="settings-title" data-i18n="idm.titulo">Idioma</div>
+                <div class="settings-options">
+                    <label class="settings-radio">
+                        <input type="radio" name="idioma" value="pt" id="idioma-pt">
+                        <span>Português</span>
+                    </label>
+                    <label class="settings-radio">
+                        <input type="radio" name="idioma" value="en" id="idioma-en">
+                        <span>English</span>
+                    </label>
+                    <label class="settings-radio">
+                        <input type="radio" name="idioma" value="es" id="idioma-es">
+                        <span>Español</span>
+                    </label>
+                    <label class="settings-radio">
+                        <input type="radio" name="idioma" value="kea" id="idioma-kea">
+                        <span>Kriolu</span>
+                    </label>
+                </div>
+            </div>
         </div>
     </header>
 
@@ -894,7 +990,8 @@
             if (!window.Idiomas) return;
 
             var botao = document.getElementById('idioma-botao');
-            var lista = document.getElementById('idioma-lista');
+            var menu = document.getElementById('idioma-menu');
+            var fechar = menu.querySelector('.menu-fechar');
             var nome = document.getElementById('idioma-nome');
 
             function mostrarNome() {
@@ -902,33 +999,31 @@
                 window.Idiomas.IDIOMAS.forEach(function (idioma) {
                     if (idioma.codigo === actual) nome.textContent = idioma.nome;
                 });
-                lista.querySelectorAll('.idioma-opcao').forEach(function (opcao) {
-                    opcao.setAttribute('aria-current', String(opcao.dataset.codigo === actual));
-                });
+                var escolhida = document.getElementById('idioma-' + actual);
+                if (escolhida) escolhida.checked = true;
             }
 
-            window.Idiomas.IDIOMAS.forEach(function (idioma) {
-                var opcao = document.createElement('button');
-                opcao.type = 'button';
-                opcao.className = 'idioma-opcao';
-                opcao.dataset.codigo = idioma.codigo;
-                opcao.textContent = idioma.nome;
-                opcao.addEventListener('click', function () {
-                    window.Idiomas.definir(idioma.codigo);
-                    lista.classList.remove('aberta');
+            document.querySelectorAll('input[name="idioma"]').forEach(function (entrada) {
+                entrada.addEventListener('change', function (e) {
+                    window.Idiomas.definir(e.target.value);
+                    menu.classList.remove('open');
                     mostrarNome();
                 });
-                lista.appendChild(opcao);
             });
 
             botao.addEventListener('click', function (e) {
                 e.stopPropagation();
-                lista.classList.toggle('aberta');
+                menu.classList.toggle('open');
+            });
+            
+            fechar.addEventListener('click', function (e) {
+                e.stopPropagation();
+                menu.classList.remove('open');
             });
 
             document.addEventListener('click', function (e) {
-                if (!botao.contains(e.target) && !lista.contains(e.target)) {
-                    lista.classList.remove('aberta');
+                if (!botao.contains(e.target) && !menu.contains(e.target)) {
+                    menu.classList.remove('open');
                 }
             });
 

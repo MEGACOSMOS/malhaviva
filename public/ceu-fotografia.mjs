@@ -33,11 +33,11 @@ export const AJUSTES_PADRAO = {
     // Mais perto do que isto está tudo apagado; ao dobro da distância está
     // tudo lá; pelo meio, esbate-se. A zero não se apaga nada e o chão
     // volta todo.
-    apagarChao: 350,
+    apagarChao: 390,
     exposicao: 1,
     gama: 1,
     contraste: 0,
-    saturacao: 1,
+    saturacao: 0.36,
     desfoqueCeu: 0,
     desfoqueHorizonte: 0,
     desfoqueFundo: 0

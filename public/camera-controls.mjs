@@ -1027,7 +1027,7 @@ class CameraControls extends Script {
         // ficava com um empurrão fantasma para sempre. Somam-se as duas,
         // portanto, e o Alt só decide para onde é que a das setas vai.
         this._state.axis.add(tmpV1.set(
-            (key[keyCode.D] - key[keyCode.A]) + (key[keyCode.RIGHT] - key[keyCode.LEFT]),
+            key[keyCode.D] - key[keyCode.A],
             0, // Q and E keys disabled: (key[keyCode.E] - key[keyCode.Q]),
             key[keyCode.W] - key[keyCode.S]
         ));
@@ -1075,6 +1075,10 @@ class CameraControls extends Script {
         const v = tmpV1.set(0, 0, 0); // Reuse v for rotate below
         v.add(panMove.mulScalar(orbit * desktopPan * +this.enablePan));
         
+        if (this._initialY === undefined) {
+            this._initialY = this._camera.entity.getPosition().y;
+        }
+
         // FPS FOV Zoom (Mobile Pinch) and WASD Slide
         if (!this._initialFov) {
             this._initialFov = this._camera.fov || 60;
@@ -1120,10 +1124,15 @@ class CameraControls extends Script {
             this._accumulatedPinch = 0;
         }
 
-        // Apply continuous zoom
+        // Apply continuous zoom as camera movement instead of FOV
+        if (!this._zoomOffset) this._zoomOffset = 0;
+        
+        if (wheel && wheel[0] !== 0) {
+            // Sensibilidade muito mais reduzida: de 15.0 para 3.0
+            this._zoomOffset += Math.sign(wheel[0]) * -3.0;
+        }
         if (double === 1 && activePinch !== 0) {
-            this._targetFov += activePinch * 0.2; // Inverted zoom direction
-            this._targetFov = Math.max(15, Math.min(this._initialFov, this._targetFov));
+            this._zoomOffset += activePinch * -0.1;
         }
 
         // Apply slide directly to keyMove for WASD mapping
@@ -1154,13 +1163,8 @@ class CameraControls extends Script {
             }
         }
 
-
-        // Interpolação suave (lerp)
-        if (Math.abs(this._targetFov - this._camera.fov) > 0.1) {
-            this._camera.fov = math.lerp(this._camera.fov, this._targetFov, 12.0 * dt);
-        } else {
-            this._camera.fov = this._targetFov;
-        }
+        // Fix FOV to initial
+        this._camera.fov = this._initialFov || 60;
 
         // Dynamic LOD based on FOV (Zooming in increases LOD quality)
         if (this._initialFov && this._camera) {
@@ -1191,23 +1195,16 @@ class CameraControls extends Script {
         // desktop rotate (Drag to Look)
         v.set(0, 0, 0);
         
-        if (!this._smoothRotateVelocity) {
-            this._smoothRotateVelocity = new Vec3(0, 0, 0);
-        }
+        // Target rotation based on mouse input (reduced multiplier to 0.4 for better tracking and slower speed)
+        const targetRotate = tmpV2.set(-mouse[0] * 0.4, -mouse[1] * 0.4, 0).mulScalar(rotateDeltaMult);
         
-        // Target rotation based on mouse input with slight speed reduction (0.8)
-        const targetRotate = tmpV2.set(mouse[0] * 0.8, mouse[1] * 0.8, 0).mulScalar(rotateDeltaMult);
-        
-        // Apply ease in and out (inertia)
-        this._smoothRotateVelocity.lerp(this._smoothRotateVelocity, targetRotate, 5.0 * dt);
-        
-        v.add(this._smoothRotateVelocity);
+        v.add(targetRotate);
         deltas.rotate.append([v.x, v.y, v.z]);
 
 
         // mobile rotate (1-finger drag -> Look around)
         v.set(0, 0, 0);
-        const touchRotate = tmpV2.set(touch[0], touch[1], 0);
+        const touchRotate = tmpV2.set(-touch[0], -touch[1], 0);
         // Multiply by (1 - double) so it only activates when exactly 1 finger is down.
         v.add(touchRotate.mulScalar((1 - double) * rotateDeltaMult));
         deltas.rotate.append([v.x, v.y, v.z]);
@@ -1221,6 +1218,9 @@ class CameraControls extends Script {
         // gamepad rotate
         v.set(0, 0, 0);
         const stickRotate = tmpV2.set(rightStick[0], rightStick[1], 0);
+        v.add(stickRotate.mulScalar(fly * rotateJoystickMult));
+        deltas.rotate.append([v.x, v.y, v.z]);
+
         // As setas a olhar, com o Alt em baixo. Entram pelo mesmo sítio que
         // o stick direito do comando, e à mesma velocidade: é a mesma
         // volta, dada por outra mão.
@@ -1230,9 +1230,6 @@ class CameraControls extends Script {
             v.add(setaOlhar.mulScalar(fly * rotateJoystickMult));
             deltas.rotate.append([v.x, v.y, v.z]);
         }
-
-        v.add(stickRotate.mulScalar(fly * rotateJoystickMult));
-        deltas.rotate.append([v.x, v.y, v.z]);
 
         // check if XR is active for frame discard
         if (this.app.xr?.active) {
@@ -1341,6 +1338,46 @@ class CameraControls extends Script {
         const rawPitch = this._pose.angles.x;
         const rawYaw = this._pose.angles.y;
         const rawRoll = this._pose.angles.z;
+        
+        // Aplica o movimento do zoom (aproximar/afastar) antes dos limites de chão e teto
+        if (this._zoomOffset && Math.abs(this._zoomOffset) > 0.001) {
+            let moveThisFrame = math.lerp(0, this._zoomOffset, 12.0 * dt);
+            
+            const pitch = this._pose.angles.x * math.DEG_TO_RAD;
+            const yaw = this._pose.angles.y * math.DEG_TO_RAD;
+            // Vetor em direção ao centro do ecrã (forward)
+            const trueForwardX = -Math.sin(yaw) * Math.cos(pitch);
+            const trueForwardY = Math.sin(pitch);
+            const trueForwardZ = -Math.cos(yaw) * Math.cos(pitch);
+            
+            const nextY = this._pose.position.y + trueForwardY * moveThisFrame;
+            const MIN_ALTITUDE = 15.0;
+            const MAX_ALTITUDE = this._initialY !== undefined ? this._initialY : Infinity;
+            
+            // Impede deslizar pelo chão ou teto quando forçamos o zoom contra eles
+            if (nextY < MIN_ALTITUDE || nextY > MAX_ALTITUDE) {
+                if (Math.abs(trueForwardY) > 0.0001) {
+                    const limite = nextY < MIN_ALTITUDE ? MIN_ALTITUDE : MAX_ALTITUDE;
+                    moveThisFrame = (limite - this._pose.position.y) / trueForwardY;
+                } else {
+                    moveThisFrame = 0;
+                }
+                this._zoomOffset = 0; // Trava o momento instantaneamente
+            } else {
+                this._zoomOffset -= moveThisFrame;
+            }
+            
+            this._pose.position.x += trueForwardX * moveThisFrame;
+            this._pose.position.y += trueForwardY * moveThisFrame;
+            this._pose.position.z += trueForwardZ * moveThisFrame;
+            
+            // Atualizar o controlador para não ressaltar
+            if (this._mode === 'orbit') {
+                const focus = this._pose.getFocus(tmpV2).clone();
+                this._pose.look(this._pose.position, focus);
+                this._controller.attach(this._pose, false);
+            }
+        }
 
         // Chão e tecto: os da cúpula do céu, e só com a travagem ligada.
         const baixo = this._alturaMinima();
@@ -1452,6 +1489,17 @@ class CameraControls extends Script {
             } else {
                 window.dispatchEvent(new CustomEvent('cameraBoundaryLeft'));
             }
+        }
+
+        // --- GLOBAL ALTITUDE LIMITS ---
+        // Impede que a câmara fure o chão (trespassar o gaussian) 
+        // e repõe o teto de altitude original da câmara.
+        const MIN_ALTITUDE = 15.0;
+        if (this._pose.position.y < MIN_ALTITUDE) {
+            this._pose.position.y = MIN_ALTITUDE;
+        }
+        if (this._initialY !== undefined && this._pose.position.y > this._initialY) {
+            this._pose.position.y = this._initialY;
         }
 
         this._camera.entity.setPosition(this._pose.position);

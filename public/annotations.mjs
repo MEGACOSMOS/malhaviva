@@ -229,6 +229,37 @@ AnnotationController.prototype.initialize = function() {
         .custom-video-container.hide-cursor * {
             cursor: none !important;
         }
+        .fechar-fullscreen-btn {
+            position: absolute;
+            top: 24px;
+            right: 24px;
+            z-index: 2500;
+            opacity: 0;
+            pointer-events: none;
+            width: 40px;
+            height: 40px;
+            border-radius: 0;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            background: #05050a;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            cursor: pointer;
+            transition: opacity 0.3s ease, background 0.15s ease, transform 0.2s ease;
+        }
+        .fechar-fullscreen-btn:hover {
+            background: rgba(255, 255, 255, 0.05);
+            transform: scale(1.05);
+        }
+        .moldura-do-player:fullscreen .fechar-fullscreen-btn {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        .moldura-do-player:fullscreen .custom-video-container.hide-cursor .fechar-fullscreen-btn {
+            opacity: 0;
+            pointer-events: none;
+        }
         .custom-video-container video {
             width: 100%;
             height: 100%;
@@ -247,7 +278,7 @@ AnnotationController.prototype.initialize = function() {
             position: relative;
             background: linear-gradient(to top, rgba(255,255,255,0.05), transparent);
             border-top: 1px solid rgba(255, 255, 255, 0.05);
-            padding: 14px 24px 16px;
+            padding: 16px 24px;
             display: flex;
             flex-direction: column;
             gap: 12px;
@@ -261,6 +292,7 @@ AnnotationController.prototype.initialize = function() {
             display: flex;
             flex-direction: column;
             background: #05050a;
+            overflow: hidden;
         }
         .moldura-do-player:fullscreen {
             width: 100vw;
@@ -270,6 +302,18 @@ AnnotationController.prototype.initialize = function() {
             flex: 1 1 auto;
             aspect-ratio: auto;
             min-height: 0;
+        }
+        .moldura-do-player:fullscreen .video-controls {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(to top, rgba(255,255,255,0.05), transparent), #05050a;
+            transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 100;
+        }
+        .moldura-do-player:fullscreen .custom-video-container.hide-cursor + .video-controls {
+            transform: translateY(100%);
         }
         .progress-container {
             width: 100%;
@@ -305,7 +349,7 @@ AnnotationController.prototype.initialize = function() {
         .tempo-e-barra {
             display: flex;
             flex-direction: column;
-            gap: 5px;
+            gap: 12px;
         }
         .controls-main {
             display: flex;
@@ -318,21 +362,22 @@ AnnotationController.prototype.initialize = function() {
             gap: 16px;
         }
         .player-btn {
-            background: none;
-            border: none;
+            background: transparent;
+            border: 1px solid rgba(255, 255, 255, 0.15);
             color: white;
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
-            opacity: 0.8;
-            transition: 0.2s ease;
-            padding: 0;
+            opacity: 1;
+            transition: background 0.15s ease, transform 0.2s ease;
+            padding: 8px;
+            border-radius: 0;
         }
         .player-btn:hover {
-            opacity: 1;
+            background: rgba(255, 255, 255, 0.05);
             color: #ffffff;
-            transform: scale(1.1);
+            transform: scale(1.05);
         }
         .time-display {
             color: rgba(255,255,255,0.9);
@@ -347,26 +392,11 @@ AnnotationController.prototype.initialize = function() {
             display: flex;
             align-items: center;
             gap: 8px;
-            overflow: hidden;
-            width: 32px;
-            transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-        .volume-container:hover, .volume-container.active {
-            width: 140px;
         }
         .volume-slider-wrapper {
             display: flex;
             align-items: center;
             gap: 8px;
-            opacity: 0;
-            transform: translateX(-10px);
-            transition: all 0.3s ease;
-            pointer-events: none;
-        }
-        .volume-container:hover .volume-slider-wrapper, .volume-container.active .volume-slider-wrapper {
-            opacity: 1;
-            transform: translateX(0);
-            pointer-events: auto;
         }
         .volume-slider {
             -webkit-appearance: none;
@@ -577,6 +607,10 @@ AnnotationController.prototype.initialize = function() {
             padding: 16px 24px;
             border-bottom: 1px solid rgba(255, 255, 255, 0.05);
             background: linear-gradient(to bottom, rgba(255,255,255,0.05), transparent);
+            min-height: 56px;
+            box-sizing: border-box;
+            display: flex;
+            align-items: center;
         }
         .previa-nome {
             display: block;
@@ -783,6 +817,102 @@ AnnotationController.prototype.initialize = function() {
             30% { opacity: 1; transform: translateY(-50%) scale(1); }
             100% { opacity: 0; transform: translateY(-50%) scale(1.05); }
         }
+        .idioma {
+            position: relative;
+        }
+        .idioma-botao {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: transparent;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 0;
+            color: #fff;
+            padding: 8px 16px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .idioma-botao:hover {
+            background: rgba(255, 255, 255, 0.05);
+            border-color: rgba(255, 255, 255, 0.3);
+            transform: scale(1.05);
+        }
+        .idioma-menu-modal {
+            position: absolute;
+            top: calc(100% + 8px);
+            right: 0;
+            background: linear-gradient(to bottom, rgba(255,255,255,0.05), transparent), #05050a;
+            border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 0;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            width: 220px;
+            z-index: 2300;
+            opacity: 0;
+            pointer-events: none;
+            transform: translateY(-10px);
+            transition: opacity 0.3s ease, transform 0.3s ease;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+        .idioma-menu-modal.open {
+            opacity: 1;
+            pointer-events: auto;
+            transform: translateY(0);
+        }
+        .idioma-menu-modal .menu-fechar {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            background: none;
+            border: none;
+            color: rgba(255,255,255,0.6);
+            cursor: pointer;
+            padding: 4px;
+            transition: color 0.2s, transform 0.2s;
+        }
+        .idioma-menu-modal .menu-fechar:hover {
+            color: #fff;
+            transform: scale(1.1);
+        }
+        .fechar-palco-btn {
+            background: none;
+            border: none;
+            color: #fff;
+            cursor: pointer;
+            opacity: 0.6;
+            transition: opacity 0.2s ease, transform 0.2s ease;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .fechar-palco-btn:hover {
+            opacity: 1;
+            transform: scale(1.1);
+        }
+        /* ─── Premium Gradient Borders ─── */
+        .janela-do-palco, .previa, .quality-menu {
+            border-color: transparent !important;
+        }
+        .janela-do-palco, .previa {
+            position: relative;
+        }
+        .janela-do-palco::after, .previa::after, .quality-menu::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            border-radius: inherit;
+            padding: 1px;
+            background: linear-gradient(to bottom right, rgba(255,255,255,0.7) 0%, rgba(255,255,255,0.3) 50%, rgba(255,255,255,0.7) 100%);
+            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor;
+            mask-composite: exclude;
+            pointer-events: none;
+            z-index: 10;
+        }
     `;
     document.head.appendChild(style);
 
@@ -879,6 +1009,24 @@ AnnotationController.prototype.initialize = function() {
         el.style.gap = '6px';
 
         el.addEventListener('click', () => {
+            if (this.viewedAnnotations.includes(annId)) {
+                this.viewedAnnotations = this.viewedAnnotations.filter(id => {
+                    const a = this.annotations.find(x => this.idDaAnotacao(x) === id);
+                    return a ? a.is360 !== ann.is360 : true;
+                });
+                
+                try {
+                    localStorage.setItem('viewedAnnotations', JSON.stringify(this.viewedAnnotations));
+                } catch (e) {}
+                
+                this.annotations.forEach(a => {
+                    if (a.is360 === ann.is360 && a.element) {
+                        const dot = a.element.querySelector('.marker-dot');
+                        if (dot) dot.classList.remove('viewed', 'last-viewed');
+                    }
+                });
+            }
+
             this.marcarComoVisto(annId);
 
             if (ann.is360) {
@@ -945,7 +1093,7 @@ const DESENHO_DA_CRUZ = '<svg width="80" height="80" viewBox="0 0 24 24" fill="n
  * @returns {object[]} A fotografia do alto e as três rotas.
  */
 AnnotationController.prototype.paragens360 = function() {
-    return this.annotations.filter(ann => ann.is360);
+    return this.annotations.filter(ann => ann.is360 && ann.label !== "Olho de Águia");
 };
 
 /**
@@ -1020,6 +1168,9 @@ AnnotationController.prototype.baptizarMarcadores = function() {
 AnnotationController.prototype.nomeDaParagem360 = function(ann) {
     // "Esvarena" e "Olho de Águia" são nomes de sítios: ficam iguais em
     // qualquer língua. O que se traduz é só "Rota 360º".
+    if (ann.isImage && ann.label === "Olho de Águia") {
+        return "";
+    }
     if (ann.isImage) {
         return ann.label;
     }
@@ -1049,6 +1200,84 @@ AnnotationController.prototype.enderecoDaParagem360 = function(ann) {
         return '/image360.html?src=' + encodeURIComponent(ann.imagePath);
     }
     return '/video360.html?nome=' + encodeURIComponent(this.videoDaRota360(ann));
+};
+
+/**
+ * Cria o grupo de botões do cabeçalho: botão fechar.
+ */
+AnnotationController.prototype.criarBotoesDeTopo = function(fecharCallback) {
+    const rightGroup = document.createElement('div');
+    rightGroup.style.display = 'flex';
+    rightGroup.style.alignItems = 'center';
+    rightGroup.style.gap = '16px';
+
+    const autoPlayContainer = document.createElement('label');
+    autoPlayContainer.style.display = 'flex';
+    autoPlayContainer.style.alignItems = 'center';
+    autoPlayContainer.style.gap = '8px';
+    autoPlayContainer.style.cursor = 'pointer';
+    autoPlayContainer.title = window.Idiomas ? window.Idiomas.t('v360.autoplay') || 'Reprodução automática' : 'Reprodução automática';
+    
+    const autoPlayLabel = document.createElement('span');
+    autoPlayLabel.textContent = 'Auto';
+    autoPlayLabel.style.fontSize = '12px';
+    autoPlayLabel.style.fontWeight = 'bold';
+    autoPlayLabel.style.textTransform = 'uppercase';
+    autoPlayLabel.style.color = 'rgba(255,255,255,0.7)';
+
+    const switchEl = document.createElement('div');
+    switchEl.style.width = '24px';
+    switchEl.style.height = '14px';
+    switchEl.style.backgroundColor = 'rgba(255,255,255,0.2)';
+    switchEl.style.position = 'relative';
+    switchEl.style.transition = 'background-color 0.2s';
+    
+    const pointer = document.createElement('div');
+    pointer.style.width = '10px';
+    pointer.style.height = '10px';
+    pointer.style.backgroundColor = 'white';
+    pointer.style.position = 'absolute';
+    pointer.style.top = '2px';
+    pointer.style.left = '2px';
+    pointer.style.transition = 'left 0.2s';
+
+    switchEl.appendChild(pointer);
+    
+    // Por definição, a reprodução automática deve estar desativada
+    let isAutoPlay = localStorage.getItem('autoplay-videos') === 'true';
+    
+    const updateSwitchVisuals = () => {
+        if (isAutoPlay) {
+            switchEl.style.backgroundColor = 'rgba(255,255,255,0.6)';
+            pointer.style.left = '12px';
+        } else {
+            switchEl.style.backgroundColor = 'rgba(255,255,255,0.2)';
+            pointer.style.left = '2px';
+        }
+    };
+    updateSwitchVisuals();
+    
+    autoPlayContainer.addEventListener('click', (e) => {
+        e.preventDefault();
+        isAutoPlay = !isAutoPlay;
+        localStorage.setItem('autoplay-videos', isAutoPlay ? 'true' : 'false');
+        updateSwitchVisuals();
+    });
+    
+    autoPlayContainer.appendChild(autoPlayLabel);
+    autoPlayContainer.appendChild(switchEl);
+
+    const closeBtn = document.createElement('button');
+    closeBtn.className = 'fechar-palco-btn';
+    closeBtn.innerHTML = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>';
+    closeBtn.setAttribute('aria-label', 'Fechar');
+    closeBtn.title = 'Fechar';
+    closeBtn.addEventListener('click', fecharCallback);
+
+    rightGroup.appendChild(autoPlayContainer);
+    rightGroup.appendChild(closeBtn);
+    
+    return rightGroup;
 };
 
 /**
@@ -1084,12 +1313,15 @@ AnnotationController.prototype.setupPalco360 = function() {
     header.style.alignItems = 'center';
     header.style.borderBottom = '1px solid rgba(255,255,255,0.05)';
     header.style.background = 'linear-gradient(to bottom, rgba(255,255,255,0.05), transparent)';
+    header.style.minHeight = '56px';
+    header.style.boxSizing = 'border-box';
 
     const titulo = document.createElement('div');
     titulo.style.color = '#fff';
     titulo.style.fontWeight = '600';
     titulo.style.fontSize = '1.1rem';
     header.appendChild(titulo);
+    header.appendChild(this.criarBotoesDeTopo(() => this.fecharPalco360()));
 
     const moldura = document.createElement('div');
     moldura.className = 'moldura-360';
@@ -1159,38 +1391,15 @@ AnnotationController.prototype.setupPalco360 = function() {
     const setaEsquerda = criarSeta('esquerda', BICO_ESQUERDA, -1);
     const setaDireita = criarSeta('direita', BICO_DIREITA, 1);
 
-    const fechar = document.createElement('button');
-    fechar.className = 'fechar-do-palco';
-    fechar.innerHTML = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>';
-    fechar.style.background = 'none';
-    fechar.style.border = 'none';
-    fechar.style.color = '#fff';
-    fechar.style.cursor = 'pointer';
-    fechar.style.opacity = '0.6';
-    fechar.style.transition = 'opacity 0.2s ease, transform 0.2s ease';
-    fechar.style.display = 'flex';
-    fechar.style.alignItems = 'center';
-    fechar.style.justifyContent = 'center';
-    fechar.addEventListener('mouseenter', () => {
-        fechar.style.opacity = '1';
-        fechar.style.transform = 'scale(1.1)';
-    });
-    fechar.addEventListener('mouseleave', () => {
-        fechar.style.opacity = '0.6';
-        fechar.style.transform = 'scale(1)';
-    });
-    fechar.addEventListener('click', () => this.fecharPalco360());
-
     const carrossel = document.createElement('div');
     carrossel.className = 'carrossel';
     carrossel.appendChild(esquerda);
     carrossel.appendChild(content);
     carrossel.appendChild(direita);
-
+    
     modal.appendChild(carrossel);
     modal.appendChild(setaEsquerda);
     modal.appendChild(setaDireita);
-    modal.appendChild(fechar);
     modal.addEventListener('click', (e) => {
         if (e.target === modal) this.fecharPalco360();
     });
@@ -1202,6 +1411,7 @@ AnnotationController.prototype.setupPalco360 = function() {
         meio: content,
         esquerda,
         direita,
+        setaEsquerda,
         setaDireita,
         barraDoNome: header,
         titulo,
@@ -1265,7 +1475,11 @@ AnnotationController.prototype.saltarParagem360 = function(sentido) {
 AnnotationController.prototype.mostrarParagem360 = function(ann) {
     const palco = this.palco360;
     this.paragem360 = ann;
-    this.marcarComoVisto(this.idDaAnotacao(ann));
+    // Se esta paragem ainda faltava, é preciso sabê-lo antes de a marcar:
+    // é o que diz se é ela que fecha a colecção.
+    const annId = this.idDaAnotacao(ann);
+    const faltava = !this.viewedAnnotations.includes(annId);
+    this.marcarComoVisto(annId);
 
     palco.titulo.textContent = this.nomeDaParagem360(ann);
     palco.moldura.innerHTML = '<iframe src="' + this.enderecoDaParagem360(ann) +
@@ -1275,10 +1489,20 @@ AnnotationController.prototype.mostrarParagem360 = function(ann) {
 
     const lista = this.paragens360();
     const onde = lista.indexOf(ann);
-    const noFim = this.noFimDaFila(lista, onde);
+    const avulso = onde < 0;
+    
+    palco.esquerda.style.visibility = avulso ? 'hidden' : '';
+    palco.direita.style.visibility = avulso ? 'hidden' : '';
+    palco.setaEsquerda.style.visibility = avulso ? 'hidden' : '';
+    palco.setaDireita.style.visibility = avulso ? 'hidden' : '';
+
+    if (!avulso) {
+        this.registarFechoDaColeccao(annId, lista, faltava);
+    }
+    const noFim = avulso ? true : this.noFimDaFila(lista, onde);
     this.arrumarLadoDireito(palco.setaDireita, palco.direita, noFim);
 
-    if (onde >= 0 && lista.length > 1) {
+    if (!avulso && lista.length > 1) {
         this.encherPrevia360(palco.esquerda, lista[(onde - 1 + lista.length) % lista.length]);
         if (!noFim) {
             this.encherPrevia360(palco.direita, lista[(onde + 1) % lista.length]);
@@ -1430,38 +1654,16 @@ AnnotationController.prototype.setupModal = function() {
     header.style.alignItems = 'center';
     header.style.borderBottom = '1px solid rgba(255,255,255,0.05)';
     header.style.background = 'linear-gradient(to bottom, rgba(255,255,255,0.05), transparent)';
+    header.style.minHeight = '56px';
+    header.style.boxSizing = 'border-box';
     
     this.modalTitle = document.createElement('div');
     this.modalTitle.style.color = '#fff';
     this.modalTitle.style.fontWeight = '600';
     this.modalTitle.style.fontSize = '1.1rem';
     
-    // A cruz de fechar vive na ponta do ecrã, e não em cima do tocador:
-    // fechar a janela é sair dali, não é mexer no vídeo.
-    const closeBtn = document.createElement('button');
-    closeBtn.className = 'fechar-do-palco';
-    closeBtn.innerHTML = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>';
-    closeBtn.style.background = 'none';
-    closeBtn.style.border = 'none';
-    closeBtn.style.color = '#fff';
-    closeBtn.style.cursor = 'pointer';
-    closeBtn.style.opacity = '0.6';
-    closeBtn.style.transition = 'opacity 0.2s ease, transform 0.2s ease, color 0.2s ease';
-    closeBtn.style.display = 'flex';
-    closeBtn.style.alignItems = 'center';
-    closeBtn.style.justifyContent = 'center';
-    closeBtn.addEventListener('mouseenter', () => {
-        closeBtn.style.opacity = '1';
-        closeBtn.style.transform = 'scale(1.1)';
-        closeBtn.style.color = '#ffffff';
-    });
-    closeBtn.addEventListener('mouseleave', () => {
-        closeBtn.style.opacity = '0.6';
-        closeBtn.style.transform = 'scale(1)';
-        closeBtn.style.color = '#fff';
-    });
-    
     header.appendChild(this.modalTitle);
+    header.appendChild(this.criarBotoesDeTopo(() => closeModal()));
 
     // Custom Video Player UI
     const videoWrapper = document.createElement('div');
@@ -1490,6 +1692,7 @@ AnnotationController.prototype.setupModal = function() {
     const progressFilled = document.createElement('div');
     progressFilled.className = 'progress-filled';
     progressContainer.appendChild(progressFilled);
+    this.progressFilled = progressFilled;
 
     // Control buttons
     const controlsMain = document.createElement('div');
@@ -1508,6 +1711,7 @@ AnnotationController.prototype.setupModal = function() {
     const timeDisplay = document.createElement('div');
     timeDisplay.className = 'time-display';
     timeDisplay.innerText = '0:00 / 0:00';
+    this.timeDisplay = timeDisplay;
 
     // Volume Control
     const volumeContainer = document.createElement('div');
@@ -1526,7 +1730,7 @@ AnnotationController.prototype.setupModal = function() {
     volumeSlider.type = 'range';
     volumeSlider.className = 'volume-slider';
     volumeSlider.min = '0';
-    volumeSlider.max = '3';
+    volumeSlider.max = '1';
     volumeSlider.step = '0.05';
     volumeSlider.value = '1';
 
@@ -1540,18 +1744,18 @@ AnnotationController.prototype.setupModal = function() {
     volumeContainer.appendChild(volumeBtn);
     volumeContainer.appendChild(volumeSliderWrapper);
 
-    // Recuar e avançar dez segundos, como no tocador das rotas 360º.
+    // Recuar e avançar cinco segundos, como no tocador das rotas 360º.
     const recuarBtn = document.createElement('button');
     recuarBtn.className = 'player-btn';
     recuarBtn.setAttribute('data-i18n-title', 'v360.recuar');
-    recuarBtn.title = (window.Idiomas ? window.Idiomas.t('v360.recuar') : 'Recuar 10 segundos');
-    recuarBtn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter"><polyline points="11 19 2 12 11 5"></polyline><polyline points="21 19 12 12 21 5"></polyline></svg>';
+    recuarBtn.title = (window.Idiomas ? window.Idiomas.t('v360.recuar') : 'Recuar 5 segundos');
+    recuarBtn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter"><polyline points="11 18 5 12 11 6"></polyline><polyline points="19 18 13 12 19 6"></polyline></svg>';
 
     const avancarBtn = document.createElement('button');
     avancarBtn.className = 'player-btn';
     avancarBtn.setAttribute('data-i18n-title', 'v360.avancar');
-    avancarBtn.title = (window.Idiomas ? window.Idiomas.t('v360.avancar') : 'Avançar 10 segundos');
-    avancarBtn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter"><polyline points="13 19 22 12 13 5"></polyline><polyline points="3 19 12 12 3 5"></polyline></svg>';
+    avancarBtn.title = (window.Idiomas ? window.Idiomas.t('v360.avancar') : 'Avançar 5 segundos');
+    avancarBtn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter"><polyline points="5 18 11 12 5 6"></polyline><polyline points="13 18 19 12 13 6"></polyline></svg>';
 
     playPauseBtn.setAttribute('data-i18n-title', 'v360.tocar');
     playPauseBtn.title = (window.Idiomas ? window.Idiomas.t('v360.tocar') : 'Tocar / Pausar');
@@ -1630,22 +1834,35 @@ AnnotationController.prototype.setupModal = function() {
     espera.className = 'espera-video';
     videoWrapper.appendChild(espera);
 
-    // Os dois sinais que piscam ao saltar dez segundos com duplo clique.
+    // Os dois sinais que piscam ao saltar cinco segundos com duplo clique.
     const setaDupla = (paraTras) => paraTras
-        ? '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter"><polyline points="11 19 2 12 11 5"></polyline><polyline points="21 19 12 12 21 5"></polyline></svg>'
-        : '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter"><polyline points="13 19 22 12 13 5"></polyline><polyline points="3 19 12 12 3 5"></polyline></svg>';
+        ? '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter"><polyline points="11 18 5 12 11 6"></polyline><polyline points="19 18 13 12 19 6"></polyline></svg>'
+        : '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter"><polyline points="5 18 11 12 5 6"></polyline><polyline points="13 18 19 12 13 6"></polyline></svg>';
 
     const sinalEsquerda = document.createElement('div');
     sinalEsquerda.className = 'salto-sinal esquerda';
-    sinalEsquerda.innerHTML = setaDupla(true) + '<span>10 s</span>';
+    sinalEsquerda.innerHTML = setaDupla(true) + '<span>5 s</span>';
     const sinalDireita = document.createElement('div');
     sinalDireita.className = 'salto-sinal direita';
-    sinalDireita.innerHTML = setaDupla(false) + '<span>10 s</span>';
+    sinalDireita.innerHTML = setaDupla(false) + '<span>5 s</span>';
     videoWrapper.appendChild(sinalEsquerda);
     videoWrapper.appendChild(sinalDireita);
 
     videoWrapper.appendChild(this.videoPlayer);
     videoWrapper.appendChild(bigPlayBtn);
+
+    const fsCloseBtn = document.createElement('button');
+    fsCloseBtn.className = 'fechar-fullscreen-btn';
+    fsCloseBtn.innerHTML = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>';
+    fsCloseBtn.title = 'Fechar e voltar ao mapa';
+    fsCloseBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (document.fullscreenElement) {
+            document.exitFullscreen();
+        }
+        closeModal();
+    });
+    videoWrapper.appendChild(fsCloseBtn);
 
     // A imagem e a barra dos comandos, uma peça só. É esta peça que vai a
     // ecrã inteiro, para os comandos irem com ela.
@@ -1745,7 +1962,6 @@ AnnotationController.prototype.setupModal = function() {
     this.modal.appendChild(carrossel);
     this.modal.appendChild(this.setaEsquerda);
     this.modal.appendChild(this.setaDireita);
-    this.modal.appendChild(closeBtn);
     document.body.appendChild(this.modal);
 
     // --- Player Logic ---
@@ -1875,8 +2091,8 @@ AnnotationController.prototype.setupModal = function() {
     progressContainer.addEventListener('pointerup', largarBarra);
     progressContainer.addEventListener('pointercancel', largarBarra);
 
-    // ---- Saltar dez segundos ----
-    const SALTO = 10;
+    // ---- Saltar cinco segundos ----
+    const SALTO = 5;
     const saltar = (segundos) => {
         if (!isFinite(this.videoPlayer.duration)) return;
         this.videoPlayer.currentTime = Math.min(
@@ -1933,7 +2149,7 @@ AnnotationController.prototype.setupModal = function() {
             saltar(5);
         } else if (e.key === 'ArrowUp') {
             e.preventDefault();
-            volumeSlider.value = Math.min(3, parseFloat(volumeSlider.value) + 0.1);
+            volumeSlider.value = Math.min(1, parseFloat(volumeSlider.value) + 0.1);
             volumeSlider.dispatchEvent(new Event('input'));
             showControls();
         } else if (e.key === 'ArrowDown') {
@@ -1973,6 +2189,14 @@ AnnotationController.prototype.setupModal = function() {
     videoWrapper.addEventListener('click', showControls);
     videoWrapper.addEventListener('mouseleave', mostrarRato);
     this.videoPlayer.addEventListener('pause', mostrarRato);
+    
+    // Quando transita de um vídeo para o outro em fullscreen, o play
+    // automático esconde logo a barra para não ficar visível.
+    this.videoPlayer.addEventListener('play', () => {
+        if (document.fullscreenElement) {
+            videoWrapper.classList.add('hide-cursor');
+        }
+    });
 
     settingsBtn.addEventListener('click', (e) => {
         e.stopPropagation();
@@ -2055,7 +2279,6 @@ AnnotationController.prototype.setupModal = function() {
         }, 300);
     };
 
-    closeBtn.addEventListener('click', closeModal);
     this.modal.addEventListener('click', (e) => {
         if (e.target === this.modal) closeModal();
     });
@@ -2074,12 +2297,25 @@ AnnotationController.prototype.setupModal = function() {
     // a mostrar: a janela fecha-se e devolve o bairro.
     this.videoPlayer.addEventListener('ended', () => {
         if (!this.videoNome) return;
-        this.marcarComoVisto('video-' + this.videoNome);
-        const seguinte = this.proximoPorVer(this.videoNome);
-        if (seguinte) {
-            this.openVideoModal(seguinte.video, seguinte.label, 1);
-        } else {
-            closeModal();
+        // Como nas paragens 360º, é preciso saber se este ainda faltava
+        // antes de o marcar: é o que diz se é ele que fecha a colecção.
+        const annId = 'video-' + this.videoNome;
+        const faltava = !this.viewedAnnotations.includes(annId);
+        this.marcarComoVisto(annId);
+
+        const lista = this.annotations.filter(ann => !ann.is360 && ann.video);
+        const onde = lista.findIndex(ann => ann.video === this.videoNome);
+        this.registarFechoDaColeccao(annId, lista, faltava);
+        if (onde >= 0) {
+            const isAutoPlay = localStorage.getItem('autoplay-videos') === 'true';
+            if (isAutoPlay) {
+                if (this.noFimDaFila(lista, onde)) {
+                    closeModal();
+                } else {
+                    const ann = lista[(onde + 1) % lista.length];
+                    this.openVideoModal(ann.video, ann.label, 1);
+                }
+            }
         }
     });
 
@@ -2130,6 +2366,11 @@ AnnotationController.prototype.medirPalco = function(palco) {
 AnnotationController.prototype.atualizarPalco = function(nomeAtual, sentido, oldCenterFrame) {
     const lista = this.annotations.filter(ann => !ann.is360 && ann.video);
     const onde = lista.findIndex(ann => ann.video === nomeAtual);
+    // Ao mudar de testemunho, a nota de quem fechou a colecção só se
+    // mantém se for este mesmo; senão larga-se, e a seta volta.
+    if (onde >= 0) {
+        this.registarFechoDaColeccao(this.idDaAnotacao(lista[onde]), lista, false);
+    }
     const noFim = this.noFimDaFila(lista, onde);
     this.arrumarLadoDireito(this.setaDireita, this.previaDireita, noFim);
 
@@ -2313,7 +2554,43 @@ AnnotationController.prototype.arrumarLadoDireito = function(seta, previa, noFim
  * @returns {boolean} Verdadeiro se for o fim da fila.
  */
 AnnotationController.prototype.noFimDaFila = function(lista, onde) {
-    return onde === lista.length - 1 && this.coleccaoVista(lista);
+    if (!this.coleccaoVista(lista)) {
+        return false;
+    }
+
+    // Na última paragem da lista há sempre fim de fila: dali para a frente
+    // a lista dá a volta e volta ao princípio.
+    if (onde === lista.length - 1) {
+        return true;
+    }
+
+    // Fora dela, a cruz só aparece na paragem que fechou a colecção, e só
+    // enquanto se está nela. Quem chega ao fim pelo meio da lista merece a
+    // cruz ali mesmo, sem ter de ir até à última; mas quem lá voltar mais
+    // tarde, dando a volta, ainda tem para onde ir e a seta tem de voltar.
+    return this.idDaAnotacao(lista[onde]) === this.fechouAColeccao;
+};
+
+/**
+ * Toma nota da paragem que acabou de fechar a colecção, ou larga a nota
+ * quando se sai dela.
+ *
+ * Isto existe por causa de um engano fácil de fazer: perguntar qual foi a
+ * última anotação a ser marcada como vista. Essa lista deixa de mudar
+ * quando já se viu tudo, e a resposta fica congelada para sempre — a
+ * paragem onde se completou a colecção passava a ostentar a cruz de saída
+ * em todas as visitas seguintes, mesmo quando ainda havia lista adiante.
+ *
+ * @param {string} annId - A anotação que se está a ver.
+ * @param {object[]} lista - As anotações da colecção a que ela pertence.
+ * @param {boolean} faltavaAntes - Se ela ainda não tinha sido vista.
+ */
+AnnotationController.prototype.registarFechoDaColeccao = function(annId, lista, faltavaAntes) {
+    if (faltavaAntes && this.coleccaoVista(lista)) {
+        this.fechouAColeccao = annId;
+    } else if (this.fechouAColeccao !== annId) {
+        this.fechouAColeccao = null;
+    }
 };
 
 /**
@@ -2415,6 +2692,9 @@ AnnotationController.prototype.abrirTestemunho = function(nome, title, sentido, 
     this.marcarComoVisto('video-' + nome);
     this.modalTitle.textContent = title;
     this.videoNome = nome;
+    
+    if (this.progressFilled) this.progressFilled.style.width = '0%';
+    if (this.timeDisplay) this.timeDisplay.innerText = '0:00 / 0:00';
 
     const fontes = fontesDeVideo(nome);
     this.videoSources = fontes;

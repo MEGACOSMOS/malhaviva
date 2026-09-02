@@ -52,7 +52,7 @@ const TAMANHO_DAS_FACES = {
 // O número no fim muda sempre que os valores de fábrica mudam: assim o que
 // ficou guardado de uma afinação antiga não volta a ser aplicado por cima
 // de uma fotografia que já a traz embutida.
-const CHAVE = 'ceu-olho-de-aguia-v13';
+const CHAVE = 'ceu-olho-de-aguia-v14';
 
 const PADRAO = {
     ligado: true,

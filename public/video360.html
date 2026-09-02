@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>360 Video Player</title>
-    <script src="/idiomas.js?v=6"></script>
+    <script src="/idiomas.js?v=7"></script>
     <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
     <script src="/comando-paginas.js?v=3" defer></script>
     <script>
@@ -135,10 +135,22 @@
             flex: 0 0 auto;
             background: linear-gradient(to top, rgba(255,255,255,0.05), transparent);
             border-top: 1px solid rgba(255, 255, 255, 0.05);
-            padding: 14px 24px 16px;
+            padding: 16px 24px;
             display: flex;
             flex-direction: column;
             gap: 12px;
+        }
+        body:fullscreen .video-controls {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(to top, rgba(255,255,255,0.05), transparent), #05050a;
+            transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 1000;
+        }
+        body:fullscreen.hide-cursor .video-controls {
+            transform: translateY(100%);
         }
         .progress-container {
             width: 100%;
@@ -175,7 +187,7 @@
         .tempo-e-barra {
             display: flex;
             flex-direction: column;
-            gap: 5px;
+            gap: 12px;
         }
         .controls-main {
             display: flex;
@@ -284,21 +296,22 @@
         }
 
         .player-btn {
-            background: none;
-            border: none;
+            background: transparent;
+            border: 1px solid rgba(255, 255, 255, 0.15);
             color: white;
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
-            opacity: 0.8;
-            transition: 0.2s ease;
-            padding: 0;
+            opacity: 1;
+            transition: background 0.15s ease, transform 0.2s ease;
+            padding: 8px;
+            border-radius: 0;
         }
         .player-btn:hover {
-            opacity: 1;
+            background: rgba(255, 255, 255, 0.05);
             color: #ffffff;
-            transform: scale(1.1);
+            transform: scale(1.05);
         }
         .time-display {
             color: rgba(255,255,255,0.9);
@@ -312,26 +325,11 @@
             display: flex;
             align-items: center;
             gap: 8px;
-            overflow: hidden;
-            width: 32px;
-            transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-        .volume-container:hover, .volume-container.active {
-            width: 140px;
         }
         .volume-slider-wrapper {
             display: flex;
             align-items: center;
             gap: 8px;
-            opacity: 0;
-            transform: translateX(-10px);
-            transition: all 0.3s ease;
-            pointer-events: none;
-        }
-        .volume-container:hover .volume-slider-wrapper, .volume-container.active .volume-slider-wrapper {
-            opacity: 1;
-            transform: translateX(0);
-            pointer-events: auto;
         }
         .volume-slider {
             -webkit-appearance: none;
@@ -435,6 +433,24 @@
                 bottom: 45px;
             }
         }
+
+        /* ─── Premium Gradient Borders ─── */
+        .quality-menu {
+            border-color: transparent !important;
+        }
+        .quality-menu::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            border-radius: inherit;
+            padding: 1px;
+            background: linear-gradient(to bottom right, rgba(255,255,255,0.7) 0%, rgba(255,255,255,0.3) 50%, rgba(255,255,255,0.7) 100%);
+            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor;
+            mask-composite: exclude;
+            pointer-events: none;
+            z-index: 10;
+        }
     </style>
 </head>
 <body>
@@ -469,13 +485,13 @@
             <!-- Big Play Button -->
             <div class="spinner" id="espera"></div>
 
-            <div class="salto-sinal esquerda" id="sinal-esquerda">
-                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter"><polyline points="11 19 2 12 11 5"></polyline><polyline points="21 19 12 12 21 5"></polyline></svg>
-                <span>10 s</span>
+            <div id="sinal-esquerda" class="salto-sinal esquerda">
+                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter"><polyline points="11 18 5 12 11 6"></polyline><polyline points="19 18 13 12 19 6"></polyline></svg>
+                <span>5 s</span>
             </div>
-            <div class="salto-sinal direita" id="sinal-direita">
-                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter"><polyline points="13 19 22 12 13 5"></polyline><polyline points="3 19 12 12 3 5"></polyline></svg>
-                <span>10 s</span>
+            <div id="sinal-direita" class="salto-sinal direita">
+                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter"><polyline points="5 18 11 12 5 6"></polyline><polyline points="13 18 19 12 13 6"></polyline></svg>
+                <span>5 s</span>
             </div>
 
             <div class="big-play-btn" id="big-play-btn">
@@ -495,20 +511,20 @@
         
         <div class="controls-main">
             <div class="controls-left">
-                <button class="player-btn" id="recuar-btn" data-i18n-title="v360.recuar" title="Recuar 10 segundos">
+                <button class="player-btn" id="recuar-btn" data-i18n-title="v360.recuar" title="Recuar 5 segundos">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter">
-                        <polyline points="11 19 2 12 11 5"></polyline>
-                        <polyline points="21 19 12 12 21 5"></polyline>
+                        <polyline points="11 18 5 12 11 6"></polyline>
+                        <polyline points="19 18 13 12 19 6"></polyline>
                     </svg>
                 </button>
                 <button class="player-btn" id="play-pause-btn" data-i18n-title="v360.tocar" title="Tocar / Pausar">
                     <!-- Default icon: Play -->
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
                 </button>
-                <button class="player-btn" id="avancar-btn" data-i18n-title="v360.avancar" title="Avançar 10 segundos">
+                <button class="player-btn" id="avancar-btn" data-i18n-title="v360.avancar" title="Avançar 5 segundos">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter">
-                        <polyline points="13 19 22 12 13 5"></polyline>
-                        <polyline points="3 19 12 12 3 5"></polyline>
+                        <polyline points="5 18 11 12 5 6"></polyline>
+                        <polyline points="13 18 19 12 13 6"></polyline>
                     </svg>
                 </button>
                 
@@ -517,7 +533,7 @@
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
                     </button>
                     <div class="volume-slider-wrapper">
-                        <input type="range" class="volume-slider" id="volume-slider" min="0" max="3" step="0.05" value="1">
+                        <input type="range" class="volume-slider" id="volume-slider" min="0" max="1" step="0.05" value="1">
                         <div class="volume-percentage" id="volume-percentage">100%</div>
                     </div>
                 </div>
@@ -717,18 +733,44 @@
         });
 
         // Nos vídeos das pessoas a imagem começa a andar mal a janela abre.
-        // Aqui era preciso carregar num botão primeiro, e isso fazia as duas
-        // janelas parecerem coisas diferentes. Agora tenta-se arrancar
-        // sozinho; só se o navegador recusar (há navegadores que exigem um
-        // toque antes de deixar sair som) é que o botão fica à espera.
+        // Aqui, como a textura WebGL demora um pouco a ser puxada para a placa
+        // gráfica, o som começava antes da imagem (ecrã preto). Para evitar isso,
+        // forçamos o navegador a descodificar o primeiro frame (saltando para 0.001s)
+        // e só lhe damos ordem de marcha quando essa imagem estiver pronta a pintar.
         if (!pedidoDeVR) {
             video.addEventListener('canplay', () => {
                 if (!video.paused) return;
+                
+                // Corta o som nativamente. Assim, se a textura WebGL demorar uns
+                // milissegundos a pintar (o que antes causava um ecrã preto com som),
+                // o vídeo avança mas em silêncio.
+                video.volume = 0;
+                
                 video.play().then(() => {
-                    overlay.style.display = 'none';
-                    uiLayer.classList.remove('paused');
-                    showControls();
-                }).catch(() => { /* fica o botão do meio à espera de um toque */ });
+                    const aoAndar = () => {
+                        // Só quando o vídeo já andou um bocadinho (garantindo
+                        // que há imagem para mostrar)...
+                        if (video.currentTime > 0.05) {
+                            video.removeEventListener('timeupdate', aoAndar);
+                            
+                            // ...damos os dois frames ao A-Frame para desenhar
+                            requestAnimationFrame(() => {
+                                requestAnimationFrame(() => {
+                                    // Devolve o volume se não estiver em mute
+                                    if (!isMuted) {
+                                        if (gainNode) gainNode.gain.value = currentVolume;
+                                        else video.volume = Math.min(1, currentVolume);
+                                    }
+                                    
+                                    overlay.style.display = 'none';
+                                    uiLayer.classList.remove('paused');
+                                    showControls();
+                                });
+                            });
+                        }
+                    };
+                    video.addEventListener('timeupdate', aoAndar);
+                }).catch(() => { /* botão de arranque à espera de toque */ });
             }, { once: true });
         }
 
@@ -962,7 +1004,10 @@
             clearTimeout(ratoParado);
 
             ratoParado = setTimeout(() => {
-                if (!video.paused) document.body.classList.add('hide-cursor');
+                const overControls = document.getElementById('video-controls').matches(':hover');
+                if (!video.paused && (!overControls || !document.fullscreenElement)) {
+                    document.body.classList.add('hide-cursor');
+                }
             }, 5000);
         };
 
@@ -1064,7 +1109,7 @@
                 saltar(5);
             } else if (e.key === 'ArrowUp') {
                 e.preventDefault();
-                volumeSlider.value = Math.min(3, parseFloat(volumeSlider.value) + 0.1);
+                volumeSlider.value = Math.min(1, parseFloat(volumeSlider.value) + 0.1);
                 volumeSlider.dispatchEvent(new Event('input'));
                 showControls();
             } else if (e.key === 'ArrowDown') {
