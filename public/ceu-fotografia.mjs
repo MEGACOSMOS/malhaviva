@@ -30,9 +30,8 @@ export const AJUSTES_PADRAO = {
     // bairro sem ter de se desligar de vez.
     opacidade: 1,
     // Até que distância do drone, em metros, a fotografia deixa de ter chão.
-    // Mais perto do que isto está tudo apagado; ao dobro da distância está
-    // tudo lá; pelo meio, esbate-se. A zero não se apaga nada e o chão
-    // volta todo.
+    // Mais perto do que isto está tudo apagado; daqui até ao horizonte vai
+    // esbatendo. A zero não se apaga nada e o chão volta todo.
     apagarChao: 390,
     exposicao: 1,
     gama: 1,
@@ -200,8 +199,8 @@ function suave(a, b, x) {
  * quanto mais abaixo, mais perto do drone esse chão estava.
  *
  * O número que manda é dado em metros, que é como se olha para o bairro:
- * dentro dessa distância o chão vai-se todo, ao dobro dela está todo lá, e
- * pelo meio esbate-se.
+ * dentro dessa distância o chão vai-se todo, e daí até ao horizonte — que
+ * é a linha onde a taça do céu assenta no chão — esbate-se.
  *
  * É esse chão que aqui se apaga, de baixo para cima, até à mesma cor de
  * fundo a que a opacidade já esbatia a paisagem toda. Assim, sem tocar na
@@ -230,12 +229,25 @@ function apagarOChao(pincel, largura, altura, metros) {
         const graus = Math.atan2(ALTURA_DA_VISTA, Math.max(m, 1e-3)) * 180 / Math.PI;
         return (0.5 + Math.min(graus, 90) / 180) * altura;
     };
-    const comeca = linhaDe(metros * 2);
+    // O esbatimento arranca na aresta da taça, e não a uma distância
+    // qualquer: a cúpula pousa no chão exactamente à altura do horizonte,
+    // que é a linha do meio da imagem. Começá-lo mais abaixo deixava, logo
+    // à saída da aresta, um fio de chão da fotografia por apagar — fino
+    // porque ali cabe o mundo inteiro entre o horizonte e essa distância,
+    // mas bem visível, por ser o único sítio onde a fotografia ainda punha
+    // chão. Agora não há fio nenhum: da aresta para baixo o chão já está a
+    // desaparecer.
+    const comeca = altura / 2;
     const acaba = linhaDe(metros);
 
     const gradiente = pincel.createLinearGradient(0, comeca, 0, acaba);
-    gradiente.addColorStop(0, `rgba(${FUNDO[0]}, ${FUNDO[1]}, ${FUNDO[2]}, 0)`);
-    gradiente.addColorStop(1, `rgba(${FUNDO[0]}, ${FUNDO[1]}, ${FUNDO[2]}, 1)`);
+    // O esbatimento é feito em degraus suaves, e não a direito: assim
+    // arranca do nada junto à aresta, sem uma dobra a marcar onde começou.
+    const PASSOS = 16;
+    for (let i = 0; i <= PASSOS; i++) {
+        const t = i / PASSOS;
+        gradiente.addColorStop(t, `rgba(${FUNDO[0]}, ${FUNDO[1]}, ${FUNDO[2]}, ${suave(0, 1, t)})`);
+    }
     pincel.fillStyle = gradiente;
     pincel.fillRect(0, comeca, largura, acaba - comeca);
 
