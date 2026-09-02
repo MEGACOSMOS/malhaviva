@@ -205,6 +205,10 @@ export function criarModoVR(app) {
      */
     function conduzir(dt) {
         if (!app.xr.active || !suporte || !camara) return;
+        // Um salto no relógio — uma imagem que demorou, os óculos a voltar do
+        // descanso — não pode virar um salto no bairro. Trava-se o passo à
+        // mesma medida com que a câmara do rato já se trava.
+        dt = Math.min(dt, 0.1);
         const fontes = app.xr.input && app.xr.input.inputSources;
         if (!fontes || !fontes.length) return;
 

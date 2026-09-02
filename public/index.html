@@ -1644,37 +1644,6 @@ void modifySplatColor(vec3 center, inout vec4 color) {
                 const pcApp = document.querySelector('pc-app');
                 const app = pcApp && pcApp.app;
 
-                // --- Limita a densidade de pixels a 2x no nível Alto: acima disso
-                //     não há ganho visível de nitidez, só custo de renderização ---
-                if (isHigh && app && app.graphicsDevice) {
-                    // Num ecrã muito fino de grão, dois pontos por ponto
-                    // são quatro vezes mais tinta para nenhuma nitidez a
-                    // mais. O limite acompanha o tamanho do ecrã, como faz
-                    // o visualizador do SuperSplat.
-                    const menorLado = Math.min(screen.width, screen.height) || 1080;
-                    app.graphicsDevice.maxPixelRatio =
-                        Math.min(2160 / menorLado, window.devicePixelRatio || 1, 2);
-                }
-
-                // --- Nível Baixo: menos pixéis para desenhar ---
-                //
-                // Um telemóvel desenha à medida do ecrã (um ponto por ponto),
-                // o que já é bem menos do que os dois ou três pontos por
-                // ponto que ele tem. Em ecrãs grandes — um tablet deitado,
-                // por exemplo — nem isso chega, e há um tecto de pontos para
-                // o trabalho não crescer com o tamanho do ecrã.
-                if (!isHigh && app && app.graphicsDevice) {
-                    let densidade = 1;
-                    if (isLow) {
-                        const pontosDoEcra = Math.max(1, window.innerWidth * window.innerHeight);
-                        const TECTO_DE_PONTOS = 900000;
-                        densidade = Math.min(1, Math.sqrt(TECTO_DE_PONTOS / pontosDoEcra));
-                    }
-                    app.graphicsDevice.maxPixelRatio = densidade;
-                }
-
-                // --- 3D Fog removed (may cause LOD issues with GSplat) ---
-
                 // --- Adjust far clip based on quality, but keep it huge for the background elements ---
                 if (isLow || isMed) {
                     const cameraEntity = app && app.root && app.root.findByName('camera');
@@ -2092,6 +2061,42 @@ void modifySplatColor(vec3 center, inout vec4 color) {
                 if (!isHigh) {
                     app.scene.gsplat.splatBudget = isMed ? 1200000 : 500000;
                 }
+            }
+
+            // --- Quantos pontos se desenham por cada ponto do ecrã ---
+            //
+            // No Alto, até dois: num ecrã de grão fino, dois pontos por ponto
+            // dão nitidez a mais que se vê; acima disso é quatro vezes a tinta
+            // para nada. O limite acompanha o tamanho do ecrã, como faz o
+            // visualizador do SuperSplat.
+            //
+            // No Médio e no Baixo, um ou menos: um telemóvel desenha à medida
+            // do ecrã, que já é bem menos do que os dois ou três pontos por
+            // ponto que ele tem, e em ecrãs grandes nem isso chega — há um
+            // tecto de pontos para o trabalho não crescer com o tamanho do
+            // ecrã.
+            //
+            // A conta passa a ser feita aqui, no arranque, e não depois de a
+            // página abrir. O motor mede a tela a cada imagem, por isso o
+            // limite acabava sempre por pegar — mas só ao fim de o bairro já
+            // ter carregado inteiro à densidade de arranque, e a tela mudava
+            // de tamanho debaixo de quem já estava a olhar. Decidido antes,
+            // o bairro nasce logo com a densidade que lhe serve. O pedido
+            // logo a seguir é para não haver sequer uma imagem pelo meio.
+            if (app.graphicsDevice) {
+                let densidade;
+                if (isHigh) {
+                    const menorLado = Math.min(screen.width, screen.height) || 1080;
+                    densidade = Math.min(2160 / menorLado, window.devicePixelRatio || 1, 2);
+                } else if (isLow) {
+                    const pontosDoEcra = Math.max(1, window.innerWidth * window.innerHeight);
+                    const TECTO_DE_PONTOS = 900000;
+                    densidade = Math.min(1, Math.sqrt(TECTO_DE_PONTOS / pontosDoEcra));
+                } else {
+                    densidade = 1;
+                }
+                app.graphicsDevice.maxPixelRatio = densidade;
+                app.updateCanvasSize();
             }
 
             // Junta os tracinhos das rotas num punhado de desenhos. Este
