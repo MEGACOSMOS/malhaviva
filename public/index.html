@@ -821,11 +821,12 @@
     /**
      * A barra de carregamento, quadrado a quadrado.
      *
-     * Não há maneira honesta de saber quanto falta: o bairro chega aos
-     * bocados, e os bocados não se anunciam. Por isso a barra avança como
-     * quem se aproxima de uma porta — cada passo é uma fracção do que
-     * falta, e assim nunca pára nem chega ao fim antes de tempo. Quando o
-     * mapa está mesmo pronto, acende de uma vez até ao último quadrado.
+     * No arranque do motor não há maneira honesta de saber quanto falta,
+     * e a barra avança como quem se aproxima de uma porta: cada passo é
+     * uma fracção do que falta, e assim nunca pára nem chega ao fim antes
+     * de tempo. Depois disso passa a haver: os bocados do bairro já se
+     * contam um a um, e o último quarto da barra é essa conta a sério.
+     * Quando o mapa está mesmo pronto, acende até ao último quadrado.
      */
     (function () {
         const barra = document.getElementById('loading-bar');
@@ -1970,6 +1971,91 @@ void modifySplatColor(vec3 center, inout vec4 color) {
             });
         });
 
+        /**
+         * Espera que o bairro esteja mesmo desenhado antes de abrir a porta.
+         *
+         * O motor dá-se por pronto assim que lê o índice do bairro — um
+         * ficheiro de texto de nada, que só diz onde estão os bocados. Os
+         * bocados em si, que são o bairro, ainda não vieram nenhum. Era daí
+         * que vinha o mapa a aparecer por cima do ombro de quem já estava a
+         * olhar: contavam-se dois segundos a olhómetro e abria-se a porta,
+         * tivessem eles chegado ou não. Numa ligação lenta não tinham.
+         *
+         * Agora conta-se o que interessa. Cada bocado do bairro é pedido ao
+         * motor como um ficheiro seu, e o motor avisa quando o pede e quando
+         * ele chega: basta ouvi-lo. Quando não houver nenhum a caminho — e
+         * tenha chegado pelo menos um — o bairro que se vê daqui está todo
+         * cá, e é então que a porta abre.
+         *
+         * Espera-se ainda um instante de sossego antes de abrir, porque os
+         * pedidos vêm às levas: entre duas levas há sempre uma fresta em que
+         * nada está a caminho, e abrir aí seria repetir o erro em pequeno.
+         *
+         * @param {object} app - A aplicação 3D.
+         * @returns {Promise<void>} Cumpre-se quando o bairro está lá.
+         */
+        function esperarPeloBairro(app) {
+            // Quanto tempo sem nada a caminho até se dar o bairro por feito,
+            // e quantas imagens desenhadas nesse sossego. São as duas coisas
+            // ao mesmo tempo, e não uma só: um bocado chegado ainda não é um
+            // bocado desenhado — o motor arruma-o e ordena-o ao longo de umas
+            // quantas imagens antes de ele aparecer. Numa máquina rápida o
+            // tempo é que manda; numa lenta, onde quatro décimos de segundo
+            // podem ser duas imagens, mandam as imagens.
+            const SOSSEGO = 400;
+            const IMAGENS_DE_SOSSEGO = 10;
+
+            // O índice não conta: ele é o mapa dos bocados, não é bairro.
+            const eBocadoDoBairro = (asset) => !!asset &&
+                asset.type === 'gsplat' &&
+                !!asset.file && typeof asset.file.url === 'string' &&
+                !asset.file.url.endsWith('lod-meta.json');
+
+            return new Promise((resolve) => {
+                let calmoDesde = 0;
+                let imagensCalmas = 0;
+
+                const espreitar = () => {
+                    // Conta-se o que está no registo agora, em vez de somar e
+                    // subtrair avisos pelo caminho. O motor também desiste de
+                    // bocados a meio — quando a vista muda e deixam de fazer
+                    // falta — e nesses não há aviso nenhum a subtrair: quem
+                    // andasse a somar ficava à espera de um que nunca chega.
+                    const bocados = app.assets.list().filter(eBocadoDoBairro);
+                    let chegaram = 0;
+                    for (let i = 0; i < bocados.length; i++) {
+                        if (bocados[i].loaded) chegaram++;
+                    }
+                    const aCaminho = bocados.length - chegaram;
+
+                    // A barra deixa de andar a fingir nesta última parte: o
+                    // quarto final são bocados contados de verdade.
+                    if (window.barraDeCarga && bocados.length > 0) {
+                        window.barraDeCarga.peloMenos(0.75 + 0.24 * (chegaram / bocados.length));
+                    }
+
+                    if (chegaram === 0 || aCaminho > 0) {
+                        calmoDesde = 0;
+                        imagensCalmas = 0;
+                        return;
+                    }
+                    if (!calmoDesde) calmoDesde = Date.now();
+                    imagensCalmas++;
+                    if (Date.now() - calmoDesde < SOSSEGO) return;
+                    if (imagensCalmas < IMAGENS_DE_SOSSEGO) return;
+
+                    app.off('frameend', espreitar);
+                    resolve();
+                };
+
+                // Ao fim de cada imagem desenhada, e não a relógio: assim
+                // sabe-se também que o bairro já passou pelo ecrã uma vez.
+                // Com a página escondida o navegador não desenha nada, e esta
+                // conta fica parada — que é o que se quer: ninguém está a ver.
+                app.on('frameend', espreitar);
+            });
+        }
+
         // Espera pelo arranque real do motor 3D (método oficial dos web components),
         // com um limite de segurança de 15 segundos caso algo falhe.
         let uiShown = false;
@@ -2351,11 +2437,35 @@ void modifySplatColor(vec3 center, inout vec4 color) {
             // carregar pormenores longe demais para se notarem.
             window.lodFoco = ligarLodNoCentroDaVista(app);
 
-            // Give a bit more time for the first chunks to load
-            setTimeout(showUIOnce, 2000);
+            // O ecrã de espera só sai quando o bairro estiver mesmo lá.
+            esperarPeloBairro(app).then(showUIOnce);
         });
 
-        setTimeout(showUIOnce, 15000);
+        // O limite de segurança, para o caso de alguma coisa correr mal e o
+        // bairro nunca chegar. Não conta enquanto a página está escondida:
+        // aí não se desenha nada, o bairro não avança, e deixar o relógio a
+        // andar era abrir a porta a uma sala vazia — a pessoa voltava ao
+        // separador e via o mapa a formar-se à frente dela, que é justamente
+        // o que isto anda a evitar.
+        (function limiteDeSeguranca() {
+            const ESPERA = 15000;
+            let relogio = null;
+
+            const parar = () => { clearTimeout(relogio); relogio = null; };
+            const andar = () => {
+                if (relogio || uiShown) return;
+                relogio = setTimeout(() => {
+                    if (document.hidden) { parar(); return; }
+                    showUIOnce();
+                }, ESPERA);
+            };
+
+            document.addEventListener('visibilitychange', () => {
+                if (document.hidden) parar();
+                else andar();
+            });
+            if (!document.hidden) andar();
+        })();
 
 
 
