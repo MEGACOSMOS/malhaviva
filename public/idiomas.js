@@ -64,6 +64,8 @@
             'foto.carregar': 'A carregar fotografia 360º…',
             'foto.erro': 'Não foi possível carregar a fotografia 360º.',
             'foto.ecra': 'Ecrã inteiro',
+            'foto.aproximar': 'Aproximar',
+            'foto.afastar': 'Afastar',
 
             'rota.titulo': 'Rota 360º',
             'palco.anterior': 'Anterior',
@@ -203,6 +205,8 @@
             'foto.carregar': 'Loading 360º photo…',
             'foto.erro': 'The 360º photo could not be loaded.',
             'foto.ecra': 'Fullscreen',
+            'foto.aproximar': 'Zoom in',
+            'foto.afastar': 'Zoom out',
 
             'rota.titulo': '360º Route',
             'palco.anterior': 'Previous',
@@ -342,6 +346,8 @@
             'foto.carregar': 'Cargando fotografía 360º…',
             'foto.erro': 'No se ha podido cargar la fotografía 360º.',
             'foto.ecra': 'Pantalla completa',
+            'foto.aproximar': 'Acercar',
+            'foto.afastar': 'Alejar',
 
             'rota.titulo': 'Ruta 360º',
             'palco.anterior': 'Anterior',
@@ -481,6 +487,8 @@
             'foto.carregar': 'Ta karega fotografia 360º…',
             'foto.erro': 'Ka konsigi karega fotografia 360º.',
             'foto.ecra': 'Ekran interu',
+            'foto.aproximar': 'Xiga más pértu',
+            'foto.afastar': 'Fasta',
 
             'rota.titulo': 'Rota 360º',
             'palco.anterior': 'Anterior',

@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>360 Video Player</title>
-    <script src="/idiomas.js?v=7"></script>
+    <script src="/idiomas.js?v=8"></script>
     <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
     <script src="/comando-paginas.js?v=3" defer></script>
     <script>
@@ -749,20 +749,27 @@
             });
         });
 
-        // Nos vídeos das pessoas a imagem começa a andar mal a janela abre.
-        // Aqui, como a textura WebGL demora um pouco a ser puxada para a placa
-        // gráfica, o som começava antes da imagem (ecrã preto). Para evitar isso,
-        // forçamos o navegador a descodificar o primeiro frame (saltando para 0.001s)
-        // e só lhe damos ordem de marcha quando essa imagem estiver pronta a pintar.
+        // A rota começa a andar mal a janela abre, sem ninguém ter de
+        // carregar em nada. Como a textura WebGL demora um pouco a ser
+        // puxada para a placa gráfica, o som começava antes da imagem
+        // (ecrã preto): por isso o vídeo arranca calado e só se ouve
+        // quando já há imagem para acompanhar.
+        //
+        // O silêncio do arranque também é o que os navegadores exigem —
+        // nenhum deixa um vídeo começar sozinho a fazer barulho. Calado,
+        // deixam; e mal ele ande, o som volta.
         if (!pedidoDeVR) {
+            // Enquanto o vídeo não arranca fica a roda a girar, e não o
+            // botão: o botão só aparece se o arranque sozinho falhar.
+            playBtnInitial.style.display = 'none';
+            spinner.style.display = 'block';
+
             video.addEventListener('canplay', () => {
                 if (!video.paused) return;
-                
-                // Corta o som nativamente. Assim, se a textura WebGL demorar uns
-                // milissegundos a pintar (o que antes causava um ecrã preto com som),
-                // o vídeo avança mas em silêncio.
+
+                video.muted = true;
                 video.volume = 0;
-                
+
                 video.play().then(() => {
                     const aoAndar = () => {
                         // Só quando o vídeo já andou um bocadinho (garantindo
@@ -773,12 +780,13 @@
                             // ...damos os dois frames ao A-Frame para desenhar
                             requestAnimationFrame(() => {
                                 requestAnimationFrame(() => {
-                                    // Devolve o volume se não estiver em mute
+                                    // Devolve o som se não estiver em mute
                                     if (!isMuted) {
+                                        video.muted = false;
                                         if (gainNode) gainNode.gain.value = currentVolume;
                                         else video.volume = Math.min(1, currentVolume);
                                     }
-                                    
+
                                     overlay.style.display = 'none';
                                     uiLayer.classList.remove('paused');
                                     showControls();
@@ -787,7 +795,13 @@
                         }
                     };
                     video.addEventListener('timeupdate', aoAndar);
-                }).catch(() => { /* botão de arranque à espera de toque */ });
+                }).catch(() => {
+                    // Navegador que nem calado deixa arrancar: fica o
+                    // botão à espera de um toque, como dantes.
+                    video.muted = false;
+                    spinner.style.display = 'none';
+                    playBtnInitial.style.display = 'flex';
+                });
             }, { once: true });
         }
 

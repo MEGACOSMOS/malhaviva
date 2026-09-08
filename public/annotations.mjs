@@ -1203,13 +1203,31 @@ AnnotationController.prototype.enderecoDaParagem360 = function(ann) {
 };
 
 /**
- * Cria o grupo de botões do cabeçalho: botão fechar.
+ * Cria o grupo de botões do cabeçalho: o interruptor da reprodução
+ * automática e o botão de fechar.
+ *
+ * @param {Function} fecharCallback - O que fazer ao carregar na cruz.
+ * @param {boolean} [comAutomatico] - Se o interruptor "Auto" faz falta.
+ *   No palco das paragens 360º não faz: as rotas arrancam sempre
+ *   sozinhas e a fotografia do alto do bairro não anda, por isso o
+ *   interruptor não mandava em nada.
  */
-AnnotationController.prototype.criarBotoesDeTopo = function(fecharCallback) {
+AnnotationController.prototype.criarBotoesDeTopo = function(fecharCallback, comAutomatico = true) {
     const rightGroup = document.createElement('div');
     rightGroup.style.display = 'flex';
     rightGroup.style.alignItems = 'center';
     rightGroup.style.gap = '16px';
+
+    if (!comAutomatico) {
+        const soFechar = document.createElement('button');
+        soFechar.className = 'fechar-palco-btn';
+        soFechar.innerHTML = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>';
+        soFechar.setAttribute('aria-label', 'Fechar');
+        soFechar.title = 'Fechar';
+        soFechar.addEventListener('click', fecharCallback);
+        rightGroup.appendChild(soFechar);
+        return rightGroup;
+    }
 
     const autoPlayContainer = document.createElement('label');
     autoPlayContainer.style.display = 'flex';
@@ -1321,7 +1339,7 @@ AnnotationController.prototype.setupPalco360 = function() {
     titulo.style.fontWeight = '600';
     titulo.style.fontSize = '1.1rem';
     header.appendChild(titulo);
-    header.appendChild(this.criarBotoesDeTopo(() => this.fecharPalco360()));
+    header.appendChild(this.criarBotoesDeTopo(() => this.fecharPalco360(), false));
 
     const moldura = document.createElement('div');
     moldura.className = 'moldura-360';
@@ -2232,9 +2250,11 @@ AnnotationController.prototype.setupModal = function() {
             
             const ann = this.annotations.find(a => a.video === this.videoNome);
             if (ann && this.entity.script && this.entity.script.cameraControls) {
-                const angulo = Math.random() * Math.PI * 2;
-                // Bem mais longe: 80 a 120 unidades
-                const dist = 80 + Math.random() * 40;
+                const posAtual = this.entity.getPosition();
+                const dirAtual = new pc.Vec3().sub2(posAtual, ann.position);
+                const angulo = Math.atan2(dirAtual.z, dirAtual.x);
+                // Menos longe: 60 a 90 unidades (máximo de 90)
+                const dist = 60 + Math.random() * 30;
                 const posX = ann.position.x + Math.cos(angulo) * dist;
                 const posZ = ann.position.z + Math.sin(angulo) * dist;
                 const posY = ann.position.y + 25 + Math.random() * 25;

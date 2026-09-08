@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Fotografia 360º</title>
-    <script src="/idiomas.js?v=7"></script>
+    <script src="/idiomas.js?v=8"></script>
     <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
     <script src="/comando-paginas.js?v=3" defer></script>
     <style>
@@ -99,7 +99,7 @@
          para caber neste sítio em vez de tomar a página toda. -->
     <div id="palco-360">
         <a-scene embedded loading-screen="enabled: false" vr-mode-ui="enabled: false">
-            <a-entity id="camera" camera look-controls="reverseMouseDrag: true"></a-entity>
+            <a-entity id="camera" camera="fov: 80" look-controls="reverseMouseDrag: true"></a-entity>
             <a-sky id="ceu" rotation="0 -90 0"></a-sky>
         </a-scene>
 
@@ -110,6 +110,12 @@
     </div>
 
     <div class="video-controls" id="controlos">
+        <button class="player-btn" id="afastar-btn" title="Afastar" data-i18n-title="foto.afastar" aria-label="Afastar">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter"><circle cx="11" cy="11" r="7"></circle><line x1="8" y1="11" x2="14" y2="11"></line><line x1="16.5" y1="16.5" x2="21" y2="21"></line></svg>
+        </button>
+        <button class="player-btn" id="aproximar-btn" title="Aproximar" data-i18n-title="foto.aproximar" aria-label="Aproximar">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter"><circle cx="11" cy="11" r="7"></circle><line x1="8" y1="11" x2="14" y2="11"></line><line x1="11" y1="8" x2="11" y2="14"></line><line x1="16.5" y1="16.5" x2="21" y2="21"></line></svg>
+        </button>
         <button class="player-btn" id="vr-btn" title="Ver com óculos" data-i18n-title="video.oculos" style="display: none;">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a3 3 0 0 1 3-3h12a3 3 0 0 1 3 3v3a3 3 0 0 1-3 3h-2.5a2 2 0 0 1-1.7-1l-.9-1.4a1.2 1.2 0 0 0-2 0l-.9 1.4a2 2 0 0 1-1.7 1H6a3 3 0 0 1-3-3z"></path></svg>
         </button>
@@ -183,6 +189,73 @@
             if (cena.is('vr-mode')) cena.exitVR();
             else cena.enterVR().catch(() => {});
         });
+
+        // ---- Aproximar e afastar ----
+        //
+        // Numa fotografia 360º não há para onde andar: o que se faz é
+        // abrir e fechar o ângulo por onde se olha, como quem chega os
+        // olhos ao vidro. Quanto menor o ângulo, maior fica o que se vê.
+        const camara = document.getElementById('camera');
+        const palco = document.getElementById('palco-360');
+        const botaoAproximar = document.getElementById('aproximar-btn');
+        const botaoAfastar = document.getElementById('afastar-btn');
+
+        const ANGULO_LARGO = 80;   // como se chega à fotografia
+        const ANGULO_APERTADO = 22; // o mais perto que se pode ir
+        let angulo = ANGULO_LARGO;
+
+        const aplicarZoom = (novo) => {
+            angulo = Math.min(ANGULO_LARGO, Math.max(ANGULO_APERTADO, novo));
+            camara.setAttribute('camera', 'fov', angulo);
+            botaoAproximar.disabled = angulo <= ANGULO_APERTADO;
+            botaoAfastar.disabled = angulo >= ANGULO_LARGO;
+            botaoAproximar.style.opacity = botaoAproximar.disabled ? '0.35' : '1';
+            botaoAfastar.style.opacity = botaoAfastar.disabled ? '0.35' : '1';
+        };
+
+        // Passo em proporção: perto anda devagar, longe anda depressa, e
+        // assim o zoom sente-se igual em qualquer ponto.
+        const PASSO = 1.15;
+        botaoAproximar.addEventListener('click', () => aplicarZoom(angulo / PASSO));
+        botaoAfastar.addEventListener('click', () => aplicarZoom(angulo * PASSO));
+
+        palco.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            aplicarZoom(e.deltaY > 0 ? angulo * PASSO : angulo / PASSO);
+        }, { passive: false });
+
+        // Nos telemóveis, os dois dedos a abrir e a fechar.
+        const distanciaEntreDedos = (toques) => {
+            const dx = toques[0].clientX - toques[1].clientX;
+            const dy = toques[0].clientY - toques[1].clientY;
+            return Math.hypot(dx, dy);
+        };
+        let distanciaInicial = 0;
+        let anguloInicial = 0;
+        palco.addEventListener('touchstart', (e) => {
+            if (e.touches.length === 2) {
+                distanciaInicial = distanciaEntreDedos(e.touches);
+                anguloInicial = angulo;
+            }
+        }, { passive: true });
+        palco.addEventListener('touchmove', (e) => {
+            if (e.touches.length === 2 && distanciaInicial > 0) {
+                e.preventDefault();
+                aplicarZoom(anguloInicial * distanciaInicial / distanciaEntreDedos(e.touches));
+            }
+        }, { passive: false });
+        const largarDedos = () => { distanciaInicial = 0; };
+        palco.addEventListener('touchend', largarDedos);
+        palco.addEventListener('touchcancel', largarDedos);
+
+        // De teclado: mais, menos, e o zero para voltar ao princípio.
+        window.addEventListener('keydown', (e) => {
+            if (e.key === '+' || e.key === '=') aplicarZoom(angulo / PASSO);
+            else if (e.key === '-' || e.key === '_') aplicarZoom(angulo * PASSO);
+            else if (e.key === '0') aplicarZoom(ANGULO_LARGO);
+        });
+
+        aplicarZoom(ANGULO_LARGO);
 
         // A barra fica sempre à vista: está fora da fotografia e não tapa
         // nada, por isso não há razão para se esconder sozinha.

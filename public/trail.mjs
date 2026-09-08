@@ -391,12 +391,11 @@ TrailController.prototype.rebuildTrail = function() {
             aceso.setPosition(centerPos);
             aceso.lookAt(tmpLook.copy(centerPos).add(seg.dir));
             aceso.rotateLocal(90, 0, 0);
-            // Bem mais gordo do que o apagado. Visto do alto do bairro, um
-            // tracinho da grossura do normal não dá um pixel de largura:
-            // desenhado por cima das telhas e da terra, perdia-se na
-            // fotografia. Assim o traço tem corpo, e vê-se de onde a rota
-            // costuma ser olhada.
-            aceso.setLocalScale(this.dashWidth * 3, this.dashLength * 1.15, this.dashThickness * 3);
+            // Do mesmo tamanho do apagado: o que muda ao acender é a cor e
+            // o facto de a rota passar à frente do bairro, não o corpo do
+            // traço. Engordá-lo dava um risco grosso que não se parecia
+            // nada com o caminho que estava ali um instante antes.
+            aceso.setLocalScale(this.dashWidth, this.dashLength, this.dashThickness);
             if (grupoAceso !== null) {
                 aceso.render.batchGroupId = grupoAceso;
             } else if (batchGroupId !== null) {
