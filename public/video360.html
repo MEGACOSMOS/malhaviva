@@ -84,13 +84,24 @@
         }
         @keyframes spin { 100% { transform: rotate(360deg); } }
 
-        /* A roda que aparece quando o vídeo fica à espera de mais imagem. */
+        /* A roda que aparece quando o vídeo fica à espera de mais imagem.
+           Ela roda à volta do próprio eixo e está posta a meio do ecrã, e
+           essas duas coisas escrevem-se no mesmo sítio: a roda comum só
+           dizia "roda", e ao rodar apagava o "fica a meio" — a roda saía
+           do centro e voltava, aos círculos, a cada volta. Aqui as duas
+           andam juntas em todos os passos, e a roda fica quieta no sítio. */
         #espera {
             position: absolute;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
+            transform-origin: 50% 50%;
+            animation-name: espera-a-rodar;
             z-index: 5;
+        }
+        @keyframes espera-a-rodar {
+            from { transform: translate(-50%, -50%) rotate(0deg); }
+            to   { transform: translate(-50%, -50%) rotate(360deg); }
         }
         #espera.a-esperar {
             display: block;
@@ -140,6 +151,11 @@
             flex-direction: column;
             gap: 12px;
         }
+        /* Em ecrã inteiro a barra passa a ficar por cima da imagem, e por
+           isso fica recolhida: a rota vê-se toda, sem uma tarja preta a
+           tapar-lhe o rodapé, mesmo enquanto se arrasta a vista para os
+           lados. Só volta a espreitar quando o rato desce ao fundo da
+           imagem, que é onde ela mora. */
         body:fullscreen .video-controls {
             position: absolute;
             bottom: 0;
@@ -147,10 +163,11 @@
             right: 0;
             background: linear-gradient(to top, rgba(255,255,255,0.05), transparent), #05050a;
             transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+            transform: translateY(100%);
             z-index: 1000;
         }
-        body:fullscreen.hide-cursor .video-controls {
-            transform: translateY(100%);
+        body:fullscreen.barra-a-espreitar .video-controls {
+            transform: translateY(0);
         }
         .progress-container {
             width: 100%;
@@ -995,9 +1012,9 @@
             }, { once: true });
         }
 
-        // A barra está fora da imagem e não tapa nada: fica sempre à
-        // vista. O que continua a sumir-se é o rato, parado em cima da
-        // rota.
+        // Fora do ecrã inteiro a barra está por baixo da imagem e não tapa
+        // nada: fica sempre à vista. O que se some é o rato, parado em
+        // cima da rota.
         let ratoParado;
         const showControls = () => {
             document.body.classList.remove('hide-cursor');
@@ -1011,10 +1028,71 @@
             }, 5000);
         };
 
-        window.addEventListener('mousemove', showControls);
-        window.addEventListener('click', showControls);
-        window.addEventListener('touchstart', showControls);
-        
+        // ---- A barra em ecrã inteiro ----
+        //
+        // Em ecrã inteiro a barra tapa o fundo da rota, e por isso está
+        // recolhida enquanto se olha à volta — mexer a vista já não a faz
+        // aparecer. Espreita quando o rato desce à faixa de baixo da
+        // imagem, e quando se anda de tecla pelos botões, para quem não
+        // usa rato lá chegar na mesma.
+        const barraControlos = document.getElementById('video-controls');
+        let ratoNoFundo = false;
+        let tecladoNaBarra = false;
+
+        // A faixa que faz a barra espreitar: um pouco mais alta do que a
+        // própria barra, para não ser preciso acertar em cheio.
+        const faixaDoFundo = () => {
+            const altura = barraControlos.offsetHeight || 90;
+            return Math.max(80, Math.min(altura + 40, window.innerHeight * 0.25));
+        };
+
+        const arrumarBarra = () => {
+            const espreita = !document.fullscreenElement ||
+                ratoNoFundo || tecladoNaBarra;
+            document.body.classList.toggle('barra-a-espreitar', espreita);
+        };
+
+        const olharOndeEstaORato = (y) => {
+            ratoNoFundo = (window.innerHeight - y) <= faixaDoFundo();
+            arrumarBarra();
+        };
+
+        window.addEventListener('mousemove', (e) => {
+            showControls();
+            olharOndeEstaORato(e.clientY);
+        });
+        window.addEventListener('click', (e) => {
+            showControls();
+            if (typeof e.clientY === 'number') olharOndeEstaORato(e.clientY);
+        });
+        window.addEventListener('touchstart', (e) => {
+            showControls();
+            if (e.touches && e.touches.length > 0) olharOndeEstaORato(e.touches[0].clientY);
+        }, { passive: true });
+
+        // Só quando o foco chega pelo teclado. Um botão carregado com o
+        // rato também fica com o foco, e a barra ficaria aberta para
+        // sempre depois de se carregar em qualquer coisa.
+        barraControlos.addEventListener('focusin', () => {
+            tecladoNaBarra = !!barraControlos.querySelector(':focus-visible');
+            arrumarBarra();
+        });
+        barraControlos.addEventListener('focusout', () => {
+            tecladoNaBarra = false;
+            arrumarBarra();
+        });
+        // Com o rato pousado na barra ela não se recolhe por baixo dele.
+        barraControlos.addEventListener('mouseenter', () => {
+            ratoNoFundo = true;
+            arrumarBarra();
+        });
+
+        document.addEventListener('fullscreenchange', () => {
+            ratoNoFundo = false;
+            arrumarBarra();
+        });
+        arrumarBarra();
+
         // ---- Recuar, avançar e endireitar a vista ----
         const recuarBtn = document.getElementById('recuar-btn');
         const avancarBtn = document.getElementById('avancar-btn');
