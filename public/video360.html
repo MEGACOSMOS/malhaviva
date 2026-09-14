@@ -686,25 +686,19 @@
         const volHighIcon = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>';
         const volMutedIcon = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><line x1="23" y1="9" x2="17" y2="15"></line><line x1="17" y1="9" x2="23" y2="15"></line></svg>';
 
-        // Web Audio API for >100% Volume
-        let audioCtx;
-        let gainNode;
-        let mediaSource;
+        // O som é o do próprio vídeo, sem mesa de som pelo meio. Houve uma
+        // — a do navegador, para passar dos cem por cento — e era por ela
+        // que o som se perdia: só pode ser ligada por um toque a sério, e
+        // ligada por um toque de dedo ou por uma tecla mandada de fora
+        // ficava muda, com o vídeo a andar em silêncio.
         let isMuted = false;
         let currentVolume = 1;
 
-        const initAudio = () => {
-            if (!audioCtx) {
-                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                mediaSource = audioCtx.createMediaElementSource(video);
-                gainNode = audioCtx.createGain();
-                mediaSource.connect(gainNode);
-                gainNode.connect(audioCtx.destination);
-                gainNode.gain.value = currentVolume;
-            }
-            if (audioCtx.state === 'suspended') {
-                audioCtx.resume();
-            }
+        // Põe o som do vídeo como a barra o pede. Calar é pôr o volume no
+        // zero, e não tapar o vídeo: um vídeo tapado nem sempre se deixa
+        // destapar sem um toque, e este destapa-se de qualquer lado.
+        const porOSom = () => {
+            video.volume = isMuted ? 0 : Math.min(1, currentVolume);
         };
 
         const togglePlay = () => {
@@ -729,20 +723,73 @@
                 (window.Idiomas ? window.Idiomas.t('video.oculos') : 'Ver com óculos');
         }
 
+        // ---- O arranque ----
+        //
+        // O botão do meio está à vista desde o princípio, e a cortina
+        // abre-se quando o vídeo anda de verdade — venha o arranque de
+        // onde vier: de si mesmo, do botão, ou de uma troca de versão a
+        // meio. Como a textura demora um pouco a ser puxada para a placa
+        // gráfica, o som começava antes da imagem (ecrã preto): por isso
+        // todos os arranques se fazem com o volume no zero, e o som só
+        // entra quando já há imagem para o acompanhar. É aqui, e só aqui,
+        // que o volume é devolvido — e assim nunca fica preso no zero,
+        // que era como o vídeo andava em silêncio.
+        let cortinaAberta = false;
+        let aEsperarPelaImagem = false;
+
+        const abrirCortina = () => {
+            if (cortinaAberta) return;
+            cortinaAberta = true;
+            porOSom();
+            overlay.style.display = 'none';
+            uiLayer.classList.remove('paused');
+            showControls();
+        };
+
+        // Espera que o vídeo tenha andado um bocadinho — sinal de que há
+        // imagem — e dá ainda duas imagens ao A-Frame para a desenhar. Se
+        // a janela estiver escondida essas imagens não vêm, e vale então
+        // um instante de relógio no lugar delas.
+        const esperarPelaImagem = (depois) => {
+            if (aEsperarPelaImagem) return;
+            aEsperarPelaImagem = true;
+            let feito = false;
+            const pronto = () => {
+                if (feito) return;
+                feito = true;
+                aEsperarPelaImagem = false;
+                depois();
+            };
+            const aoAndar = () => {
+                if (video.currentTime <= 0.05) return;
+                video.removeEventListener('timeupdate', aoAndar);
+                requestAnimationFrame(() => requestAnimationFrame(pronto));
+                setTimeout(pronto, 150);
+            };
+            video.addEventListener('timeupdate', aoAndar);
+            aoAndar();
+        };
+
+        video.addEventListener('playing', () => {
+            if (!cortinaAberta) esperarPelaImagem(abrirCortina);
+        });
+
+        // Arrancar com o volume no zero; o som entra com a imagem.
+        const arrancarCalado = () => {
+            video.volume = 0;
+            return video.play();
+        };
+
         playBtnInitial.addEventListener('click', () => {
             if (pedidoDeVR && scene.enterVR) {
                 scene.enterVR().catch((erro) => console.log('VR:', erro));
             }
             playBtnInitial.style.display = 'none';
             spinner.style.display = 'block';
-            
-            video.play().then(() => {
-                overlay.style.display = 'none';
-                uiLayer.classList.remove('paused');
-                initAudio();
-                showControls();
-            }).catch(e => {
+
+            arrancarCalado().catch(e => {
                 console.error(e);
+                porOSom();
                 alert("Erro ao reproduzir vídeo. Tente novamente.");
                 playBtnInitial.style.display = 'flex';
                 spinner.style.display = 'none';
@@ -750,75 +797,30 @@
         });
 
         // A rota começa a andar mal a janela abre, sem ninguém ter de
-        // carregar em nada. Como a textura WebGL demora um pouco a ser
-        // puxada para a placa gráfica, o som começava antes da imagem
-        // (ecrã preto): por isso o vídeo arranca calado e só se ouve
-        // quando já há imagem para acompanhar.
-        //
-        // O silêncio do arranque também é o que os navegadores exigem —
-        // nenhum deixa um vídeo começar sozinho a fazer barulho. Calado,
-        // deixam; e mal ele ande, o som volta.
+        // carregar em nada — quando o navegador deixa. Só se tenta com o
+        // som ligado: um vídeo que arranca tapado nem sempre se deixa
+        // destapar depois, e ficava-se a ver a rota em silêncio. Quando o
+        // navegador não deixa, fica o botão do meio à espera do toque que
+        // ele exige — e esse toque traz o som consigo.
         if (!pedidoDeVR) {
-            // Enquanto o vídeo não arranca fica a roda a girar, e não o
-            // botão: o botão só aparece se o arranque sozinho falhar.
-            playBtnInitial.style.display = 'none';
-            spinner.style.display = 'block';
-
             video.addEventListener('canplay', () => {
-                if (!video.paused) return;
-
-                video.muted = true;
-                video.volume = 0;
-
-                video.play().then(() => {
-                    const aoAndar = () => {
-                        // Só quando o vídeo já andou um bocadinho (garantindo
-                        // que há imagem para mostrar)...
-                        if (video.currentTime > 0.05) {
-                            video.removeEventListener('timeupdate', aoAndar);
-                            
-                            // ...damos os dois frames ao A-Frame para desenhar
-                            requestAnimationFrame(() => {
-                                requestAnimationFrame(() => {
-                                    // Devolve o som se não estiver em mute
-                                    if (!isMuted) {
-                                        video.muted = false;
-                                        if (gainNode) gainNode.gain.value = currentVolume;
-                                        else video.volume = Math.min(1, currentVolume);
-                                    }
-
-                                    overlay.style.display = 'none';
-                                    uiLayer.classList.remove('paused');
-                                    showControls();
-                                });
-                            });
-                        }
-                    };
-                    video.addEventListener('timeupdate', aoAndar);
-                }).catch(() => {
-                    // Navegador que nem calado deixa arrancar: fica o
-                    // botão à espera de um toque, como dantes.
-                    video.muted = false;
-                    spinner.style.display = 'none';
-                    playBtnInitial.style.display = 'flex';
+                if (!video.paused || cortinaAberta) return;
+                arrancarCalado().catch((erro) => {
+                    // Uma troca de versão a meio do arranque também
+                    // interrompe o pedido; nesse caso o vídeo volta a
+                    // arrancar sozinho e a cortina abre-se na mesma.
+                    if (erro && erro.name === 'AbortError') return;
+                    porOSom();
                 });
             }, { once: true });
         }
 
-        // O comando do volume passa pela mesa de som do navegador, e essa
-        // só pode ser ligada depois de a pessoa tocar em alguma coisa. Fica
-        // à espera do primeiro toque, seja ele onde for.
-        const ligarSomAoPrimeiroToque = () => initAudio();
-        window.addEventListener('pointerdown', ligarSomAoPrimeiroToque, { once: true });
-        window.addEventListener('keydown', ligarSomAoPrimeiroToque, { once: true });
-
         playPauseBtn.addEventListener('click', togglePlay);
         bigPlayBtn.addEventListener('click', togglePlay);
-        
+
         video.addEventListener('play', () => {
             playPauseBtn.innerHTML = pauseIcon;
             uiLayer.classList.remove('paused');
-            if(audioCtx) initAudio();
         });
 
         video.addEventListener('pause', () => {
@@ -845,35 +847,25 @@
         // Volume
         volumeSlider.addEventListener('input', (e) => {
             currentVolume = parseFloat(e.target.value);
-            if (gainNode) gainNode.gain.value = currentVolume;
-            else video.volume = Math.min(1, currentVolume);
+            isMuted = currentVolume === 0;
+            porOSom();
             volumePercentage.innerText = Math.round(currentVolume * 100) + '%';
-            
-            if (currentVolume === 0) {
-                volumeBtn.innerHTML = volMutedIcon;
-                isMuted = true;
-            } else {
-                volumeBtn.innerHTML = volHighIcon;
-                isMuted = false;
-            }
+            volumeBtn.innerHTML = isMuted ? volMutedIcon : volHighIcon;
         });
 
         volumeBtn.addEventListener('click', () => {
             if (isMuted) {
                 currentVolume = parseFloat(volumeSlider.value) || 1;
                 if (currentVolume === 0) { currentVolume = 1; volumeSlider.value = 1; }
-                if (gainNode) gainNode.gain.value = currentVolume;
-                else video.volume = Math.min(1, currentVolume);
+                isMuted = false;
                 volumePercentage.innerText = Math.round(currentVolume * 100) + '%';
                 volumeBtn.innerHTML = volHighIcon;
-                isMuted = false;
             } else {
-                if (gainNode) gainNode.gain.value = 0;
-                else video.volume = 0;
+                isMuted = true;
                 volumePercentage.innerText = '0%';
                 volumeBtn.innerHTML = volMutedIcon;
-                isMuted = true;
             }
+            porOSom();
         });
 
         fullscreenBtn.addEventListener('click', () => {
@@ -1014,7 +1006,7 @@
             // isso o vídeo começa a andar aqui se ainda estiver parado.
             if (video.paused) {
                 overlay.style.display = 'none';
-                video.play().then(initAudio).catch(() => {});
+                arrancarCalado().catch(() => porOSom());
             }
             scene.enterVR().catch((erro) => console.log('VR:', erro));
         });
