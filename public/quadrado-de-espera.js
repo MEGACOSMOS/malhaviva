@@ -10,10 +10,10 @@
  *
  * O rasto é desenhado pelo próprio navegador, com uma animação por
  * quadrado — cada um começa um passo depois do anterior — e por isso
- * anda sozinho, sem relógio nenhum a empurrá-lo. O que o código pode
- * mudar é a luz de fundo dos quadrados por baixo do rasto, que no ecrã
- * de espera do bairro sobe à medida que o mapa vai chegando, e o
- * momento em que o rasto pára e o quadrado acende todo.
+ * anda sozinho, sem relógio nenhum a empurrá-lo, sempre ao mesmo ritmo:
+ * o andar dele não conta nada, diz só que se está à espera. Quando há
+ * uma conta a dizer — quanto do bairro já chegou — ela escreve-se no
+ * meio do quadrado, no vazio que os doze deixam, em número.
  *
  * Isto é um ficheiro comum, e não um módulo, para ser lido pelas páginas
  * do mesmo modo que o ficheiro das línguas: antes de a página se
@@ -29,10 +29,9 @@
     var PASSO_MS = 90;
     var VOLTA_MS = PASSO_MS * 12;
 
-    // A luz de fundo, do quase apagado do princípio até à meia luz de
-    // quando já falta pouco.
-    var FUNDO_MINIMO = 0.08;
-    var FUNDO_MAXIMO = 0.35;
+    // A luz de fundo dos quadrados por onde o rasto não vai: quase
+    // apagados, para o rasto se ver.
+    var FUNDO = 0.08;
 
     // Os doze lugares à volta, pela ordem em que a luz lhes dá a volta:
     // a começar no canto de cima à esquerda e a andar no sentido dos
@@ -47,9 +46,9 @@
     /**
      * Põe na página a roupa do quadrado, uma vez só.
      *
-     * O tamanho dos quadrados, a folga entre eles e a cor podem ser
-     * mudados de fora, com as variáveis `--lado`, `--folga` e `--cor`
-     * postas no próprio quadrado.
+     * O tamanho dos quadrados, a folga entre eles, a cor e o tamanho da
+     * letra do meio podem ser mudados de fora, com as variáveis `--lado`,
+     * `--folga`, `--cor` e `--letra` postas no próprio quadrado.
      */
     function vestir() {
         if (document.getElementById('quadrado-de-espera-estilo')) return;
@@ -57,7 +56,7 @@
         estilo.id = 'quadrado-de-espera-estilo';
         estilo.textContent =
             '.' + CLASSE + ' {' +
-            '  --lado: 10px; --folga: 4px; --cor: #ffffff; --fundo: ' + FUNDO_MINIMO + ';' +
+            '  --lado: 10px; --folga: 4px; --cor: #ffffff; --letra: 10px;' +
             '  display: grid;' +
             '  grid-template-columns: repeat(4, var(--lado));' +
             '  grid-template-rows: repeat(4, var(--lado));' +
@@ -65,24 +64,27 @@
             '}' +
             '.' + CLASSE + ' span {' +
             '  background: var(--cor);' +
-            '  opacity: var(--fundo);' +
+            '  opacity: ' + FUNDO + ';' +
             '  animation: quadrado-de-espera-rasto ' + VOLTA_MS + 'ms steps(1, end) infinite;' +
             '}' +
-            // Pronto: o rasto pára e o quadrado acende todo.
-            '.' + CLASSE + '.pronto span {' +
-            '  animation: none;' +
-            '  opacity: 1;' +
+            // O número do meio, no vazio que os doze quadrados deixam.
+            '.' + CLASSE + ' .centro {' +
+            '  grid-area: 2 / 2 / 4 / 4;' +
+            '  display: flex; align-items: center; justify-content: center;' +
+            '  overflow: hidden;' +
+            '  color: var(--cor);' +
+            '  font-size: var(--letra); font-weight: 600; line-height: 1;' +
+            '  letter-spacing: -0.02em; font-variant-numeric: tabular-nums;' +
             '}' +
             // O rasto, visto de um quadrado só: acende de todo quando a
             // cabeça lhe chega, apaga-se em três passos e fica à luz de
-            // fundo o resto da volta. Nunca mais escuro do que o fundo:
-            // quando o fundo já vai alto, a cauda desaparece nele.
+            // fundo o resto da volta.
             '@keyframes quadrado-de-espera-rasto {' +
             '  0% { opacity: 1; }' +
-            '  8.3333% { opacity: max(0.6, var(--fundo)); }' +
-            '  16.6667% { opacity: max(0.35, var(--fundo)); }' +
-            '  25% { opacity: max(0.18, var(--fundo)); }' +
-            '  33.3333%, 100% { opacity: var(--fundo); }' +
+            '  8.3333% { opacity: 0.6; }' +
+            '  16.6667% { opacity: 0.35; }' +
+            '  25% { opacity: 0.18; }' +
+            '  33.3333%, 100% { opacity: ' + FUNDO + '; }' +
             '}';
         document.head.appendChild(estilo);
     }
@@ -96,14 +98,14 @@
      * a página por leitor de ecrã.
      *
      * @param {Element} el - O elemento que passa a ser o quadrado.
-     * @returns {object} As três coisas que se lhe podem pedir: `luz`, com
-     *     quanto do que se espera já chegou, de zero a um; `pronto`, para
-     *     acender tudo e parar; `recomecar`, para voltar ao princípio.
+     * @param {object} [opcoes] - `centro: true` para haver um sítio no meio
+     *     onde escrever um número.
+     * @returns {object} O que se lhe pode pedir: `escrever`, com o texto a
+     *     pôr no meio — vazio para não haver nada.
      */
-    function fazer(el) {
+    function fazer(el, opcoes) {
         vestir();
         el.classList.add(CLASSE);
-        el.classList.remove('pronto');
         el.setAttribute('aria-hidden', 'true');
         el.textContent = '';
         for (var i = 0; i < LUGARES.length; i++) {
@@ -115,17 +117,16 @@
             el.appendChild(q);
         }
 
+        var centro = null;
+        if (opcoes && opcoes.centro) {
+            centro = document.createElement('div');
+            centro.className = 'centro';
+            el.appendChild(centro);
+        }
+
         return {
-            luz: function (fraccao) {
-                var f = Math.max(0, Math.min(1, fraccao || 0));
-                el.style.setProperty('--fundo', FUNDO_MINIMO + (FUNDO_MAXIMO - FUNDO_MINIMO) * f);
-            },
-            pronto: function () {
-                el.classList.add('pronto');
-            },
-            recomecar: function () {
-                el.classList.remove('pronto');
-                el.style.setProperty('--fundo', FUNDO_MINIMO);
+            escrever: function (texto) {
+                if (centro) centro.textContent = texto || '';
             }
         };
     }
