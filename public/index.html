@@ -328,6 +328,7 @@
 
         .seta-menu {
             flex-shrink: 0;
+            transition: transform 0.15s ease;
         }
 
         .settings:has(.open) .seta-menu {
@@ -455,10 +456,12 @@
             padding: 16px;
             width: 260px;
             box-shadow: 0 4px 15px rgba(0,0,0,0.4);
-            /* Sem animação: o menu aparece e desaparece de uma vez. */
+            /* Abre e fecha com um esbater breve, a crescer um nada. */
+            transition: opacity 0.15s ease, transform 0.15s ease, visibility 0.15s;
             transform-origin: top right;
             pointer-events: none;
             opacity: 0;
+            transform: scale(0.97);
             /* Fechado quer dizer fechado também para a tecla Tab e para
                quem ouve a página em vez de a ver. Só com transparência,
                os comandos aqui dentro continuavam alcançáveis: quem
@@ -539,6 +542,7 @@
         #definicoes-menu.open, #dev-menu.open, #idioma-menu.open {
             pointer-events: auto;
             opacity: 1;
+            transform: scale(1);
             visibility: visible;
         }
         
@@ -1905,7 +1909,7 @@
         <pc-asset id="splat-scene" src="splat/lod-meta.json" type="gsplat"></pc-asset>
         <pc-asset id="camera-controls-script" src="./camera-controls.mjs?v=21" type="script"></pc-asset>
         <pc-asset id="camera-coords-script" src="./coords.mjs?v=7" type="script"></pc-asset>
-        <pc-asset id="annotations-script" src="./annotations.mjs?v=53" type="script"></pc-asset>
+        <pc-asset id="annotations-script" src="./annotations.mjs?v=54" type="script"></pc-asset>
         <pc-asset id="trail-script" src="./trail.mjs?v=24" type="script"></pc-asset>
 
         <!-- Scene -->
