@@ -211,6 +211,11 @@ AnnotationController.prototype.initialize = function() {
             background-color: #ff0000;
             color: #ffffff;
         }
+        /* A fotografia do alto do bairro, pousada no céu, leva a cor do
+           fundo do site em vez do vermelho das rotas. */
+        .marker-dot.is-360.is-foto {
+            background-color: #05050a;
+        }
         /* Já visto: o marcador apaga-se em cinzento e deixa passar um
            pouco do bairro por trás, para se perceber de relance o que
            falta ver sem que o que já se viu desapareça. */
@@ -725,6 +730,31 @@ AnnotationController.prototype.initialize = function() {
             transform: scale(1);
         }
 
+        /* A fotografia do alto do bairro abre de lado a lado: a janela do
+           meio toma o ecrã todo, com a barra do nome em cima e a imagem a
+           encher o resto. Não há janelas dos lados nem setas — é uma
+           paragem avulsa — e o contorno de luz também não faz falta. */
+        #modal-360.inteira {
+            --janela-largura: 100vw;
+            --janela-espaco: 0px;
+        }
+        #modal-360.inteira .janela-do-palco.janela-do-player {
+            width: 100vw;
+            height: 100vh;
+            height: 100dvh;
+            display: flex;
+            flex-direction: column;
+            border: none;
+        }
+        #modal-360.inteira .janela-do-palco.janela-do-player::after {
+            display: none;
+        }
+        #modal-360.inteira .moldura-360 {
+            flex: 1 1 auto;
+            height: auto;
+            padding-bottom: 0;
+        }
+
         /* Num ecrã estreito não sobra nada para espreitar: as janelas dos
            lados encolhem para uma seta pousada na borda da imagem. */
         @media (max-width: 900px) {
@@ -993,9 +1023,9 @@ AnnotationController.prototype.initialize = function() {
         const isViewed = this.viewedAnnotations.includes(annId);
 
         if (ann.is360) {
-            // As rotas mostram um cubo com uma seta a sair por cada um dos
-            // três eixos — um sítio onde se anda em três dimensões — e o nome
-            // por baixo. As setas não tocam no cubo: com o ar entre eles o
+            // As rotas mostram um cubo — só o contorno, sem as arestas de
+            // dentro — com uma seta a sair por cada um dos três eixos: um
+            // sítio onde se anda em três dimensões. O nome vai por baixo. As setas não tocam no cubo: com o ar entre eles o
             // desenho lê-se ao tamanho do marcador, em vez de se fechar
             // numa mancha. A fotografia do alto do bairro dispensa as duas
             // coisas: fica só um olho, pousado no céu, sem legenda a tapar a
@@ -1007,8 +1037,6 @@ AnnotationController.prototype.initialize = function() {
                    </svg>`
                 : `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="square" stroke-linejoin="miter">
                         <polygon points="12.0 8.2 15.98 10.5 15.98 15.1 12.0 17.4 8.02 15.1 8.02 10.5"></polygon>
-                        <polyline points="8.02 10.5 12 12.8 15.98 10.5"></polyline>
-                        <line x1="12" y1="12.8" x2="12.0" y2="17.4"></line>
                         <line x1="12.00" y1="6.80" x2="12.00" y2="1.80" stroke-linecap="butt"></line>
                         <polyline points="10.23 3.57 12.00 1.80 13.77 3.57"></polyline>
                         <line x1="6.81" y1="15.80" x2="2.48" y2="18.30" stroke-linecap="butt"></line>
@@ -1017,7 +1045,7 @@ AnnotationController.prototype.initialize = function() {
                         <polyline points="20.88 15.89 21.52 18.30 19.11 18.95"></polyline>
                    </svg>`;
             el.innerHTML = `
-                <div class="marker-dot is-360 ${isViewed ? 'viewed' : ''}">
+                <div class="marker-dot is-360 ${ann.isImage ? 'is-foto' : ''} ${isViewed ? 'viewed' : ''}">
                     ${simbolo}
                 </div>
                 ${ann.isImage ? '' : `<div class="marker-label">${ann.label}</div>`}
@@ -1026,9 +1054,9 @@ AnnotationController.prototype.initialize = function() {
             el.innerHTML = `
                 <div class="marker-dot ${isViewed ? 'viewed' : ''}">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter">
-                        <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"></path>
-                        <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
-                        <line x1="12" y1="19" x2="12" y2="22"></line>
+                        <rect x="9" y="3" width="6" height="6"></rect>
+                        <line x1="6" y1="13" x2="18" y2="13"></line>
+                        <line x1="12" y1="13" x2="12" y2="22"></line>
                     </svg>
                 </div>
                 <div class="marker-label">${ann.label}</div>
@@ -1577,6 +1605,8 @@ AnnotationController.prototype.mostrarParagem360 = function(ann) {
     palco.direita.style.visibility = avulso ? 'hidden' : '';
     palco.setaEsquerda.style.visibility = avulso ? 'hidden' : '';
     palco.setaDireita.style.visibility = avulso ? 'hidden' : '';
+    // A fotografia do alto do bairro enche o ecrã todo.
+    palco.modal.classList.toggle('inteira', !!ann.isImage);
 
     if (!avulso) {
         this.registarFechoDaColeccao(annId, lista, faltava);
@@ -1693,6 +1723,7 @@ AnnotationController.prototype.fecharPalco360 = function() {
     palco.meio.classList.remove('aberta');
     setTimeout(() => {
         palco.modal.style.display = 'none';
+        palco.modal.classList.remove('inteira');
         palco.moldura.innerHTML = '';
         const gsplat = this.app.root.findByName('gsplat-scene');
         if (gsplat) gsplat.enabled = true;
