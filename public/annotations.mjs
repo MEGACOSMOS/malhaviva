@@ -994,8 +994,10 @@ AnnotationController.prototype.initialize = function() {
 
         if (ann.is360) {
             // As rotas mostram um cubo com uma seta a sair por cada um dos
-            // três eixos — um sitio onde se anda em três dimensões — e o nome
-            // por baixo. A fotografia do alto do bairro dispensa as duas
+            // três eixos — um sítio onde se anda em três dimensões — e o nome
+            // por baixo. As setas não tocam no cubo: com o ar entre eles o
+            // desenho lê-se ao tamanho do marcador, em vez de se fechar
+            // numa mancha. A fotografia do alto do bairro dispensa as duas
             // coisas: fica só um olho, pousado no céu, sem legenda a tapar a
             // paisagem.
             const simbolo = ann.isImage
@@ -1004,15 +1006,15 @@ AnnotationController.prototype.initialize = function() {
                         <circle cx="12" cy="12" r="3"></circle>
                    </svg>`
                 : `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="square" stroke-linejoin="miter">
-                        <polygon points="12.0 8.6 15.98 10.9 15.98 15.5 12.0 17.8 8.02 15.5 8.02 10.9"></polygon>
-                        <polyline points="8.02 10.9 12 13.2 15.98 10.9"></polyline>
-                        <line x1="12" y1="13.2" x2="12.0" y2="17.8"></line>
-                        <line x1="12.0" y1="8.6" x2="12.00" y2="3.00" stroke-linecap="butt"></line>
-                        <polyline points="10.37 4.63 12.00 3.00 13.63 4.63"></polyline>
-                        <line x1="8.02" y1="15.5" x2="3.17" y2="18.30" stroke-linecap="butt"></line>
-                        <polyline points="5.39 18.90 3.17 18.30 3.77 16.08"></polyline>
-                        <line x1="15.98" y1="15.5" x2="20.83" y2="18.30" stroke-linecap="butt"></line>
-                        <polyline points="20.23 16.08 20.83 18.30 18.61 18.90"></polyline>
+                        <polygon points="12.0 8.2 15.98 10.5 15.98 15.1 12.0 17.4 8.02 15.1 8.02 10.5"></polygon>
+                        <polyline points="8.02 10.5 12 12.8 15.98 10.5"></polyline>
+                        <line x1="12" y1="12.8" x2="12.0" y2="17.4"></line>
+                        <line x1="12.00" y1="6.80" x2="12.00" y2="1.80" stroke-linecap="butt"></line>
+                        <polyline points="10.23 3.57 12.00 1.80 13.77 3.57"></polyline>
+                        <line x1="6.81" y1="15.80" x2="2.48" y2="18.30" stroke-linecap="butt"></line>
+                        <polyline points="4.89 18.95 2.48 18.30 3.12 15.89"></polyline>
+                        <line x1="17.19" y1="15.80" x2="21.52" y2="18.30" stroke-linecap="butt"></line>
+                        <polyline points="20.88 15.89 21.52 18.30 19.11 18.95"></polyline>
                    </svg>`;
             el.innerHTML = `
                 <div class="marker-dot is-360 ${isViewed ? 'viewed' : ''}">
