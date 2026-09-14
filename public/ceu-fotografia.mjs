@@ -209,8 +209,8 @@ function suave(a, b, x) {
  * passa a ser o modelo. A paisagem ao longe fica — essa está logo abaixo
  * do horizonte, e a estas distâncias já não escorrega com a câmara.
  *
- * O trabalho é feito com dois traços de pincel, um deles com um gradiente,
- * e não ponto a ponto: não custa nada mesmo na fotografia grande.
+ * O trabalho é feito com um traço de pincel só, com um gradiente, e não
+ * ponto a ponto: não custa nada mesmo na fotografia grande.
  *
  * @param {CanvasRenderingContext2D} pincel - O pincel da tela.
  * @param {number} largura - Largura da tela.
@@ -220,7 +220,6 @@ function suave(a, b, x) {
 function apagarOChao(pincel, largura, altura, metros) {
     if (!(metros > 0)) return;
 
-    const cor = `rgb(${FUNDO[0]}, ${FUNDO[1]}, ${FUNDO[2]})`;
     // A imagem vai de noventa graus acima a noventa abaixo, de alto a
     // baixo: cada grau vale uma fatia de cento e oitenta avos da altura.
     // E um ponto do chão a tantos metros do drone está tantos graus abaixo
@@ -248,13 +247,16 @@ function apagarOChao(pincel, largura, altura, metros) {
         const t = i / PASSOS;
         gradiente.addColorStop(t, `rgba(${FUNDO[0]}, ${FUNDO[1]}, ${FUNDO[2]}, ${suave(0, 1, t)})`);
     }
+    // Um traço só, da aresta até ao fundo da imagem: o gradiente acaba
+    // onde acaba e daí para baixo o pincel continua com a última cor, que
+    // é o fundo cheio. Antes eram dois traços — o gradiente até à linha
+    // onde o chão se apaga de vez, e um bloco liso daí para baixo — e a
+    // linha onde se encontravam raramente calha num ponto inteiro da
+    // imagem: nesse ponto cada traço pintava só a sua parte, e o que
+    // sobrava entre os dois era um fio da fotografia por apagar. Visto da
+    // taça, esse fio era um risco a dar a volta toda à base do domo.
     pincel.fillStyle = gradiente;
-    pincel.fillRect(0, comeca, largura, acaba - comeca);
-
-    if (acaba < altura) {
-        pincel.fillStyle = cor;
-        pincel.fillRect(0, acaba, largura, altura - acaba);
-    }
+    pincel.fillRect(0, comeca, largura, altura - comeca);
 }
 
 /**
