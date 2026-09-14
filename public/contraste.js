@@ -1,5 +1,6 @@
 /**
- * A tinta do cabeçalho segue o que está por baixo dela.
+ * A tinta do cabeçalho — e do botão de partilhar, no canto de baixo —
+ * segue o que está por baixo dela.
  *
  * Como a barra de estado de um telemóvel Android: sobre um fundo escuro os
  * ícones são brancos, sobre um fundo claro são pretos. Aqui o fundo é o
@@ -56,7 +57,7 @@
      */
     function medir() {
         var tela = telaDoBairro();
-        var elementos = document.querySelectorAll('#header .adaptavel');
+        var elementos = document.querySelectorAll('#header .adaptavel, #partilhar-btn.adaptavel');
         if (!tela || !pincel || elementos.length === 0) {
             return;
         }
@@ -66,17 +67,47 @@
             return;
         }
 
-        // A faixa do ecrã onde os ícones vivem, do mais alto ao mais baixo.
-        var topo = Infinity;
-        var base = -Infinity;
+        // Os ícones vivem em faixas do ecrã: os do cabeçalho numa, em
+        // cima; o de partilhar noutra, em baixo. Cada faixa é lida à
+        // parte — ler uma tira do ecrã inteiro, esmagada em quatro
+        // linhas, misturava o céu com as ruas e não dizia nada de nenhum.
+        var faixas = [];
         elementos.forEach(function (el) {
             var caixa = el.getBoundingClientRect();
             if (caixa.width === 0) {
                 return;
             }
-            if (caixa.top < topo) topo = caixa.top;
-            if (caixa.bottom > base) base = caixa.bottom;
+            var faixa = null;
+            for (var f = 0; f < faixas.length; f++) {
+                if (caixa.top <= faixas[f].base && caixa.bottom >= faixas[f].topo) {
+                    faixa = faixas[f];
+                    break;
+                }
+            }
+            if (faixa) {
+                if (caixa.top < faixa.topo) faixa.topo = caixa.top;
+                if (caixa.bottom > faixa.base) faixa.base = caixa.bottom;
+                faixa.elementos.push(el);
+            } else {
+                faixas.push({ topo: caixa.top, base: caixa.bottom, elementos: [el] });
+            }
         });
+
+        faixas.forEach(function (faixa) {
+            medirFaixa(tela, caixaDaTela, faixa.topo, faixa.base, faixa.elementos);
+        });
+    }
+
+    /**
+     * Mede o brilho por trás de uma faixa de ícones e escolhe-lhes a tinta.
+     *
+     * @param {HTMLCanvasElement} tela - A tela do bairro.
+     * @param {DOMRect} caixaDaTela - Onde a tela está no ecrã.
+     * @param {number} topo - O cimo da faixa, no ecrã.
+     * @param {number} base - O fundo da faixa, no ecrã.
+     * @param {Element[]} elementos - Os ícones que vivem nessa faixa.
+     */
+    function medirFaixa(tela, caixaDaTela, topo, base, elementos) {
         if (!isFinite(topo) || base <= topo) {
             return;
         }

@@ -1002,7 +1002,7 @@ AnnotationController.prototype.initialize = function() {
                         <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"></path>
                         <circle cx="12" cy="12" r="3"></circle>
                    </svg>`
-                : `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter">
+                : `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="square" stroke-linejoin="miter">
                         <path d="M14.02 3.23A9 9 0 0 1 12 21" stroke-linecap="butt"></path>
                         <path d="M9.98 20.77A9 9 0 0 1 12 3" stroke-linecap="butt"></path>
                         <polyline points="9.8 0.8 12 3 9.8 5.2"></polyline>

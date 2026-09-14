@@ -18,7 +18,7 @@
     <script src="/quadrado-de-espera.js?v=4"></script>
 
     <!-- A tinta do cabeçalho segue o brilho do bairro por trás dela. -->
-    <script src="/contraste.js?v=1"></script>
+    <script src="/contraste.js?v=2"></script>
 
     <!-- PlayCanvas Web Components (versões fixas para estabilidade em produção) -->
     <script type="importmap">
@@ -390,14 +390,16 @@
            barra de estado de um telemóvel Android: sobre escuro fica
            branca, sobre claro fica preta. Quem vai ver é o contraste.js,
            que mede o brilho da imagem por trás de cada peça. */
-        #header .adaptavel {
+        #header .adaptavel,
+        #partilhar-btn {
             --tinta: #ffffff;
             --avesso: #05050a;
             color: var(--tinta);
             transition: color 0.25s ease;
         }
 
-        #header .adaptavel.sobre-claro {
+        #header .adaptavel.sobre-claro,
+        #partilhar-btn.sobre-claro {
             --tinta: #05050a;
             --avesso: #ffffff;
         }
@@ -764,6 +766,10 @@
            Um botão no canto de baixo à direita, vestido como o rodapé, e um
            menu por cima dele com as redes por onde se pode mandar o bairro
            a alguém. Nasce com o cabeçalho, quando o ecrã de espera sai. */
+        /* Só o ícone, sem caixa, como os do cabeçalho — e com a mesma
+           tinta que muda com o brilho do bairro por baixo (ver
+           contraste.js). Com o rato em cima, ou com o menu aberto, a tinta
+           vira do avesso. */
         #partilhar-btn {
             position: fixed;
             bottom: 24px;
@@ -774,17 +780,15 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            background: linear-gradient(to bottom, rgba(255,255,255,0.05), transparent), #05050a;
+            background: transparent;
             border: none;
             border-radius: 0;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.4);
-            color: var(--color-text);
             cursor: pointer;
             padding: 0;
             opacity: 0;
             transform: translateY(8px);
             pointer-events: none;
-            transition: opacity 0.6s ease 0.3s, transform 0.6s ease 0.3s, background 0.15s ease;
+            transition: opacity 0.6s ease 0.3s, transform 0.6s ease 0.3s, color 0.25s ease;
         }
 
         #partilhar-btn.visivel {
@@ -795,7 +799,7 @@
 
         #partilhar-btn:hover,
         #partilhar-btn.aberto {
-            background: linear-gradient(to bottom, rgba(255,255,255,0.12), rgba(255,255,255,0.06)), #05050a;
+            color: var(--avesso);
         }
 
         #partilhar-btn:focus-visible {
@@ -1000,7 +1004,7 @@
         /* ─── Premium Gradient Borders ─── */
         .panel-glass, .btn-glass, .action-btn, .settings-panel, .filter-btn, 
         #coordinates-info, #camera-info, #loading-bar-container,
-        #definicoes-menu, #dev-menu, #idioma-menu, #rodape-comandos, #camera-stuck-popup, #partilhar-btn, #partilhar-menu {
+        #definicoes-menu, #dev-menu, #idioma-menu, #rodape-comandos, #camera-stuck-popup, #partilhar-menu {
             border-color: transparent !important;
         }
         .panel-glass, .btn-glass, .action-btn, .filter-btn {
@@ -1008,13 +1012,17 @@
         }
         .panel-glass::after, .btn-glass::after, .action-btn::after, .settings-panel::after, .filter-btn::after,
         #coordinates-info::after, #camera-info::after, #loading-bar-container::after,
-        #definicoes-menu::after, #dev-menu::after, #idioma-menu::after, #rodape-comandos::after, #camera-stuck-popup::after, #partilhar-btn::after, #partilhar-menu::after {
+        #definicoes-menu::after, #dev-menu::after, #idioma-menu::after, #rodape-comandos::after, #camera-stuck-popup::after, #partilhar-menu::after {
             content: "";
             position: absolute;
             inset: 0;
             border-radius: inherit;
             padding: 1px;
-            background: linear-gradient(to bottom right, rgba(255,255,255,0.7) 0%, rgba(255,255,255,0.3) 50%, rgba(255,255,255,0.7) 100%);
+            /* O fio de luz assenta sempre sobre o fundo escuro do site, e
+               não sobre o que estiver por trás do painel: assim tem a mesma
+               cor no rodapé, pousado sobre o bairro, e nas janelas dos
+               tocadores, pousadas sobre o escuro. */
+            background: linear-gradient(to bottom right, rgba(255,255,255,0.7) 0%, rgba(255,255,255,0.3) 50%, rgba(255,255,255,0.7) 100%), #05050a;
             -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
             -webkit-mask-composite: xor;
             mask-composite: exclude;
@@ -1649,7 +1657,7 @@
     </script>
 
     <!-- Partilhar: o botão do canto e o menu das redes. -->
-    <button type="button" id="partilhar-btn" aria-label="Partilhar" title="Partilhar" data-i18n-aria="par.botao" data-i18n-title="par.botao" aria-haspopup="true" aria-expanded="false" aria-controls="partilhar-menu">
+    <button type="button" id="partilhar-btn" class="adaptavel" aria-label="Partilhar" title="Partilhar" data-i18n-aria="par.botao" data-i18n-title="par.botao" aria-haspopup="true" aria-expanded="false" aria-controls="partilhar-menu">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true">
             <circle cx="18" cy="5" r="3"></circle>
             <circle cx="6" cy="12" r="3"></circle>
@@ -1699,7 +1707,17 @@
         const opcoes = Array.from(menu.querySelectorAll('.partilha-opcao'));
         const t = (chave, senao) => (window.Idiomas ? window.Idiomas.t(chave) : '') || senao;
 
-        const endereco = () => location.href.split('#')[0];
+        // O endereço a partilhar é o público, esteja a página aberta onde
+        // estiver: as redes vão buscar a página a esse endereço para lhe
+        // mostrar o título e a imagem, e um endereço de ensaio — o do
+        // computador de quem está a afinar o site — não lhes chega.
+        const ENDERECO_PUBLICO = 'https://malhaviva.pt/';
+        const endereco = () => {
+            const aqui = location.hostname || '';
+            return (aqui === 'malhaviva.pt' || aqui.endsWith('.malhaviva.pt'))
+                ? location.href.split('#')[0].split('?')[0]
+                : ENDERECO_PUBLICO;
+        };
         const texto = () => t('par.texto', 'Explora o Bairro de Penajóia em 3D — Malha Viva');
 
         // As ligações de cada rede, com o endereço e o texto já dentro.
@@ -1856,7 +1874,7 @@
         <pc-asset id="splat-scene" src="splat/lod-meta.json" type="gsplat"></pc-asset>
         <pc-asset id="camera-controls-script" src="./camera-controls.mjs?v=21" type="script"></pc-asset>
         <pc-asset id="camera-coords-script" src="./coords.mjs?v=7" type="script"></pc-asset>
-        <pc-asset id="annotations-script" src="./annotations.mjs?v=47" type="script"></pc-asset>
+        <pc-asset id="annotations-script" src="./annotations.mjs?v=48" type="script"></pc-asset>
         <pc-asset id="trail-script" src="./trail.mjs?v=24" type="script"></pc-asset>
 
         <!-- Scene -->
