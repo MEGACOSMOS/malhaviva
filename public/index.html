@@ -551,19 +551,21 @@
             left: 50%;
             transform: translate(-50%, -50%);
             z-index: 500;
+            /* Vestido como o rodapé dos comandos: o mesmo fundo, o contorno
+               de luz logo na borda, sem orla escura, e a mesma sombra. */
             background: linear-gradient(to bottom, rgba(255,255,255,0.05), transparent), #05050a;
-            border: 1px solid rgba(255, 255, 255, 0.15);
+            border: none;
             box-shadow: 0 4px 15px rgba(0,0,0,0.4);
             border-radius: 0;
-            padding: 24px;
+            padding: 26px 34px 28px;
+            max-width: calc(100% - 32px);
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 16px;
+            gap: 8px;
             opacity: 0;
             visibility: hidden;
             transition: opacity 0.3s ease, visibility 0.3s;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
             text-align: center;
         }
 
@@ -573,34 +575,40 @@
         }
 
         .stuck-text {
-            font-size: 1rem;
-            font-weight: 500;
+            font-size: 0.95rem;
+            font-weight: 600;
+            letter-spacing: -0.01em;
             color: var(--color-text);
         }
-        
+
         .stuck-subtext {
-            font-size: 0.8rem;
+            font-size: 0.82rem;
             color: var(--color-text-muted);
-            margin-bottom: 8px;
+            margin-bottom: 14px;
         }
 
+        /* O botão é uma tecla, como as do rodapé: só o traço e a letra. */
         #recenter-btn {
-            background: #05050a;
-            color: #fff;
-            border: 1px solid rgba(255, 255, 255, 0.15);
-            padding: 10px 20px;
+            background: transparent;
+            color: var(--color-text);
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            padding: 9px 18px;
             border-radius: 0;
+            font-size: 0.72rem;
             font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
             font-family: inherit;
             cursor: pointer;
-            transition: background 0.2s ease, transform 0.1s;
+            transition: background 0.15s ease, border-color 0.15s ease, transform 0.1s;
         }
 
         #recenter-btn:hover {
             background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.45);
         }
         #recenter-btn:active {
-            transform: scale(0.95);
+            transform: scale(0.97);
         }
 
         /* ─── O que o comando de jogo tem escolhido ───
@@ -858,7 +866,7 @@
         /* ─── Premium Gradient Borders ─── */
         .panel-glass, .btn-glass, .action-btn, .settings-panel, .filter-btn, 
         #coordinates-info, #camera-info, #loading-bar-container,
-        #definicoes-menu, #dev-menu, #idioma-menu, #rodape-comandos {
+        #definicoes-menu, #dev-menu, #idioma-menu, #rodape-comandos, #camera-stuck-popup {
             border-color: transparent !important;
         }
         .panel-glass, .btn-glass, .action-btn, .filter-btn {
@@ -866,7 +874,7 @@
         }
         .panel-glass::after, .btn-glass::after, .action-btn::after, .settings-panel::after, .filter-btn::after,
         #coordinates-info::after, #camera-info::after, #loading-bar-container::after,
-        #definicoes-menu::after, #dev-menu::after, #idioma-menu::after, #rodape-comandos::after {
+        #definicoes-menu::after, #dev-menu::after, #idioma-menu::after, #rodape-comandos::after, #camera-stuck-popup::after {
             content: "";
             position: absolute;
             inset: 0;
