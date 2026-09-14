@@ -625,10 +625,13 @@
            fechada, não volta a aparecer. Veste-se como os outros painéis. */
         #rodape-comandos {
             position: fixed;
-            bottom: 24px;
+            bottom: 40px;
             left: 0;
             right: 0;
             margin: 0 auto;
+            /* Só da largura do que diz. Quando o que diz passa a duas
+               linhas, é o guião que mede a mais comprida e acerta a
+               largura por ela (ver `ajustarLargura`). */
             width: fit-content;
             max-width: calc(100% - 32px);
             z-index: 100;
@@ -636,13 +639,13 @@
             align-items: center;
             justify-content: center;
             flex-wrap: wrap;
-            gap: 6px 22px;
-            padding: 10px 40px 10px 18px;
+            gap: 10px 30px;
+            padding: 15px 54px 15px 24px;
             background: linear-gradient(to bottom, rgba(255,255,255,0.05), transparent), #05050a;
             border: 1px solid rgba(255, 255, 255, 0.15);
             border-radius: 0;
             box-shadow: 0 4px 15px rgba(0,0,0,0.4);
-            font-size: 0.75rem;
+            font-size: 0.88rem;
             color: var(--color-text-muted);
             opacity: 0;
             transform: translateY(8px);
@@ -656,45 +659,44 @@
             pointer-events: auto;
         }
 
-        /* A navegar: fica quase transparente e deixa passar o rato, para
-           não se pôr à frente do bairro. Volta sozinha com o sossego — ou
-           logo, se alguém lhe chegar pela tecla Tab. */
+        /* A navegar: fica quase transparente, para não se pôr à frente do
+           bairro. Volta sozinha com o sossego — ou logo, mal o rato lhe
+           passe por cima ou alguém lhe chegue pela tecla Tab. */
         #rodape-comandos.visivel.a-navegar {
             opacity: 0.08;
-            pointer-events: none;
             transition: opacity 0.4s ease, transform 0.4s ease;
         }
 
+        #rodape-comandos.visivel.a-navegar:hover,
         #rodape-comandos.visivel.a-navegar:focus-within {
             opacity: 1;
-            pointer-events: auto;
         }
 
         .rodape-item {
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 10px;
             white-space: nowrap;
         }
 
         .rodape-teclas {
             display: flex;
             align-items: center;
-            gap: 4px;
+            gap: 5px;
         }
 
-        /* Uma tecla, como as da página dos controlos, só que mais pequena. */
+        /* Uma tecla, como as da página dos controlos. */
         .rodape-tecla {
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            gap: 4px;
-            min-width: 22px;
-            height: 22px;
-            padding: 0 6px;
+            gap: 5px;
+            min-width: 28px;
+            height: 28px;
+            padding: 0 9px;
             border: 1px solid rgba(255, 255, 255, 0.25);
             font-family: var(--font-main);
-            font-size: 0.68rem;
+            font-size: 0.76rem;
             font-weight: 600;
             letter-spacing: 0.02em;
             color: var(--color-text);
@@ -706,10 +708,10 @@
 
         /* A cruz de fechar, no canto de cima à direita. */
         #rodape-comandos .menu-fechar {
-            top: 4px;
-            right: 4px;
-            width: 22px;
-            height: 22px;
+            top: 6px;
+            right: 6px;
+            width: 26px;
+            height: 26px;
         }
 
         /* Há duas versões do que se diz: a do rato e teclado, e a dos
@@ -729,9 +731,9 @@
 
         @media (max-width: 640px) {
             #rodape-comandos {
-                bottom: 16px;
-                gap: 6px 16px;
-                padding: 10px 36px 10px 14px;
+                bottom: 24px;
+                gap: 8px 22px;
+                padding: 13px 46px 13px 18px;
             }
         }
 
@@ -848,15 +850,15 @@
         /* ─── Premium Gradient Borders ─── */
         .panel-glass, .btn-glass, .action-btn, .settings-panel, .filter-btn, 
         #coordinates-info, #camera-info, #loading-bar-container,
-        #definicoes-menu, #dev-menu, #idioma-menu {
+        #definicoes-menu, #dev-menu, #idioma-menu, #rodape-comandos {
             border-color: transparent !important;
         }
         .panel-glass, .btn-glass, .action-btn, .filter-btn {
             position: relative;
         }
-        .panel-glass::after, .btn-glass::after, .action-btn::after, .settings-panel::after, .filter-btn::after, 
+        .panel-glass::after, .btn-glass::after, .action-btn::after, .settings-panel::after, .filter-btn::after,
         #coordinates-info::after, #camera-info::after, #loading-bar-container::after,
-        #definicoes-menu::after, #dev-menu::after, #idioma-menu::after {
+        #definicoes-menu::after, #dev-menu::after, #idioma-menu::after, #rodape-comandos::after {
             content: "";
             position: absolute;
             inset: 0;
@@ -1408,8 +1410,15 @@
      * ele voltar, ao repor o bairro depois de uma janela 360º. Enquanto se
      * navega fica quase transparente: quem sabe que a câmara se mexeu é o
      * guião do bairro, que avisa aqui por `mexeu`; passados cinco segundos
-     * sem aviso nenhum, volta. A cruz fecha-o de vez: fica escrito na
-     * memória do navegador, e nas visitas seguintes já não nasce.
+     * sem aviso nenhum, volta — ou logo, mal o rato lhe passe por cima. A
+     * cruz fecha-o de vez: fica escrito na memória do navegador, e nas
+     * visitas seguintes já não nasce.
+     *
+     * A tira é só da largura do que diz, também quando o que diz não cabe
+     * numa linha: nesse caso mede-se a linha mais comprida e a tira fica
+     * dessa medida, em vez de se esticar até à margem e ficar com ar dos
+     * lados. Mede-se de novo sempre que a janela muda de tamanho ou a
+     * língua muda — que é quando as palavras mudam de comprimento.
      */
     (function () {
         const rodape = document.getElementById('rodape-comandos');
@@ -1431,13 +1440,23 @@
 
         let relogio = null;
 
+        const voltar = () => {
+            rodape.classList.remove('a-navegar');
+            clearTimeout(relogio);
+            relogio = null;
+        };
+
         // A câmara mexeu-se: esbate-se, e só volta com cinco segundos de
         // sossego seguidos — cada aviso novo volta a contar do princípio.
         const mexeu = () => {
             rodape.classList.add('a-navegar');
             clearTimeout(relogio);
-            relogio = setTimeout(() => rodape.classList.remove('a-navegar'), SOSSEGO_MS);
+            relogio = setTimeout(voltar, SOSSEGO_MS);
         };
+
+        // O rato por cima — ou um dedo, num ecrã táctil — traz o rodapé de
+        // volta sem esperar pelo sossego.
+        rodape.addEventListener('pointerenter', voltar);
 
         rodape.querySelector('.menu-fechar').addEventListener('click', () => {
             try { localStorage.setItem(CHAVE, 'fechado'); } catch (e) { /* sem memória: fecha só desta vez */ }
@@ -1445,17 +1464,60 @@
             fecharDeVez();
         });
 
+        /**
+         * Acerta a largura da tira pela linha mais comprida do que ela diz.
+         *
+         * Numa linha só, a tira já é da largura do que diz e não há nada a
+         * fazer. Em duas ou mais, o navegador estica-a até ao máximo que
+         * lhe é permitido e arruma as linhas lá dentro, com ar dos lados:
+         * mede-se então cada linha — os gestos que ficaram à mesma altura —
+         * e a tira fica da medida da mais comprida, mais a moldura. Uma
+         * folga de um ponto evita que um arredondamento mande um gesto para
+         * a linha de baixo.
+         */
+        const ajustarLargura = () => {
+            if (!rodape.isConnected) return;
+            rodape.style.width = '';
+            const gestos = Array.from(rodape.querySelectorAll('.rodape-item'))
+                .filter((el) => el.offsetParent !== null);
+            const linhas = [];
+            gestos.forEach((el) => {
+                const r = el.getBoundingClientRect();
+                const linha = linhas.find((l) => Math.abs(l.topo - r.top) < 1);
+                if (linha) {
+                    linha.esq = Math.min(linha.esq, r.left);
+                    linha.dir = Math.max(linha.dir, r.right);
+                } else {
+                    linhas.push({ topo: r.top, esq: r.left, dir: r.right });
+                }
+            });
+            if (linhas.length < 2) return;
+            const maior = Math.max.apply(null, linhas.map((l) => l.dir - l.esq));
+            const estilo = getComputedStyle(rodape);
+            const moldura = parseFloat(estilo.paddingLeft) + parseFloat(estilo.paddingRight) +
+                parseFloat(estilo.borderLeftWidth) + parseFloat(estilo.borderRightWidth);
+            rodape.style.width = (Math.ceil(maior + moldura) + 1) + 'px';
+        };
+
         // Segue o ecrã de espera: sai ele, entra o rodapé; volta ele, sai.
         const seguir = () => {
             if (overlay.classList.contains('hidden')) {
+                ajustarLargura();
                 rodape.classList.add('visivel');
             } else {
-                rodape.classList.remove('visivel', 'a-navegar');
-                clearTimeout(relogio);
+                rodape.classList.remove('visivel');
+                voltar();
             }
         };
         new MutationObserver(seguir).observe(overlay, { attributes: true, attributeFilter: ['class'] });
         seguir();
+
+        window.addEventListener('resize', ajustarLargura);
+        window.addEventListener('idiomamudou', ajustarLargura);
+        // A letra do site chega da rede um instante depois da página, e é
+        // mais larga ou mais estreita do que a que a substitui entretanto.
+        if (document.fonts && document.fonts.ready) document.fonts.ready.then(ajustarLargura);
+        ajustarLargura();
 
         window.rodapeDosComandos = { mexeu };
     })();
