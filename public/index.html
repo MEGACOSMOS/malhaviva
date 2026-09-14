@@ -620,9 +620,11 @@
            Uma tira ao fundo do ecrã, a meio e só da largura do que diz, com
            os três gestos que fazem falta para andar pelo bairro. Nasce com
            o cabeçalho, quando o ecrã de espera sai; esbate-se quase até
-           desaparecer enquanto se navega e volta passados uns segundos de
-           sossego; e tem uma cruz no canto para quem já não precisa dela —
-           fechada, não volta a aparecer. Veste-se como os outros painéis. */
+           desaparecer enquanto se navega e volta mal o rato lhe passa por
+           cima; e tem uma cruz no canto para quem já não precisa dela —
+           fechada, não volta a aparecer. Veste-se como os outros painéis,
+           mas sem a orla escura deles: o contorno de luz fica logo na
+           borda, sem um fio de fundo por fora. */
         #rodape-comandos {
             position: fixed;
             bottom: 40px;
@@ -642,7 +644,7 @@
             gap: 10px 30px;
             padding: 15px 54px 15px 24px;
             background: linear-gradient(to bottom, rgba(255,255,255,0.05), transparent), #05050a;
-            border: 1px solid rgba(255, 255, 255, 0.15);
+            border: none;
             border-radius: 0;
             box-shadow: 0 4px 15px rgba(0,0,0,0.4);
             font-size: 0.88rem;
@@ -650,26 +652,36 @@
             opacity: 0;
             transform: translateY(8px);
             pointer-events: none;
-            transition: opacity 0.6s ease 0.3s, transform 0.6s ease 0.3s;
         }
 
+        /* Nasce devagar, com o cabeçalho; depois de nascido, tudo o que
+           lhe acontece é rápido. */
         #rodape-comandos.visivel {
             opacity: 1;
             transform: translateY(0);
             pointer-events: auto;
+            transition: opacity 0.6s ease 0.3s, transform 0.6s ease 0.3s;
+        }
+
+        #rodape-comandos.visivel.nascido {
+            transition: opacity 0.12s ease, transform 0.12s ease;
         }
 
         /* A navegar: fica quase transparente, para não se pôr à frente do
-           bairro. Volta sozinha com o sossego — ou logo, mal o rato lhe
-           passe por cima ou alguém lhe chegue pela tecla Tab. */
+           bairro, e só volta quando o rato lhe passa por cima — ou alguém
+           lhe chega pela tecla Tab. Tanto o esbater como o voltar são
+           rápidos: o voltar tem de acompanhar o rato, sem demora. */
         #rodape-comandos.visivel.a-navegar {
             opacity: 0.08;
             transition: opacity 0.4s ease, transform 0.4s ease;
         }
 
+        #rodape-comandos.visivel:hover,
+        #rodape-comandos.visivel:focus-within,
         #rodape-comandos.visivel.a-navegar:hover,
         #rodape-comandos.visivel.a-navegar:focus-within {
             opacity: 1;
+            transition: opacity 0.12s ease, transform 0.12s ease;
         }
 
         .rodape-item {
@@ -1409,10 +1421,10 @@
      * Aparece com o cabeçalho, mal o ecrã de espera sai — e esconde-se se
      * ele voltar, ao repor o bairro depois de uma janela 360º. Enquanto se
      * navega fica quase transparente: quem sabe que a câmara se mexeu é o
-     * guião do bairro, que avisa aqui por `mexeu`; passados cinco segundos
-     * sem aviso nenhum, volta — ou logo, mal o rato lhe passe por cima. A
-     * cruz fecha-o de vez: fica escrito na memória do navegador, e nas
-     * visitas seguintes já não nasce.
+     * guião do bairro, que avisa aqui por `mexeu`. Assim fica até o rato
+     * lhe passar por cima — não volta sozinho com o tempo. A cruz fecha-o
+     * de vez: fica escrito na memória do navegador, e nas visitas
+     * seguintes já não nasce.
      *
      * A tira é só da largura do que diz, também quando o que diz não cabe
      * numa linha: nesse caso mede-se a linha mais comprida e a tira fica
@@ -1426,7 +1438,6 @@
         if (!rodape || !overlay) return;
 
         const CHAVE = 'rodape-comandos';
-        const SOSSEGO_MS = 5000;
 
         // Quem fecha, não volta a ver.
         const fecharDeVez = () => {
@@ -1438,29 +1449,22 @@
         try { fechado = localStorage.getItem(CHAVE) === 'fechado'; } catch (e) { /* sem memória: aparece */ }
         if (fechado) { fecharDeVez(); return; }
 
-        let relogio = null;
-
-        const voltar = () => {
+        // A câmara mexeu-se: esbate-se. Não há relógio a trazê-lo de volta —
+        // quem o traz é o rato a passar-lhe por cima, ou um dedo a tocar-lhe
+        // num ecrã táctil. Enquanto o rato está em cima dele, a câmara a
+        // acabar de deslizar não conta: senão, ao tirar o rato, encontrava-o
+        // outra vez esbatido.
+        let sobre = false;
+        const mexeu = () => { if (!sobre) rodape.classList.add('a-navegar'); };
+        rodape.addEventListener('pointerenter', () => {
+            sobre = true;
             rodape.classList.remove('a-navegar');
-            clearTimeout(relogio);
-            relogio = null;
-        };
-
-        // A câmara mexeu-se: esbate-se, e só volta com cinco segundos de
-        // sossego seguidos — cada aviso novo volta a contar do princípio.
-        const mexeu = () => {
-            rodape.classList.add('a-navegar');
-            clearTimeout(relogio);
-            relogio = setTimeout(voltar, SOSSEGO_MS);
-        };
-
-        // O rato por cima — ou um dedo, num ecrã táctil — traz o rodapé de
-        // volta sem esperar pelo sossego.
-        rodape.addEventListener('pointerenter', voltar);
+        });
+        rodape.addEventListener('pointerleave', () => { sobre = false; });
+        const voltar = () => rodape.classList.remove('a-navegar');
 
         rodape.querySelector('.menu-fechar').addEventListener('click', () => {
             try { localStorage.setItem(CHAVE, 'fechado'); } catch (e) { /* sem memória: fecha só desta vez */ }
-            clearTimeout(relogio);
             fecharDeVez();
         });
 
@@ -1500,12 +1504,17 @@
         };
 
         // Segue o ecrã de espera: sai ele, entra o rodapé; volta ele, sai.
+        // O nascer é devagar; passado esse instante fica marcado como
+        // nascido, e daí em diante responde depressa.
+        let aNascer = null;
         const seguir = () => {
+            clearTimeout(aNascer);
             if (overlay.classList.contains('hidden')) {
                 ajustarLargura();
                 rodape.classList.add('visivel');
+                aNascer = setTimeout(() => rodape.classList.add('nascido'), 1000);
             } else {
-                rodape.classList.remove('visivel');
+                rodape.classList.remove('visivel', 'nascido');
                 voltar();
             }
         };
