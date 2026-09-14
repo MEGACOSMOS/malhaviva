@@ -11,7 +11,7 @@
 
     <!-- As línguas do site. Fica antes de tudo o resto para o texto
          nascer já na língua certa, sem piscar em português primeiro. -->
-    <script src="/idiomas.js?v=10"></script>
+    <script src="/idiomas.js?v=11"></script>
 
     <!-- O quadrado de espera, o mesmo em todo o site. Fica antes de o
          ecrã de espera se desenhar, para nascer já com a sua roupa. -->
@@ -639,7 +639,10 @@
                linhas, é o guião que mede a mais comprida e acerta a
                largura por ela (ver `ajustarLargura`). */
             width: fit-content;
-            max-width: calc(100% - 32px);
+            /* Deixa livre, de cada lado, o canto onde vive o botão de
+               partilhar: antes de lhe chegar, o que diz passa a duas
+               linhas. */
+            max-width: calc(100% - 152px);
             z-index: 100;
             display: flex;
             align-items: center;
@@ -746,10 +749,141 @@
         }
 
         @media (max-width: 640px) {
+            /* Num ecrã estreito o rodapé vai quase de lado a lado e
+               chocava com o botão de partilhar, no canto: sobe para cima
+               dele. */
             #rodape-comandos {
-                bottom: 24px;
+                bottom: 80px;
+                max-width: calc(100% - 32px);
                 gap: 8px 22px;
                 padding: 13px 46px 13px 18px;
+            }
+        }
+
+        /* ─── Partilhar ───
+           Um botão no canto de baixo à direita, vestido como o rodapé, e um
+           menu por cima dele com as redes por onde se pode mandar o bairro
+           a alguém. Nasce com o cabeçalho, quando o ecrã de espera sai. */
+        #partilhar-btn {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            z-index: 100;
+            width: 44px;
+            height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(to bottom, rgba(255,255,255,0.05), transparent), #05050a;
+            border: none;
+            border-radius: 0;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+            color: var(--color-text);
+            cursor: pointer;
+            padding: 0;
+            opacity: 0;
+            transform: translateY(8px);
+            pointer-events: none;
+            transition: opacity 0.6s ease 0.3s, transform 0.6s ease 0.3s, background 0.15s ease;
+        }
+
+        #partilhar-btn.visivel {
+            opacity: 1;
+            transform: translateY(0);
+            pointer-events: auto;
+        }
+
+        #partilhar-btn:hover,
+        #partilhar-btn.aberto {
+            background: linear-gradient(to bottom, rgba(255,255,255,0.12), rgba(255,255,255,0.06)), #05050a;
+        }
+
+        #partilhar-btn:focus-visible {
+            outline: 2px solid rgba(255, 255, 255, 0.95);
+            outline-offset: 3px;
+        }
+
+        /* O menu abre para cima, a partir do canto do botão, com a roupa
+           dos outros menus. */
+        #partilhar-menu {
+            position: fixed;
+            bottom: 78px;
+            right: 24px;
+            z-index: 101;
+            width: max-content;
+            min-width: 190px;
+            max-width: calc(100% - 48px);
+            padding: 16px;
+            background: linear-gradient(to bottom, rgba(255,255,255,0.05), transparent), #05050a;
+            border: none;
+            border-radius: 0;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+            transform-origin: bottom right;
+            transform: scale(0.95);
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+            transition: opacity 0.2s, transform 0.2s, visibility 0.2s;
+        }
+
+        #partilhar-menu.open {
+            transform: scale(1);
+            opacity: 1;
+            visibility: visible;
+            pointer-events: auto;
+        }
+
+        #partilhar-menu > .settings-title {
+            padding-right: 28px;
+        }
+
+        .partilha-lista {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        /* Cada rede é uma linha: só o nome, a acender com o rato como as
+           linhas da página dos controlos. */
+        .partilha-opcao {
+            display: block;
+            width: calc(100% + 20px);
+            margin: 0 -10px;
+            padding: 8px 10px;
+            background: transparent;
+            border: none;
+            color: var(--color-text);
+            font-family: inherit;
+            font-size: 0.85rem;
+            text-align: left;
+            text-decoration: none;
+            cursor: pointer;
+            transition: background 0.15s ease;
+        }
+
+        .partilha-opcao:hover,
+        .partilha-opcao:focus-visible {
+            background: rgba(255, 255, 255, 0.08);
+            outline: none;
+        }
+
+        .partilha-opcao[hidden] {
+            display: none;
+        }
+
+        /* O aviso de que a ligação ficou copiada, no lugar do título. */
+        #partilhar-menu .settings-title.copiado {
+            color: #10b981;
+        }
+
+        @media (max-width: 640px) {
+            #partilhar-btn {
+                bottom: 16px;
+                right: 16px;
+            }
+            #partilhar-menu {
+                bottom: 70px;
+                right: 16px;
             }
         }
 
@@ -866,7 +1000,7 @@
         /* ─── Premium Gradient Borders ─── */
         .panel-glass, .btn-glass, .action-btn, .settings-panel, .filter-btn, 
         #coordinates-info, #camera-info, #loading-bar-container,
-        #definicoes-menu, #dev-menu, #idioma-menu, #rodape-comandos, #camera-stuck-popup {
+        #definicoes-menu, #dev-menu, #idioma-menu, #rodape-comandos, #camera-stuck-popup, #partilhar-btn, #partilhar-menu {
             border-color: transparent !important;
         }
         .panel-glass, .btn-glass, .action-btn, .filter-btn {
@@ -874,7 +1008,7 @@
         }
         .panel-glass::after, .btn-glass::after, .action-btn::after, .settings-panel::after, .filter-btn::after,
         #coordinates-info::after, #camera-info::after, #loading-bar-container::after,
-        #definicoes-menu::after, #dev-menu::after, #idioma-menu::after, #rodape-comandos::after, #camera-stuck-popup::after {
+        #definicoes-menu::after, #dev-menu::after, #idioma-menu::after, #rodape-comandos::after, #camera-stuck-popup::after, #partilhar-btn::after, #partilhar-menu::after {
             content: "";
             position: absolute;
             inset: 0;
@@ -1514,6 +1648,171 @@
     })();
     </script>
 
+    <!-- Partilhar: o botão do canto e o menu das redes. -->
+    <button type="button" id="partilhar-btn" aria-label="Partilhar" title="Partilhar" data-i18n-aria="par.botao" data-i18n-title="par.botao" aria-haspopup="true" aria-expanded="false" aria-controls="partilhar-menu">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true">
+            <circle cx="18" cy="5" r="3"></circle>
+            <circle cx="6" cy="12" r="3"></circle>
+            <circle cx="18" cy="19" r="3"></circle>
+            <line x1="8.6" y1="10.5" x2="15.4" y2="6.5"></line>
+            <line x1="8.6" y1="13.5" x2="15.4" y2="17.5"></line>
+        </svg>
+    </button>
+    <div id="partilhar-menu" role="dialog" aria-label="Partilhar" data-i18n-aria="par.titulo">
+        <button type="button" class="menu-fechar" aria-label="Fechar" title="Fechar" data-i18n-aria="par.fechar" data-i18n-title="par.fechar">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true">
+                <line x1="5" y1="5" x2="19" y2="19"></line>
+                <line x1="19" y1="5" x2="5" y2="19"></line>
+            </svg>
+        </button>
+        <div class="settings-title" id="partilhar-titulo" data-i18n="par.titulo">Partilhar</div>
+        <div class="partilha-lista">
+            <button type="button" class="partilha-opcao" data-rede="nativa" hidden data-i18n="par.mais">Mais opções…</button>
+            <a class="partilha-opcao" data-rede="whatsapp" href="#" target="_blank" rel="noopener noreferrer">WhatsApp</a>
+            <a class="partilha-opcao" data-rede="facebook" href="#" target="_blank" rel="noopener noreferrer">Facebook</a>
+            <a class="partilha-opcao" data-rede="x" href="#" target="_blank" rel="noopener noreferrer">X</a>
+            <a class="partilha-opcao" data-rede="linkedin" href="#" target="_blank" rel="noopener noreferrer">LinkedIn</a>
+            <a class="partilha-opcao" data-rede="email" href="#" data-i18n="par.email">E-mail</a>
+            <button type="button" class="partilha-opcao" data-rede="copiar" data-i18n="par.copiar">Copiar ligação</button>
+        </div>
+    </div>
+
+    <script>
+    /**
+     * Partilhar o bairro: o botão do canto, o menu, e para onde vai cada
+     * rede.
+     *
+     * As ligações de cada rede são feitas na hora de abrir o menu, com o
+     * endereço da página e um texto na língua em vigor. O "Mais opções"
+     * só aparece onde o navegador tem a sua própria janela de partilha —
+     * telemóveis, sobretudo — e abre-a. Copiar a ligação escreve-a na
+     * área de transferência e diz que o fez no lugar do título, por um
+     * instante. O botão nasce com o cabeçalho, quando o ecrã de espera sai.
+     */
+    (function () {
+        const botao = document.getElementById('partilhar-btn');
+        const menu = document.getElementById('partilhar-menu');
+        const overlay = document.getElementById('loading-overlay');
+        if (!botao || !menu || !overlay) return;
+
+        const titulo = document.getElementById('partilhar-titulo');
+        const opcoes = Array.from(menu.querySelectorAll('.partilha-opcao'));
+        const t = (chave, senao) => (window.Idiomas ? window.Idiomas.t(chave) : '') || senao;
+
+        const endereco = () => location.href.split('#')[0];
+        const texto = () => t('par.texto', 'Explora o Bairro de Penajóia em 3D — Malha Viva');
+
+        // As ligações de cada rede, com o endereço e o texto já dentro.
+        const encherLigacoes = () => {
+            const u = encodeURIComponent(endereco());
+            const tx = encodeURIComponent(texto());
+            const destinos = {
+                whatsapp: 'https://wa.me/?text=' + tx + '%20' + u,
+                facebook: 'https://www.facebook.com/sharer/sharer.php?u=' + u,
+                x: 'https://twitter.com/intent/tweet?text=' + tx + '&url=' + u,
+                linkedin: 'https://www.linkedin.com/sharing/share-offsite/?url=' + u,
+                email: 'mailto:?subject=' + encodeURIComponent(document.title) + '&body=' + tx + '%0A%0A' + u
+            };
+            opcoes.forEach((el) => {
+                if (destinos[el.dataset.rede]) el.href = destinos[el.dataset.rede];
+            });
+        };
+
+        const nativa = opcoes.find((el) => el.dataset.rede === 'nativa');
+        if (nativa && navigator.share) nativa.hidden = false;
+
+        let relogioDoAviso = null;
+        const abrir = () => {
+            encherLigacoes();
+            menu.classList.add('open');
+            botao.classList.add('aberto');
+            botao.setAttribute('aria-expanded', 'true');
+            // O foco vai para a primeira rede — mas só depois de o menu
+            // estar mesmo visível; escondido, não aceita o foco.
+            const primeira = opcoes.find((el) => !el.hidden);
+            if (primeira) setTimeout(() => { if (aberto()) primeira.focus({ preventScroll: true }); }, 30);
+        };
+        const fechar = (devolverFoco) => {
+            menu.classList.remove('open');
+            botao.classList.remove('aberto');
+            botao.setAttribute('aria-expanded', 'false');
+            clearTimeout(relogioDoAviso);
+            titulo.classList.remove('copiado');
+            titulo.textContent = t('par.titulo', 'Partilhar');
+            if (devolverFoco) botao.focus({ preventScroll: true });
+        };
+        const aberto = () => menu.classList.contains('open');
+
+        botao.addEventListener('click', () => { if (aberto()) fechar(false); else abrir(); });
+        menu.querySelector('.menu-fechar').addEventListener('click', () => fechar(true));
+
+        // Fecha ao carregar fora, e com a tecla Escape.
+        document.addEventListener('pointerdown', (e) => {
+            if (aberto() && !menu.contains(e.target) && !botao.contains(e.target)) fechar(false);
+        });
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && aberto()) { fechar(true); e.stopPropagation(); }
+        }, true);
+
+        // Copiar a ligação, e dizer que copiou.
+        const avisarQueCopiou = () => {
+            titulo.textContent = t('par.copiado', 'Ligação copiada');
+            titulo.classList.add('copiado');
+            clearTimeout(relogioDoAviso);
+            relogioDoAviso = setTimeout(() => {
+                titulo.classList.remove('copiado');
+                titulo.textContent = t('par.titulo', 'Partilhar');
+            }, 1800);
+        };
+        const copiar = () => {
+            const u = endereco();
+            const aMao = () => {
+                const caixa = document.createElement('textarea');
+                caixa.value = u;
+                caixa.setAttribute('readonly', '');
+                caixa.style.cssText = 'position:fixed;top:-1000px;opacity:0';
+                document.body.appendChild(caixa);
+                caixa.select();
+                try { document.execCommand('copy'); } catch (e) { /* sem sorte */ }
+                caixa.remove();
+                avisarQueCopiou();
+            };
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(u).then(avisarQueCopiou, aMao);
+            } else {
+                aMao();
+            }
+        };
+
+        opcoes.forEach((el) => {
+            el.addEventListener('click', (e) => {
+                const rede = el.dataset.rede;
+                if (rede === 'copiar') { e.preventDefault(); copiar(); return; }
+                if (rede === 'nativa') {
+                    e.preventDefault();
+                    navigator.share({ title: document.title, text: texto(), url: endereco() })
+                        .then(() => fechar(false), () => { /* desistiu: fica aberto */ });
+                    return;
+                }
+                // As redes abrem noutra janela; o menu fecha-se atrás.
+                setTimeout(() => fechar(false), 150);
+            });
+        });
+
+        // Nasce com o cabeçalho; esconde-se se o ecrã de espera voltar.
+        const seguir = () => {
+            if (overlay.classList.contains('hidden')) {
+                botao.classList.add('visivel');
+            } else {
+                botao.classList.remove('visivel');
+                fechar(false);
+            }
+        };
+        new MutationObserver(seguir).observe(overlay, { attributes: true, attributeFilter: ['class'] });
+        seguir();
+    })();
+    </script>
+
     <!-- Coordinates Info -->
     <div id="coordinates-info">
         <div class="coord-item"><span class="coord-label" title="Rato X">X</span> <span id="coord-x">0.00</span></div>
@@ -1557,7 +1856,7 @@
         <pc-asset id="splat-scene" src="splat/lod-meta.json" type="gsplat"></pc-asset>
         <pc-asset id="camera-controls-script" src="./camera-controls.mjs?v=21" type="script"></pc-asset>
         <pc-asset id="camera-coords-script" src="./coords.mjs?v=7" type="script"></pc-asset>
-        <pc-asset id="annotations-script" src="./annotations.mjs?v=46" type="script"></pc-asset>
+        <pc-asset id="annotations-script" src="./annotations.mjs?v=47" type="script"></pc-asset>
         <pc-asset id="trail-script" src="./trail.mjs?v=24" type="script"></pc-asset>
 
         <!-- Scene -->

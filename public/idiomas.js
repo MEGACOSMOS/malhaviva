@@ -66,6 +66,15 @@
             'rod.pinca': 'pinça',
             'rod.fechar': 'Fechar os comandos',
 
+            'par.botao': 'Partilhar',
+            'par.titulo': 'Partilhar',
+            'par.texto': 'Explora o Bairro de Penajóia em 3D — Malha Viva',
+            'par.email': 'E-mail',
+            'par.copiar': 'Copiar ligação',
+            'par.copiado': 'Ligação copiada',
+            'par.mais': 'Mais opções…',
+            'par.fechar': 'Fechar',
+
             'video.qualidade': 'Qualidade',
             'video.resolucao': 'Resolução',
             'video.oculos': 'Ver com óculos',
@@ -218,6 +227,15 @@
             'rod.doisDedos': '2 fingers',
             'rod.pinca': 'pinch',
             'rod.fechar': 'Close the controls',
+
+            'par.botao': 'Share',
+            'par.titulo': 'Share',
+            'par.texto': 'Explore the Penajóia neighbourhood in 3D — Malha Viva',
+            'par.email': 'E-mail',
+            'par.copiar': 'Copy link',
+            'par.copiado': 'Link copied',
+            'par.mais': 'More options…',
+            'par.fechar': 'Close',
 
             'video.qualidade': 'Quality',
             'video.resolucao': 'Resolution',
@@ -372,6 +390,15 @@
             'rod.pinca': 'pellizcar',
             'rod.fechar': 'Cerrar los controles',
 
+            'par.botao': 'Compartir',
+            'par.titulo': 'Compartir',
+            'par.texto': 'Explora el barrio de Penajóia en 3D — Malha Viva',
+            'par.email': 'Correo',
+            'par.copiar': 'Copiar enlace',
+            'par.copiado': 'Enlace copiado',
+            'par.mais': 'Más opciones…',
+            'par.fechar': 'Cerrar',
+
             'video.qualidade': 'Calidad',
             'video.resolucao': 'Resolución',
             'video.oculos': 'Ver con gafas',
@@ -524,6 +551,15 @@
             'rod.doisDedos': '2 dedu',
             'rod.pinca': 'pinsa',
             'rod.fechar': 'Fitxa kontrolus',
+
+            'par.botao': 'Partilha',
+            'par.titulo': 'Partilha',
+            'par.texto': 'Splora Bairru di Penajóia na 3D — Malha Viva',
+            'par.email': 'E-mail',
+            'par.copiar': 'Kopia link',
+            'par.copiado': 'Link kopiadu',
+            'par.mais': 'Más opson…',
+            'par.fechar': 'Fitxa',
 
             'video.qualidade': 'Kualidadi',
             'video.resolucao': 'Ruzoluson',
