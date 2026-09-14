@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>360 Video Player</title>
     <script src="/idiomas.js?v=9"></script>
+    <script src="/quadrado-de-espera.js?v=1"></script>
     <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
     <script src="/comando-paginas.js?v=4" defer></script>
     <script>
@@ -77,34 +78,25 @@
             justify-content: center;
         }
         #play-btn-initial.play-redondo:hover { background: rgba(0,0,0,0.75); transform: scale(1.1); }
-        .spinner {
-            width: 30px; height: 30px; border: 3px solid rgba(255,255,255,0.3);
-            border-top-color: #fff; border-radius: 50%; animation: spin 1s linear infinite;
+        /* As esperas são o quadrado de espera do site, um pouco mais
+           pequeno por estar em cima da imagem: o do arranque, no lugar do
+           botão enquanto o vídeo não anda, e o que aparece a meio quando
+           o vídeo fica à espera de mais imagem. Escondidos até serem
+           precisos. */
+        .quadrado-de-espera.espera-do-video {
+            --lado: 8px;
+            --folga: 3px;
             display: none;
         }
-        @keyframes spin { 100% { transform: rotate(360deg); } }
-
-        /* A roda que aparece quando o vídeo fica à espera de mais imagem.
-           Ela roda à volta do próprio eixo e está posta a meio do ecrã, e
-           essas duas coisas escrevem-se no mesmo sítio: a roda comum só
-           dizia "roda", e ao rodar apagava o "fica a meio" — a roda saía
-           do centro e voltava, aos círculos, a cada volta. Aqui as duas
-           andam juntas em todos os passos, e a roda fica quieta no sítio. */
         #espera {
             position: absolute;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            transform-origin: 50% 50%;
-            animation-name: espera-a-rodar;
             z-index: 5;
         }
-        @keyframes espera-a-rodar {
-            from { transform: translate(-50%, -50%) rotate(0deg); }
-            to   { transform: translate(-50%, -50%) rotate(360deg); }
-        }
         #espera.a-esperar {
-            display: block;
+            display: grid;
         }
 
         /* ─── Custom UI Overlay ─── */
@@ -494,13 +486,13 @@
             <button id="play-btn-initial" class="play-redondo" aria-label="Reproduzir">
                 <svg width="36" height="36" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
             </button>
-            <div class="spinner" id="spinner"></div>
+            <div class="espera-do-video" id="spinner"></div>
         </div>
 
         <!-- Custom Controls Overlay -->
         <div id="ui-layer" class="paused">
-            <!-- Big Play Button -->
-            <div class="spinner" id="espera"></div>
+            <!-- O quadrado de espera de quando falta imagem -->
+            <div class="espera-do-video" id="espera"></div>
 
             <div id="sinal-esquerda" class="salto-sinal esquerda">
                 <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter"><polyline points="11 18 5 12 11 6"></polyline><polyline points="19 18 13 12 19 6"></polyline></svg>
@@ -614,6 +606,12 @@
         const overlay = document.getElementById('play-overlay');
         const playBtnInitial = document.getElementById('play-btn-initial');
         const spinner = document.getElementById('spinner');
+
+        // As duas esperas vestem o quadrado de espera do site.
+        if (window.QuadradoDeEspera) {
+            window.QuadradoDeEspera.fazer(spinner);
+            window.QuadradoDeEspera.fazer(document.getElementById('espera'));
+        }
         const uiLayer = document.getElementById('ui-layer');
         const bigPlayBtn = document.getElementById('big-play-btn');
         const playPauseBtn = document.getElementById('play-pause-btn');
@@ -785,7 +783,7 @@
                 scene.enterVR().catch((erro) => console.log('VR:', erro));
             }
             playBtnInitial.style.display = 'none';
-            spinner.style.display = 'block';
+            spinner.style.display = 'grid';
 
             arrancarCalado().catch(e => {
                 // Uma troca de versão a meio do arranque interrompe o

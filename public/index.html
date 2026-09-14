@@ -13,6 +13,10 @@
          nascer já na língua certa, sem piscar em português primeiro. -->
     <script src="/idiomas.js?v=9"></script>
 
+    <!-- O quadrado de espera, o mesmo em todo o site. Fica antes de o
+         ecrã de espera se desenhar, para nascer já com a sua roupa. -->
+    <script src="/quadrado-de-espera.js?v=1"></script>
+
     <!-- A tinta do cabeçalho segue o brilho do bairro por trás dela. -->
     <script src="/contraste.js?v=1"></script>
 
@@ -114,24 +118,11 @@
             text-align: center;
         }
 
-        /* A espera do bairro é um quadrado feito de quadrados: doze à
-           volta de um vazio, e um rasto de luz a dar-lhes a volta enquanto
-           o mapa não chega. Cada quadrado é branco, e o que muda é quanta
-           luz tem: o rasto passa aceso, o resto fica a meia luz — cada vez
-           menos escura à medida que o bairro vai chegando — e acende tudo
-           quando o mapa está pronto a entrar. */
+        /* A espera do bairro é o quadrado de espera do site — o desenho
+           vem do ficheiro dele; aqui só se põe a meio, por baixo do nome. */
         .loading-square {
-            display: grid;
-            grid-template-columns: repeat(4, 10px);
-            grid-template-rows: repeat(4, 10px);
-            gap: 4px;
+            --cor: var(--color-accent);
             margin: 0 auto;
-        }
-
-        .loading-square span {
-            background: var(--color-accent);
-            opacity: 0.08;
-            transition: opacity 0.1s linear;
         }
 
         .loading-text {
@@ -819,89 +810,48 @@
 
     <script>
     /**
-     * O quadrado de espera, feito de quadrados.
+     * O quadrado de espera do bairro, e a luz que sobe por baixo do rasto.
      *
-     * Um rasto de luz dá a volta ao quadrado enquanto o bairro não chega,
-     * como a roda de qualquer espera — mas em esquinas. Por baixo do rasto
-     * o quadrado vai-se acendendo devagar: no arranque do motor não há
-     * maneira honesta de saber quanto falta, e a luz sobe como quem se
-     * aproxima de uma porta — cada passo é uma fracção do que falta, e
-     * assim nunca pára nem chega ao fim antes de tempo. Depois disso passa
-     * a haver: os bocados do bairro já se contam um a um, e o último
-     * quarto da luz é essa conta a sério. Quando o mapa está mesmo pronto,
-     * o rasto pára e o quadrado acende todo.
+     * O rasto anda sozinho — é o quadrado de espera do site, o mesmo das
+     * janelas 360º. O que aqui se faz é a luz de fundo: no arranque do
+     * motor não há maneira honesta de saber quanto falta, e a luz sobe
+     * como quem se aproxima de uma porta — cada passo é uma fracção do
+     * que falta, e assim nunca pára nem chega ao fim antes de tempo.
+     * Depois disso passa a haver: os bocados do bairro já se contam um a
+     * um, e o último quarto da luz é essa conta a sério. Quando o mapa
+     * está mesmo pronto, o rasto pára e o quadrado acende todo.
      */
     (function () {
-        const quadrado = document.getElementById('loading-square');
+        const elemento = document.getElementById('loading-square');
         const overlay = document.getElementById('loading-overlay');
-        if (!quadrado || !overlay) return;
+        if (!elemento || !overlay || !window.QuadradoDeEspera) return;
 
-        // Os doze lugares à volta, pela ordem em que a luz lhes dá a
-        // volta: a começar no canto de cima à esquerda e a andar no sentido
-        // dos ponteiros do relógio. Linha e coluna, contadas a partir de um.
-        const LUGARES = [
-            [1, 1], [1, 2], [1, 3], [1, 4],
-            [2, 4], [3, 4], [4, 4],
-            [4, 3], [4, 2], [4, 1],
-            [3, 1], [2, 1]
-        ];
-        const quadrados = LUGARES.map(([linha, coluna]) => {
-            const q = document.createElement('span');
-            q.style.gridArea = linha + ' / ' + coluna;
-            quadrado.appendChild(q);
-            return q;
-        });
-        const QUANTOS = quadrados.length;
-
-        // O rasto: a cabeça acesa de todo e três quadrados a apagarem-se
-        // atrás dela.
-        const RASTO = [1, 0.6, 0.35, 0.18];
-
-        // A luz de fundo, do quase apagado do princípio até à meia luz de
-        // quando já falta pouco.
-        const FUNDO_MINIMO = 0.08;
-        const FUNDO_MAXIMO = 0.35;
+        const quadrado = window.QuadradoDeEspera.fazer(elemento);
 
         let fraccao = 0;
-        let cabeca = 0;
-        let pronto = false;
         let relogio = null;
 
-        const desenhar = () => {
-            const fundo = FUNDO_MINIMO + (FUNDO_MAXIMO - FUNDO_MINIMO) * fraccao;
-            for (let i = 0; i < QUANTOS; i++) {
-                let luz = fundo;
-                if (pronto) {
-                    luz = 1;
-                } else {
-                    const atras = (cabeca - i + QUANTOS) % QUANTOS;
-                    if (atras < RASTO.length) luz = Math.max(fundo, RASTO[atras]);
-                }
-                quadrados[i].style.opacity = luz;
-            }
-        };
+        const desenhar = () => quadrado.luz(fraccao);
 
         const parar = () => { clearInterval(relogio); relogio = null; };
 
         const andar = () => {
             // O aviso de que falta o WebGL substitui o conteúdo todo do
             // ecrã de espera; a partir daí não há quadrado para mexer.
-            if (!quadrado.isConnected) { parar(); return; }
-            cabeca = (cabeca + 1) % QUANTOS;
+            if (!elemento.isConnected) { parar(); return; }
             fraccao += (0.92 - fraccao) * 0.03;
             desenhar();
         };
 
         const comecar = () => {
             parar();
-            pronto = false;
+            quadrado.recomecar();
             fraccao = 0;
-            cabeca = 0;
             desenhar();
             relogio = setInterval(andar, 90);
         };
         const peloMenos = (f) => { if (f > fraccao) { fraccao = f; desenhar(); } };
-        const acabar = () => { parar(); pronto = true; fraccao = 1; desenhar(); };
+        const acabar = () => { parar(); fraccao = 1; desenhar(); quadrado.pronto(); };
 
         window.barraDeCarga = { comecar, peloMenos, acabar };
         comecar();
@@ -1275,7 +1225,7 @@
         <pc-asset id="splat-scene" src="splat/lod-meta.json" type="gsplat"></pc-asset>
         <pc-asset id="camera-controls-script" src="./camera-controls.mjs?v=21" type="script"></pc-asset>
         <pc-asset id="camera-coords-script" src="./coords.mjs?v=7" type="script"></pc-asset>
-        <pc-asset id="annotations-script" src="./annotations.mjs?v=43" type="script"></pc-asset>
+        <pc-asset id="annotations-script" src="./annotations.mjs?v=44" type="script"></pc-asset>
         <pc-asset id="trail-script" src="./trail.mjs?v=24" type="script"></pc-asset>
 
         <!-- Scene -->

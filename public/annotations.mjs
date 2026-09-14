@@ -770,25 +770,21 @@ AnnotationController.prototype.initialize = function() {
             }
         }
 
-        /* A roda de espera, ao centro, enquanto o vídeo carrega mais imagem. */
+        /* O quadrado de espera do site, ao centro, enquanto o vídeo carrega
+           mais imagem — um pouco mais pequeno por estar em cima dela. */
         .espera-video {
+            --lado: 8px;
+            --folga: 3px;
             position: absolute;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            width: 30px;
-            height: 30px;
-            border: 3px solid rgba(255, 255, 255, 0.3);
-            border-top-color: #fff;
-            border-radius: 50%;
-            animation: espera-a-rodar 1s linear infinite;
             display: none;
             z-index: 4;
         }
         .espera-video.a-esperar {
-            display: block;
+            display: grid;
         }
-        @keyframes espera-a-rodar { 100% { transform: translate(-50%, -50%) rotate(360deg); } }
 
         /* O sinal que pisca de cada lado quando se dá um duplo clique para
            saltar dez segundos. */
@@ -1879,9 +1875,10 @@ AnnotationController.prototype.setupModal = function() {
     controls.appendChild(tempoEBarra);
     controls.appendChild(controlsMain);
 
-    // A roda que aparece quando o vídeo fica à espera de mais imagem.
+    // O quadrado que aparece quando o vídeo fica à espera de mais imagem.
     const espera = document.createElement('div');
     espera.className = 'espera-video';
+    if (window.QuadradoDeEspera) window.QuadradoDeEspera.fazer(espera);
     videoWrapper.appendChild(espera);
 
     // Os dois sinais que piscam ao saltar cinco segundos com duplo clique.
