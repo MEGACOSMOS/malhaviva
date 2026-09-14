@@ -993,10 +993,10 @@ AnnotationController.prototype.initialize = function() {
         const isViewed = this.viewedAnnotations.includes(annId);
 
         if (ann.is360) {
-            // As rotas mostram uma câmara de filmar dentro de uma volta com
-            // duas setas — um vídeo que dá a volta toda — e o nome por baixo.
-            // A fotografia do alto do bairro dispensa as duas coisas: fica
-            // só um olho, pousado no céu, sem legenda a tapar a paisagem.
+            // As rotas mostram uma volta com duas setas — um vídeo que dá a
+            // volta toda — e o nome por baixo. A fotografia do alto do
+            // bairro dispensa as duas coisas: fica só um olho, pousado no
+            // céu, sem legenda a tapar a paisagem.
             const simbolo = ann.isImage
                 ? `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter">
                         <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"></path>
@@ -1007,8 +1007,6 @@ AnnotationController.prototype.initialize = function() {
                         <path d="M9.98 20.77A9 9 0 0 1 12 3" stroke-linecap="butt"></path>
                         <polyline points="9.8 0.8 12 3 9.8 5.2"></polyline>
                         <polyline points="14.2 18.8 12 21 14.2 23.2"></polyline>
-                        <rect x="10.3" y="9.8" width="6.4" height="4.4"></rect>
-                        <path d="M7.3 9.8L10.3 12L7.3 14.2Z"></path>
                    </svg>`;
             el.innerHTML = `
                 <div class="marker-dot is-360 ${isViewed ? 'viewed' : ''}">
