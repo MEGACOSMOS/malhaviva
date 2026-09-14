@@ -15,7 +15,7 @@
 
     <!-- O quadrado de espera, o mesmo em todo o site. Fica antes de o
          ecrã de espera se desenhar, para nascer já com a sua roupa. -->
-    <script src="/quadrado-de-espera.js?v=3"></script>
+    <script src="/quadrado-de-espera.js?v=4"></script>
 
     <!-- A tinta do cabeçalho segue o brilho do bairro por trás dela. -->
     <script src="/contraste.js?v=1"></script>
@@ -119,13 +119,9 @@
         }
 
         /* A espera do bairro é o quadrado de espera do site — o desenho
-           vem do ficheiro dele; aqui só se põe a meio, por baixo do nome,
-           um pouco maior do que nas janelas, para a conta caber no meio. */
+           vem do ficheiro dele; aqui só se põe a meio, por baixo do nome. */
         .loading-square {
             --cor: var(--color-accent);
-            --lado: 12px;
-            --folga: 5px;
-            --letra: 10px;
             margin: 0 auto;
         }
 
@@ -947,47 +943,28 @@
 
     <script>
     /**
-     * O quadrado de espera do bairro, e a conta que vai no meio dele.
+     * O quadrado de espera do bairro, e a luz que sobe por baixo do rasto.
      *
-     * O rasto anda sozinho e sempre ao mesmo ritmo — é o quadrado de
-     * espera do site, o mesmo das janelas 360º — e não diz quanto falta:
-     * isso diz-o o número no meio. A conta tem duas partes. Enquanto o
-     * motor arranca não há maneira honesta de a fazer, e o número sobe
-     * devagar até perto de vinte, como quem se aproxima de uma porta —
-     * cada passo é uma fracção do que falta, e assim nunca pára nem chega
-     * lá antes de tempo. Depois disso passa a haver conta a sério: os
-     * bocados do bairro contam-se um a um, e são eles os outros oitenta.
-     *
-     * Os bocados chegam às levas, e uma leva acabada não quer dizer que
-     * não venha outra: por isso a conta dos bocados nunca escreve mais do
-     * que noventa e cinco, e o cem só se escreve quando o mapa está mesmo
-     * pronto a entrar. E o número anda a passos atrás da conta, em vez de
-     * saltar de vinte em vinte quando um bocado chega.
-     *
-     * Quando o ecrã de espera volta — ao fechar uma janela 360º, enquanto
-     * o bairro é reposto — não há nada a contar, e o meio fica vazio.
+     * O rasto anda sozinho — é o quadrado de espera do site, o mesmo das
+     * janelas 360º. O que aqui se faz é a luz de fundo: no arranque do
+     * motor não há maneira honesta de saber quanto falta, e a luz sobe
+     * como quem se aproxima de uma porta — cada passo é uma fracção do
+     * que falta, e assim nunca pára nem chega ao fim antes de tempo.
+     * Depois disso passa a haver: os bocados do bairro já se contam um a
+     * um, e o último quarto da luz é essa conta a sério. Quando o mapa
+     * está mesmo pronto, o rasto pára e o quadrado acende todo.
      */
     (function () {
         const elemento = document.getElementById('loading-square');
         const overlay = document.getElementById('loading-overlay');
         if (!elemento || !overlay || !window.QuadradoDeEspera) return;
 
-        const quadrado = window.QuadradoDeEspera.fazer(elemento, { centro: true });
+        const quadrado = window.QuadradoDeEspera.fazer(elemento);
 
-        // Até onde a conta sobe sozinha enquanto o motor arranca. Daí para
-        // cima só com bocados do bairro chegados de verdade.
-        const ARRANQUE = 0.2;
-        // O mais que a conta dos bocados escreve; o resto é do `acabar`.
-        const TECTO = 0.95;
-
-        let conta = 0;      // quanto já chegou, de zero a um
-        let escrito = 0;    // o número que está no meio, em pontos por cento
+        let fraccao = 0;
         let relogio = null;
-        let comNumero = true;
 
-        const escrever = () => {
-            quadrado.escrever(comNumero ? Math.round(escrito) + '%' : '');
-        };
+        const desenhar = () => quadrado.luz(fraccao);
 
         const parar = () => { clearInterval(relogio); relogio = null; };
 
@@ -995,32 +972,21 @@
             // O aviso de que falta o WebGL substitui o conteúdo todo do
             // ecrã de espera; a partir daí não há quadrado para mexer.
             if (!elemento.isConnected) { parar(); return; }
-            if (conta < ARRANQUE) conta += (ARRANQUE - conta) * 0.03;
-            const meta = Math.min(conta, TECTO) * 100;
-            if (escrito < meta) {
-                escrito = Math.min(meta, escrito + Math.max(0.5, (meta - escrito) * 0.2));
-                escrever();
-            }
+            fraccao += (0.92 - fraccao) * 0.03;
+            desenhar();
         };
 
         const comecar = () => {
             parar();
-            conta = 0;
-            escrito = 0;
-            escrever();
-            if (comNumero) relogio = setInterval(andar, 90);
+            quadrado.recomecar();
+            fraccao = 0;
+            desenhar();
+            relogio = setInterval(andar, 90);
         };
-        const peloMenos = (f) => { if (f > conta) conta = Math.min(1, f); };
-        const acabar = () => {
-            parar();
-            escrito = 100;
-            escrever();
-            // Da próxima vez que o ecrã de espera aparecer não é o bairro
-            // a chegar: é só a ser reposto, e não há conta para escrever.
-            comNumero = false;
-        };
+        const peloMenos = (f) => { if (f > fraccao) { fraccao = f; desenhar(); } };
+        const acabar = () => { parar(); fraccao = 1; desenhar(); quadrado.pronto(); };
 
-        window.barraDeCarga = { comecar, peloMenos, acabar, ARRANQUE };
+        window.barraDeCarga = { comecar, peloMenos, acabar };
         comecar();
 
         // O mesmo ecrã de espera volta a aparecer quando se fecha um vídeo
@@ -2338,11 +2304,10 @@ void modifySplatColor(vec3 center, inout vec4 color) {
                     }
                     const aCaminho = bocados.length - chegaram;
 
-                    // A conta deixa de andar a fingir a partir daqui: o que
-                    // falta são bocados contados de verdade, um a um.
+                    // A barra deixa de andar a fingir nesta última parte: o
+                    // quarto final são bocados contados de verdade.
                     if (window.barraDeCarga && bocados.length > 0) {
-                        const arranque = window.barraDeCarga.ARRANQUE;
-                        window.barraDeCarga.peloMenos(arranque + (1 - arranque) * (chegaram / bocados.length));
+                        window.barraDeCarga.peloMenos(0.75 + 0.24 * (chegaram / bocados.length));
                     }
 
                     if (chegaram === 0 || aCaminho > 0) {
@@ -2378,7 +2343,7 @@ void modifySplatColor(vec3 center, inout vec4 color) {
 
         whenReady('pc-app').then(({ app }) => {
             // O motor já arrancou: falta só o bairro chegar aos bocados.
-            if (window.barraDeCarga) window.barraDeCarga.peloMenos(window.barraDeCarga.ARRANQUE);
+            if (window.barraDeCarga) window.barraDeCarga.peloMenos(0.75);
 
             // --- Tecto de manchas no ecrã ---
             //
