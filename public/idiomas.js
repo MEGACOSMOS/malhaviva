@@ -104,6 +104,8 @@
             'v360.ajudaEntendi': 'Entendi',
 
             'ctl.voltar': 'Voltar ao Mapa',
+            'ctl.verMais': 'Mostrar mais',
+            'ctl.verMenos': 'Mostrar menos',
             'ctl.titulo': 'Controlos do Mapa',
             'ctl.sub': 'Guia completo para navegar pela reconstrução 3D do Bairro de Penajóia.',
             'ctl.rato': 'Rato',
@@ -266,6 +268,8 @@
             'v360.ajudaEntendi': 'Got it',
 
             'ctl.voltar': 'Back to Map',
+            'ctl.verMais': 'Show more',
+            'ctl.verMenos': 'Show less',
             'ctl.titulo': 'Map Controls',
             'ctl.sub': 'A complete guide to navigating the 3D reconstruction of the Penajóia neighbourhood.',
             'ctl.rato': 'Mouse',
@@ -428,6 +432,8 @@
             'v360.ajudaEntendi': 'Entendido',
 
             'ctl.voltar': 'Volver al Mapa',
+            'ctl.verMais': 'Mostrar más',
+            'ctl.verMenos': 'Mostrar menos',
             'ctl.titulo': 'Controles del Mapa',
             'ctl.sub': 'Guía completa para navegar por la reconstrucción 3D del Barrio de Penajóia.',
             'ctl.rato': 'Ratón',
@@ -590,6 +596,8 @@
             'v360.ajudaEntendi': 'N intendi',
 
             'ctl.voltar': 'Volta pa Mapa',
+            'ctl.verMais': 'Mostra más',
+            'ctl.verMenos': 'Mostra ménus',
             'ctl.titulo': 'Kontrolus di Mapa',
             'ctl.sub': 'Gia kompletu pa navega na rekonstruson 3D di Bairu di Penajóia.',
             'ctl.rato': 'Ratu',

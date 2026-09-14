@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Controlos do Mapa — Malha Viva</title>
     <meta name="description" content="Guia dos controlos do visualizador 3D Malha Viva. Navega como num mapa: arrasta com o rato, aproxima com o scroll, roda com Ctrl.">
-    <script src="/idiomas.js?v=11"></script>
+    <script src="/idiomas.js?v=12"></script>
     <script src="/comando-paginas.js?v=4" defer></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -308,6 +308,54 @@
             background: var(--color-surface-hover);
         }
 
+        /* ─── Só os comandos principais à vista ───
+           Cada periférico mostra os comandos que fazem falta para começar;
+           o resto fica dobrado por baixo de um botão que estica a secção.
+           O que está dobrado sai mesmo da página — também para quem anda
+           de Tab ou ouve a página. */
+        .section [hidden] {
+            display: none !important;
+        }
+
+        .ver-mais {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            width: calc(100% - 40px);
+            margin: 16px 20px 0;
+            padding: 10px 16px;
+            background: transparent;
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            color: var(--color-text);
+            font-family: inherit;
+            font-size: 0.72rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            cursor: pointer;
+            transition: background 0.15s ease, border-color 0.15s ease;
+        }
+
+        .ver-mais:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.45);
+        }
+
+        .ver-mais:focus-visible {
+            outline: 2px solid rgba(255, 255, 255, 0.95);
+            outline-offset: 3px;
+        }
+
+        /* O bico aponta para baixo fechado, para cima aberto. */
+        .ver-mais svg {
+            transition: transform 0.2s ease;
+        }
+
+        .ver-mais[aria-expanded="true"] svg {
+            transform: rotate(180deg);
+        }
+
         .control-action {
             font-size: 0.9rem;
             font-weight: 500;
@@ -513,7 +561,7 @@
         </section>
 
         <!-- ─── Teclado ─── -->
-        <section class="section" id="teclado">
+        <section class="section" id="teclado" data-principais="3">
             <div class="section-header">
                 <h2 class="section-title" data-i18n="ctl.teclado">Teclado</h2>
             </div>
@@ -774,7 +822,7 @@
         </section>
 
         <!-- ─── Gamepad ─── -->
-        <section class="section" id="gamepad">
+        <section class="section" id="gamepad" data-principais="3">
             <div class="section-header">
                 <h2 class="section-title" data-i18n="ctl.gamepad">Gamepad</h2>
             </div>
@@ -1017,6 +1065,63 @@
     </main>
 
     <script>
+        /* Só os comandos principais à vista.
+
+           Numa secção marcada com `data-principais`, ficam à vista os
+           primeiros N comandos da primeira tabela; o resto dessa tabela e
+           os grupos seguintes dobram-se por baixo de um botão. As secções
+           sem marca — o rato, o ecrã táctil — mostram tudo, que é pouco. */
+        (function () {
+            var t = function (chave, senao) {
+                return (window.Idiomas && window.Idiomas.t(chave)) || senao;
+            };
+
+            document.querySelectorAll('.section[data-principais]').forEach(function (seccao) {
+                var principais = parseInt(seccao.getAttribute('data-principais'), 10) || 3;
+                var dobrados = [];
+                var primeiraTabela = seccao.querySelector('.controls-table');
+                if (!primeiraTabela) return;
+
+                // O resto da primeira tabela...
+                Array.prototype.slice.call(primeiraTabela.children, principais).forEach(function (linha) {
+                    dobrados.push(linha);
+                });
+                // ...e tudo o que vem depois dela: outros grupos e tabelas.
+                var depois = primeiraTabela.nextElementSibling;
+                while (depois) {
+                    dobrados.push(depois);
+                    depois = depois.nextElementSibling;
+                }
+                if (dobrados.length === 0) return;
+
+                var botao = document.createElement('button');
+                botao.type = 'button';
+                botao.className = 'ver-mais';
+                botao.setAttribute('aria-expanded', 'false');
+                var rotulo = document.createElement('span');
+                botao.appendChild(rotulo);
+                botao.insertAdjacentHTML('beforeend',
+                    '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true"><polyline points="6 9 12 15 18 9"></polyline></svg>');
+                seccao.appendChild(botao);
+
+                var aberta = false;
+                var escrever = function () {
+                    rotulo.textContent = aberta ? t('ctl.verMenos', 'Mostrar menos') : t('ctl.verMais', 'Mostrar mais');
+                };
+                var aplicar = function () {
+                    dobrados.forEach(function (el) { el.hidden = !aberta; });
+                    botao.setAttribute('aria-expanded', aberta ? 'true' : 'false');
+                    escrever();
+                };
+                botao.addEventListener('click', function () {
+                    aberta = !aberta;
+                    aplicar();
+                });
+                window.addEventListener('idiomamudou', escrever);
+                aplicar();
+            });
+        })();
+
         /* O mesmo botão de língua da página do mapa, na medida desta: quem
            chega aqui por um endereço directo também consegue trocar. */
         (function () {
