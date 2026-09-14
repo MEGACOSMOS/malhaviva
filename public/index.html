@@ -307,6 +307,7 @@
             border: 1px solid transparent;
             width: 40px;
             height: 40px;
+            padding: 0;
             border-radius: 0;
             display: flex;
             align-items: center;
@@ -314,6 +315,36 @@
             cursor: pointer;
             transition: background 0.15s ease, border-color 0.15s ease;
             text-decoration: none;
+        }
+
+        /* Os ícones que abrem um menu levam um bico de seta pequeno à
+           direita, a apontar para baixo — vira para cima com o menu
+           aberto. O botão alarga o bastante para o bico caber. */
+        #definicoes-btn, #dev-btn, #idioma-btn {
+            width: auto;
+            gap: 3px;
+            padding: 0 6px 0 9px;
+        }
+
+        .seta-menu {
+            flex-shrink: 0;
+            transition: transform 0.2s ease;
+        }
+
+        .settings:has(.open) .seta-menu {
+            transform: rotate(180deg);
+        }
+
+        /* Entre o ícone e o menu há um pequeno vão; esta faixa invisível
+           tapa-o, para o rato poder descer do ícone para o menu sem que o
+           menu se feche pelo caminho. */
+        .settings:has(.open)::before {
+            content: "";
+            position: absolute;
+            left: 0;
+            right: 0;
+            top: 100%;
+            height: 14px;
         }
 
         .ceu-afinacao {
@@ -425,7 +456,9 @@
             padding: 16px;
             width: 260px;
             box-shadow: 0 4px 15px rgba(0,0,0,0.4);
-            transition: opacity 0.2s, transform 0.2s, visibility 0.2s;
+            /* Abre e fecha com os tempos do rodapé dos comandos: acende
+               devagar, apaga-se mais depressa. */
+            transition: opacity 0.4s ease, transform 0.4s ease, visibility 0.4s;
             transform-origin: top right;
             pointer-events: none;
             opacity: 0;
@@ -512,6 +545,7 @@
             opacity: 1;
             transform: scale(1);
             visibility: visible;
+            transition: opacity 0.7s ease, transform 0.7s ease, visibility 0.7s;
         }
         
         .settings-title {
@@ -1192,6 +1226,7 @@
                         <polyline points="16 18 22 12 16 6"></polyline>
                         <polyline points="8 6 2 12 8 18"></polyline>
                     </svg>
+                    <svg class="seta-menu" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true"><polyline points="5 9 12 16 19 9"></polyline></svg>
                 </button>
                 <div id="dev-menu" class="hidden">
                     <button type="button" class="menu-fechar" aria-label="Fechar" title="Fechar">
@@ -1379,6 +1414,7 @@
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" stroke="none">
                     <path d="M12.87 15.07l-2.54-2.51.03-.03c1.74-1.94 2.98-4.17 3.71-6.53H17V4h-7V2H8v2H1v1.99h11.17C11.5 7.92 10.44 9.75 9 11.35 8.07 10.32 7.3 9.19 6.69 8h-2c.73 1.63 1.73 3.17 2.98 4.56l-5.09 5.02L4 19l5-5 3.11 3.11.76-2.04zM18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2l-4.5-12zm-2.62 7l1.62-4.33L19.12 17h-3.24z"></path>
                 </svg>
+                <svg class="seta-menu" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true"><polyline points="5 9 12 16 19 9"></polyline></svg>
             </button>
             <div id="idioma-menu" class="hidden">
                 <button type="button" class="menu-fechar" aria-label="Fechar" title="Fechar">
@@ -1415,6 +1451,7 @@
                     <circle cx="12" cy="12" r="3"></circle>
                     <path d="M10.08 4.85L10.07 1.58L13.93 1.58L13.92 4.85A7.4 7.4 0 0 1 17.23 6.77L20.06 5.12L21.99 8.46L19.15 10.08A7.4 7.4 0 0 1 19.15 13.92L21.99 15.54L20.06 18.88L17.23 17.23A7.4 7.4 0 0 1 13.92 19.15L13.93 22.42L10.07 22.42L10.08 19.15A7.4 7.4 0 0 1 6.77 17.23L3.94 18.88L2.01 15.54L4.85 13.92A7.4 7.4 0 0 1 4.85 10.08L2.01 8.46L3.94 5.12L6.77 6.77A7.4 7.4 0 0 1 10.08 4.85Z"></path>
                 </svg>
+                <svg class="seta-menu" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true"><polyline points="5 9 12 16 19 9"></polyline></svg>
             </button>
             <div id="definicoes-menu" class="hidden">
                 <button type="button" class="menu-fechar" aria-label="Fechar" title="Fechar">
@@ -1874,7 +1911,7 @@
         <pc-asset id="splat-scene" src="splat/lod-meta.json" type="gsplat"></pc-asset>
         <pc-asset id="camera-controls-script" src="./camera-controls.mjs?v=21" type="script"></pc-asset>
         <pc-asset id="camera-coords-script" src="./coords.mjs?v=7" type="script"></pc-asset>
-        <pc-asset id="annotations-script" src="./annotations.mjs?v=52" type="script"></pc-asset>
+        <pc-asset id="annotations-script" src="./annotations.mjs?v=53" type="script"></pc-asset>
         <pc-asset id="trail-script" src="./trail.mjs?v=24" type="script"></pc-asset>
 
         <!-- Scene -->
@@ -2425,11 +2462,33 @@ void modifySplatColor(vec3 center, inout vec4 color) {
         // Developer Menu Logic
         const devBtn = document.getElementById('dev-btn');
         const devMenu = document.getElementById('dev-menu');
-        
+
         devBtn.addEventListener('click', () => {
             devMenu.classList.toggle('open');
             if (definicoesMenu) definicoesMenu.classList.remove('open');
             if (idiomaMenu) idiomaMenu.classList.remove('open');
+        });
+
+        // Os menus abrem ao passar o rato pelo ícone — e fecham quando o
+        // rato sai do conjunto (ícone e menu). Num ecrã táctil não há
+        // rato a passar, e é o toque de sempre que abre. O clique
+        // continua a funcionar em qualquer lado.
+        [
+            [definicoesBtn, definicoesMenu],
+            [idiomaBtn, idiomaMenu],
+            [devBtn, devMenu]
+        ].forEach(([botao, menu]) => {
+            const conjunto = botao.closest('.settings');
+            if (!conjunto) return;
+            conjunto.addEventListener('pointerenter', (e) => {
+                if (e.pointerType !== 'mouse') return;
+                [definicoesMenu, idiomaMenu, devMenu].forEach((m) => { if (m !== menu) m.classList.remove('open'); });
+                menu.classList.add('open');
+            });
+            conjunto.addEventListener('pointerleave', (e) => {
+                if (e.pointerType !== 'mouse') return;
+                menu.classList.remove('open');
+            });
         });
 
         // Dev Menu Toggles

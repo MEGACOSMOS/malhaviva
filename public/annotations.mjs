@@ -1054,9 +1054,10 @@ AnnotationController.prototype.initialize = function() {
             el.innerHTML = `
                 <div class="marker-dot ${isViewed ? 'viewed' : ''}">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter">
-                        <rect x="9" y="3" width="6" height="6"></rect>
-                        <line x1="6" y1="13" x2="18" y2="13"></line>
-                        <line x1="12" y1="13" x2="12" y2="22"></line>
+                        <polygon points="4 9.5 19 3.5 19 20.5 4 14.5"></polygon>
+                        <line x1="21.5" y1="2" x2="21.5" y2="22"></line>
+                        <line x1="2" y1="8.5" x2="2" y2="15.5"></line>
+                        <polygon points="7.2 15.8 12.6 17.9 11.5 21 6.1 18.9"></polygon>
                     </svg>
                 </div>
                 <div class="marker-label">${ann.label}</div>

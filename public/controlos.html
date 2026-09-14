@@ -317,22 +317,18 @@
             display: none !important;
         }
 
+        /* O botão é só um bico de seta, a apontar para baixo; o nome do
+           que faz vai na etiqueta, para quem ouve a página. */
         .ver-mais {
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 8px;
             width: calc(100% - 40px);
             margin: 16px 20px 0;
-            padding: 10px 16px;
+            padding: 6px 16px;
             background: transparent;
             border: 1px solid rgba(255, 255, 255, 0.25);
             color: var(--color-text);
-            font-family: inherit;
-            font-size: 0.72rem;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.08em;
             cursor: pointer;
             transition: background 0.15s ease, border-color 0.15s ease;
         }
@@ -1098,15 +1094,15 @@
                 botao.type = 'button';
                 botao.className = 'ver-mais';
                 botao.setAttribute('aria-expanded', 'false');
-                var rotulo = document.createElement('span');
-                botao.appendChild(rotulo);
-                botao.insertAdjacentHTML('beforeend',
-                    '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true"><polyline points="6 9 12 15 18 9"></polyline></svg>');
+                botao.innerHTML =
+                    '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true"><polyline points="6 9 12 15 18 9"></polyline></svg>';
                 seccao.appendChild(botao);
 
                 var aberta = false;
                 var escrever = function () {
-                    rotulo.textContent = aberta ? t('ctl.verMenos', 'Mostrar menos') : t('ctl.verMais', 'Mostrar mais');
+                    var nome = aberta ? t('ctl.verMenos', 'Mostrar menos') : t('ctl.verMais', 'Mostrar mais');
+                    botao.setAttribute('aria-label', nome);
+                    botao.setAttribute('title', nome);
                 };
                 var aplicar = function () {
                     dobrados.forEach(function (el) { el.hidden = !aberta; });
