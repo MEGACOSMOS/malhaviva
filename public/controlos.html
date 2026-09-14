@@ -324,18 +324,17 @@
             align-items: center;
             justify-content: center;
             width: calc(100% - 40px);
-            margin: 16px 20px 0;
+            margin: 12px 20px 0;
             padding: 6px 16px;
             background: transparent;
-            border: 1px solid rgba(255, 255, 255, 0.25);
-            color: var(--color-text);
+            border: none;
+            color: var(--color-text-muted);
             cursor: pointer;
-            transition: background 0.15s ease, border-color 0.15s ease;
+            transition: color 0.15s ease;
         }
 
         .ver-mais:hover {
-            background: rgba(255, 255, 255, 0.1);
-            border-color: rgba(255, 255, 255, 0.45);
+            color: var(--color-text);
         }
 
         .ver-mais:focus-visible {
@@ -1095,7 +1094,7 @@
                 botao.className = 'ver-mais';
                 botao.setAttribute('aria-expanded', 'false');
                 botao.innerHTML =
-                    '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true"><polyline points="6 9 12 15 18 9"></polyline></svg>';
+                    '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true"><polyline points="6 9 12 15 18 9"></polyline></svg>';
                 seccao.appendChild(botao);
 
                 var aberta = false;
