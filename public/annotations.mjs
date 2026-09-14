@@ -49,6 +49,40 @@ function arrumarAvisoDoBairro(overlay) {
     }, 800);
 }
 
+/**
+ * Põe uma janela grande no ecrã de uma vez, sem desvanecer.
+ *
+ * A janela nasce sobre o bairro no instante do clique, já opaca: é ela
+ * que tapa o apagar do mapa, feito logo a seguir para poupar a placa
+ * gráfica. Com o desvanecer de antes via-se o bairro a sumir por trás de
+ * uma janela ainda transparente. O desvanecer fica só para o fechar, e a
+ * janela do meio continua a assentar como assentava.
+ *
+ * @param {HTMLElement} modal - A janela a abrir.
+ */
+function abrirDeRepente(modal) {
+    modal.style.transition = 'none';
+    modal.style.display = 'flex';
+    void modal.offsetWidth;
+    modal.style.opacity = '1';
+    void modal.offsetWidth;
+    modal.style.transition = 'opacity 0.3s ease';
+}
+
+/**
+ * Apaga o bairro por trás de uma janela aberta, para poupar a placa
+ * gráfica — mas só depois de a janela estar mesmo no ecrã, para o apagar
+ * nunca se ver.
+ *
+ * @param {object} app - A aplicação 3D.
+ */
+function apagarOBairroPorTras(app) {
+    setTimeout(() => {
+        const gsplat = app.root.findByName('gsplat-scene');
+        if (gsplat) gsplat.enabled = false;
+    }, 100);
+}
+
 AnnotationController.prototype.initialize = function() {
     this.annotations = [
         {
@@ -1549,17 +1583,15 @@ AnnotationController.prototype.mostrarParagem360 = function(ann) {
         }
     }
 
-    palco.modal.style.display = 'flex';
+    abrirDeRepente(palco.modal);
     this.medirPalco(palco);
 
     // Obrigar o navegador a refazer as contas antes de mandar assentar,
     // senão a janela nasce já no sítio e não se vê entrada nenhuma.
     void palco.modal.offsetWidth;
-    palco.modal.style.opacity = '1';
     palco.meio.classList.add('aberta');
 
-    const gsplat = this.app.root.findByName('gsplat-scene');
-    if (gsplat) gsplat.enabled = false;
+    apagarOBairroPorTras(this.app);
 };
 
 /**
@@ -2785,7 +2817,7 @@ AnnotationController.prototype.abrirTestemunho = function(nome, title, sentido, 
     this.desenharMenuDeQualidade(fontes);
     this.atualizarPalco(nome, sentido, oldCenterFrame);
 
-    this.modal.style.display = 'flex';
+    abrirDeRepente(this.modal);
     this.medirPalco(this.palcoDosTestemunhos);
 
     // Só com o player já visível é que se sabe o tamanho que vai ter, e a
@@ -2800,11 +2832,9 @@ AnnotationController.prototype.abrirTestemunho = function(nome, title, sentido, 
     // entrada nenhuma. À força, e não à espera da imagem seguinte: numa
     // janela em segundo plano essa imagem pode nunca chegar.
     void this.modal.offsetWidth;
-    this.modal.style.opacity = '1';
     this.modalContent.classList.add('aberta');
 
-    const gsplat = this.app.root.findByName('gsplat-scene');
-    if (gsplat) gsplat.enabled = false;
+    apagarOBairroPorTras(this.app);
 };
 
 /**
