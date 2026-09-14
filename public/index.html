@@ -114,24 +114,24 @@
             text-align: center;
         }
 
-        /* A espera do bairro é contada em quadrados: a barra vai-se
-           enchendo da esquerda para a direita, um de cada vez, e acende
-           toda quando o mapa está pronto a entrar. */
-        .loading-bar {
-            display: flex;
+        /* A espera do bairro é um quadrado feito de quadrados: doze à
+           volta de um vazio, e um rasto de luz a dar-lhes a volta enquanto
+           o mapa não chega. Cada quadrado é branco, e o que muda é quanta
+           luz tem: o rasto passa aceso, o resto fica a meia luz — cada vez
+           menos escura à medida que o bairro vai chegando — e acende tudo
+           quando o mapa está pronto a entrar. */
+        .loading-square {
+            display: grid;
+            grid-template-columns: repeat(4, 10px);
+            grid-template-rows: repeat(4, 10px);
             gap: 4px;
-            height: 10px;
+            margin: 0 auto;
         }
 
-        .loading-bar span {
-            flex: 1;
-            height: 100%;
-            background: var(--color-border);
-            transition: background 0.25s ease;
-        }
-
-        .loading-bar span.aceso {
+        .loading-square span {
             background: var(--color-accent);
+            opacity: 0.08;
+            transition: opacity 0.1s linear;
         }
 
         .loading-text {
@@ -806,7 +806,7 @@
         <div class="loading-content">
             <div class="loading-brand">
                 <div class="loading-logo">Malha Viva</div>
-                <div class="loading-bar" id="loading-bar" aria-hidden="true"></div>
+                <div class="loading-square" id="loading-square" aria-hidden="true"></div>
             </div>
             <div class="loading-text" data-i18n="carga.modelo">A carregar modelo 3D…</div>
         </div>
@@ -819,35 +819,65 @@
 
     <script>
     /**
-     * A barra de carregamento, quadrado a quadrado.
+     * O quadrado de espera, feito de quadrados.
      *
-     * No arranque do motor não há maneira honesta de saber quanto falta,
-     * e a barra avança como quem se aproxima de uma porta: cada passo é
-     * uma fracção do que falta, e assim nunca pára nem chega ao fim antes
-     * de tempo. Depois disso passa a haver: os bocados do bairro já se
-     * contam um a um, e o último quarto da barra é essa conta a sério.
-     * Quando o mapa está mesmo pronto, acende até ao último quadrado.
+     * Um rasto de luz dá a volta ao quadrado enquanto o bairro não chega,
+     * como a roda de qualquer espera — mas em esquinas. Por baixo do rasto
+     * o quadrado vai-se acendendo devagar: no arranque do motor não há
+     * maneira honesta de saber quanto falta, e a luz sobe como quem se
+     * aproxima de uma porta — cada passo é uma fracção do que falta, e
+     * assim nunca pára nem chega ao fim antes de tempo. Depois disso passa
+     * a haver: os bocados do bairro já se contam um a um, e o último
+     * quarto da luz é essa conta a sério. Quando o mapa está mesmo pronto,
+     * o rasto pára e o quadrado acende todo.
      */
     (function () {
-        const barra = document.getElementById('loading-bar');
+        const quadrado = document.getElementById('loading-square');
         const overlay = document.getElementById('loading-overlay');
-        if (!barra || !overlay) return;
+        if (!quadrado || !overlay) return;
 
-        const QUANTOS = 16;
-        const quadrados = [];
-        for (let i = 0; i < QUANTOS; i++) {
+        // Os doze lugares à volta, pela ordem em que a luz lhes dá a
+        // volta: a começar no canto de cima à esquerda e a andar no sentido
+        // dos ponteiros do relógio. Linha e coluna, contadas a partir de um.
+        const LUGARES = [
+            [1, 1], [1, 2], [1, 3], [1, 4],
+            [2, 4], [3, 4], [4, 4],
+            [4, 3], [4, 2], [4, 1],
+            [3, 1], [2, 1]
+        ];
+        const quadrados = LUGARES.map(([linha, coluna]) => {
             const q = document.createElement('span');
-            barra.appendChild(q);
-            quadrados.push(q);
-        }
+            q.style.gridArea = linha + ' / ' + coluna;
+            quadrado.appendChild(q);
+            return q;
+        });
+        const QUANTOS = quadrados.length;
+
+        // O rasto: a cabeça acesa de todo e três quadrados a apagarem-se
+        // atrás dela.
+        const RASTO = [1, 0.6, 0.35, 0.18];
+
+        // A luz de fundo, do quase apagado do princípio até à meia luz de
+        // quando já falta pouco.
+        const FUNDO_MINIMO = 0.08;
+        const FUNDO_MAXIMO = 0.35;
 
         let fraccao = 0;
+        let cabeca = 0;
+        let pronto = false;
         let relogio = null;
 
         const desenhar = () => {
-            const acesos = Math.round(fraccao * QUANTOS);
+            const fundo = FUNDO_MINIMO + (FUNDO_MAXIMO - FUNDO_MINIMO) * fraccao;
             for (let i = 0; i < QUANTOS; i++) {
-                quadrados[i].classList.toggle('aceso', i < acesos);
+                let luz = fundo;
+                if (pronto) {
+                    luz = 1;
+                } else {
+                    const atras = (cabeca - i + QUANTOS) % QUANTOS;
+                    if (atras < RASTO.length) luz = Math.max(fundo, RASTO[atras]);
+                }
+                quadrados[i].style.opacity = luz;
             }
         };
 
@@ -855,21 +885,29 @@
 
         const andar = () => {
             // O aviso de que falta o WebGL substitui o conteúdo todo do
-            // ecrã de espera; a partir daí não há barra para mexer.
-            if (!barra.isConnected) { parar(); return; }
+            // ecrã de espera; a partir daí não há quadrado para mexer.
+            if (!quadrado.isConnected) { parar(); return; }
+            cabeca = (cabeca + 1) % QUANTOS;
             fraccao += (0.92 - fraccao) * 0.03;
             desenhar();
         };
 
-        const comecar = () => { parar(); fraccao = 0; desenhar(); relogio = setInterval(andar, 90); };
+        const comecar = () => {
+            parar();
+            pronto = false;
+            fraccao = 0;
+            cabeca = 0;
+            desenhar();
+            relogio = setInterval(andar, 90);
+        };
         const peloMenos = (f) => { if (f > fraccao) { fraccao = f; desenhar(); } };
-        const acabar = () => { parar(); fraccao = 1; desenhar(); };
+        const acabar = () => { parar(); pronto = true; fraccao = 1; desenhar(); };
 
         window.barraDeCarga = { comecar, peloMenos, acabar };
         comecar();
 
         // O mesmo ecrã de espera volta a aparecer quando se fecha um vídeo
-        // 360º e o bairro é reposto. Aqui a barra dá por isso sozinha.
+        // 360º e o bairro é reposto. Aqui o quadrado dá por isso sozinho.
         new MutationObserver(() => {
             if (overlay.classList.contains('hidden')) acabar();
             else if (!relogio) comecar();
