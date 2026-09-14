@@ -1252,8 +1252,14 @@
          sentem-se logo. O visualizador do SuperSplat, que corre um modelo
          maior do que este e corre-o melhor, faz exactamente isto: trava a
          densidade a um. Os níveis Médio e Baixo já a travavam; faltava o
-         Alto. -->
-    <pc-app id="main-app" antialias="false" max-pixel-ratio="1">
+         Alto.
+
+         Sem a barra de carga do próprio motor: os componentes do PlayCanvas
+         põem, por conta deles, um fio laranja a encher no cimo do ecrã
+         enquanto o bairro chega — e põem-no por cima de tudo, incluindo do
+         ecrã de espera. A espera aqui é o quadrado com a conta no meio, e
+         só ele. -->
+    <pc-app id="main-app" antialias="false" max-pixel-ratio="1" loading-bar="false">
 
         <!-- Assets -->
         <pc-asset id="splat-scene" src="splat/lod-meta.json" type="gsplat"></pc-asset>
@@ -1353,7 +1359,7 @@
         } from 'playcanvas';
         import { ligarLodNoCentroDaVista } from './lod-foco.mjs?v=4';
         import { criarModoVR } from './vr.mjs?v=3';
-        import { ligarCeu } from './ceu.mjs?v=13';
+        import { ligarCeu } from './ceu.mjs?v=14';
         import { ligarComando } from './comando.mjs?v=8';
 
         // Resolução da grelha usada para medir o mapa, em metros.
