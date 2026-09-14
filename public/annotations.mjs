@@ -1002,13 +1002,13 @@ AnnotationController.prototype.initialize = function() {
                         <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"></path>
                         <circle cx="12" cy="12" r="3"></circle>
                    </svg>`
-                : `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter">
-                        <path d="M14.06 3.75A8.5 8.5 0 0 1 12 20.5"></path>
-                        <path d="M9.94 20.25A8.5 8.5 0 0 1 12 3.5"></path>
-                        <polyline points="9.5 1 12 3.5 9.5 6"></polyline>
-                        <polyline points="14.5 18 12 20.5 14.5 23"></polyline>
-                        <rect x="10.25" y="9.75" width="6.5" height="4.5"></rect>
-                        <path d="M7.25 9.75L10.25 12L7.25 14.25Z"></path>
+                : `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter">
+                        <path d="M14.02 3.23A9 9 0 0 1 12 21" stroke-linecap="butt"></path>
+                        <path d="M9.98 20.77A9 9 0 0 1 12 3" stroke-linecap="butt"></path>
+                        <polyline points="9.8 0.8 12 3 9.8 5.2"></polyline>
+                        <polyline points="14.2 18.8 12 21 14.2 23.2"></polyline>
+                        <rect x="10.3" y="9.8" width="6.4" height="4.4"></rect>
+                        <path d="M7.3 9.8L10.3 12L7.3 14.2Z"></path>
                    </svg>`;
             el.innerHTML = `
                 <div class="marker-dot is-360 ${isViewed ? 'viewed' : ''}">
@@ -1854,7 +1854,7 @@ AnnotationController.prototype.setupModal = function() {
 
     const settingsBtn = document.createElement('button');
     settingsBtn.className = 'player-btn';
-    settingsBtn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>';
+    settingsBtn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter"><circle cx="12" cy="12" r="3"></circle><path d="M10.08 4.85L10.07 1.58L13.93 1.58L13.92 4.85A7.4 7.4 0 0 1 17.23 6.77L20.06 5.12L21.99 8.46L19.15 10.08A7.4 7.4 0 0 1 19.15 13.92L21.99 15.54L20.06 18.88L17.23 17.23A7.4 7.4 0 0 1 13.92 19.15L13.93 22.42L10.07 22.42L10.08 19.15A7.4 7.4 0 0 1 6.77 17.23L3.94 18.88L2.01 15.54L4.85 13.92A7.4 7.4 0 0 1 4.85 10.08L2.01 8.46L3.94 5.12L6.77 6.77A7.4 7.4 0 0 1 10.08 4.85Z"></path></svg>';
     
     this.qualityMenu = document.createElement('div');
     this.qualityMenu.className = 'quality-menu';
