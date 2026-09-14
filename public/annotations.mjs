@@ -993,20 +993,26 @@ AnnotationController.prototype.initialize = function() {
         const isViewed = this.viewedAnnotations.includes(annId);
 
         if (ann.is360) {
-            // As rotas mostram uma volta com duas setas — um vídeo que dá a
-            // volta toda — e o nome por baixo. A fotografia do alto do
-            // bairro dispensa as duas coisas: fica só um olho, pousado no
-            // céu, sem legenda a tapar a paisagem.
+            // As rotas mostram um cubo com uma seta a sair por cada um dos
+            // três eixos — um sitio onde se anda em três dimensões — e o nome
+            // por baixo. A fotografia do alto do bairro dispensa as duas
+            // coisas: fica só um olho, pousado no céu, sem legenda a tapar a
+            // paisagem.
             const simbolo = ann.isImage
                 ? `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter">
                         <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"></path>
                         <circle cx="12" cy="12" r="3"></circle>
                    </svg>`
                 : `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="square" stroke-linejoin="miter">
-                        <path d="M14.02 3.23A9 9 0 0 1 12 21" stroke-linecap="butt"></path>
-                        <path d="M9.98 20.77A9 9 0 0 1 12 3" stroke-linecap="butt"></path>
-                        <polyline points="9.8 0.8 12 3 9.8 5.2"></polyline>
-                        <polyline points="14.2 18.8 12 21 14.2 23.2"></polyline>
+                        <polygon points="12.0 8.6 15.98 10.9 15.98 15.5 12.0 17.8 8.02 15.5 8.02 10.9"></polygon>
+                        <polyline points="8.02 10.9 12 13.2 15.98 10.9"></polyline>
+                        <line x1="12" y1="13.2" x2="12.0" y2="17.8"></line>
+                        <line x1="12.0" y1="8.6" x2="12.00" y2="3.00" stroke-linecap="butt"></line>
+                        <polyline points="10.37 4.63 12.00 3.00 13.63 4.63"></polyline>
+                        <line x1="8.02" y1="15.5" x2="3.17" y2="18.30" stroke-linecap="butt"></line>
+                        <polyline points="5.39 18.90 3.17 18.30 3.77 16.08"></polyline>
+                        <line x1="15.98" y1="15.5" x2="20.83" y2="18.30" stroke-linecap="butt"></line>
+                        <polyline points="20.23 16.08 20.83 18.30 18.61 18.90"></polyline>
                    </svg>`;
             el.innerHTML = `
                 <div class="marker-dot is-360 ${isViewed ? 'viewed' : ''}">
