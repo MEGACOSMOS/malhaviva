@@ -223,12 +223,6 @@ AnnotationController.prototype.initialize = function() {
             box-shadow: 0 0 0 4px #ffffff;
             z-index: 10;
         }
-        .marker-text-360 {
-            font-size: 11px;
-            font-weight: 700;
-            font-family: var(--font-main, sans-serif);
-            letter-spacing: -0.5px;
-        }
         .marker-label {
             background-color: #05050a;
             color: #fff;
@@ -999,15 +993,23 @@ AnnotationController.prototype.initialize = function() {
         const isViewed = this.viewedAnnotations.includes(annId);
 
         if (ann.is360) {
-            // As rotas mostram "360º" e o nome por baixo. A fotografia do
-            // alto do bairro dispensa as duas coisas: fica só um olho,
-            // pousado no céu, sem legenda a tapar a paisagem.
+            // As rotas mostram uma câmara de filmar dentro de uma volta com
+            // duas setas — um vídeo que dá a volta toda — e o nome por baixo.
+            // A fotografia do alto do bairro dispensa as duas coisas: fica
+            // só um olho, pousado no céu, sem legenda a tapar a paisagem.
             const simbolo = ann.isImage
                 ? `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter">
                         <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"></path>
                         <circle cx="12" cy="12" r="3"></circle>
                    </svg>`
-                : '<span class="marker-text-360">360º</span>';
+                : `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter">
+                        <path d="M14.06 3.75A8.5 8.5 0 0 1 12 20.5"></path>
+                        <path d="M9.94 20.25A8.5 8.5 0 0 1 12 3.5"></path>
+                        <polyline points="9.5 1 12 3.5 9.5 6"></polyline>
+                        <polyline points="14.5 18 12 20.5 14.5 23"></polyline>
+                        <rect x="10.25" y="9.75" width="6.5" height="4.5"></rect>
+                        <path d="M7.25 9.75L10.25 12L7.25 14.25Z"></path>
+                   </svg>`;
             el.innerHTML = `
                 <div class="marker-dot is-360 ${isViewed ? 'viewed' : ''}">
                     ${simbolo}
