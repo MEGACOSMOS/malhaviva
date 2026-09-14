@@ -1037,9 +1037,12 @@ AnnotationController.prototype.initialize = function() {
         });
 
         // Um botão de verdade abre-se com o Enter e com o espaço. Uma caixa
-        // com um clique agarrado, não — tem de se lhe ensinar.
+        // com um clique agarrado, não — tem de se lhe ensinar. Com uma
+        // janela aberta por cima, o marcador está atrás dela e a tecla é
+        // da janela, não dele.
         el.addEventListener('keydown', (e) => {
             if (e.key !== 'Enter' && e.key !== ' ') return;
+            if (this.janelaAberta()) return;
             e.preventDefault();
             el.click();
         });
@@ -1050,6 +1053,18 @@ AnnotationController.prototype.initialize = function() {
 
     this.baptizarMarcadores();
     window.addEventListener('idiomamudou', () => this.baptizarMarcadores());
+};
+
+/**
+ * Se há uma janela grande aberta por cima do bairro — a dos testemunhos
+ * ou o palco das paragens 360º.
+ *
+ * @returns {boolean} Se sim.
+ */
+AnnotationController.prototype.janelaAberta = function() {
+    const aberta = (janela) => !!janela && janela.style.display !== 'none' &&
+        janela.style.display !== '';
+    return aberta(this.modal) || aberta(this.palco360 && this.palco360.modal);
 };
 
 /* ---- O palco das paragens 360º ----
@@ -1502,8 +1517,19 @@ AnnotationController.prototype.mostrarParagem360 = function(ann) {
     palco.titulo.textContent = this.nomeDaParagem360(ann);
     palco.moldura.innerHTML = '<iframe src="' + this.enderecoDaParagem360(ann) +
         '" allow="xr-spatial-tracking; fullscreen; autoplay" allowfullscreen></iframe>';
-    palco.moldura.querySelector('iframe')
-        .addEventListener('load', () => this.medirComandos360());
+    const janela = palco.moldura.querySelector('iframe');
+    janela.addEventListener('load', () => {
+        this.medirComandos360();
+        // O foco entra na janela mal ela nasce: é lá dentro que as teclas
+        // do filme moram — o espaço, o W, A, S, D, os números — e as que
+        // são do mapa, o Escape e as setas dos lados, sabem voltar cá fora.
+        // Sem isto o foco ficava no marcador, atrás da janela, e o espaço
+        // voltava a abrir a paragem que já estava aberta. Sem deslocar
+        // nada: a dar o foco, o navegador puxa a janela para a vista, e
+        // com a tira a meio de um deslize arrastava o palco todo para o
+        // lado — e deixava-o lá.
+        janela.focus({ preventScroll: true });
+    });
 
     const lista = this.paragens360();
     const onde = lista.indexOf(ann);
@@ -1635,6 +1661,12 @@ AnnotationController.prototype.fecharPalco360 = function() {
         const gsplat = this.app.root.findByName('gsplat-scene');
         if (gsplat) gsplat.enabled = true;
         arrumarAvisoDoBairro(overlay);
+        // O foco volta ao marcador da paragem que se fechou, para quem
+        // anda de tecla não ficar perdido no meio da página.
+        const marcador = this.paragem360 && this.paragem360.element;
+        if (marcador && marcador.getAttribute('tabindex') !== '-1') {
+            marcador.focus({ preventScroll: true });
+        }
     }, 300);
 };
 

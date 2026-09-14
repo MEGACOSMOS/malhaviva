@@ -4,9 +4,9 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>360 Video Player</title>
-    <script src="/idiomas.js?v=8"></script>
+    <script src="/idiomas.js?v=9"></script>
     <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
-    <script src="/comando-paginas.js?v=3" defer></script>
+    <script src="/comando-paginas.js?v=4" defer></script>
     <script>
         AFRAME.registerComponent('fix-seam', {
             init: function () {
@@ -485,7 +485,7 @@
                  a ser visto no ecrã, e não havia maneira de o pousar em cima da
                  mesa. O sensor de movimento passa a mandar só dentro dos
                  óculos, que é onde faz falta. -->
-            <a-entity id="camera" camera
+            <a-entity id="camera" camera="fov: 80"
                       look-controls="reverseMouseDrag: true; magicWindowTrackingEnabled: false"></a-entity>
         </a-scene>
 
@@ -1121,20 +1121,85 @@
         recuarBtn.addEventListener('click', (e) => { e.stopPropagation(); saltar(-SALTO); });
         avancarBtn.addEventListener('click', (e) => { e.stopPropagation(); saltar(SALTO); });
 
+        // ---- Aproximar e afastar ----
+        //
+        // Numa rota 360º não há para onde andar: o que se faz é abrir e
+        // fechar o ângulo por onde se olha, como quem chega os olhos ao
+        // vidro. Quanto menor o ângulo, maior fica o que se vê. É o mesmo
+        // das fotografias 360º, e faz-se com a roda do rato, com dois
+        // dedos e com as teclas mais e menos.
+        const palco = document.getElementById('palco-360');
+        const ANGULO_LARGO = 80;   // como se chega à rota
+        const ANGULO_APERTADO = 22; // o mais perto que se pode ir
+        const PASSO_DO_ZOOM = 1.15; // em proporção: sente-se igual em qualquer ponto
+        let angulo = ANGULO_LARGO;
+
+        const aplicarZoom = (novo) => {
+            // Numa entrevista vista em ecrã plano não há para onde chegar.
+            if (ecraPlano) return;
+            angulo = Math.min(ANGULO_LARGO, Math.max(ANGULO_APERTADO, novo));
+            cameraEl.setAttribute('camera', 'fov', angulo);
+        };
+
+        palco.addEventListener('wheel', (e) => {
+            if (ecraPlano) return;
+            e.preventDefault();
+            aplicarZoom(e.deltaY > 0 ? angulo * PASSO_DO_ZOOM : angulo / PASSO_DO_ZOOM);
+        }, { passive: false });
+
+        // Nos telemóveis, os dois dedos a abrir e a fechar.
+        const distanciaEntreDedos = (toques) => {
+            const dx = toques[0].clientX - toques[1].clientX;
+            const dy = toques[0].clientY - toques[1].clientY;
+            return Math.hypot(dx, dy);
+        };
+        let distanciaInicial = 0;
+        let anguloInicial = 0;
+        palco.addEventListener('touchstart', (e) => {
+            if (e.touches.length === 2) {
+                distanciaInicial = distanciaEntreDedos(e.touches);
+                anguloInicial = angulo;
+            }
+        }, { passive: true });
+        palco.addEventListener('touchmove', (e) => {
+            if (e.touches.length === 2 && distanciaInicial > 0) {
+                e.preventDefault();
+                aplicarZoom(anguloInicial * distanciaInicial / distanciaEntreDedos(e.touches));
+            }
+        }, { passive: false });
+        const largarDedos = () => { distanciaInicial = 0; };
+        palco.addEventListener('touchend', largarDedos);
+        palco.addEventListener('touchcancel', largarDedos);
+
         // Endireitar a vista: quem se perde a olhar para trás volta ao
         // princípio com um botão, em vez de ter de arrastar até acertar.
+        // E volta também à distância a que se chegou, para o mesmo botão
+        // repor tudo como estava.
         const endireitar = () => {
             const olhar = cameraEl && cameraEl.components && cameraEl.components['look-controls'];
             if (olhar) {
                 olhar.pitchObject.rotation.x = 0;
                 olhar.yawObject.rotation.y = 0;
             }
+            aplicarZoom(ANGULO_LARGO);
             showControls();
         };
         recentrarBtn.addEventListener('click', (e) => { e.stopPropagation(); endireitar(); });
 
         // Numa entrevista vista em ecrã plano não há volta nenhuma a dar.
         if (ecraPlano) recentrarBtn.style.display = 'none';
+
+        // Ir a um ponto do filme: as teclas dos números, de zero a nove,
+        // levam ao princípio, a um décimo, a dois décimos… como em qualquer
+        // tocador de vídeo. O Home e o End levam ao princípio e ao fim.
+        const irA = (parte) => {
+            if (!isFinite(video.duration)) return;
+            // Um pouco antes do fim mesmo: no fim mesmo a rota, que anda
+            // em volta, recomeçava logo do princípio.
+            const fim = Math.max(0, video.duration - 0.25);
+            video.currentTime = Math.min(fim, Math.max(0, parte * video.duration));
+            showControls();
+        };
 
         // ---- À espera de mais imagem ----
         video.addEventListener('waiting', () => espera.classList.add('a-esperar'));
@@ -1168,15 +1233,19 @@
         progressContainer.addEventListener('pointercancel', largarBarra);
 
         // ---- Teclas ----
-        // As mesmas de qualquer tocador de vídeo, mais o R de endireitar a
-        // vista, que só aqui faz sentido.
+        // As mesmas de qualquer tocador de vídeo, mais as que só aqui
+        // fazem sentido: o R de endireitar a vista, o mais e o menos de
+        // chegar e afastar. Virar a cabeça é no W, A, S e D — e nas setas
+        // com o Alt em baixo — e disso trata o ficheiro do comando, que é
+        // o mesmo das fotografias 360º.
         //
         // Saltar dentro do filme é no J e no L, ao lado do K que toca e
-        // pára. As setas dos lados ficam livres porque, quando esta página
-        // está dentro do palco das paragens, servem para mudar de paragem —
-        // e quem trata disso é o mapa, lá fora. Aberta sozinha, no seu
-        // próprio endereço, não há paragem nenhuma para onde ir, e aí as
-        // setas voltam a saltar no filme.
+        // pára; os números levam a um ponto do filme. As setas dos lados
+        // ficam livres porque, quando esta página está dentro do palco das
+        // paragens, servem para mudar de paragem — e quem trata disso é o
+        // mapa, lá fora. Aberta sozinha, no seu próprio endereço, não há
+        // paragem nenhuma para onde ir, e aí as setas voltam a saltar no
+        // filme.
         const sozinha = window.parent === window;
         window.addEventListener('keydown', (e) => {
             if (e.target && /^(?:INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) return;
@@ -1207,6 +1276,19 @@
                 fullscreenBtn.click();
             } else if (tecla === 'r') {
                 endireitar();
+            } else if (e.key === '+' || e.key === '=') {
+                aplicarZoom(angulo / PASSO_DO_ZOOM);
+            } else if (e.key === '-' || e.key === '_') {
+                aplicarZoom(angulo * PASSO_DO_ZOOM);
+            } else if (/^[0-9]$/.test(e.key)) {
+                e.preventDefault();
+                irA(parseInt(e.key, 10) / 10);
+            } else if (e.key === 'Home') {
+                e.preventDefault();
+                irA(0);
+            } else if (e.key === 'End') {
+                e.preventDefault();
+                irA(1);
             }
         });
 

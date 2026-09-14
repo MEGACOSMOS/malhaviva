@@ -129,6 +129,13 @@ export function ligarComando(app) {
     // cabeça nas paragens 360º, e têm de ser sabidas a cada imagem: uma
     // tecla carregada é uma coisa que dura, não um aviso que passa.
     const setasDeOlhar = { ArrowLeft: false, ArrowRight: false, ArrowUp: false, ArrowDown: false };
+    // E as letras que fazem o mesmo sem Alt nenhum: o W, A, S e D, olhados
+    // pelo lugar da tecla para serem as mesmas quatro em qualquer teclado.
+    // Só valem numa paragem 360º — no bairro são as que fazem andar.
+    const letrasDeOlhar = { KeyA: false, KeyD: false, KeyW: false, KeyS: false };
+    // Quanto vale um toque só numa dessas letras, em segundos de tecla
+    // segurada: chega para se notar, e não passa disso.
+    const TOQUE_DE_OLHAR = 0.08;
     let alvoAceso = null;
     let camaraDesligadaPorNos = false;
     let velocidadeDeBase = null;
@@ -551,6 +558,31 @@ export function ligarComando(app) {
     }
 
     /**
+     * Passa uma tecla do filme para dentro da moldura da paragem 360º.
+     *
+     * O espaço, o M, os números: são teclas da página de dentro, mas o
+     * navegador só as entrega a quem tem o foco, e quem abriu a paragem
+     * com um clique no mapa tem o foco cá fora. Sem isto, carregava-se
+     * no espaço e o filme não parava. Não vão por aqui as teclas que se
+     * seguram — o W, A, S e D — porque uma tecla mandada de fora nunca se
+     * larga; essas vão a cada imagem, pelo olhar. Nem o espaço e o Enter
+     * quando o foco está num botão do palco, que aí são desse botão.
+     *
+     * @param {KeyboardEvent} e - A tecla carregada.
+     * @param {Element} janela - O palco das paragens.
+     */
+    function passarTeclaParaDentro(e, janela) {
+        if (!e.isTrusted || e.key === 'Tab' || e.code in letrasDeOlhar) return;
+        const comFoco = document.activeElement;
+        const numBotao = comFoco && /^(?:BUTTON|A|INPUT|SELECT|TEXTAREA)$/.test(comFoco.tagName);
+        if (numBotao && (e.key === ' ' || e.key === 'Enter')) return;
+        const dentro = janelaDoPalco(janela);
+        if (!dentro || typeof dentro.tecla !== 'function') return;
+        dentro.tecla({ key: e.key, code: e.code, shiftKey: e.shiftKey });
+        if (e.key === ' ') e.preventDefault();
+    }
+
+    /**
      * As portas da página que está dentro da moldura da paragem 360º.
      *
      * A página é nossa e vem do mesmo sítio, por isso pode ser alcançada;
@@ -600,7 +632,8 @@ export function ligarComando(app) {
      * @returns {number} O pedido.
      */
     function olharX() {
-        return (setasDeOlhar.ArrowRight ? 1 : 0) - (setasDeOlhar.ArrowLeft ? 1 : 0);
+        return ((setasDeOlhar.ArrowRight || letrasDeOlhar.KeyD) ? 1 : 0) -
+            ((setasDeOlhar.ArrowLeft || letrasDeOlhar.KeyA) ? 1 : 0);
     }
 
     /**
@@ -612,16 +645,37 @@ export function ligarComando(app) {
      * @returns {number} O pedido.
      */
     function olharY() {
-        return (setasDeOlhar.ArrowDown ? 1 : 0) - (setasDeOlhar.ArrowUp ? 1 : 0);
+        return ((setasDeOlhar.ArrowDown || letrasDeOlhar.KeyS) ? 1 : 0) -
+            ((setasDeOlhar.ArrowUp || letrasDeOlhar.KeyW) ? 1 : 0);
     }
 
     /**
-     * Toma nota das setas que estão carregadas com o Alt em baixo.
+     * Toma nota das setas que estão carregadas com o Alt em baixo, e das
+     * letras de olhar carregadas numa paragem 360º.
      *
      * @param {KeyboardEvent} e - A tecla.
      * @param {boolean} carregada - Se está a ser carregada ou largada.
      */
     function anotarSetaDeOlhar(e, carregada) {
+        // O lugar da tecla — ou, se o teclado não o disser, a letra.
+        const lugar = e.code || (e.key && e.key.length === 1 ? 'Key' + e.key.toUpperCase() : '');
+        if (lugar in letrasDeOlhar) {
+            const vale = carregada && !e.altKey && !e.ctrlKey && !e.metaKey &&
+                contexto() === 'palco360';
+            // Um toque só dá logo um empurrão: assim a tecla responde mesmo
+            // que seja largada antes de a imagem seguinte a ver.
+            if (vale && !letrasDeOlhar[lugar] && !e.repeat) {
+                const so = janelaDoPalco(document.getElementById('modal-360'));
+                if (so) {
+                    so.olhar(
+                        (lugar === 'KeyD' ? 1 : 0) - (lugar === 'KeyA' ? 1 : 0),
+                        (lugar === 'KeyS' ? 1 : 0) - (lugar === 'KeyW' ? 1 : 0),
+                        TOQUE_DE_OLHAR
+                    );
+                }
+            }
+            letrasDeOlhar[lugar] = vale;
+        }
         if (!(e.key in setasDeOlhar)) return;
         setasDeOlhar[e.key] = carregada && e.altKey;
         if (!e.altKey) {
@@ -695,6 +749,8 @@ export function ligarComando(app) {
                 if (carregarEm('.seta-do-palco.esquerda', janela)) e.preventDefault();
             } else if (e.key === 'ArrowRight') {
                 if (carregarEm('.seta-do-palco.direita', janela)) e.preventDefault();
+            } else if (onde === 'palco360') {
+                passarTeclaParaDentro(e, janela);
             }
             return;
         }
@@ -730,6 +786,7 @@ export function ligarComando(app) {
     const aoLargarUmaTecla = (e) => anotarSetaDeOlhar(e, false);
     const aoSairDaJanela = () => {
         for (const k in setasDeOlhar) setasDeOlhar[k] = false;
+        for (const k in letrasDeOlhar) letrasDeOlhar[k] = false;
     };
     document.addEventListener('keydown', aoCarregarNumaTecla);
     document.addEventListener('keyup', aoLargarUmaTecla);

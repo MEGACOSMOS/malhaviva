@@ -321,29 +321,84 @@
     }
 
     /**
-     * As duas portas por onde o mapa manda cá para dentro.
+     * As portas por onde o mapa manda cá para dentro.
      *
      * Virar a cabeça é preciso a cada imagem, com o quanto e o quanto tempo;
-     * carregar num botão é de uma vez. São as duas únicas coisas que de
-     * fora se não alcançam de outra maneira.
+     * carregar num botão, ou numa tecla, é de uma vez. São as únicas coisas
+     * que de fora se não alcançam de outra maneira.
      */
-    // --- As setas a olhar, com o Alt em baixo ---
-    // É a mesma combinação do mapa, e pela mesma razão: aqui as setas
-    // sozinhas já servem para saltar no filme e mexer no som, e o Alt é o
-    // que as põe a virar a cabeça sem tirar nada a ninguém.
-    (function ligarAsSetas() {
+    /**
+     * Se quem carregou na tecla estava a escrever num campo.
+     *
+     * @param {KeyboardEvent} e - A tecla.
+     * @returns {boolean} Se sim.
+     */
+    function aEscrever(e) {
+        var alvo = e.target;
+        return !!(alvo && alvo.tagName && /^(?:INPUT|TEXTAREA|SELECT)$/.test(alvo.tagName));
+    }
+
+    // --- Virar a cabeça de teclado: o W, A, S, D e as setas com o Alt ---
+    //
+    // O W, A, S e D viram a cabeça como no bairro fazem andar: o A e o D
+    // para os lados, o W e o S para cima e para baixo. As setas fazem o
+    // mesmo com o Alt em baixo — é a combinação do mapa, e pela mesma
+    // razão: aqui as setas sozinhas já servem para saltar no filme e mexer
+    // no som, e o Alt é o que as põe a virar a cabeça sem tirar nada a
+    // ninguém. As letras olham-se pelo lugar da tecla, para o W, A, S e D
+    // serem as mesmas quatro teclas juntas em qualquer teclado.
+    //
+    // Uma tecla carregada é uma coisa que dura, não um aviso que passa:
+    // fica anotada enquanto está em baixo, e a cada imagem vira-se a
+    // cabeça pelo que estiver anotado.
+    (function ligarAsTeclasDeOlhar() {
         var SETAS = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
+        var LETRAS = { KeyA: [-1, 0], KeyD: [1, 0], KeyW: [0, -1], KeyS: [0, 1] };
+
+        // Um toque só na tecla dá um empurrão deste tamanho, em segundos
+        // de tecla segurada: chega para se notar, e não passa disso.
+        var TOQUE = 0.08;
+
         var carregadas = {};
         var ultimo = 0;
 
+        /**
+         * O lugar da tecla — ou, se o teclado não o disser, a letra.
+         *
+         * @param {KeyboardEvent} e - A tecla.
+         * @returns {string} O nome do lugar, como `KeyW`.
+         */
+        function lugarDa(e) {
+            if (e.code) return e.code;
+            return e.key && e.key.length === 1 ? 'Key' + e.key.toUpperCase() : '';
+        }
+
         window.addEventListener('keydown', function (e) {
-            if (!e.altKey || !SETAS[e.key]) return;
-            carregadas[e.key] = true;
-            e.preventDefault();
+            // Só teclas verdadeiras: uma mandada de fora nunca se larga.
+            if (!e.isTrusted || e.ctrlKey || e.metaKey || aEscrever(e)) return;
+            var lugar = lugarDa(e);
+            var nova = null;
+            if (!e.altKey && LETRAS[lugar]) {
+                nova = carregadas[lugar] ? null : LETRAS[lugar];
+                carregadas[lugar] = LETRAS[lugar];
+                e.preventDefault();
+            } else if (e.altKey && SETAS[e.key]) {
+                nova = carregadas[e.key] ? null : SETAS[e.key];
+                carregadas[e.key] = SETAS[e.key];
+                e.preventDefault();
+            }
+            // Um toque dá logo um empurrão: assim a tecla responde mesmo
+            // que seja largada antes de a imagem seguinte a ver.
+            if (nova && !e.repeat) virarACabeca(nova[0], nova[1], TOQUE);
         });
         window.addEventListener('keyup', function (e) {
-            if (SETAS[e.key]) delete carregadas[e.key];
-            if (!e.altKey) carregadas = {};
+            delete carregadas[lugarDa(e)];
+            delete carregadas[e.key];
+            // Largado o Alt, as setas deixam de olhar — mesmo as que ainda
+            // estejam em baixo.
+            if (!e.altKey) {
+                for (var seta in SETAS) delete carregadas[seta];
+            }
         });
         window.addEventListener('blur', function () { carregadas = {}; });
 
@@ -353,13 +408,34 @@
             ultimo = agora;
             var x = 0, y = 0;
             for (var tecla in carregadas) {
-                if (!SETAS[tecla]) continue;
-                x += SETAS[tecla][0];
-                y += SETAS[tecla][1];
+                x += carregadas[tecla][0];
+                y += carregadas[tecla][1];
             }
-            if (x || y) virarACabeca(x, y, dt);
+            if (x || y) virarACabeca(Math.max(-1, Math.min(1, x)), Math.max(-1, Math.min(1, y)), dt);
         })(0);
     })();
+
+    // --- As teclas que são do mapa ---
+    //
+    // Dentro de uma moldura, o Escape e as setas dos lados são do mapa:
+    // fecham a janela e passam à paragem do lado. Mas o navegador entrega
+    // cada tecla só à página que tem o foco, e quem carregou na imagem
+    // para olhar à volta tem o foco cá dentro — lá fora não chegava nada.
+    // Por isso estas três passam-se para fora, à mão. Só as verdadeiras: as
+    // que o mapa manda cá para dentro não voltam a sair, senão andavam
+    // para trás e para a frente sem parar.
+    if (window.parent !== window) {
+        window.addEventListener('keydown', function (e) {
+            if (!e.isTrusted || e.altKey || e.ctrlKey || e.metaKey || aEscrever(e)) return;
+            if (e.key !== 'Escape' && e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+            try {
+                var fora = window.parent;
+                fora.document.dispatchEvent(new fora.KeyboardEvent('keydown', {
+                    key: e.key, code: e.code, bubbles: true, cancelable: true
+                }));
+            } catch (erro) { /* outra origem: o mapa não se alcança */ }
+        });
+    }
 
     window.comandoDaJanela = {
         /**
@@ -383,6 +459,28 @@
                 return carregarEm('#play-pause-btn') || carregarEm('#play-btn-initial');
             }
             return carregarEm('#' + nome);
+        },
+        /**
+         * Carrega numa tecla desta página, como se alguém lhe tivesse
+         * carregado com o foco cá dentro.
+         *
+         * É por aqui que o mapa passa para dentro as teclas do filme —
+         * o espaço, o M, os números — quando o foco está lá fora. As
+         * teclas que se seguram, como o W, A, S e D, não vêm por aqui:
+         * uma tecla mandada de fora nunca se larga, e a cabeça ficava a
+         * virar para sempre. Para essas há o `olhar`, a cada imagem.
+         *
+         * @param {object} dados - O nome da tecla (`key`), o lugar dela
+         *     (`code`) e se o Shift estava em baixo (`shiftKey`).
+         */
+        tecla: function (dados) {
+            document.dispatchEvent(new KeyboardEvent('keydown', {
+                key: dados.key,
+                code: dados.code || '',
+                shiftKey: !!dados.shiftKey,
+                bubbles: true,
+                cancelable: true
+            }));
         }
     };
 
