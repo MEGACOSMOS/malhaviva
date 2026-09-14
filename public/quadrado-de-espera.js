@@ -11,9 +11,12 @@
  * O rasto é desenhado pelo próprio navegador, com uma animação por
  * quadrado — cada um começa um passo depois do anterior — e por isso
  * anda sozinho, sem relógio nenhum a empurrá-lo, sempre ao mesmo ritmo:
- * o andar dele não conta nada, diz só que se está à espera. Quando há
- * uma conta a dizer — quanto do bairro já chegou — ela escreve-se no
- * meio do quadrado, no vazio que os doze deixam, em número.
+ * o andar dele não conta nada, diz só que se está à espera. E anda
+ * mesmo quando a página está ocupada a arrumar o bairro: é o navegador
+ * quem lhe muda a luz, à parte do trabalho da página, e por isso o rasto
+ * não pára quando ela pára. Quando há uma conta a dizer — quanto do
+ * bairro já chegou — ela escreve-se no meio do quadrado, no vazio que
+ * os doze deixam, em número.
  *
  * Isto é um ficheiro comum, e não um módulo, para ser lido pelas páginas
  * do mesmo modo que o ficheiro das línguas: antes de a página se
@@ -66,6 +69,10 @@
             '  background: var(--cor);' +
             '  opacity: ' + FUNDO + ';' +
             '  animation: quadrado-de-espera-rasto ' + VOLTA_MS + 'ms steps(1, end) infinite;' +
+            // Cada quadrado fica com a sua própria camada desde o início,
+            // para a luz dele ser mudada fora do fio principal da página:
+            // é o que deixa o rasto andar enquanto o bairro é arrumado.
+            '  will-change: opacity;' +
             '}' +
             // O número do meio, no vazio que os doze quadrados deixam.
             '.' + CLASSE + ' .centro {' +
