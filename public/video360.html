@@ -788,6 +788,10 @@
             spinner.style.display = 'block';
 
             arrancarCalado().catch(e => {
+                // Uma troca de versão a meio do arranque interrompe o
+                // pedido, mas o vídeo volta a arrancar sozinho a seguir e
+                // a cortina abre-se na mesma: não é um erro.
+                if (e && e.name === 'AbortError') return;
                 console.error(e);
                 porOSom();
                 alert("Erro ao reproduzir vídeo. Tente novamente.");
