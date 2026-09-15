@@ -834,28 +834,66 @@
             showControls();
         };
 
-        // Espera que o vídeo tenha andado um bocadinho — sinal de que há
-        // imagem — e dá ainda duas imagens ao A-Frame para a desenhar. Se
-        // a janela estiver escondida essas imagens não vêm, e vale então
-        // um instante de relógio no lugar delas.
+        // Quantas imagens do filme o navegador já descodificou. É o sinal
+        // seguro de que há imagem: o relógio do vídeo anda com o som, e
+        // nas rotas em 8K o som chegava a andar um bom bocado antes de a
+        // primeira imagem estar descodificada e posta na placa gráfica.
+        const imagensDescodificadas = () => {
+            if (typeof video.getVideoPlaybackQuality === 'function') {
+                return video.getVideoPlaybackQuality().totalVideoFrames;
+            }
+            if (typeof video.webkitDecodedFrameCount === 'number') {
+                return video.webkitDecodedFrameCount;
+            }
+            return -1;
+        };
+
+        // Espera que haja mesmo imagem — duas imagens descodificadas e o
+        // filme a andar — e dá ainda duas imagens ao A-Frame para a pôr
+        // na esfera. Se a janela estiver escondida essas imagens não vêm,
+        // e vale então um instante de relógio no lugar delas. Onde o
+        // navegador não diz quantas imagens descodificou, fica o relógio
+        // do vídeo a servir de sinal, como dantes.
         const esperarPelaImagem = (depois) => {
             if (aEsperarPelaImagem) return;
             aEsperarPelaImagem = true;
             let feito = false;
+            let relogio = null;
             const pronto = () => {
                 if (feito) return;
                 feito = true;
                 aEsperarPelaImagem = false;
+                clearInterval(relogio);
                 depois();
             };
-            const aoAndar = () => {
-                if (video.currentTime <= 0.05) return;
-                video.removeEventListener('timeupdate', aoAndar);
-                requestAnimationFrame(() => requestAnimationFrame(pronto));
-                setTimeout(pronto, 150);
+            const desenhada = () => {
+                if (document.hidden) {
+                    setTimeout(pronto, 150);
+                } else {
+                    requestAnimationFrame(() => requestAnimationFrame(pronto));
+                    setTimeout(pronto, 400);
+                }
             };
-            video.addEventListener('timeupdate', aoAndar);
-            aoAndar();
+            const comecou = performance.now();
+            const haImagem = () => {
+                if (feito) return true;
+                if (video.paused || video.currentTime <= 0.05) return false;
+                const imagens = imagensDescodificadas();
+                // Sem contagem, ou passado muito tempo com o filme a andar
+                // e a contagem parada, vale o relógio do vídeo.
+                if (imagens < 0 || performance.now() - comecou > 10000) return true;
+                return imagens >= 2;
+            };
+            const ver = () => {
+                if (feito) return;
+                if (haImagem()) {
+                    clearInterval(relogio);
+                    desenhada();
+                }
+            };
+            relogio = setInterval(ver, 50);
+            video.addEventListener('timeupdate', ver);
+            ver();
         };
 
         video.addEventListener('playing', () => {
@@ -911,7 +949,14 @@
         if (!pedidoDeVR) {
             video.addEventListener('canplaythrough', () => {
                 if (!video.paused || cortinaAberta) return;
-                arrancarCalado().catch((erro) => {
+                arrancarCalado().then(() => {
+                    // O navegador deixou: o filme vai andar, e enquanto a
+                    // imagem não chega o botão dá o lugar ao quadrado de
+                    // espera, para se ver que está a carregar.
+                    if (cortinaAberta) return;
+                    playBtnInitial.style.display = 'none';
+                    spinner.style.display = 'grid';
+                }).catch((erro) => {
                     // Uma troca de versão a meio do arranque também
                     // interrompe o pedido; nesse caso o vídeo volta a
                     // arrancar sozinho e a cortina abre-se na mesma.
