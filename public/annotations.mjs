@@ -1,6 +1,6 @@
 import * as pc from 'playcanvas';
-import { fontesDeVideo } from './videos.mjs?v=5';
-import { criarGestorDeQualidade } from './qualidade-video.mjs?v=8';
+import { fontesDeVideo } from './videos.mjs?v=6';
+import { criarGestorDeQualidade } from './qualidade-video.mjs?v=9';
 
 export const AnnotationController = pc.createScript('annotationController');
 

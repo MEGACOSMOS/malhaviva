@@ -992,9 +992,9 @@
             background: rgba(255, 255, 255, 0.85);
         }
 
-        /* O manípulo liga-se nas definições ("Controlos → Manípulo"). Num
-           ecrã táctil vem ligado de origem; noutro aparelho fica à mão de
-           quem o quiser. É a classe no corpo da página que o mostra. */
+        /* O manípulo vem ligado de origem e desliga-se nas definições
+           ("Controlos → Manípulo"). É a classe no corpo da página que o
+           mostra. */
         body.com-manipulo #joystick {
             display: block;
         }
@@ -2305,7 +2305,7 @@
         <pc-asset id="splat-scene" src="splat/lod-meta.json" type="gsplat"></pc-asset>
         <pc-asset id="camera-controls-script" src="./camera-controls.mjs?v=24" type="script"></pc-asset>
         <pc-asset id="camera-coords-script" src="./coords.mjs?v=7" type="script"></pc-asset>
-        <pc-asset id="annotations-script" src="./annotations.mjs?v=59" type="script"></pc-asset>
+        <pc-asset id="annotations-script" src="./annotations.mjs?v=60" type="script"></pc-asset>
         <pc-asset id="trail-script" src="./trail.mjs?v=26" type="script"></pc-asset>
 
         <!-- Scene -->
@@ -3077,13 +3077,12 @@ void modifySplatColor(vec3 center, inout vec4 color) {
             });
         }
 
-        // O manípulo do ecrã. Num ecrã táctil vem ligado; num aparelho com
-        // rato fica desligado até alguém o pedir. A escolha fica guardada.
+        // O manípulo do ecrã. Vem ligado em qualquer aparelho; quem não o
+        // quiser desliga-o nas definições, e a escolha fica guardada.
         const caixaDoManipulo = document.getElementById('manipulo-ligado');
         if (caixaDoManipulo) {
             const guardado = localStorage.getItem('manipulo');
-            const tactil = window.matchMedia('(hover: none) and (pointer: coarse)').matches;
-            caixaDoManipulo.checked = guardado ? guardado === 'on' : tactil;
+            caixaDoManipulo.checked = guardado ? guardado === 'on' : true;
             const aplicarManipulo = () => document.body.classList.toggle('com-manipulo', caixaDoManipulo.checked);
             caixaDoManipulo.addEventListener('change', () => {
                 localStorage.setItem('manipulo', caixaDoManipulo.checked ? 'on' : 'off');

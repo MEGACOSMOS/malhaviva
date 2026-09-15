@@ -228,7 +228,7 @@
             align-items: center;
             gap: 16px;
         }
-        /* O sinal que pisca de cada lado ao saltar dez segundos. */
+        /* O sinal que pisca de cada lado ao saltar cinco segundos. */
         .salto-sinal {
             position: absolute;
             top: 50%;
@@ -612,8 +612,8 @@
     </div>
 
     <script type="module">
-        import { fontesDeVideo } from './videos.mjs?v=5';
-        import { criarGestorDeQualidade, limiteDeTexturaDoAparelho } from './qualidade-video.mjs?v=8';
+        import { fontesDeVideo } from './videos.mjs?v=6';
+        import { criarGestorDeQualidade, limiteDeTexturaDoAparelho } from './qualidade-video.mjs?v=9';
 
         const urlParams = new URLSearchParams(window.location.search);
 
@@ -1134,7 +1134,7 @@
         const espera = document.getElementById('espera');
         const cameraEl = document.getElementById('camera');
 
-        const SALTO = 10;
+        const SALTO = 5;
         const sinalEsquerda = document.getElementById('sinal-esquerda');
         const sinalDireita = document.getElementById('sinal-direita');
         const saltar = (segundos) => {

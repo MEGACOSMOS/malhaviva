@@ -93,11 +93,18 @@ export function debitoDe(nome, resolucao) {
     return eOriginal(nome, resolucao) ? tabela.original : (tabela[resolucao] || 0);
 }
 
-// Versões que ainda não foram carregadas para a nuvem. Enquanto estiverem
-// aqui, não aparecem no menu — assim ninguém escolhe uma qualidade que
-// depois não abre. De momento estão todas lá; a lista fica para quando
-// entrar um vídeo novo que ainda só tenha algumas versões prontas.
-const POR_CARREGAR = {};
+// Versões que não se podem usar: ou ainda não foram carregadas para a
+// nuvem, ou estão lá mas estragadas. Enquanto estiverem aqui não aparecem
+// no menu nem são escolhidas sozinhas — assim ninguém apanha uma
+// qualidade que depois não abre ou que acaba a meio.
+//
+// As versões 1440p e 720p da rota C saíram da conversão cortadas aos
+// 2:08 (a rota tem 4:54): o player mostrava essa duração mais curta
+// quando começava por uma delas, e o filme acabava aí. Ficam de fora até
+// serem convertidas de novo a partir do original e carregadas.
+const POR_CARREGAR = {
+    'Esvarena - 360 - C': ['1440p', '720p']
+};
 
 /**
  * As resoluções que existem mesmo de um vídeo.
