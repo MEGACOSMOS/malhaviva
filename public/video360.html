@@ -168,6 +168,13 @@
             display: flex;
             flex-direction: column;
             gap: 12px;
+            /* Os botões surgem a esbater quando a janela abre. Em ecrã
+               inteiro a barra tem o seu próprio deslize, e não isto. */
+            animation: botoes-a-surgir 0.6s ease-out both;
+        }
+        @keyframes botoes-a-surgir {
+            from { opacity: 0; }
+            to { opacity: 1; }
         }
         /* Em ecrã inteiro a barra passa a ficar por cima da imagem, e por
            isso fica recolhida: a rota vê-se toda, sem uma tarja preta a
@@ -183,6 +190,7 @@
             transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
             transform: translateY(100%);
             z-index: 1000;
+            animation: none;
         }
         body:fullscreen.barra-a-espreitar .video-controls {
             transform: translateY(0);

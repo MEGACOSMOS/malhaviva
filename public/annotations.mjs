@@ -318,6 +318,18 @@ AnnotationController.prototype.initialize = function() {
             gap: 12px;
             z-index: 10;
         }
+        /* Os botões surgem a esbater, de cada vez que a janela abre. Em
+           ecrã inteiro a barra tem o seu próprio deslize, e não isto. */
+        @keyframes botoes-a-surgir {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        .video-controls.a-surgir {
+            animation: botoes-a-surgir 0.6s ease-out both;
+        }
+        .moldura-do-player:fullscreen .video-controls.a-surgir {
+            animation: none;
+        }
 
         /* A imagem e a barra são uma peça só, e é essa peça que vai a ecrã
            inteiro: assim os comandos vão juntos em vez de ficarem para
@@ -2104,6 +2116,7 @@ AnnotationController.prototype.setupModal = function() {
     moldura.className = 'moldura-do-player';
     moldura.appendChild(videoWrapper);
     moldura.appendChild(controls);
+    this.barraDosComandos = controls;
 
     // O palco: o testemunho a dar ao meio, e uma janela do anterior e do
     // seguinte de cada lado, para se ver quem vem a caminho.
@@ -2988,6 +3001,12 @@ AnnotationController.prototype.abrirTestemunho = function(nome, title, sentido, 
     // janela em segundo plano essa imagem pode nunca chegar.
     void this.modal.offsetWidth;
     this.modalContent.classList.add('aberta');
+    // Os botões surgem a esbater, de novo a cada abertura.
+    if (this.barraDosComandos) {
+        this.barraDosComandos.classList.remove('a-surgir');
+        void this.barraDosComandos.offsetWidth;
+        this.barraDosComandos.classList.add('a-surgir');
+    }
 
     apagarOBairroPorTras(this.app);
 };
