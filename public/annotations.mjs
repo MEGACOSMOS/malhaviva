@@ -1,6 +1,7 @@
 import * as pc from 'playcanvas';
-import { fontesDeVideo } from './videos.mjs?v=6';
+import { fontesDeVideo, previaDe, olharInicialDe, ABERTURA_INICIAL } from './videos.mjs?v=7';
 import { criarGestorDeQualidade } from './qualidade-video.mjs?v=9';
+import { carregarPrevia360 } from './previa-360.mjs?v=1';
 
 export const AnnotationController = pc.createScript('annotationController');
 
@@ -664,6 +665,7 @@ AnnotationController.prototype.initialize = function() {
             overflow: hidden;
         }
         .previa-janela video,
+        .previa-janela canvas,
         .previa-janela img {
             width: 100%;
             height: 100%;
@@ -691,6 +693,25 @@ AnnotationController.prototype.initialize = function() {
             border: none;
             background: #000;
             display: block;
+        }
+        /* A imagem do primeiro instante, por cima da janela do meio
+           enquanto a página da rota ainda está a chegar: é a mesma que a
+           janela do lado mostrava, no mesmo sítio, e sai quando a página
+           de lá tem a sua. Cobre só a parte da imagem; a barra dos
+           comandos fica a preto até vir a de lá. */
+        .moldura-360 canvas.previa-do-meio {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: calc(100% - var(--altura-controlos, 0px));
+            object-fit: cover;
+            pointer-events: none;
+            z-index: 2;
+            transition: opacity 0.35s ease;
+        }
+        .moldura-360 canvas.previa-do-meio.a-sair {
+            opacity: 0;
         }
 
         /* O rodapé, vazio: é o lugar que a barra dos comandos ocupa na
@@ -1452,8 +1473,10 @@ AnnotationController.prototype.setupPalco360 = function() {
 
     // As janelas dos lados. Numa paragem há duas coisas possíveis a
     // espreitar: a fotografia do alto, que é um ficheiro de imagem, ou o
-    // primeiro instante de uma rota, que é um vídeo. Cabem as duas na
-    // janela, e mostra-se a que for da vez.
+    // primeiro instante de uma rota, que é uma fotografia a dar a volta
+    // toda, vista pela mesma câmara com que a rota começa (ver
+    // previa-360.mjs). Cabem as duas na janela, e mostra-se a que for
+    // da vez.
     const criarPrevia = (lado, sentido) => {
         const previa = document.createElement('button');
         previa.type = 'button';
@@ -1468,14 +1491,11 @@ AnnotationController.prototype.setupPalco360 = function() {
 
         const janela = document.createElement('div');
         janela.className = 'previa-janela';
-        const filme = document.createElement('video');
-        filme.muted = true;
-        filme.playsInline = true;
-        filme.preload = 'metadata';
-        filme.crossOrigin = 'anonymous';
+        const tela = document.createElement('canvas');
+        tela.setAttribute('aria-hidden', 'true');
         const foto = document.createElement('img');
         foto.alt = '';
-        janela.appendChild(filme);
+        janela.appendChild(tela);
         janela.appendChild(foto);
         previa.appendChild(janela);
 
@@ -1606,6 +1626,7 @@ AnnotationController.prototype.mostrarParagem360 = function(ann) {
     palco.moldura.innerHTML = '<iframe src="' + this.enderecoDaParagem360(ann) +
         '" allow="xr-spatial-tracking; fullscreen; autoplay" allowfullscreen></iframe>';
     const janela = palco.moldura.querySelector('iframe');
+    this.tapar360EnquantoChega(ann, janela);
     janela.addEventListener('load', () => {
         this.medirComandos360();
         // O foco entra na janela mal ela nasce: é lá dentro que as teclas
@@ -1655,11 +1676,71 @@ AnnotationController.prototype.mostrarParagem360 = function(ann) {
 };
 
 /**
+ * Tapa a janela do meio com o primeiro instante da rota enquanto a
+ * página dela ainda está a chegar.
+ *
+ * Sem isto via-se preto entre o deslize e a página de lá ter imagem. A
+ * imagem é a mesma que a janela do lado já tinha desenhado — copia-se de
+ * lá quando lá está, e desenha-se de novo quando a rota abre vinda do
+ * mapa. Sai quando a página de lá avisa que tem a sua própria imagem
+ * posta, ou, se o aviso não vier, pouco depois de ela carregar.
+ *
+ * @param {object} ann - A paragem que vai para o meio.
+ * @param {HTMLIFrameElement} janela - A janela da página da rota.
+ */
+AnnotationController.prototype.tapar360EnquantoChega = function(ann, janela) {
+    if (!ann || ann.isImage) {
+        return;
+    }
+    const palco = this.palco360;
+    const video = this.videoDaRota360(ann);
+    const tapa = document.createElement('canvas');
+    tapa.className = 'previa-do-meio';
+    tapa.setAttribute('aria-hidden', 'true');
+
+    const jaDesenhada = [palco.esquerda, palco.direita]
+        .map(lado => lado && lado.querySelector('.previa-janela canvas'))
+        .find(tela => tela && tela.dataset.video === video && tela.width > 0);
+    let pronta;
+    if (jaDesenhada) {
+        tapa.width = jaDesenhada.width;
+        tapa.height = jaDesenhada.height;
+        tapa.getContext('2d').drawImage(jaDesenhada, 0, 0);
+        pronta = Promise.resolve();
+    } else {
+        pronta = carregarPrevia360(tapa, previaDe(video), olharInicialDe(video), ABERTURA_INICIAL, 960, 540);
+    }
+    pronta.then(() => {
+        if (janela.parentNode === palco.moldura) {
+            palco.moldura.appendChild(tapa);
+        }
+    }).catch(() => { /* sem imagem, fica o preto de sempre */ });
+
+    let saiu = false;
+    const sair = () => {
+        if (saiu) return;
+        saiu = true;
+        window.removeEventListener('message', aoAviso);
+        tapa.classList.add('a-sair');
+        setTimeout(() => tapa.remove(), 400);
+    };
+    const aoAviso = (e) => {
+        if (e.source === janela.contentWindow && e.data && e.data.malhaViva === 'previa360pronta') {
+            sair();
+        }
+    };
+    window.addEventListener('message', aoAviso);
+    janela.addEventListener('load', () => setTimeout(sair, 2500), { once: true });
+    setTimeout(sair, 8000);
+};
+
+/**
  * Enche uma das janelas dos lados com uma paragem.
  *
  * Da fotografia mostra-se a própria imagem; de uma rota, o primeiro
- * instante da versão mais leve que exista — não é para ser vista, é para
- * se saber o que vem a seguir.
+ * instante, visto de onde a rota começa a ser vista — é exactamente o
+ * que vai estar no meio quando se passar para lá, e é por isso que a
+ * passagem se faz sem salto.
  *
  * @param {HTMLElement} previa - A janela do lado.
  * @param {object} ann - A paragem a mostrar.
@@ -1672,12 +1753,12 @@ AnnotationController.prototype.encherPrevia360 = function(previa, ann) {
     previa.querySelector('.previa-nome').textContent = nome;
     previa.title = nome;
 
-    const filme = previa.querySelector('.previa-janela video');
+    const tela = previa.querySelector('.previa-janela canvas');
     const foto = previa.querySelector('.previa-janela img');
 
     if (ann.isImage) {
-        filme.style.display = 'none';
-        filme.removeAttribute('src');
+        tela.style.display = 'none';
+        tela.dataset.video = '';
         foto.style.display = '';
         if (foto.getAttribute('src') !== ann.imagePath) {
             foto.setAttribute('src', ann.imagePath);
@@ -1687,20 +1768,17 @@ AnnotationController.prototype.encherPrevia360 = function(previa, ann) {
 
     foto.style.display = 'none';
     foto.removeAttribute('src');
-    filme.style.display = '';
+    tela.style.display = '';
 
-    const fontes = fontesDeVideo(this.videoDaRota360(ann));
-    const leve = fontes['480p'] || fontes['720p'] || Object.values(fontes)[0];
-    if (!leve) {
+    const video = this.videoDaRota360(ann);
+    if (tela.dataset.video === video) {
         return;
     }
-    // O "#t=0.001" pede ao navegador a imagem do primeiro instante, senão
-    // a janela ficava preta.
-    const desejado = leve + '#t=0.001';
-    if (filme.getAttribute('src') !== desejado) {
-        filme.setAttribute('src', desejado);
-        filme.load();
-    }
+    tela.dataset.video = video;
+    // A janela é 16:9, como a do meio; desenha-se a esse tamanho e a
+    // roupa estica-a ao que for preciso.
+    carregarPrevia360(tela, previaDe(video), olharInicialDe(video), ABERTURA_INICIAL, 960, 540)
+        .catch((erro) => console.warn(erro.message));
 };
 
 /**

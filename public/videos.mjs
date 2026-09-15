@@ -130,6 +130,42 @@ export function enderecoDe(nome, resolucao) {
     return BASE + encodeURIComponent(ficheiro);
 }
 
+// Para onde cada rota 360º olha ao começar — a volta (yaw) e a inclinação
+// (pitch), em graus, lidos na janela das coordenadas do olhar do player.
+// É daqui que o player parte, é para aqui que o botão de endireitar
+// volta, e é assim que as janelas dos lados mostram a rota vizinha.
+const OLHAR_INICIAL = {
+    'Esvarena - 360 - A': { yaw: 116.5, pitch: -12.3 },
+    'Esvarena - 360 - B': { yaw: 84.3, pitch: -27.7 },
+    'Esvarena - 360 - C': { yaw: 81.4, pitch: -17.6 }
+};
+
+// A abertura da câmara com que uma rota se começa a ver, em graus.
+export const ABERTURA_INICIAL = 80;
+
+/**
+ * Para onde uma rota 360º olha ao começar.
+ *
+ * @param {string} nome - Nome do vídeo.
+ * @returns {{yaw: number, pitch: number}} Volta e inclinação, em graus.
+ */
+export function olharInicialDe(nome) {
+    return OLHAR_INICIAL[nome] || { yaw: 0, pitch: 0 };
+}
+
+/**
+ * A imagem do primeiro instante de uma rota 360º: a fotografia inteira,
+ * a dar a volta toda (equirectangular), guardada no próprio site. É o
+ * que o player mostra antes de o filme andar, e o que as janelas dos
+ * lados mostram da rota vizinha.
+ *
+ * @param {string} nome - Nome do vídeo.
+ * @returns {string} Endereço da imagem.
+ */
+export function previaDe(nome) {
+    return '/previas/' + encodeURIComponent(nome) + '.jpg';
+}
+
 /**
  * Todas as versões de um vídeo, prontas a dar ao player.
  *

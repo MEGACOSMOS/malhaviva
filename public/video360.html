@@ -639,7 +639,7 @@
     </div>
 
     <script type="module">
-        import { fontesDeVideo } from './videos.mjs?v=6';
+        import { fontesDeVideo, previaDe, olharInicialDe, ABERTURA_INICIAL } from './videos.mjs?v=7';
         import { criarGestorDeQualidade, limiteDeTexturaDoAparelho } from './qualidade-video.mjs?v=9';
 
         const urlParams = new URLSearchParams(window.location.search);
@@ -723,6 +723,42 @@
             scene.appendChild(videosphere);
         }
 
+        // A imagem do primeiro instante da rota, numa esfera mais pequena
+        // por dentro da do vídeo, com a mesma volta dada: é o que se vê
+        // desde que a janela abre até o filme andar, em vez de preto. É
+        // a mesma imagem que a janela do lado mostrava, vista pela mesma
+        // câmara, por isso a passagem de uma para a outra não salta. Quando
+        // o filme anda de verdade, esta esfera esbate-se e sai.
+        let esferaDaPrevia = null;
+        // O mapa, que tem esta página numa janela, tapa-a com a mesma
+        // imagem enquanto ela não chega; avisa-se quando ela está posta.
+        const avisarQueAPreviaEstaPosta = () => {
+            if (window.parent === window) return;
+            requestAnimationFrame(() => requestAnimationFrame(() => {
+                window.parent.postMessage({ malhaViva: 'previa360pronta', nome }, window.location.origin);
+            }));
+        };
+        if (!ecraPlano && !enderecoDirecto) {
+            esferaDaPrevia = document.createElement('a-sky');
+            esferaDaPrevia.setAttribute('src', previaDe(nome));
+            esferaDaPrevia.setAttribute('radius', '400');
+            esferaDaPrevia.setAttribute('rotation', '0 180 0');
+            esferaDaPrevia.setAttribute('segments-width', '128');
+            esferaDaPrevia.setAttribute('segments-height', '64');
+            esferaDaPrevia.setAttribute('material', 'shader: flat; side: back; npot: true; transparent: true; opacity: 1');
+            esferaDaPrevia.addEventListener('materialtextureloaded', avisarQueAPreviaEstaPosta, { once: true });
+            scene.appendChild(esferaDaPrevia);
+        } else {
+            avisarQueAPreviaEstaPosta();
+        }
+        const despedirAPrevia = () => {
+            const esfera = esferaDaPrevia;
+            if (!esfera) return;
+            esferaDaPrevia = null;
+            esfera.setAttribute('animation', 'property: material.opacity; from: 1; to: 0; dur: 700; easing: easeInOutQuad');
+            setTimeout(() => { if (esfera.parentNode) esfera.parentNode.removeChild(esfera); }, 800);
+        };
+
         // --- Video Logic ---
         
         const formatTime = (seconds) => {
@@ -794,6 +830,7 @@
             porOSom();
             overlay.style.display = 'none';
             uiLayer.classList.remove('paused');
+            despedirAPrevia();
             showControls();
         };
 
@@ -831,6 +868,20 @@
             return video.play();
         };
 
+        // O filme só arranca com imagem suficiente descarregada para
+        // andar sem parar (HAVE_ENOUGH_DATA): arrancar antes disso era o
+        // som a começar com a imagem ainda preta. Quem carrega no botão
+        // antes de o vídeo estar pronto fica com o quadrado de espera, e
+        // o arranque faz-se sozinho mal esteja.
+        const PRONTO = 4;
+        const quandoPronto = (depois) => {
+            if (video.readyState >= PRONTO) {
+                depois();
+                return;
+            }
+            video.addEventListener('canplaythrough', depois, { once: true });
+        };
+
         playBtnInitial.addEventListener('click', () => {
             if (pedidoDeVR && scene.enterVR) {
                 scene.enterVR().catch((erro) => console.log('VR:', erro));
@@ -838,7 +889,7 @@
             playBtnInitial.style.display = 'none';
             spinner.style.display = 'grid';
 
-            arrancarCalado().catch(e => {
+            quandoPronto(() => arrancarCalado().catch(e => {
                 // Uma troca de versão a meio do arranque interrompe o
                 // pedido, mas o vídeo volta a arrancar sozinho a seguir e
                 // a cortina abre-se na mesma: não é um erro.
@@ -848,17 +899,17 @@
                 alert("Erro ao reproduzir vídeo. Tente novamente.");
                 playBtnInitial.style.display = 'flex';
                 spinner.style.display = 'none';
-            });
+            }));
         });
 
-        // A rota começa a andar mal a janela abre, sem ninguém ter de
+        // A rota começa a andar mal esteja pronta, sem ninguém ter de
         // carregar em nada — quando o navegador deixa. Só se tenta com o
         // som ligado: um vídeo que arranca tapado nem sempre se deixa
         // destapar depois, e ficava-se a ver a rota em silêncio. Quando o
         // navegador não deixa, fica o botão do meio à espera do toque que
         // ele exige — e esse toque traz o som consigo.
         if (!pedidoDeVR) {
-            video.addEventListener('canplay', () => {
+            video.addEventListener('canplaythrough', () => {
                 if (!video.paused || cortinaAberta) return;
                 arrancarCalado().catch((erro) => {
                     // Uma troca de versão a meio do arranque também
@@ -1184,7 +1235,7 @@
         // das fotografias 360º, e faz-se com a roda do rato, com dois
         // dedos e com as teclas mais e menos.
         const palco = document.getElementById('palco-360');
-        const ANGULO_LARGO = 80;   // como se chega à rota
+        const ANGULO_LARGO = ABERTURA_INICIAL;   // como se chega à rota
         const ANGULO_APERTADO = 22; // o mais perto que se pode ir
         const PASSO_DO_ZOOM = 1.15; // em proporção: sente-se igual em qualquer ponto
         let angulo = ANGULO_LARGO;
@@ -1227,14 +1278,9 @@
         palco.addEventListener('touchcancel', largarDedos);
 
         // Para onde cada rota olha ao começar — a volta (yaw) e a
-        // inclinação (pitch), em graus, lidos na janela das coordenadas
-        // do olhar. Uma rota que não esteja aqui começa a direito.
-        const OLHAR_INICIAL = {
-            'Esvarena - 360 - A': { yaw: 116.5, pitch: -12.3 },
-            'Esvarena - 360 - B': { yaw: 84.3, pitch: -27.7 },
-            'Esvarena - 360 - C': { yaw: 81.4, pitch: -17.6 }
-        };
-        const olharInicial = OLHAR_INICIAL[nome] || { yaw: 0, pitch: 0 };
+        // inclinação (pitch), em graus, na lista dos vídeos. Uma rota que
+        // não esteja lá começa a direito.
+        const olharInicial = olharInicialDe(nome);
         const RAD = Math.PI / 180;
 
         // Aponta a câmara para o olhar inicial da rota.
