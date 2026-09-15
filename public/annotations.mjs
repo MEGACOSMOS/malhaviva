@@ -754,6 +754,23 @@ AnnotationController.prototype.initialize = function() {
             height: auto;
             padding-bottom: 0;
         }
+        /* Sem barras: a barra do nome deixa de ocupar lugar e fica a
+           pairar sobre a fotografia, transparente, só com a cruz; os
+           comandos, dentro da página da fotografia, fazem o mesmo em
+           baixo (ver image360.html). A fotografia vai de alto a baixo. */
+        #modal-360.inteira .barra-do-nome-360 {
+            position: absolute !important;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 5;
+            background: transparent !important;
+            border-bottom: none !important;
+            pointer-events: none;
+        }
+        #modal-360.inteira .barra-do-nome-360 button {
+            pointer-events: auto;
+        }
 
         /* Num ecrã estreito não sobra nada para espreitar: as janelas dos
            lados encolhem para uma seta pousada na borda da imagem. */
@@ -1281,7 +1298,9 @@ AnnotationController.prototype.videoDaRota360 = function(ann) {
  */
 AnnotationController.prototype.enderecoDaParagem360 = function(ann) {
     if (ann.isImage) {
-        return '/image360.html?src=' + encodeURIComponent(ann.imagePath);
+        // A fotografia abre de lado a lado, sem barras: a página é avisada
+        // para pôr os comandos a pairar sobre a imagem.
+        return '/image360.html?src=' + encodeURIComponent(ann.imagePath) + '&inteira=1';
     }
     return '/video360.html?nome=' + encodeURIComponent(this.videoDaRota360(ann));
 };
@@ -1409,6 +1428,7 @@ AnnotationController.prototype.setupPalco360 = function() {
     content.style.boxShadow = '0 20px 60px rgba(0,0,0,0.6)';
 
     const header = document.createElement('div');
+    header.className = 'barra-do-nome-360';
     header.style.padding = '16px 24px';
     header.style.display = 'flex';
     header.style.justifyContent = 'space-between';
@@ -1904,7 +1924,7 @@ AnnotationController.prototype.setupModal = function() {
 
     const fullscreenBtn = document.createElement('button');
     fullscreenBtn.className = 'player-btn';
-    fullscreenBtn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter"><path d="M8 3H3v5m18 0V3h-5m0 18h5v-5M3 16v5h5"></path></svg>';
+    fullscreenBtn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="square" stroke-linejoin="miter"><path d="M8 3H3v5m18 0V3h-5m0 18h5v-5M3 16v5h5"></path></svg>';
 
     const vrBtn = document.createElement('button');
     vrBtn.className = 'player-btn';
@@ -2339,9 +2359,9 @@ AnnotationController.prototype.setupModal = function() {
     document.addEventListener('fullscreenchange', () => {
         if (!fullscreenBtn) return;
         if (document.fullscreenElement === moldura) {
-            fullscreenBtn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter"><path d="M3 9h6V3 M21 9h-6V3 M21 15h-6v6 M3 15h6v6"></path></svg>';
+            fullscreenBtn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="square" stroke-linejoin="miter"><path d="M3 9h6V3 M21 9h-6V3 M21 15h-6v6 M3 15h6v6"></path></svg>';
         } else {
-            fullscreenBtn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter"><path d="M8 3H3v5m18 0V3h-5m0 18h5v-5M3 16v5h5"></path></svg>';
+            fullscreenBtn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="square" stroke-linejoin="miter"><path d="M8 3H3v5m18 0V3h-5m0 18h5v-5M3 16v5h5"></path></svg>';
         }
     });
 

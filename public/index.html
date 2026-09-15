@@ -1094,6 +1094,9 @@
                     return; // Previne o debug error no ecrã
                 }
             }
+            if (errorMsg.includes('clientWaitSync sync failed')) {
+                return; // Ignora o erro inofensivo do teste interno do PlayCanvas
+            }
             
             document.getElementById('debug-error').style.display = 'block';
             document.getElementById('debug-error').innerText += '[Promise Rejection] ' + (e.reason && e.reason.stack ? e.reason.stack : e.reason) + '\n';
@@ -1505,7 +1508,7 @@
             </button>
 
             <button id="fullscreen-main-btn" class="adaptavel" title="Ecrã Inteiro" data-i18n-title="cab.ecra">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter"><path d="M8 3H3v5m18 0V3h-5m0 18h5v-5M3 16v5h5"></path></svg>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="square" stroke-linejoin="miter"><path d="M8 3H3v5m18 0V3h-5m0 18h5v-5M3 16v5h5"></path></svg>
             </button>
         </div>
     </div>
@@ -1527,7 +1530,7 @@
             <span class="rodape-teclas">
                 <span class="rodape-tecla">
                     <svg width="11" height="14" viewBox="0 0 12 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true">
-                        <rect x="1" y="1" width="10" height="14" rx="5"></rect>
+                        <rect x="1" y="1" width="10" height="14"></rect>
                         <line x1="6" y1="4" x2="6" y2="7"></line>
                     </svg>
                     <span data-i18n="rod.arrastar">arrastar</span>
@@ -1903,13 +1906,13 @@
          enquanto o bairro chega — e põem-no por cima de tudo, incluindo do
          ecrã de espera. A espera aqui é o quadrado com a conta no meio, e
          só ele. -->
-    <pc-app id="main-app" antialias="false" max-pixel-ratio="1" loading-bar="false">
+    <pc-app id="main-app" antialias="false" max-pixel-ratio="1" loading-bar="false" backend="webgl2">
 
         <!-- Assets -->
         <pc-asset id="splat-scene" src="splat/lod-meta.json" type="gsplat"></pc-asset>
         <pc-asset id="camera-controls-script" src="./camera-controls.mjs?v=21" type="script"></pc-asset>
         <pc-asset id="camera-coords-script" src="./coords.mjs?v=7" type="script"></pc-asset>
-        <pc-asset id="annotations-script" src="./annotations.mjs?v=56" type="script"></pc-asset>
+        <pc-asset id="annotations-script" src="./annotations.mjs?v=57" type="script"></pc-asset>
         <pc-asset id="trail-script" src="./trail.mjs?v=24" type="script"></pc-asset>
 
         <!-- Scene -->
@@ -2416,9 +2419,9 @@ void modifySplatColor(vec3 center, inout vec4 color) {
 
             document.addEventListener('fullscreenchange', () => {
                 if (document.fullscreenElement) {
-                    fullscreenMainBtn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter"><path d="M3 9h6V3 M21 9h-6V3 M21 15h-6v6 M3 15h6v6"></path></svg>';
+                    fullscreenMainBtn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="square" stroke-linejoin="miter"><path d="M3 9h6V3 M21 9h-6V3 M21 15h-6v6 M3 15h6v6"></path></svg>';
                 } else {
-                    fullscreenMainBtn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter"><path d="M8 3H3v5m18 0V3h-5m0 18h5v-5M3 16v5h5"></path></svg>';
+                    fullscreenMainBtn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="square" stroke-linejoin="miter"><path d="M8 3H3v5m18 0V3h-5m0 18h5v-5M3 16v5h5"></path></svg>';
                 }
             });
         }
