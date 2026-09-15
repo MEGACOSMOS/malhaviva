@@ -1226,16 +1226,40 @@
         palco.addEventListener('touchend', largarDedos);
         palco.addEventListener('touchcancel', largarDedos);
 
-        // Endireitar a vista: quem se perde a olhar para trás volta ao
-        // princípio com um botão, em vez de ter de arrastar até acertar.
-        // E volta também à distância a que se chegou, para o mesmo botão
-        // repor tudo como estava.
-        const endireitar = () => {
+        // Para onde cada rota olha ao começar — a volta (yaw) e a
+        // inclinação (pitch), em graus, lidos na janela das coordenadas
+        // do olhar. Uma rota que não esteja aqui começa a direito.
+        const OLHAR_INICIAL = {
+            'Esvarena - 360 - A': { yaw: 116.5, pitch: -12.3 },
+            'Esvarena - 360 - B': { yaw: 84.3, pitch: -27.7 },
+            'Esvarena - 360 - C': { yaw: 81.4, pitch: -17.6 }
+        };
+        const olharInicial = OLHAR_INICIAL[nome] || { yaw: 0, pitch: 0 };
+        const RAD = Math.PI / 180;
+
+        // Aponta a câmara para o olhar inicial da rota.
+        const apontarAoInicio = () => {
             const olhar = cameraEl && cameraEl.components && cameraEl.components['look-controls'];
-            if (olhar) {
-                olhar.pitchObject.rotation.x = 0;
-                olhar.yawObject.rotation.y = 0;
-            }
+            if (!olhar) return false;
+            olhar.pitchObject.rotation.x = olharInicial.pitch * RAD;
+            olhar.yawObject.rotation.y = olharInicial.yaw * RAD;
+            return true;
+        };
+
+        // Mal a câmara nasça, já olha para onde a rota manda.
+        if (!apontarAoInicio()) {
+            cameraEl.addEventListener('componentinitialized', (e) => {
+                if (e.detail && e.detail.name === 'look-controls') apontarAoInicio();
+            });
+            cameraEl.addEventListener('loaded', apontarAoInicio, { once: true });
+        }
+
+        // Endireitar a vista: quem se perde a olhar para trás volta ao
+        // olhar inicial da rota com um botão, em vez de ter de arrastar
+        // até acertar. E volta também à distância a que se chegou, para
+        // o mesmo botão repor tudo como estava.
+        const endireitar = () => {
+            apontarAoInicio();
             aplicarZoom(ANGULO_LARGO);
             showControls();
         };
