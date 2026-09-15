@@ -6,6 +6,23 @@ import { carregarPrevia360 } from './previa-360.mjs?v=1';
 export const AnnotationController = pc.createScript('annotationController');
 
 /**
+ * Faz uma ou mais barras surgirem a esbater, de novo a cada vez.
+ *
+ * A animação vive na roupa (`a-surgir`); tirá-la e voltar a pô-la, com
+ * uma medição pelo meio para o navegador dar pela mudança, recomeça-a.
+ *
+ * @param {...HTMLElement} barras - As barras a fazer surgir.
+ */
+function fazerSurgir(...barras) {
+    for (const barra of barras) {
+        if (!barra) continue;
+        barra.classList.remove('a-surgir');
+        void barra.offsetWidth;
+        barra.classList.add('a-surgir');
+    }
+}
+
+/**
  * Avisa que o bairro está a voltar.
  *
  * Fechar um vídeo é acender outra vez as manchas 3D, e isso demora um
@@ -318,14 +335,20 @@ AnnotationController.prototype.initialize = function() {
             gap: 12px;
             z-index: 10;
         }
-        /* Os botões surgem a esbater, de cada vez que a janela abre. Em
-           ecrã inteiro a barra tem o seu próprio deslize, e não isto. */
+        /* As barras — a do nome, em cima, e a dos botões, em baixo —
+           surgem a esbater de cada vez que a janela abre. A animação é
+           entregue à placa gráfica (will-change), para correr lisa mesmo
+           com a página ocupada a carregar o vídeo. Em ecrã inteiro a
+           barra dos botões tem o seu próprio deslize, e não isto. */
         @keyframes botoes-a-surgir {
             from { opacity: 0; }
             to { opacity: 1; }
         }
-        .video-controls.a-surgir {
-            animation: botoes-a-surgir 0.6s ease-out both;
+        .video-controls.a-surgir,
+        .barra-do-nome.a-surgir,
+        .barra-do-nome-360.a-surgir {
+            animation: botoes-a-surgir 0.5s ease-out both;
+            will-change: opacity;
         }
         .moldura-do-player:fullscreen .video-controls.a-surgir {
             animation: none;
@@ -728,9 +751,13 @@ AnnotationController.prototype.initialize = function() {
             object-fit: cover;
         }
         /* O quadrado de espera, por cima da imagem parada, enquanto a
-           página da rota carrega. */
+           página da rota carrega. Só aparece depois de a janela ter
+           assentado (ela nasce um pouco encolhida): a aparecer ao mesmo
+           tempo, parecia ser ele a fazê-la crescer. */
         .moldura-360 .previa-do-meio .espera-video {
             display: grid;
+            animation: botoes-a-surgir 0.3s ease-out both;
+            animation-delay: 0.5s;
         }
 
         /* O rodapé, vazio: é o lugar que a barra dos comandos ocupa na
@@ -1642,6 +1669,15 @@ AnnotationController.prototype.mostrarParagem360 = function(ann) {
     this.marcarComoVisto(annId);
 
     palco.titulo.textContent = this.nomeDaParagem360(ann);
+    fazerSurgir(palco.barraDoNome);
+    // A altura da barra dos comandos da página de lá só se mede quando
+    // ela carrega; até lá vale a última medida do mesmo tipo de paragem,
+    // para a janela nascer já do tamanho certo em vez de crescer depois.
+    const tipoDeParagem = ann.isImage ? 'foto' : 'rota';
+    const alturaLembrada = this.alturaDosComandos360 && this.alturaDosComandos360[tipoDeParagem];
+    if (alturaLembrada) {
+        palco.modal.style.setProperty('--altura-controlos', alturaLembrada + 'px');
+    }
     palco.moldura.innerHTML = '<iframe src="' + this.enderecoDaParagem360(ann) +
         '" allow="xr-spatial-tracking; fullscreen; autoplay" allowfullscreen></iframe>';
     const janela = palco.moldura.querySelector('iframe');
@@ -1830,6 +1866,8 @@ AnnotationController.prototype.medirComandos360 = function() {
     } catch (e) { /* outra origem: fica a altura de omissão */ }
     if (barra && barra.offsetHeight > 0) {
         palco.modal.style.setProperty('--altura-controlos', barra.offsetHeight + 'px');
+        if (!this.alturaDosComandos360) this.alturaDosComandos360 = {};
+        this.alturaDosComandos360[this.paragem360 && this.paragem360.isImage ? 'foto' : 'rota'] = barra.offsetHeight;
     }
     this.medirPalco(palco);
 };
@@ -1901,6 +1939,8 @@ AnnotationController.prototype.setupModal = function() {
     header.style.background = 'linear-gradient(to bottom, rgba(255,255,255,0.05), transparent)';
     header.style.minHeight = '56px';
     header.style.boxSizing = 'border-box';
+    header.className = 'barra-do-nome';
+    this.barraDoNome = header;
     
     this.modalTitle = document.createElement('div');
     this.modalTitle.style.color = '#fff';
@@ -3001,12 +3041,8 @@ AnnotationController.prototype.abrirTestemunho = function(nome, title, sentido, 
     // janela em segundo plano essa imagem pode nunca chegar.
     void this.modal.offsetWidth;
     this.modalContent.classList.add('aberta');
-    // Os botões surgem a esbater, de novo a cada abertura.
-    if (this.barraDosComandos) {
-        this.barraDosComandos.classList.remove('a-surgir');
-        void this.barraDosComandos.offsetWidth;
-        this.barraDosComandos.classList.add('a-surgir');
-    }
+    // As duas barras surgem a esbater, de novo a cada abertura.
+    fazerSurgir(this.barraDoNome, this.barraDosComandos);
 
     apagarOBairroPorTras(this.app);
 };

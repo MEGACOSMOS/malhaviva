@@ -168,9 +168,12 @@
             display: flex;
             flex-direction: column;
             gap: 12px;
-            /* Os botões surgem a esbater quando a janela abre. Em ecrã
-               inteiro a barra tem o seu próprio deslize, e não isto. */
-            animation: botoes-a-surgir 0.6s ease-out both;
+            /* Os botões surgem a esbater quando a janela abre, na placa
+               gráfica (will-change) para correr liso com a página ocupada
+               a montar a cena. Em ecrã inteiro a barra tem o seu próprio
+               deslize, e não isto. */
+            animation: botoes-a-surgir 0.5s ease-out both;
+            will-change: opacity;
         }
         @keyframes botoes-a-surgir {
             from { opacity: 0; }
