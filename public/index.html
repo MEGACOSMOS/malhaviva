@@ -11,14 +11,14 @@
 
     <!-- As línguas do site. Fica antes de tudo o resto para o texto
          nascer já na língua certa, sem piscar em português primeiro. -->
-    <script src="/idiomas.js?v=13"></script>
+    <script src="/idiomas.js?v=14"></script>
 
     <!-- O quadrado de espera, o mesmo em todo o site. Fica antes de o
          ecrã de espera se desenhar, para nascer já com a sua roupa. -->
     <script src="/quadrado-de-espera.js?v=4"></script>
 
     <!-- A tinta do cabeçalho segue o brilho do bairro por trás dela. -->
-    <script src="/contraste.js?v=2"></script>
+    <script src="/contraste.js?v=3"></script>
 
     <!-- PlayCanvas Web Components (versões fixas para estabilidade em produção) -->
     <script type="importmap">
@@ -152,7 +152,10 @@
 
         #header.visible {
             opacity: 1;
-            transform: translateY(0);
+            /* "none", e não "translateY(0)": um cabeçalho com transformação
+               prende dentro de si o que está fixo ao ecrã — e a gaveta dos
+               ícones, num telemóvel, tem de ir de alto a baixo do ecrã. */
+            transform: none;
         }
 
         #header > * {
@@ -290,9 +293,103 @@
         }
 
         /* ─── Responsive ─── */
+        /* ─── O menu de hambúrguer, no telemóvel ───
+           Num ecrã estreito os ícones do cabeçalho não cabem ao lado do
+           nome. Ficam guardados numa gaveta que sai do lado direito do
+           ecrã quando se toca no hambúrguer, à esquerda do nome. Dentro da
+           gaveta cada ícone abre o seu menu para o lado, como sempre. No
+           computador o hambúrguer não existe e a gaveta é a fila de ícones
+           de sempre. */
+        #menu-btn {
+            display: none;
+            background: transparent;
+            border: 1px solid transparent;
+            width: 40px;
+            height: 40px;
+            padding: 0;
+            margin-right: 6px;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+
+        #menu-btn .fechado,
+        #menu-btn .aberto {
+            display: block;
+        }
+        #menu-btn .aberto,
+        #header.gaveta-aberta #menu-btn .fechado {
+            display: none;
+        }
+        #header.gaveta-aberta #menu-btn .aberto {
+            display: block;
+        }
+
         @media (max-width: 640px) {
             #header {
                 padding: 12px 16px;
+                justify-content: flex-start;
+            }
+
+            #menu-btn {
+                display: flex;
+            }
+
+            #acoes-do-cabecalho {
+                position: fixed;
+                top: 0;
+                right: 0;
+                bottom: 0;
+                width: 64px;
+                flex-direction: column;
+                justify-content: flex-start;
+                gap: 10px !important;
+                padding: 14px 0;
+                background: linear-gradient(to bottom, rgba(255,255,255,0.05), transparent), #05050a;
+                box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+                transform: translateX(100%);
+                transition: transform 0.2s ease;
+                overflow: visible;
+            }
+
+            /* O fio de luz dos painéis, no bordo da gaveta. */
+            #acoes-do-cabecalho::after {
+                content: "";
+                position: absolute;
+                inset: 0;
+                padding: 1px;
+                background: linear-gradient(to bottom right, rgba(255,255,255,0.7) 0%, rgba(255,255,255,0.3) 50%, rgba(255,255,255,0.7) 100%), #05050a;
+                -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+                -webkit-mask-composite: xor;
+                mask-composite: exclude;
+                pointer-events: none;
+            }
+
+            #header.gaveta-aberta #acoes-do-cabecalho {
+                transform: translateX(0);
+            }
+
+            /* Dentro da gaveta os ícones são sempre brancos: o fundo é o
+               painel escuro, não o bairro. */
+            #acoes-do-cabecalho .adaptavel {
+                --tinta: #ffffff;
+                /* Aceso — com o menu aberto — fica só um pouco mais
+                   apagado, que virar do avesso sobre o painel escuro era
+                   desaparecer. */
+                --avesso: rgba(255, 255, 255, 0.55);
+            }
+
+            /* Os menus abrem ao lado da gaveta, para o lado do bairro. */
+            #acoes-do-cabecalho #definicoes-menu,
+            #acoes-do-cabecalho #dev-menu,
+            #acoes-do-cabecalho #idioma-menu {
+                top: 0;
+                right: 52px;
+                max-width: calc(100vw - 80px);
+            }
+            #acoes-do-cabecalho #dev-menu {
+                max-height: calc(100vh - 32px);
             }
         }
 
@@ -794,6 +891,70 @@
             }
         }
 
+        /* ─── O manípulo do ecrã táctil ───
+           Um quadrado ao canto de baixo à esquerda, com um quadrado mais
+           pequeno lá dentro que se empurra com o polegar para andar pelo
+           bairro: para a frente, para trás e para os lados. Só existe em
+           ecrãs tácteis; com rato e teclado há o WASD. */
+        #joystick {
+            position: fixed;
+            left: 16px;
+            bottom: 16px;
+            z-index: 100;
+            width: 112px;
+            height: 112px;
+            display: none;
+            background: linear-gradient(to bottom, rgba(255,255,255,0.05), transparent), rgba(5, 5, 10, 0.6);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+            touch-action: none;
+            user-select: none;
+            -webkit-user-select: none;
+            opacity: 0;
+            transition: opacity 0.6s ease 0.3s;
+        }
+
+        #joystick.visivel {
+            opacity: 1;
+        }
+
+        #joystick::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            padding: 1px;
+            background: linear-gradient(to bottom right, rgba(255,255,255,0.7) 0%, rgba(255,255,255,0.3) 50%, rgba(255,255,255,0.7) 100%), #05050a;
+            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor;
+            mask-composite: exclude;
+            pointer-events: none;
+        }
+
+        #joystick-manipulo {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            width: 40px;
+            height: 40px;
+            margin: -20px 0 0 -20px;
+            background: #ffffff;
+            transition: transform 0.15s ease;
+        }
+
+        #joystick.a-empurrar #joystick-manipulo {
+            transition: none;
+            background: rgba(255, 255, 255, 0.85);
+        }
+
+        @media (hover: none) and (pointer: coarse) {
+            #joystick {
+                display: block;
+            }
+            /* O rodapé sobe para cima do manípulo e do botão de partilhar. */
+            #rodape-comandos {
+                bottom: 144px;
+            }
+        }
+
         /* ─── Partilhar ───
            Um botão no canto de baixo à direita, vestido como o rodapé, e um
            menu por cima dele com as redes por onde se pode mandar o bairro
@@ -1288,13 +1449,25 @@
 
     <!-- Header -->
     <div id="header">
+        <!-- O hambúrguer, só no telemóvel: abre e fecha a gaveta dos ícones. -->
+        <button type="button" id="menu-btn" class="adaptavel" aria-label="Menu" title="Menu" data-i18n-aria="cab.menu" data-i18n-title="cab.menu" aria-expanded="false" aria-controls="acoes-do-cabecalho">
+            <svg class="fechado" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true">
+                <line x1="3" y1="6" x2="21" y2="6"></line>
+                <line x1="3" y1="12" x2="21" y2="12"></line>
+                <line x1="3" y1="18" x2="21" y2="18"></line>
+            </svg>
+            <svg class="aberto" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true">
+                <line x1="5" y1="5" x2="19" y2="19"></line>
+                <line x1="19" y1="5" x2="5" y2="19"></line>
+            </svg>
+        </button>
         <div class="brand">
             <div class="brand-text">
                 <span class="brand-name adaptavel">Malha Viva</span>
             </div>
         </div>
-        
-        <div style="display: flex; align-items: center; gap: 8px;">
+
+        <div id="acoes-do-cabecalho" style="display: flex; align-items: center; gap: 8px;">
             <div class="settings" id="dev-menu-container">
                 <button id="dev-btn" class="adaptavel" title="Menu de Desenvolvedor">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter">
@@ -1636,7 +1809,7 @@
         <div class="rodape-item rodape-toque">
             <span data-i18n="rod.andar">Andar</span>
             <span class="rodape-teclas">
-                <span class="rodape-tecla"><span data-i18n="rod.doisDedos">2 dedos</span> · <span data-i18n="rod.arrastar">arrastar</span></span>
+                <span class="rodape-tecla" data-i18n="rod.joystick">joystick</span>
             </span>
         </div>
         <div class="rodape-item rodape-toque">
@@ -1765,6 +1938,93 @@
         ajustarLargura();
 
         window.rodapeDosComandos = { mexeu };
+    })();
+    </script>
+
+    <!-- O manípulo do ecrã táctil. É só desenho para quem ouve a página:
+         o teclado e os marcadores continuam a ser o caminho de quem não vê. -->
+    <div id="joystick" aria-hidden="true">
+        <div id="joystick-manipulo"></div>
+    </div>
+
+    <script>
+    /**
+     * O manípulo do ecrã táctil.
+     *
+     * Um polegar no quadrado empurra o quadrado pequeno; a distância ao
+     * centro, de menos um a um em cada eixo, é dita à câmara a cada
+     * mexida, e ela anda por ali como andaria com as teclas. A área é um
+     * quadrado, e o quadrado pequeno anda dentro dela sem sair — cada eixo
+     * conta por si, sem arredondar a um círculo. Ao largar, volta ao meio
+     * e a câmara pára. Nasce com o cabeçalho, quando o ecrã de espera sai.
+     */
+    (function () {
+        const area = document.getElementById('joystick');
+        const manipulo = document.getElementById('joystick-manipulo');
+        const overlay = document.getElementById('loading-overlay');
+        if (!area || !manipulo || !overlay) return;
+
+        let dedo = null;
+
+        // Os comandos da câmara só existem depois de o motor acordar;
+        // procuram-se quando fazem falta.
+        const comandos = () => {
+            const motor = document.querySelector('pc-app');
+            const app = motor && motor.app;
+            const camara = app && app.root && app.root.findByName('camera');
+            return camara && camara.script && camara.script.cameraControls;
+        };
+
+        const dizer = (lado, frente) => {
+            const c = comandos();
+            if (c && typeof c.setJoystick === 'function') c.setJoystick(lado, frente);
+        };
+
+        const empurrar = (e) => {
+            const caixa = area.getBoundingClientRect();
+            // Até onde o quadrado pequeno pode ir, em cada eixo.
+            const alcance = (caixa.width - manipulo.offsetWidth) / 2;
+            const dx = Math.max(-alcance, Math.min(alcance, e.clientX - (caixa.left + caixa.width / 2)));
+            const dy = Math.max(-alcance, Math.min(alcance, e.clientY - (caixa.top + caixa.height / 2)));
+            manipulo.style.transform = 'translate(' + dx + 'px, ' + dy + 'px)';
+            dizer(dx / alcance, -dy / alcance);
+        };
+
+        const largar = () => {
+            dedo = null;
+            area.classList.remove('a-empurrar');
+            manipulo.style.transform = '';
+            dizer(0, 0);
+        };
+
+        area.addEventListener('pointerdown', (e) => {
+            if (dedo !== null) return;
+            dedo = e.pointerId;
+            try { area.setPointerCapture(dedo); } catch (erro) { /* sem captura, anda na mesma */ }
+            area.classList.add('a-empurrar');
+            empurrar(e);
+            e.preventDefault();
+        });
+        area.addEventListener('pointermove', (e) => {
+            if (e.pointerId !== dedo) return;
+            empurrar(e);
+            e.preventDefault();
+        });
+        area.addEventListener('pointerup', (e) => { if (e.pointerId === dedo) largar(); });
+        area.addEventListener('pointercancel', (e) => { if (e.pointerId === dedo) largar(); });
+        area.addEventListener('lostpointercapture', () => { if (dedo !== null) largar(); });
+
+        // Nasce com o cabeçalho; esconde-se se o ecrã de espera voltar.
+        const seguir = () => {
+            if (overlay.classList.contains('hidden')) {
+                area.classList.add('visivel');
+            } else {
+                area.classList.remove('visivel');
+                largar();
+            }
+        };
+        new MutationObserver(seguir).observe(overlay, { attributes: true, attributeFilter: ['class'] });
+        seguir();
     })();
     </script>
 
@@ -1984,7 +2244,7 @@
 
         <!-- Assets -->
         <pc-asset id="splat-scene" src="splat/lod-meta.json" type="gsplat"></pc-asset>
-        <pc-asset id="camera-controls-script" src="./camera-controls.mjs?v=21" type="script"></pc-asset>
+        <pc-asset id="camera-controls-script" src="./camera-controls.mjs?v=22" type="script"></pc-asset>
         <pc-asset id="camera-coords-script" src="./coords.mjs?v=7" type="script"></pc-asset>
         <pc-asset id="annotations-script" src="./annotations.mjs?v=57" type="script"></pc-asset>
         <pc-asset id="trail-script" src="./trail.mjs?v=24" type="script"></pc-asset>
@@ -2553,6 +2813,30 @@ void modifySplatColor(vec3 center, inout vec4 color) {
             if (definicoesMenu) definicoesMenu.classList.remove('open');
             if (idiomaMenu) idiomaMenu.classList.remove('open');
         });
+
+        // O hambúrguer do telemóvel abre e fecha a gaveta dos ícones. Um
+        // toque fora dela — ou num ícone que leva a outra página — fecha-a.
+        const menuBtn = document.getElementById('menu-btn');
+        const headerEl = document.getElementById('header');
+        const gaveta = document.getElementById('acoes-do-cabecalho');
+        const abrirGaveta = (aberta) => {
+            headerEl.classList.toggle('gaveta-aberta', aberta);
+            menuBtn.setAttribute('aria-expanded', aberta ? 'true' : 'false');
+            if (!aberta) {
+                [definicoesMenu, idiomaMenu, devMenu].forEach((m) => m && m.classList.remove('open'));
+            }
+        };
+        if (menuBtn && gaveta) {
+            menuBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                abrirGaveta(!headerEl.classList.contains('gaveta-aberta'));
+            });
+            document.addEventListener('click', (e) => {
+                if (!headerEl.classList.contains('gaveta-aberta')) return;
+                if (gaveta.contains(e.target) || menuBtn.contains(e.target)) return;
+                abrirGaveta(false);
+            });
+        }
 
         // Os menus abrem ao passar o rato pelo ícone — e fecham quando o
         // rato sai do conjunto (ícone e menu). Num ecrã táctil não há

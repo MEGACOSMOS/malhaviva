@@ -309,6 +309,15 @@ class CameraControls extends Script {
      */
     _setas = new Vec3();
 
+    /**
+     * O manípulo desenhado no ecrã táctil: quanto anda de lado (x) e em
+     * frente (y), de menos um a um. Entra pelo mesmo sítio que as teclas.
+     *
+     * @type {Vec2}
+     * @private
+     */
+    _joystick = new Vec2();
+
     _state = {
         axis: new Vec3(),
         shift: 0,
@@ -602,6 +611,16 @@ class CameraControls extends Script {
      * @type {boolean}
      */
     travagem = false;
+
+    /**
+     * O manípulo do ecrã táctil diz para onde está a ser empurrado.
+     *
+     * @param {number} lado - Para a direita, de menos um a um.
+     * @param {number} frente - Para a frente, de menos um a um.
+     */
+    setJoystick(lado, frente) {
+        this._joystick.set(lado || 0, frente || 0);
+    }
 
     /**
      * Diz à câmara onde estão as paredes da cúpula.
@@ -1156,6 +1175,19 @@ class CameraControls extends Script {
         if (leftStick[0] !== 0 || leftStick[1] !== 0) {
             keyMove.x += leftStick[0];
             keyMove.z -= leftStick[1];
+            const passo = Math.sqrt(keyMove.x * keyMove.x + keyMove.z * keyMove.z);
+            if (passo > 1) {
+                keyMove.x /= passo;
+                keyMove.z /= passo;
+            }
+        }
+
+        // O manípulo do ecrã táctil entra pelo mesmo sítio, com a mesma
+        // conta: para a direita e para a frente, nunca mais depressa do
+        // que as teclas.
+        if (this._joystick.x !== 0 || this._joystick.y !== 0) {
+            keyMove.x += this._joystick.x;
+            keyMove.z += this._joystick.y;
             const passo = Math.sqrt(keyMove.x * keyMove.x + keyMove.z * keyMove.z);
             if (passo > 1) {
                 keyMove.x /= passo;
