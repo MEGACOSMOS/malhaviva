@@ -18,10 +18,15 @@ import { math } from 'playcanvas';
  * passeava cheio de manchas grosseiras. O que está perto fica sempre
  * nítido; o que muda é até onde a nitidez chega em cada direcção.
  *
- * O balão custa as mesmas manchas que a bola custava: em cada vista
- * conta-se quanto a bola gastaria, e o balão é encolhido ou esticado até
- * gastar isso mesmo — o detalhe que se poupa nos cantos, atrás das costas
- * e fora do ecrã é o que paga a distância a mais ao meio. Nos níveis com
+ * O balão custa o mesmo que a bola custava — contado em manchas *no
+ * ecrã*, que é o que a placa gráfica paga. Uma mancha atrás das costas
+ * ou fora do ecrã é despachada pela placa quase de graça: só se vê, e só
+ * custa, a que chega a ser pintada. A bola gastava dois terços das
+ * manchas fora do ecrã; o balão gasta-as à frente, e por isso contar só o
+ * total, como se fez numa primeira versão, punha o dobro das manchas a
+ * pintar e custava quadros por segundo. Em cada vista conta-se quanto a
+ * bola pintaria, com o que fica fora do ecrã a contar uma fracção, e o
+ * balão é encolhido ou esticado até pintar isso mesmo. Nos níveis com
  * tecto de manchas, o tecto continua a mandar; só a forma é que muda.
  *
  * Três cuidados mantêm a mudança barata:
@@ -53,18 +58,27 @@ const PESO_ATRAS = 2.5;
 // para lá dela o pedaço desce um nível.
 const MARGEM_FORA_DO_ECRA = 15;
 
+// Quanto custa uma mancha que não está no ecrã, em fracção de uma que
+// está. A placa gráfica ainda lhe pega — ordena-a e vê onde cairia —
+// mas não a pinta, e é a pintura que pesa. Medido dentro do bairro, com
+// um décimo o balão pinta mais um décimo do que a bola pintava e fica
+// com metade das manchas dela no total.
+const PESO_FORA_DO_ECRA = 0.1;
+
 // Quanto um pedaço tem de passar da fronteira entre dois níveis, em
 // fracção da distância, para trocar de nível.
-const HISTERESE = 0.05;
+const HISTERESE = 0.08;
 
 // Quantos graus a câmara tem de rodar para o detalhe ser recalculado.
 // De origem o motor só reagia a deslocações; agora que a direcção do
 // olhar manda no detalhe, a rotação também tem de contar.
-const ANGULO_DE_ATUALIZACAO = 3;
+const ANGULO_DE_ATUALIZACAO = 4;
 
 // A rodar sem andar, quanto tempo passa no mínimo entre duas
-// reavaliações, em milissegundos.
-const INTERVALO_ENTRE_ROTACOES = 300;
+// reavaliações, em milissegundos. Cada reavaliação que troque um pedaço
+// de nível obriga a placa a reconstruir e reordenar o mapa inteiro, por
+// isso a rodar não se faz mais do que duas por segundo.
+const INTERVALO_ENTRE_ROTACOES = 500;
 
 // Quantos níveis mais grosseiros podem servir de tapa-buracos enquanto a
 // versão nítida ainda está a chegar. Sem isto, virar a cabeça abriria
@@ -81,7 +95,7 @@ const ESCALA_MINIMA_DO_TECTO = 0.05;
 // do ecrã), e em quantas voltas de bissecção se acerta o tamanho.
 const ENCOLHIMENTO_MAXIMO = 16;
 const ENCOLHIMENTO_MINIMO = 0.5;
-const VOLTAS_DA_BISSECCAO = 12;
+const VOLTAS_DA_BISSECCAO = 10;
 
 // A abertura de referência do motor: as distâncias são medidas como se a
 // câmara tivesse sempre esta abertura, para o zoom não mudar o detalhe.
@@ -243,10 +257,12 @@ function avaliarNiveis(instancia, cameraNode, maxLod, lodBaseDistance, lodMultip
     const tanHalfHFov = tanHalfVFov * camera.aspectRatio;
     const fovScale = Math.min(tanHalfVFov, tanHalfHFov) / REF_TAN_HALF_FOV;
 
-    // O cone que envolve o rectângulo do ecrã, mais a folga: tudo o que
-    // fique fora dele desce um nível.
+    // O cone que envolve o rectângulo do ecrã. O que fique fora dele, e
+    // da folga à volta, desce um nível; o que fique fora dele, folga ou
+    // não, conta uma fracção no custo, por não chegar a ser pintado.
     const meioCone = Math.atan(Math.sqrt(tanHalfVFov * tanHalfVFov + tanHalfHFov * tanHalfHFov));
     const foraDoEcra = meioCone + definicoes.margemForaDoEcra * math.DEG_TO_RAD;
+    const pesoFora = definicoes.pesoForaDoEcra;
 
     // Tudo em coordenadas do mapa, como faz o motor.
     const transformacao = instancia.placement.node.getWorldTransform();
@@ -287,17 +303,19 @@ function avaliarNiveis(instancia, cameraNode, maxLod, lodBaseDistance, lodMultip
 
     // Memória de trabalho, guardada no mapa para não nascer a cada vez:
     // a distância no balão, o nível que a bola dá (só conta a partir do
-    // nível do meio) e se o pedaço está fora do ecrã.
+    // nível do meio), se o pedaço está fora do ecrã e da folga, e quanto
+    // pesa no custo (uma mancha inteira no ecrã, uma fracção fora dele).
     let memoria = instancia._memoriaDoFoco;
     if (!memoria || memoria.noBalao.length < total) {
         memoria = instancia._memoriaDoFoco = {
             noBalao: new Float32Array(total),
             naBola: new Float32Array(total),
             nivelDaBola: new Uint8Array(total),
-            foraDoEcra: new Uint8Array(total)
+            foraDoEcra: new Uint8Array(total),
+            peso: new Float32Array(total)
         };
     }
-    const { noBalao, naBola, nivelDaBola, foraDoEcra: fora } = memoria;
+    const { noBalao, naBola, nivelDaBola, foraDoEcra: fora, peso } = memoria;
 
     // Primeira passagem: as distâncias de cada pedaço, e — se for preciso
     // conter — quanto custaria a bola.
@@ -340,6 +358,7 @@ function avaliarNiveis(instancia, cameraNode, maxLod, lodBaseDistance, lodMultip
         // tamanho dele: um quarteirão largo entra na conta pela ponta que
         // aparece no ecrã.
         let estaFora = 0;
+        let pesoDoPedaco = 1;
         const cx = (minX + maxX) * 0.5 - px;
         const cy = (minY + maxY) * 0.5 - py;
         const cz = (minZ + maxZ) * 0.5 - pz;
@@ -349,51 +368,63 @@ function avaliarNiveis(instancia, cameraNode, maxLod, lodBaseDistance, lodMultip
         if (dc > raio) {
             let cosseno = (cx * fwx + cy * fwy + cz * fwz) / dc;
             if (cosseno > 1) cosseno = 1; else if (cosseno < -1) cosseno = -1;
-            if (Math.acos(cosseno) - Math.asin(raio / dc) > foraDoEcra) estaFora = 1;
+            const desvio = Math.acos(cosseno) - Math.asin(raio / dc);
+            if (desvio > meioCone) pesoDoPedaco = pesoFora;
+            if (desvio > foraDoEcra) estaFora = 1;
         }
         fora[nodeIndex] = estaFora;
+        peso[nodeIndex] = pesoDoPedaco;
 
         if (conterNoAntigo && maxLod >= 1) {
-            custoDaBola += nodes[nodeIndex].lods[nivelBola].count;
+            custoDaBola += nodes[nodeIndex].lods[nivelBola].count * pesoDoPedaco;
         }
     }
 
     // O nível de um pedaço para um dado encolhimento do balão: o fino é
-    // do balão, do meio para cima é da bola; à beira de uma fronteira
-    // fica-se no nível em que se está (a fronteira do fino é a do balão,
-    // as outras são as da bola); fora do ecrã, e da folga à volta dele,
-    // desce-se um nível. É a mesma conta que decide o custo e que decide
-    // o nível final, para a conta bater certo.
+    // do balão, do meio para cima é da bola; fora do ecrã, e da folga à
+    // volta dele, desce-se um nível; e à beira de uma fronteira fica-se
+    // no nível em que se está (a fronteira do fino é a do balão, as
+    // outras são as da bola). A folga da fronteira só se olha depois do
+    // degrau de fora do ecrã: olhada antes, um pedaço fora do ecrã e à
+    // beira da fronteira ficava no nível em que estava e ainda descia o
+    // degrau por cima, e na vez seguinte voltava — a saltar entre dois
+    // níveis a cada reavaliação. É a mesma conta que decide o custo e
+    // que decide o nível final, para a conta bater certo.
     const nivelDoPedaco = (nodeIndex, encolhimento) => {
         if (maxLod === 0) return 0;
         const balao = noBalao[nodeIndex] * encolhimento;
         const nivelBola = nivelDaBola[nodeIndex];
         let nivel = balao < lodBaseDistance && rangeMin === 0 ? 0 : (nivelBola > 0 ? nivelBola : 1);
 
+        const degrau = fora[nodeIndex] && nivel < maxLod ? 1 : 0;
+        nivel += degrau;
+
         const currentLod = nodeInfos[nodeIndex].currentLod;
         if (histerese > 0 && currentLod >= 0 && currentLod !== nivel &&
             (currentLod === nivel + 1 || currentLod === nivel - 1)) {
-            const fronteira = currentLod > nivel ? currentLod : nivel;
-            const limiar = minDistBuf[fronteira];
-            const distancia = fronteira === 1 ? balao : naBola[nodeIndex];
-            if (Math.abs(distancia - limiar) < limiar * histerese) {
-                nivel = currentLod;
+            // A fronteira que se está a passar, descontado o degrau.
+            const fronteira = (currentLod > nivel ? currentLod : nivel) - degrau;
+            if (fronteira >= 1 && fronteira <= maxLod) {
+                const limiar = minDistBuf[fronteira];
+                const distancia = fronteira === 1 ? balao : naBola[nodeIndex];
+                if (Math.abs(distancia - limiar) < limiar * histerese) {
+                    nivel = currentLod;
+                }
             }
         }
-
-        if (fora[nodeIndex] && nivel < maxLod) nivel++;
 
         if (nivel < rangeMin) nivel = rangeMin;
         if (nivel > rangeMax) nivel = rangeMax;
         return nivel;
     };
 
-    // Quanto custa o balão com um dado encolhimento: é este número que se
+    // Quanto custa o balão com um dado encolhimento — em manchas no
+    // ecrã, com as de fora a contar uma fracção: é este número que se
     // compara com o custo da bola.
     const custoDoBalaoCom = (encolhimento) => {
         let custo = 0;
         for (let nodeIndex = 0; nodeIndex < total; nodeIndex++) {
-            custo += nodes[nodeIndex].lods[nivelDoPedaco(nodeIndex, encolhimento)].count;
+            custo += nodes[nodeIndex].lods[nivelDoPedaco(nodeIndex, encolhimento)].count * peso[nodeIndex];
         }
         return custo;
     };
@@ -413,6 +444,9 @@ function avaliarNiveis(instancia, cameraNode, maxLod, lodBaseDistance, lodMultip
             for (let volta = 0; volta < VOLTAS_DA_BISSECCAO; volta++) {
                 const meio = (baixo + alto) * 0.5;
                 if (custoDoBalaoCom(meio) <= custoDaBola) alto = meio; else baixo = meio;
+                // Acertado a dois por cento chega: cada volta é uma
+                // passagem por todos os pedaços.
+                if (alto - baixo < alto * 0.02) break;
             }
         }
         encolhimento = alto;
@@ -597,6 +631,7 @@ export function ligarLodNoCentroDaVista(app, opcoes = {}) {
         apertoLateral: opcoes.apertoLateral ?? APERTO_LATERAL,
         pesoAtras: opcoes.pesoAtras ?? PESO_ATRAS,
         margemForaDoEcra: opcoes.margemForaDoEcra ?? MARGEM_FORA_DO_ECRA,
+        pesoForaDoEcra: opcoes.pesoForaDoEcra ?? PESO_FORA_DO_ECRA,
         histerese: opcoes.histerese ?? HISTERESE,
         intervaloEntreRotacoes: opcoes.intervaloEntreRotacoes ?? INTERVALO_ENTRE_ROTACOES,
         conterNoAntigo: opcoes.conterNoAntigo ?? true,

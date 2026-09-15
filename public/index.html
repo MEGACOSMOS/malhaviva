@@ -2407,7 +2407,7 @@
             Vec3, Texture,
             PIXELFORMAT_RGBA8, FILTER_LINEAR, ADDRESS_CLAMP_TO_EDGE
         } from 'playcanvas';
-        import { ligarLodNoCentroDaVista } from './lod-foco.mjs?v=5';
+        import { ligarLodNoCentroDaVista } from './lod-foco.mjs?v=6';
         import { criarModoVR } from './vr.mjs?v=3';
         import { ligarCeu } from './ceu.mjs?v=15';
         import { ligarComando } from './comando.mjs?v=8';
@@ -3671,7 +3671,7 @@ void modifySplatColor(vec3 center, inout vec4 color) {
             // O detalhe fino do mapa concentra-se no meio da vista: chega
             // ao dobro da distância para onde se olha, encolhe para os
             // lados e para trás das costas, e o que está fora do ecrã desce
-            // um nível. Custa o mesmo que antes, ou menos.
+            // um nível. Pinta as mesmas manchas no ecrã que antes, ou menos.
             window.lodFoco = ligarLodNoCentroDaVista(app);
 
             // O ecrã de espera só sai quando o bairro estiver mesmo lá.
