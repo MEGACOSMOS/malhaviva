@@ -85,6 +85,10 @@ const frame = new InputFrame({
  */
 export const damp = (damping, dt) => 1 - Math.pow(damping, dt * 1000);
 
+// O amortecimento da rotação enquanto um dedo arrasta o bairro: quase
+// nenhum, para a vista chegar ao sítio do dedo na mesma imagem.
+const AMORTECIMENTO_DO_DEDO = 0.85;
+
 /**
  * @param {number[]} stick - The stick
  * @param {number} low - The low dead zone
@@ -1237,12 +1241,35 @@ class CameraControls extends Script {
         deltas.rotate.append([v.x, v.y, v.z]);
 
 
-        // mobile rotate (1-finger drag -> Look around)
+        // Um dedo no ecrã arrasta o bairro: o ponto que se agarra fica
+        // debaixo do dedo. Para isso, cada ponto do ecrã que o dedo anda
+        // vale os graus que esse ponto ocupa na abertura da câmara — a
+        // abertura a dividir pela altura do ecrã (ou pela largura, se a
+        // abertura for medida de lado a lado). Ao aproximar, a abertura
+        // encolhe e o dedo abranda com ela, como é natural. Antes cada
+        // ponto valia um valor fixo, duas vezes e meia mais do que isto
+        // num telemóvel ao alto: o bairro fugia do dedo.
         v.set(0, 0, 0);
+        const telaDoDedo = this.app.graphicsDevice.canvas;
+        const medidaDaTela = (this._camera.horizontalFov ? telaDoDedo.clientWidth : telaDoDedo.clientHeight) || 1;
+        const grausPorPonto = (this._camera.fov || 60) / medidaDaTela;
         const touchRotate = tmpV2.set(-touch[0], -touch[1], 0);
         // Multiply by (1 - double) so it only activates when exactly 1 finger is down.
-        v.add(touchRotate.mulScalar((1 - double) * rotateDeltaMult));
+        v.add(touchRotate.mulScalar((1 - double) * grausPorPonto));
         deltas.rotate.append([v.x, v.y, v.z]);
+
+        // E enquanto o dedo está no ecrã a vista segue-o de perto, sem o
+        // amortecimento que com o rato dá suavidade mas aqui deixava o
+        // bairro a chegar atrasado ao sítio do dedo. Largado o dedo, o
+        // amortecimento volta, para o resto do caminho acabar em suave.
+        const umDedo = this._state.touches === 1;
+        if (this._amortecimentoDeOrigem === undefined) {
+            this._amortecimentoDeOrigem = this.rotateDamping;
+        }
+        const amortecimento = umDedo ? AMORTECIMENTO_DO_DEDO : this._amortecimentoDeOrigem;
+        if (this.rotateDamping !== amortecimento) {
+            this.rotateDamping = amortecimento;
+        }
 
         // gamepad move
         v.set(0, 0, 0);
