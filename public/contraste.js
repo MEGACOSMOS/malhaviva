@@ -71,17 +71,28 @@
         // cima; o de partilhar noutra, em baixo. Cada faixa é lida à
         // parte — ler uma tira do ecrã inteiro, esmagada em quatro
         // linhas, misturava o céu com as ruas e não dizia nada de nenhum.
+        // Ícones vizinhos — quase encostados, como os da coluna do
+        // telemóvel — juntam-se na mesma faixa, para não se ler o ecrã
+        // uma vez por cada um. A coluna fechada não se mede: não se vê.
+        var FOLGA = 8;
+        var cabecalho = document.getElementById('header');
+        var gaveta = document.getElementById('acoes-do-cabecalho');
+        var gavetaFechada = window.matchMedia('(max-width: 640px)').matches &&
+            !(cabecalho && cabecalho.classList.contains('gaveta-aberta'));
+
         var faixas = [];
         elementos.forEach(function (el) {
+            if (gavetaFechada && gaveta && gaveta.contains(el)) {
+                return;
+            }
             var caixa = el.getBoundingClientRect();
-            // Sem tamanho, ou empurrado para fora do ecrã — a gaveta do
-            // telemóvel, fechada —, não há nada a medir.
+            // Sem tamanho, ou fora do ecrã, não há nada a medir.
             if (caixa.width === 0 || caixa.left >= caixaDaTela.right || caixa.top >= caixaDaTela.bottom) {
                 return;
             }
             var faixa = null;
             for (var f = 0; f < faixas.length; f++) {
-                if (caixa.top <= faixas[f].base && caixa.bottom >= faixas[f].topo) {
+                if (caixa.top <= faixas[f].base + FOLGA && caixa.bottom >= faixas[f].topo - FOLGA) {
                     faixa = faixas[f];
                     break;
                 }

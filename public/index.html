@@ -18,7 +18,7 @@
     <script src="/quadrado-de-espera.js?v=4"></script>
 
     <!-- A tinta do cabeçalho segue o brilho do bairro por trás dela. -->
-    <script src="/contraste.js?v=4"></script>
+    <script src="/contraste.js?v=5"></script>
 
     <!-- PlayCanvas Web Components (versões fixas para estabilidade em produção) -->
     <script type="importmap">
@@ -295,11 +295,13 @@
         /* ─── Responsive ─── */
         /* ─── O menu de hambúrguer, no telemóvel ───
            Num ecrã estreito os ícones do cabeçalho não cabem ao lado do
-           nome. Ficam guardados numa gaveta que sai do lado direito do
-           ecrã quando se toca no hambúrguer, à esquerda do nome. Dentro da
-           gaveta cada ícone abre o seu menu para o lado, como sempre. No
-           computador o hambúrguer não existe e a gaveta é a fila de ícones
-           de sempre. */
+           nome. Ficam guardados por baixo do hambúrguer, à esquerda do
+           nome: um toque nele desce uma coluna de ícones pelo lado
+           esquerdo, sem caixa nenhuma, cada um com um bico de seta por
+           baixo a apontar para a direita — que é para onde o menu dele
+           abre. O ecrã inteiro (e o VR, quando há) ficam no cabeçalho, à
+           direita, como sempre. No computador o hambúrguer não existe e os
+           ícones são a fila de sempre. */
         #menu-btn {
             display: none;
             background: transparent;
@@ -307,6 +309,7 @@
             width: 40px;
             height: 40px;
             padding: 0;
+            margin-right: 6px;
             align-items: center;
             justify-content: center;
             cursor: pointer;
@@ -334,56 +337,75 @@
                 display: flex;
             }
 
-            /* A gaveta: uma coluna de ícones no lado direito, por baixo do
-               cabeçalho, sem fundo — os ícones pousam sobre o bairro e a
-               tinta deles segue o brilho por baixo, como no cabeçalho. Sai
-               de fora do ecrã quando está fechada. */
+            /* A coluna dos ícones, por baixo do hambúrguer, sem caixa. */
             #acoes-do-cabecalho {
                 position: fixed;
                 top: 64px;
-                right: 12px;
-                width: 48px;
+                left: 16px;
                 flex-direction: column;
-                justify-content: flex-start;
+                align-items: flex-start;
                 gap: 6px !important;
-                padding: 0;
-                transform: translateX(calc(100% + 12px));
-                transition: transform 0.2s ease;
-                overflow: visible;
+                opacity: 0;
+                visibility: hidden;
+                pointer-events: none;
+                transition: opacity 0.15s ease, visibility 0.15s;
             }
 
             #header.gaveta-aberta #acoes-do-cabecalho {
-                transform: translateX(0);
+                opacity: 1;
+                visibility: visible;
+                pointer-events: auto;
             }
 
-            /* Cada ícone com menu leva o bico de seta por baixo, e não ao
-               lado: a apontar para a direita fechado, para a esquerda
-               aberto — o lado para onde o menu sai. */
-            #acoes-do-cabecalho .settings > button {
+            /* Cada ícone com o seu bico por baixo: aponta para a direita
+               fechado, para a esquerda aberto. */
+            #acoes-do-cabecalho #definicoes-btn,
+            #acoes-do-cabecalho #dev-btn,
+            #acoes-do-cabecalho #idioma-btn {
                 flex-direction: column;
-                width: 48px;
-                height: 52px;
+                width: 40px;
+                height: auto;
                 gap: 1px;
-                padding: 0;
+                padding: 6px 0 4px;
             }
+
+            /* Com o menu aberto o ícone não vira do avesso: pousado sobre o
+               bairro, virar era desaparecer. Quem diz que está aberto é o
+               bico, virado para a esquerda. */
+            #acoes-do-cabecalho .settings:has(.open) > button {
+                color: var(--tinta);
+            }
+
             #acoes-do-cabecalho .seta-menu {
                 transform: rotate(-90deg);
             }
+
             #acoes-do-cabecalho .settings:has(.open) .seta-menu {
                 transform: rotate(90deg);
             }
 
-            /* Os menus abrem para a esquerda da gaveta, alinhados com o
-               ícone que os abriu. */
+            /* Os menus abrem para a direita do ícone, alinhados com ele. */
             #acoes-do-cabecalho #definicoes-menu,
             #acoes-do-cabecalho #dev-menu,
             #acoes-do-cabecalho #idioma-menu {
                 top: 0;
-                right: 56px;
-                max-width: calc(100vw - 92px);
+                left: 52px;
+                right: auto;
+                transform-origin: top left;
+                max-width: calc(100vw - 84px);
             }
             #acoes-do-cabecalho #dev-menu {
                 max-height: calc(100vh - 96px);
+            }
+
+            /* A ponte entre o ícone e o menu passa a estar à direita. */
+            #acoes-do-cabecalho .settings:has(.open)::before {
+                top: 0;
+                bottom: 0;
+                left: 100%;
+                right: auto;
+                width: 14px;
+                height: auto;
             }
         }
 
@@ -1443,16 +1465,25 @@
 
     <!-- Header -->
     <div id="header">
+        <!-- O hambúrguer, só no telemóvel: abre e fecha a gaveta dos ícones. -->
+        <button type="button" id="menu-btn" class="adaptavel" aria-label="Menu" title="Menu" data-i18n-aria="cab.menu" data-i18n-title="cab.menu" aria-expanded="false" aria-controls="acoes-do-cabecalho">
+            <svg class="fechado" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true">
+                <line x1="3" y1="6" x2="21" y2="6"></line>
+                <line x1="3" y1="12" x2="21" y2="12"></line>
+                <line x1="3" y1="18" x2="21" y2="18"></line>
+            </svg>
+            <svg class="aberto" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true">
+                <line x1="5" y1="5" x2="19" y2="19"></line>
+                <line x1="19" y1="5" x2="5" y2="19"></line>
+            </svg>
+        </button>
         <div class="brand">
             <div class="brand-text">
                 <span class="brand-name adaptavel">Malha Viva</span>
             </div>
         </div>
 
-        <!-- À direita: a gaveta dos ícones (no computador é só a fila de
-             ícones de sempre), o ecrã inteiro, que fica sempre à vista, e o
-             hambúrguer, só no telemóvel. -->
-        <div id="cabecalho-direita" style="display: flex; align-items: center; gap: 8px;">
+        <div id="lado-direito" style="display: flex; align-items: center; gap: 8px; margin-left: auto;">
         <div id="acoes-do-cabecalho" style="display: flex; align-items: center; gap: 8px;">
             <div class="settings" id="dev-menu-container">
                 <button id="dev-btn" class="adaptavel" title="Menu de Desenvolvedor">
@@ -1736,27 +1767,15 @@
             </div>
         </div>
 
+        </div>
+
+            <!-- Fora da gaveta: ficam no cabeçalho em qualquer ecrã. -->
             <button id="vr-btn" class="adaptavel" title="Modo VR" data-i18n-title="cab.vr" style="display: none;">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a3 3 0 0 1 3-3h12a3 3 0 0 1 3 3v3a3 3 0 0 1-3 3h-2.5a2 2 0 0 1-1.7-1l-.9-1.4a1.2 1.2 0 0 0-2 0l-.9 1.4a2 2 0 0 1-1.7 1H6a3 3 0 0 1-3-3z"></path></svg>
             </button>
 
-        </div>
-
             <button id="fullscreen-main-btn" class="adaptavel" title="Ecrã Inteiro" data-i18n-title="cab.ecra">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="square" stroke-linejoin="miter"><path d="M8 3H3v5m18 0V3h-5m0 18h5v-5M3 16v5h5"></path></svg>
-            </button>
-
-            <!-- O hambúrguer, só no telemóvel: abre e fecha a gaveta dos ícones. -->
-            <button type="button" id="menu-btn" class="adaptavel" aria-label="Menu" title="Menu" data-i18n-aria="cab.menu" data-i18n-title="cab.menu" aria-expanded="false" aria-controls="acoes-do-cabecalho">
-                <svg class="fechado" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true">
-                    <line x1="3" y1="6" x2="21" y2="6"></line>
-                    <line x1="3" y1="12" x2="21" y2="12"></line>
-                    <line x1="3" y1="18" x2="21" y2="18"></line>
-                </svg>
-                <svg class="aberto" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true">
-                    <line x1="5" y1="5" x2="19" y2="19"></line>
-                    <line x1="19" y1="5" x2="5" y2="19"></line>
-                </svg>
             </button>
         </div>
     </div>
