@@ -44,6 +44,8 @@
             'def.rotas360': 'Rotas 360º',
             'def.cenario': 'Cenário',
             'def.paisagem': 'Paisagem',
+            'def.controlos': 'Controlos',
+            'def.manipulo': 'Manípulo',
 
             'idm.titulo': 'Idioma',
             'mapa.testemunhoDe': 'Testemunho de {nome}',
@@ -216,6 +218,8 @@
             'def.rotas360': '360º Routes',
             'def.cenario': 'Scenery',
             'def.paisagem': 'Landscape',
+            'def.controlos': 'Controls',
+            'def.manipulo': 'Joystick',
 
             'idm.titulo': 'Language',
             'mapa.testemunhoDe': 'Testimony from {nome}',
@@ -388,6 +392,8 @@
             'def.rotas360': 'Rutas 360º',
             'def.cenario': 'Escenario',
             'def.paisagem': 'Paisaje',
+            'def.controlos': 'Controles',
+            'def.manipulo': 'Mando',
 
             'idm.titulo': 'Idioma',
             'mapa.testemunhoDe': 'Testimonio de {nome}',
@@ -560,6 +566,8 @@
             'def.rotas360': 'Rotas 360º',
             'def.cenario': 'Senáriu',
             'def.paisagem': 'Paizajen',
+            'def.controlos': 'Kontrolu',
+            'def.manipulo': 'Manípulu',
 
             'idm.titulo': 'Lingua',
             'mapa.testemunhoDe': 'Tistimunhu di {nome}',

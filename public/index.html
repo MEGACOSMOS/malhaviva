@@ -651,6 +651,12 @@
             padding-right: 28px;
         }
 
+        /* O menu de desenvolvedor não se vê: só aparece a quem escrever a
+           palavra-passe no teclado (ver `cheatCode`, mais abaixo). */
+        body:not(.programador) #dev-menu-container {
+            display: none !important;
+        }
+
         /* O menu de desenvolvedor cresceu com as afinações do céu e já não
            cabe em ecrãs baixos: ganha altura máxima e rola por dentro. A
            barra fica discreta, do tom do painel. */
@@ -986,12 +992,15 @@
             background: rgba(255, 255, 255, 0.85);
         }
 
-        @media (hover: none) and (pointer: coarse) {
-            #joystick {
-                display: block;
-            }
+        /* O manípulo liga-se nas definições ("Controlos → Manípulo"). Num
+           ecrã táctil vem ligado de origem; noutro aparelho fica à mão de
+           quem o quiser. É a classe no corpo da página que o mostra. */
+        body.com-manipulo #joystick {
+            display: block;
+        }
+        @media (max-width: 900px) {
             /* O rodapé sobe para cima do manípulo e do botão de partilhar. */
-            #rodape-comandos {
+            body.com-manipulo #rodape-comandos {
                 bottom: 144px;
             }
         }
@@ -1784,6 +1793,14 @@
                     <label class="settings-radio">
                         <input type="checkbox" id="paisagem-ligada">
                         <span data-i18n="def.paisagem">Paisagem</span>
+                    </label>
+                </div>
+
+                <div class="settings-title" style="margin-top: 18px;" data-i18n="def.controlos">Controlos</div>
+                <div class="settings-options">
+                    <label class="settings-radio">
+                        <input type="checkbox" id="manipulo-ligado">
+                        <span data-i18n="def.manipulo">Manípulo</span>
                     </label>
                 </div>
             </div>
@@ -2844,6 +2861,29 @@ void modifySplatColor(vec3 center, inout vec4 color) {
             });
         }
 
+        // O menu de desenvolvedor vive escondido. Escrever
+        // "filipeprogramador" em qualquer sítio da página liga-o (e
+        // escrever outra vez desliga-o); a escolha fica guardada.
+        (function cheatCode() {
+            const PALAVRA = 'filipeprogramador';
+            let escrito = '';
+            const aplicar = () => document.body.classList.toggle('programador', localStorage.getItem('programador') === 'on');
+            aplicar();
+            document.addEventListener('keydown', (e) => {
+                if (e.key.length !== 1) return;
+                escrito = (escrito + e.key.toLowerCase()).slice(-PALAVRA.length);
+                if (escrito !== PALAVRA) return;
+                escrito = '';
+                const ligado = localStorage.getItem('programador') !== 'on';
+                localStorage.setItem('programador', ligado ? 'on' : 'off');
+                aplicar();
+                if (!ligado) {
+                    const menu = document.getElementById('dev-menu');
+                    if (menu) menu.classList.remove('open');
+                }
+            });
+        })();
+
         // Developer Menu Logic
         const devBtn = document.getElementById('dev-btn');
         const devMenu = document.getElementById('dev-menu');
@@ -3033,6 +3073,21 @@ void modifySplatColor(vec3 center, inout vec4 color) {
                 const gemeo = document.getElementById('ceu-ligado');
                 if (gemeo) gemeo.checked = caixaDaPaisagem.checked;
             });
+        }
+
+        // O manípulo do ecrã. Num ecrã táctil vem ligado; num aparelho com
+        // rato fica desligado até alguém o pedir. A escolha fica guardada.
+        const caixaDoManipulo = document.getElementById('manipulo-ligado');
+        if (caixaDoManipulo) {
+            const guardado = localStorage.getItem('manipulo');
+            const tactil = window.matchMedia('(hover: none) and (pointer: coarse)').matches;
+            caixaDoManipulo.checked = guardado ? guardado === 'on' : tactil;
+            const aplicarManipulo = () => document.body.classList.toggle('com-manipulo', caixaDoManipulo.checked);
+            caixaDoManipulo.addEventListener('change', () => {
+                localStorage.setItem('manipulo', caixaDoManipulo.checked ? 'on' : 'off');
+                aplicarManipulo();
+            });
+            aplicarManipulo();
         }
 
         tiposDeAnotacao.forEach(({ id, chave }) => {
