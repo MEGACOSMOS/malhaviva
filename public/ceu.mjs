@@ -74,7 +74,11 @@ const PADRAO = {
  * @param {object} app - A aplicação 3D.
  * @returns {object} Comandos do céu.
  */
-export function ligarCeu(app) {
+export function ligarCeu(app, opcoes) {
+    // A largura a que a fotografia é trabalhada antes de virar cubo. Por
+    // omissão é a grande; num aparelho pequeno a página pede menos, que as
+    // faces do cubo lá são pequenas e a diferença não se vê.
+    const LARGURA_MAIOR = Math.min(LARGURA_FINAL, (opcoes && opcoes.larguraMaxima) || LARGURA_FINAL);
     const definicoes = Object.assign({}, PADRAO, lerGuardado());
     definicoes.ajustes = Object.assign({}, AJUSTES_PADRAO, definicoes.ajustes || {});
     let cubo = null;
@@ -171,7 +175,7 @@ export function ligarCeu(app) {
         construirCubo(LARGURA_RAPIDA).then(aplicar);
         clearTimeout(temporizador);
         temporizador = setTimeout(() => {
-            construirCubo(LARGURA_FINAL).then(aplicar);
+            construirCubo(LARGURA_MAIOR).then(aplicar);
         }, 450);
     }
 
@@ -217,7 +221,7 @@ export function ligarCeu(app) {
     function afinar(campo, valor) {
         definicoes[campo] = valor;
         if (campo === 'ligado' && valor && !cubo) {
-            construirCubo(LARGURA_FINAL).then(aplicar);
+            construirCubo(LARGURA_MAIOR).then(aplicar);
             return;
         }
         aplicar();
@@ -237,7 +241,7 @@ export function ligarCeu(app) {
     }
 
     if (definicoes.ligado) {
-        construirCubo(LARGURA_FINAL).then(aplicar);
+        construirCubo(LARGURA_MAIOR).then(aplicar);
     }
 
     return {

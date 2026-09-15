@@ -51,6 +51,9 @@
 
             'carga.modelo': 'A carregar modelo 3D…',
             'carga.restaurar': 'A restaurar ambiente 3D…',
+            'gpu.aTentar': 'O aparelho ficou sem memória gráfica. A tentar de novo com menos detalhe…',
+            'gpu.desistiu': 'Este aparelho não consegue mostrar o bairro em 3D.',
+            'gpu.botao': 'Tentar de novo',
 
             'limite.titulo': 'Chegaste ao limite do mapa.',
             'limite.sub': 'Não há terreno para lá desta zona.',
@@ -215,6 +218,9 @@
 
             'carga.modelo': 'Loading 3D model…',
             'carga.restaurar': 'Restoring 3D environment…',
+            'gpu.aTentar': 'The device ran out of graphics memory. Trying again with less detail…',
+            'gpu.desistiu': 'This device cannot display the neighbourhood in 3D.',
+            'gpu.botao': 'Try again',
 
             'limite.titulo': 'You have reached the edge of the map.',
             'limite.sub': 'There is no ground beyond this area.',
@@ -379,6 +385,9 @@
 
             'carga.modelo': 'Cargando modelo 3D…',
             'carga.restaurar': 'Restaurando entorno 3D…',
+            'gpu.aTentar': 'El dispositivo se quedó sin memoria gráfica. Intentando de nuevo con menos detalle…',
+            'gpu.desistiu': 'Este dispositivo no puede mostrar el barrio en 3D.',
+            'gpu.botao': 'Intentar de nuevo',
 
             'limite.titulo': 'Has llegado al límite del mapa.',
             'limite.sub': 'No hay terreno más allá de esta zona.',
@@ -543,6 +552,9 @@
 
             'carga.modelo': 'Ta karega modelu 3D…',
             'carga.restaurar': 'Ta restaura anbienti 3D…',
+            'gpu.aTentar': 'El dispositivo se quedó sin memoria gráfica. Intentando de nuevo con menos detalle…',
+            'gpu.desistiu': 'Este dispositivo no puede mostrar el barrio en 3D.',
+            'gpu.botao': 'Intentar de nuevo',
 
             'limite.titulo': 'Bu txiga na fin di mapa.',
             'limite.sub': 'Ka ten txon pa la di es zona.',

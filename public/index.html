@@ -11,7 +11,7 @@
 
     <!-- As línguas do site. Fica antes de tudo o resto para o texto
          nascer já na língua certa, sem piscar em português primeiro. -->
-    <script src="/idiomas.js?v=12"></script>
+    <script src="/idiomas.js?v=13"></script>
 
     <!-- O quadrado de espera, o mesmo em todo o site. Fica antes de o
          ecrã de espera se desenhar, para nascer já com a sua roupa. -->
@@ -1962,7 +1962,17 @@
             var guardada = null;
             try { guardada = localStorage.getItem('quality'); } catch (e) { guardada = null; }
             var nivel = (!guardada || guardada === 'auto') ? detetarNivel() : guardada;
+
+            // Modo de poupança: fica ligado quando a placa gráfica do
+            // aparelho desistiu a meio de uma visita (ver "Quando a placa
+            // gráfica desiste", mais abaixo). A página recarrega-se com
+            // esta marca e pede muito menos ao aparelho. Vale só para esta
+            // sessão: numa visita nova volta a tentar-se o normal.
+            var poupanca = false;
+            try { poupanca = sessionStorage.getItem('poupanca') === '1'; } catch (e) { poupanca = false; }
+            if (poupanca) nivel = 'low';
             window.actualQuality = nivel;
+            window.modoDePoupanca = poupanca;
 
             // O modo VR pede o motor de desenho antigo (WebGL2): é o único
             // que os óculos sabem receber. Quando se entra em VR a página
@@ -1986,7 +1996,7 @@
                     var densidade = 1;
                     if (nivel === 'low') {
                         var pontosDoEcra = Math.max(1, window.innerWidth * window.innerHeight);
-                        densidade = Math.min(1, Math.sqrt(900000 / pontosDoEcra));
+                        densidade = Math.min(1, Math.sqrt((poupanca ? 500000 : 900000) / pontosDoEcra));
                     }
                     motor.setAttribute('max-pixel-ratio', densidade.toFixed(3));
                 }
@@ -2006,7 +2016,7 @@
         } from 'playcanvas';
         import { ligarLodNoCentroDaVista } from './lod-foco.mjs?v=4';
         import { criarModoVR } from './vr.mjs?v=3';
-        import { ligarCeu } from './ceu.mjs?v=14';
+        import { ligarCeu } from './ceu.mjs?v=15';
         import { ligarComando } from './comando.mjs?v=8';
 
         // Resolução da grelha usada para medir o mapa, em metros.
@@ -2756,7 +2766,11 @@ void modifySplatColor(vec3 center, inout vec4 color) {
             // chegar a pedir mais detalhe do que aquele que vai desenhar.
             if (app.scene && app.scene.gsplat) {
                 if (!isHigh) {
-                    app.scene.gsplat.splatBudget = isMed ? 1200000 : 500000;
+                    // No Baixo o tecto desceu de quinhentas para trezentas
+                    // mil manchas: um telemóvel de gama média ficava sem
+                    // memória gráfica a meio da visita e a placa desistia.
+                    // Em modo de poupança desce ainda mais.
+                    app.scene.gsplat.splatBudget = isMed ? 1200000 : (window.modoDePoupanca ? 150000 : 300000);
                 }
             }
 
@@ -2787,7 +2801,7 @@ void modifySplatColor(vec3 center, inout vec4 color) {
                     densidade = Math.min(2160 / menorLado, window.devicePixelRatio || 1, 2);
                 } else if (isLow) {
                     const pontosDoEcra = Math.max(1, window.innerWidth * window.innerHeight);
-                    const TECTO_DE_PONTOS = 900000;
+                    const TECTO_DE_PONTOS = window.modoDePoupanca ? 500000 : 900000;
                     densidade = Math.min(1, Math.sqrt(TECTO_DE_PONTOS / pontosDoEcra));
                 } else {
                     densidade = 1;
@@ -2810,8 +2824,17 @@ void modifySplatColor(vec3 center, inout vec4 color) {
             // --- Céu ---
             // A panorâmica do Olho de Águia passa a envolver o mapa, e o
             // menu de desenvolvedor deixa afiná-la sem mexer no código.
-            const ceu = ligarCeu(app);
+            // Num telemóvel a fotografia do céu é trabalhada em metade da
+            // largura — as faces do cubo são pequenas e não se nota — e em
+            // modo de poupança num quarto: a fotografia inteira, em
+            // vírgula flutuante, era um pico de trinta e dois megas de
+            // memória gráfica que num aparelho pequeno fazia diferença.
+            const ceu = ligarCeu(app, {
+                larguraMaxima: window.modoDePoupanca ? 1024 : (isLow ? 2048 : undefined)
+            });
             window.ceu = ceu;
+
+            vigiarAPlacaGrafica(app);
 
             // --- Comando de jogo ---
             // Os dois sticks já andavam pelo bairro por conta do motor; o
@@ -2887,6 +2910,81 @@ void modifySplatColor(vec3 center, inout vec4 color) {
                     }
                 });
             });
+
+            /**
+             * Quando a placa gráfica desiste.
+             *
+             * Num telemóvel com pouca memória gráfica, o navegador pode
+             * matar o desenho a meio: o bairro fica branco, e o motor não
+             * se levanta sozinho. Aqui ouve-se esse momento — pelas duas
+             * portas que o navegador tem para o dizer, e ainda pelos erros
+             * que o motor deixa cair quando lhe acontece — e faz-se uma de
+             * duas coisas: se ainda não se tentou, recarrega-se a página em
+             * modo de poupança, a pedir muito menos ao aparelho; se já se
+             * estava em poupança e mesmo assim não deu, diz-se com todas as
+             * letras, em vez de deixar um ecrã branco.
+             *
+             * @param {object} app - A aplicação 3D.
+             */
+            function vigiarAPlacaGrafica(app) {
+                const device = app.graphicsDevice;
+                if (!device) return;
+                let jaTratado = false;
+                const t = (chave, senao) => (window.Idiomas && window.Idiomas.t(chave)) || senao;
+
+                const desistiu = () => {
+                    if (jaTratado) return;
+                    jaTratado = true;
+
+                    const overlay = document.getElementById('loading-overlay');
+                    const letreiro = overlay && overlay.querySelector('.loading-text');
+                    if (overlay) {
+                        overlay.style.transition = 'none';
+                        overlay.classList.remove('hidden');
+                    }
+                    // O aviso vermelho dos erros em bruto sai da frente: o
+                    // que se diz aqui já o diz por palavras.
+                    const bruto = document.getElementById('debug-error');
+                    if (bruto) bruto.style.display = 'none';
+
+                    if (!window.modoDePoupanca) {
+                        try { sessionStorage.setItem('poupanca', '1'); } catch (e) { /* sem memória: tenta na mesma */ }
+                        if (letreiro) letreiro.textContent = t('gpu.aTentar', 'O aparelho ficou sem memória gráfica. A tentar de novo com menos detalhe…');
+                        setTimeout(() => window.location.reload(), 900);
+                        return;
+                    }
+
+                    // Já era a poupança: não há mais por onde descer.
+                    if (letreiro) {
+                        letreiro.textContent = t('gpu.desistiu', 'Este aparelho não consegue mostrar o bairro em 3D.');
+                        const botao = document.createElement('button');
+                        botao.type = 'button';
+                        botao.id = 'recenter-btn';
+                        botao.style.marginTop = '18px';
+                        botao.textContent = t('gpu.botao', 'Tentar de novo');
+                        botao.addEventListener('click', () => {
+                            try { sessionStorage.removeItem('poupanca'); } catch (e) { /* nada */ }
+                            window.location.reload();
+                        });
+                        letreiro.insertAdjacentElement('afterend', botao);
+                    }
+                };
+
+                // As portas do navegador: uma para o WebGL, outra para o WebGPU.
+                if (device.canvas) device.canvas.addEventListener('webglcontextlost', desistiu);
+                if (device.wgpu && device.wgpu.lost && device.wgpu.lost.then) device.wgpu.lost.then(desistiu, () => {});
+                if (typeof device.on === 'function') device.on('devicelost', desistiu);
+
+                // E os erros que o motor deixa cair quando a placa lhe foge
+                // debaixo dos pés, que são a maneira mais certa de dar por
+                // isso quando as portas de cima ficam caladas.
+                window.addEventListener('unhandledrejection', (e) => {
+                    const texto = String((e.reason && (e.reason.message || e.reason.stack)) || e.reason || '');
+                    if (/clientWaitSync|mapAsync|handleDeviceLost|reading 'features'|context lost|device lost/i.test(texto)) {
+                        desistiu();
+                    }
+                });
+            }
 
             /**
              * Mostra, no menu de desenvolvedor, o que o comando de jogo
