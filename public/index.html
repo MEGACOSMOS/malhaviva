@@ -2392,7 +2392,7 @@
             Vec3, Texture,
             PIXELFORMAT_RGBA8, FILTER_LINEAR, ADDRESS_CLAMP_TO_EDGE
         } from 'playcanvas';
-        import { ligarLodNoCentroDaVista } from './lod-foco.mjs?v=4';
+        import { ligarLodNoCentroDaVista } from './lod-foco.mjs?v=5';
         import { criarModoVR } from './vr.mjs?v=3';
         import { ligarCeu } from './ceu.mjs?v=15';
         import { ligarComando } from './comando.mjs?v=8';
@@ -2743,15 +2743,13 @@ void modifySplatColor(vec3 center, inout vec4 color) {
                         splatEl.entity.gsplat.lodMultiplier = 2; 
                     }
 
-                    // O que fica para trás das costas conta como mais
-                    // distante, e o detalhe que assim se poupa vai todo para
-                    // a frente. É uma troca boa nos equipamentos mais fracos,
-                    // mas no nível Alto tira nitidez a pedaços que estão a
-                    // meia dúzia de metros e ainda se vêem de canto de olho,
-                    // e faz o mapa mudar de nível mal se roda a vista. Aí
-                    // fica desligada, como no visualizador do SuperSplat.
+                    // A direcção do olhar já conta no detalhe — é o balão
+                    // do lod-foco.mjs que trata disso, em todos os níveis —,
+                    // por isso o castigo de origem do motor para o que fica
+                    // atrás das costas fica desligado, para não contar duas
+                    // vezes.
                     if (app && app.scene && app.scene.gsplat) {
-                        app.scene.gsplat.lodBehindPenalty = isHigh ? 1 : 2;
+                        app.scene.gsplat.lodBehindPenalty = 1;
                     }
 
                     // O tecto de manchas no ecrã é posto mal o motor
@@ -3615,9 +3613,10 @@ void modifySplatColor(vec3 center, inout vec4 color) {
                 setTimeout(() => aviso.remove(), 5000);
             }
 
-            // O detalhe fino do mapa passa a seguir o centro da vista em vez
-            // da posição da câmara, com um limite de distância para não
-            // carregar pormenores longe demais para se notarem.
+            // O detalhe fino do mapa concentra-se no meio da vista: chega
+            // ao dobro da distância para onde se olha, encolhe para os
+            // lados e para trás das costas, e o que está fora do ecrã desce
+            // um nível. Custa o mesmo que antes, ou menos.
             window.lodFoco = ligarLodNoCentroDaVista(app);
 
             // O ecrã de espera só sai quando o bairro estiver mesmo lá.
