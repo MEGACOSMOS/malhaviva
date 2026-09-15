@@ -726,7 +726,9 @@ AnnotationController.prototype.initialize = function() {
             width: 100%;
             height: 100%;
             border: none;
-            background: #000;
+            /* Sem cor própria: até a página de lá pintar, vê-se o que está
+               por baixo — o rodapé de reserva — em vez de um preto. */
+            background: transparent;
             display: block;
         }
         /* A barra dos comandos de reserva: veste-se como a da página da
@@ -771,13 +773,10 @@ AnnotationController.prototype.initialize = function() {
             object-fit: cover;
         }
         /* O quadrado de espera, por cima da imagem parada, enquanto a
-           página da rota carrega. Só aparece depois de a janela ter
-           assentado (ela nasce um pouco encolhida): a aparecer ao mesmo
-           tempo, parecia ser ele a fazê-la crescer. */
+           página da rota carrega. */
         .moldura-360 .previa-do-meio .espera-video {
             display: grid;
-            animation: botoes-a-surgir 0.3s ease-out both;
-            animation-delay: 0.5s;
+            animation: botoes-a-surgir 0.25s ease-out both;
         }
 
         /* O rodapé, vazio: é o lugar que a barra dos comandos ocupa na
@@ -1688,8 +1687,11 @@ AnnotationController.prototype.mostrarParagem360 = function(ann) {
     const faltava = !this.viewedAnnotations.includes(annId);
     this.marcarComoVisto(annId);
 
+    // As barras surgem a esbater quando a janela abre; ao passar de uma
+    // paragem para a outra já estavam à vista, e ficam como estão.
+    const aAbrir = palco.modal.style.display === 'none';
     palco.titulo.textContent = this.nomeDaParagem360(ann);
-    fazerSurgir(palco.barraDoNome);
+    if (aAbrir) fazerSurgir(palco.barraDoNome);
     // A altura da barra dos comandos da página de lá só se mede quando
     // ela carrega; até lá vale a última medida do mesmo tipo de paragem,
     // para a janela nascer já do tamanho certo em vez de crescer depois.
@@ -1708,7 +1710,7 @@ AnnotationController.prototype.mostrarParagem360 = function(ann) {
     rodape.className = 'rodape-do-meio';
     rodape.setAttribute('aria-hidden', 'true');
     palco.moldura.appendChild(rodape);
-    fazerSurgir(rodape);
+    if (aAbrir) fazerSurgir(rodape);
     this.tapar360EnquantoChega(ann);
 
     clearTimeout(this.esperaDaJanela360);
@@ -3081,8 +3083,10 @@ AnnotationController.prototype.abrirTestemunho = function(nome, title, sentido, 
     // janela em segundo plano essa imagem pode nunca chegar.
     void this.modal.offsetWidth;
     this.modalContent.classList.add('aberta');
-    // As duas barras surgem a esbater, de novo a cada abertura.
-    fazerSurgir(this.barraDoNome, this.barraDosComandos);
+    // As duas barras surgem a esbater quando a janela abre; ao passar
+    // de um testemunho para o outro já estavam à vista, e ficam como
+    // estão.
+    if (!sentido) fazerSurgir(this.barraDoNome, this.barraDosComandos);
 
     apagarOBairroPorTras(this.app);
 };
