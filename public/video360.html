@@ -144,6 +144,12 @@
             opacity: 1;
             pointer-events: auto;
         }
+        /* Enquanto o filme ainda não arrancou, o que está no meio é o
+           quadrado de espera: este botão, que é o da pausa, não aparece. */
+        body.a-carregar #ui-layer.paused .big-play-btn {
+            opacity: 0;
+            pointer-events: none;
+        }
         #ui-layer.paused .big-play-btn:hover {
             transform: translate(-50%, -50%) scale(1.1);
             color: #ffffff;
@@ -508,7 +514,7 @@
         }
     </style>
 </head>
-<body>
+<body class="a-carregar">
     <!-- A imagem em cima, os comandos em baixo. A cena é "embedded"
          para caber neste sítio em vez de tomar a página toda. -->
     <div id="palco-360">
@@ -747,9 +753,16 @@
         // imagem enquanto ela não chega; avisa-se quando ela está posta.
         const avisarQueAPreviaEstaPosta = () => {
             if (window.parent === window) return;
-            requestAnimationFrame(() => requestAnimationFrame(() => {
-                window.parent.postMessage({ malhaViva: 'previa360pronta', nome }, window.location.origin);
-            }));
+            // Só depois de a cena estar a ser desenhada, e de duas
+            // imagens dela: antes disso a textura existe mas ninguém a
+            // pôs no ecrã, e o mapa destapava a janela para se ver preto.
+            const avisar = () => {
+                requestAnimationFrame(() => requestAnimationFrame(() => {
+                    window.parent.postMessage({ malhaViva: 'previa360pronta', nome }, window.location.origin);
+                }));
+            };
+            if (scene.renderStarted) avisar();
+            else scene.addEventListener('renderstart', avisar, { once: true });
         };
         if (!ecraPlano && !enderecoDirecto) {
             esferaDaPrevia = document.createElement('a-sky');
@@ -758,7 +771,7 @@
             esferaDaPrevia.setAttribute('rotation', '0 180 0');
             esferaDaPrevia.setAttribute('segments-width', '128');
             esferaDaPrevia.setAttribute('segments-height', '64');
-            esferaDaPrevia.setAttribute('material', 'shader: flat; side: back; npot: true; transparent: true; opacity: 1');
+            esferaDaPrevia.setAttribute('material', 'shader: flat; side: back; npot: true');
             esferaDaPrevia.addEventListener('materialtextureloaded', avisarQueAPreviaEstaPosta, { once: true });
             scene.appendChild(esferaDaPrevia);
         } else {
@@ -768,8 +781,9 @@
             const esfera = esferaDaPrevia;
             if (!esfera) return;
             esferaDaPrevia = null;
-            esfera.setAttribute('animation', 'property: material.opacity; from: 1; to: 0; dur: 700; easing: easeInOutQuad');
-            setTimeout(() => { if (esfera.parentNode) esfera.parentNode.removeChild(esfera); }, 800);
+            // Sai de vez, sem esbater: o filme começa no mesmo instante
+            // que a imagem mostrava, e um esbatimento só o baralhava.
+            if (esfera.parentNode) esfera.parentNode.removeChild(esfera);
         };
 
         // --- Video Logic ---
@@ -847,6 +861,7 @@
             if (cortinaAberta) return;
             cortinaAberta = true;
             porOSom();
+            document.body.classList.remove('a-carregar');
             overlay.style.display = 'none';
             uiLayer.classList.remove('paused');
             despedirAPrevia();
@@ -989,11 +1004,16 @@
                     // arrancar sozinho e a cortina abre-se na mesma.
                     if (erro && erro.name === 'AbortError') return;
                     // O navegador não deixou: fica o botão à espera do
-                    // toque, no lugar do quadrado de espera.
+                    // toque, no lugar do quadrado de espera — e o mapa,
+                    // que tapa esta janela enquanto o filme não anda, tem
+                    // de a destapar para o botão se ver.
                     porOSom();
                     if (cortinaAberta) return;
                     spinner.style.display = 'none';
                     playBtnInitial.style.display = 'flex';
+                    if (window.parent !== window) {
+                        window.parent.postMessage({ malhaViva: 'botao360aEspera', nome }, window.location.origin);
+                    }
                 });
             });
         }

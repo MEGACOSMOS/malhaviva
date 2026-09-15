@@ -699,19 +699,26 @@ AnnotationController.prototype.initialize = function() {
            janela do lado mostrava, no mesmo sítio, e sai quando a página
            de lá tem a sua. Cobre só a parte da imagem; a barra dos
            comandos fica a preto até vir a de lá. */
-        .moldura-360 canvas.previa-do-meio {
+        .moldura-360 .previa-do-meio {
             position: absolute;
             left: 0;
             top: 0;
             width: 100%;
             height: calc(100% - var(--altura-controlos, 0px));
-            object-fit: cover;
             pointer-events: none;
             z-index: 2;
-            transition: opacity 0.35s ease;
+            overflow: hidden;
         }
-        .moldura-360 canvas.previa-do-meio.a-sair {
-            opacity: 0;
+        .moldura-360 .previa-do-meio canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        /* O quadrado de espera, por cima da imagem parada, enquanto a
+           página da rota carrega. */
+        .moldura-360 .previa-do-meio .espera-video {
+            display: grid;
         }
 
         /* O rodapé, vazio: é o lugar que a barra dos comandos ocupa na
@@ -1694,48 +1701,53 @@ AnnotationController.prototype.tapar360EnquantoChega = function(ann, janela) {
     }
     const palco = this.palco360;
     const video = this.videoDaRota360(ann);
-    const tapa = document.createElement('canvas');
+    const tapa = document.createElement('div');
     tapa.className = 'previa-do-meio';
     tapa.setAttribute('aria-hidden', 'true');
+    const tela = document.createElement('canvas');
+    tapa.appendChild(tela);
+    // O quadrado de espera por cima, para se ver que a rota está a
+    // carregar: a página de lá tem o seu, mas fica por baixo disto.
+    const espera = document.createElement('div');
+    espera.className = 'espera-video';
+    if (window.QuadradoDeEspera) window.QuadradoDeEspera.fazer(espera);
+    tapa.appendChild(espera);
+    if (janela.parentNode === palco.moldura) {
+        palco.moldura.appendChild(tapa);
+    }
 
     const jaDesenhada = [palco.esquerda, palco.direita]
         .map(lado => lado && lado.querySelector('.previa-janela canvas'))
-        .find(tela => tela && tela.dataset.video === video && tela.width > 0);
-    let pronta;
+        .find(t => t && t.dataset.video === video && t.width > 0);
     if (jaDesenhada) {
-        tapa.width = jaDesenhada.width;
-        tapa.height = jaDesenhada.height;
-        tapa.getContext('2d').drawImage(jaDesenhada, 0, 0);
-        pronta = Promise.resolve();
+        tela.width = jaDesenhada.width;
+        tela.height = jaDesenhada.height;
+        tela.getContext('2d').drawImage(jaDesenhada, 0, 0);
     } else {
-        pronta = carregarPrevia360(tapa, previaDe(video), olharInicialDe(video), ABERTURA_INICIAL, 960, 540);
+        carregarPrevia360(tela, previaDe(video), olharInicialDe(video), ABERTURA_INICIAL, 960, 540)
+            .catch(() => { /* sem imagem, fica o preto de sempre, com o quadrado */ });
     }
-    pronta.then(() => {
-        if (janela.parentNode === palco.moldura) {
-            palco.moldura.appendChild(tapa);
-        }
-    }).catch(() => { /* sem imagem, fica o preto de sempre */ });
 
     let saiu = false;
     const sair = () => {
         if (saiu) return;
         saiu = true;
         window.removeEventListener('message', aoAviso);
-        tapa.classList.add('a-sair');
-        setTimeout(() => tapa.remove(), 400);
+        tapa.remove();
     };
-    // Sai quando a página de lá tem a sua imagem posta — ou, sem falta,
-    // quando o filme anda, para nunca se ouvir o filme com a imagem
-    // parada por cima.
+    // Sai quando o filme anda, e não antes: até lá é esta imagem, com o
+    // quadrado de espera, que está à vista — a mesma que a página de lá
+    // mostra por baixo — e assim nunca se ouve o filme com a imagem
+    // parada por cima, nem se vê o preto de a cena ainda estar a nascer.
     const aoAviso = (e) => {
         if (e.source !== janela.contentWindow || !e.data) return;
-        if (e.data.malhaViva === 'previa360pronta' || e.data.malhaViva === 'filme360aAndar') {
+        if (e.data.malhaViva === 'filme360aAndar' || e.data.malhaViva === 'botao360aEspera') {
             sair();
         }
     };
+    // O aviso é que manda; o relógio é só para o caso de ele não vir.
     window.addEventListener('message', aoAviso);
-    janela.addEventListener('load', () => setTimeout(sair, 600), { once: true });
-    setTimeout(sair, 8000);
+    setTimeout(sair, 30000);
 };
 
 /**
