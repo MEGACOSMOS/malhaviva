@@ -71,20 +71,12 @@
         // cima; o de partilhar noutra, em baixo. Cada faixa é lida à
         // parte — ler uma tira do ecrã inteiro, esmagada em quatro
         // linhas, misturava o céu com as ruas e não dizia nada de nenhum.
-        // No telemóvel os ícones vivem numa gaveta escura, e a tinta é
-        // sempre a branca: não se medem, e o que se tenha decidido
-        // noutro tamanho de ecrã é desfeito.
-        var gaveta = window.matchMedia('(max-width: 640px)').matches ?
-            document.getElementById('acoes-do-cabecalho') : null;
-
         var faixas = [];
         elementos.forEach(function (el) {
-            if (gaveta && gaveta.contains(el)) {
-                el.classList.remove('sobre-claro');
-                return;
-            }
             var caixa = el.getBoundingClientRect();
-            if (caixa.width === 0) {
+            // Sem tamanho, ou empurrado para fora do ecrã — a gaveta do
+            // telemóvel, fechada —, não há nada a medir.
+            if (caixa.width === 0 || caixa.left >= caixaDaTela.right || caixa.top >= caixaDaTela.bottom) {
                 return;
             }
             var faixa = null;

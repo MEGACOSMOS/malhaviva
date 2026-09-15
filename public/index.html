@@ -18,7 +18,7 @@
     <script src="/quadrado-de-espera.js?v=4"></script>
 
     <!-- A tinta do cabeçalho segue o brilho do bairro por trás dela. -->
-    <script src="/contraste.js?v=3"></script>
+    <script src="/contraste.js?v=4"></script>
 
     <!-- PlayCanvas Web Components (versões fixas para estabilidade em produção) -->
     <script type="importmap">
@@ -307,7 +307,6 @@
             width: 40px;
             height: 40px;
             padding: 0;
-            margin-right: 6px;
             align-items: center;
             justify-content: center;
             cursor: pointer;
@@ -329,67 +328,62 @@
         @media (max-width: 640px) {
             #header {
                 padding: 12px 16px;
-                justify-content: flex-start;
             }
 
             #menu-btn {
                 display: flex;
             }
 
+            /* A gaveta: uma coluna de ícones no lado direito, por baixo do
+               cabeçalho, sem fundo — os ícones pousam sobre o bairro e a
+               tinta deles segue o brilho por baixo, como no cabeçalho. Sai
+               de fora do ecrã quando está fechada. */
             #acoes-do-cabecalho {
                 position: fixed;
-                top: 0;
-                right: 0;
-                bottom: 0;
-                width: 64px;
+                top: 64px;
+                right: 12px;
+                width: 48px;
                 flex-direction: column;
                 justify-content: flex-start;
-                gap: 10px !important;
-                padding: 14px 0;
-                background: linear-gradient(to bottom, rgba(255,255,255,0.05), transparent), #05050a;
-                box-shadow: 0 4px 15px rgba(0,0,0,0.4);
-                transform: translateX(100%);
+                gap: 6px !important;
+                padding: 0;
+                transform: translateX(calc(100% + 12px));
                 transition: transform 0.2s ease;
                 overflow: visible;
-            }
-
-            /* O fio de luz dos painéis, no bordo da gaveta. */
-            #acoes-do-cabecalho::after {
-                content: "";
-                position: absolute;
-                inset: 0;
-                padding: 1px;
-                background: linear-gradient(to bottom right, rgba(255,255,255,0.7) 0%, rgba(255,255,255,0.3) 50%, rgba(255,255,255,0.7) 100%), #05050a;
-                -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-                -webkit-mask-composite: xor;
-                mask-composite: exclude;
-                pointer-events: none;
             }
 
             #header.gaveta-aberta #acoes-do-cabecalho {
                 transform: translateX(0);
             }
 
-            /* Dentro da gaveta os ícones são sempre brancos: o fundo é o
-               painel escuro, não o bairro. */
-            #acoes-do-cabecalho .adaptavel {
-                --tinta: #ffffff;
-                /* Aceso — com o menu aberto — fica só um pouco mais
-                   apagado, que virar do avesso sobre o painel escuro era
-                   desaparecer. */
-                --avesso: rgba(255, 255, 255, 0.55);
+            /* Cada ícone com menu leva o bico de seta por baixo, e não ao
+               lado: a apontar para a direita fechado, para a esquerda
+               aberto — o lado para onde o menu sai. */
+            #acoes-do-cabecalho .settings > button {
+                flex-direction: column;
+                width: 48px;
+                height: 52px;
+                gap: 1px;
+                padding: 0;
+            }
+            #acoes-do-cabecalho .seta-menu {
+                transform: rotate(-90deg);
+            }
+            #acoes-do-cabecalho .settings:has(.open) .seta-menu {
+                transform: rotate(90deg);
             }
 
-            /* Os menus abrem ao lado da gaveta, para o lado do bairro. */
+            /* Os menus abrem para a esquerda da gaveta, alinhados com o
+               ícone que os abriu. */
             #acoes-do-cabecalho #definicoes-menu,
             #acoes-do-cabecalho #dev-menu,
             #acoes-do-cabecalho #idioma-menu {
                 top: 0;
-                right: 52px;
-                max-width: calc(100vw - 80px);
+                right: 56px;
+                max-width: calc(100vw - 92px);
             }
             #acoes-do-cabecalho #dev-menu {
-                max-height: calc(100vh - 32px);
+                max-height: calc(100vh - 96px);
             }
         }
 
@@ -1449,24 +1443,16 @@
 
     <!-- Header -->
     <div id="header">
-        <!-- O hambúrguer, só no telemóvel: abre e fecha a gaveta dos ícones. -->
-        <button type="button" id="menu-btn" class="adaptavel" aria-label="Menu" title="Menu" data-i18n-aria="cab.menu" data-i18n-title="cab.menu" aria-expanded="false" aria-controls="acoes-do-cabecalho">
-            <svg class="fechado" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true">
-                <line x1="3" y1="6" x2="21" y2="6"></line>
-                <line x1="3" y1="12" x2="21" y2="12"></line>
-                <line x1="3" y1="18" x2="21" y2="18"></line>
-            </svg>
-            <svg class="aberto" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true">
-                <line x1="5" y1="5" x2="19" y2="19"></line>
-                <line x1="19" y1="5" x2="5" y2="19"></line>
-            </svg>
-        </button>
         <div class="brand">
             <div class="brand-text">
                 <span class="brand-name adaptavel">Malha Viva</span>
             </div>
         </div>
 
+        <!-- À direita: a gaveta dos ícones (no computador é só a fila de
+             ícones de sempre), o ecrã inteiro, que fica sempre à vista, e o
+             hambúrguer, só no telemóvel. -->
+        <div id="cabecalho-direita" style="display: flex; align-items: center; gap: 8px;">
         <div id="acoes-do-cabecalho" style="display: flex; align-items: center; gap: 8px;">
             <div class="settings" id="dev-menu-container">
                 <button id="dev-btn" class="adaptavel" title="Menu de Desenvolvedor">
@@ -1754,8 +1740,23 @@
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a3 3 0 0 1 3-3h12a3 3 0 0 1 3 3v3a3 3 0 0 1-3 3h-2.5a2 2 0 0 1-1.7-1l-.9-1.4a1.2 1.2 0 0 0-2 0l-.9 1.4a2 2 0 0 1-1.7 1H6a3 3 0 0 1-3-3z"></path></svg>
             </button>
 
+        </div>
+
             <button id="fullscreen-main-btn" class="adaptavel" title="Ecrã Inteiro" data-i18n-title="cab.ecra">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="square" stroke-linejoin="miter"><path d="M8 3H3v5m18 0V3h-5m0 18h5v-5M3 16v5h5"></path></svg>
+            </button>
+
+            <!-- O hambúrguer, só no telemóvel: abre e fecha a gaveta dos ícones. -->
+            <button type="button" id="menu-btn" class="adaptavel" aria-label="Menu" title="Menu" data-i18n-aria="cab.menu" data-i18n-title="cab.menu" aria-expanded="false" aria-controls="acoes-do-cabecalho">
+                <svg class="fechado" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true">
+                    <line x1="3" y1="6" x2="21" y2="6"></line>
+                    <line x1="3" y1="12" x2="21" y2="12"></line>
+                    <line x1="3" y1="18" x2="21" y2="18"></line>
+                </svg>
+                <svg class="aberto" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true">
+                    <line x1="5" y1="5" x2="19" y2="19"></line>
+                    <line x1="19" y1="5" x2="5" y2="19"></line>
+                </svg>
             </button>
         </div>
     </div>
