@@ -335,22 +335,25 @@ AnnotationController.prototype.initialize = function() {
             gap: 12px;
             z-index: 10;
         }
-        /* As barras — a do nome, em cima, e a dos botões, em baixo —
-           surgem a esbater de cada vez que a janela abre. A animação é
-           entregue à placa gráfica (will-change), para correr lisa mesmo
-           com a página ocupada a carregar o vídeo. Em ecrã inteiro a
-           barra dos botões tem o seu próprio deslize, e não isto. */
+        /* O que está dentro das barras — o nome e os botões em cima, o
+           tempo e os botões em baixo — surge a esbater de cada vez que a
+           janela abre. As barras em si estão lá desde o princípio: é a
+           mesma regra da página da rota, e assim, se o navegador estiver
+           ocupado e atrasar a animação, o que espera é o que está dentro,
+           nunca uma barra escura. A animação é entregue à placa gráfica
+           (will-change), para correr lisa. Em ecrã inteiro a barra dos
+           botões tem o seu próprio deslize, e não isto. */
         @keyframes botoes-a-surgir {
             from { opacity: 0; }
             to { opacity: 1; }
         }
-        .video-controls.a-surgir,
-        .barra-do-nome.a-surgir,
-        .barra-do-nome-360.a-surgir {
+        .video-controls.a-surgir > *,
+        .barra-do-nome.a-surgir > *,
+        .barra-do-nome-360.a-surgir > * {
             animation: botoes-a-surgir 0.5s ease-out both;
             will-change: opacity;
         }
-        .moldura-do-player:fullscreen .video-controls.a-surgir {
+        .moldura-do-player:fullscreen .video-controls.a-surgir > * {
             animation: none;
         }
 
@@ -455,7 +458,7 @@ AnnotationController.prototype.initialize = function() {
             font-variant-numeric: tabular-nums;
             font-weight: 500;
         }
-        
+
         /* Volume Slider */
         .volume-container {
             display: flex;
@@ -632,10 +635,9 @@ AnnotationController.prototype.initialize = function() {
             opacity: 1;
         }
 
-        /* Com a colecção toda vista não há nada de novo à espera do lado
-           direito, e a janela que espreitava de lá sai da frente. Fica a
-           ocupar o lugar dela, para a janela do meio não escorregar do
-           centro do ecrã. */
+        /* No fim do percurso não há nada à espera desse lado, e a janela
+           que espreitava de lá sai da frente. Fica a ocupar o lugar dela,
+           para a janela do meio não escorregar do centro do ecrã. */
         .previa.sem-seguinte {
             visibility: hidden;
         }
@@ -745,10 +747,6 @@ AnnotationController.prototype.initialize = function() {
             background: linear-gradient(to top, rgba(255,255,255,0.05), transparent), #05050a;
             border-top: 1px solid rgba(255, 255, 255, 0.05);
             pointer-events: none;
-        }
-        .moldura-360 .rodape-do-meio.a-surgir {
-            animation: botoes-a-surgir 0.5s ease-out both;
-            will-change: opacity;
         }
 
         /* A imagem do primeiro instante, por cima da janela do meio
@@ -901,7 +899,7 @@ AnnotationController.prototype.initialize = function() {
                 transform: none;
                 opacity: 1;
             }
-            
+
             .seta-do-palco {
                 width: 50px;
                 height: 70px;
@@ -1125,7 +1123,7 @@ AnnotationController.prototype.initialize = function() {
         el.dataset.tipo = ann.is360 ? '360' : 'testemunho';
         if (ann.label === "Esvarena") el.classList.add('esvarena-marker');
         if (ann.trailIndex !== undefined) el.dataset.trailIndex = ann.trailIndex;
-        
+
         const annId = ann.is360 ? `360-${ann.trailIndex}` : `video-${ann.video}`;
         const isViewed = this.viewedAnnotations.includes(annId);
 
@@ -1167,7 +1165,7 @@ AnnotationController.prototype.initialize = function() {
                 <div class="marker-label">${ann.label}</div>
             `;
         }
-        
+
         el.style.position = 'absolute';
         el.style.left = '0';
         el.style.top = '0';
@@ -1185,11 +1183,11 @@ AnnotationController.prototype.initialize = function() {
                     const a = this.annotations.find(x => this.idDaAnotacao(x) === id);
                     return a ? a.is360 !== ann.is360 : true;
                 });
-                
+
                 try {
                     localStorage.setItem('viewedAnnotations', JSON.stringify(this.viewedAnnotations));
                 } catch (e) {}
-                
+
                 this.annotations.forEach(a => {
                     if (a.is360 === ann.is360 && a.element) {
                         const dot = a.element.querySelector('.marker-dot');
@@ -1423,7 +1421,7 @@ AnnotationController.prototype.criarBotoesDeTopo = function(fecharCallback, comA
     autoPlayContainer.style.gap = '8px';
     autoPlayContainer.style.cursor = 'pointer';
     autoPlayContainer.title = window.Idiomas ? window.Idiomas.t('v360.autoplay') || 'Reprodução automática' : 'Reprodução automática';
-    
+
     const autoPlayLabel = document.createElement('span');
     autoPlayLabel.textContent = 'Auto';
     autoPlayLabel.style.fontSize = '12px';
@@ -1437,7 +1435,7 @@ AnnotationController.prototype.criarBotoesDeTopo = function(fecharCallback, comA
     switchEl.style.backgroundColor = 'rgba(255,255,255,0.2)';
     switchEl.style.position = 'relative';
     switchEl.style.transition = 'background-color 0.2s';
-    
+
     const pointer = document.createElement('div');
     pointer.style.width = '10px';
     pointer.style.height = '10px';
@@ -1448,10 +1446,10 @@ AnnotationController.prototype.criarBotoesDeTopo = function(fecharCallback, comA
     pointer.style.transition = 'left 0.2s';
 
     switchEl.appendChild(pointer);
-    
+
     // Por definição, a reprodução automática deve estar desativada
     let isAutoPlay = localStorage.getItem('autoplay-videos') === 'true';
-    
+
     const updateSwitchVisuals = () => {
         if (isAutoPlay) {
             switchEl.style.backgroundColor = 'rgba(255,255,255,0.6)';
@@ -1462,14 +1460,14 @@ AnnotationController.prototype.criarBotoesDeTopo = function(fecharCallback, comA
         }
     };
     updateSwitchVisuals();
-    
+
     autoPlayContainer.addEventListener('click', (e) => {
         e.preventDefault();
         isAutoPlay = !isAutoPlay;
         localStorage.setItem('autoplay-videos', isAutoPlay ? 'true' : 'false');
         updateSwitchVisuals();
     });
-    
+
     autoPlayContainer.appendChild(autoPlayLabel);
     autoPlayContainer.appendChild(switchEl);
 
@@ -1482,7 +1480,7 @@ AnnotationController.prototype.criarBotoesDeTopo = function(fecharCallback, comA
 
     rightGroup.appendChild(autoPlayContainer);
     rightGroup.appendChild(closeBtn);
-    
+
     return rightGroup;
 };
 
@@ -1602,7 +1600,7 @@ AnnotationController.prototype.setupPalco360 = function() {
     carrossel.appendChild(esquerda);
     carrossel.appendChild(content);
     carrossel.appendChild(direita);
-    
+
     modal.appendChild(carrossel);
     modal.appendChild(setaEsquerda);
     modal.appendChild(setaDireita);
@@ -1657,20 +1655,21 @@ AnnotationController.prototype.abrirParagem360 = function(ann, sentido) {
 };
 
 /**
- * Passa à paragem do lado.
+ * Passa à paragem do lado, pelo percurso da visita (ver
+ * {@link andarNoPercurso}).
  *
- * A lista dá a volta: depois da última vem a primeira, para nunca ficar
- * um lado vazio.
- *
- * @param {number} sentido - -1 para a anterior, 1 para a seguinte.
+ * @param {number} sentido - -1 para a esquerda, 1 para a direita.
  */
 AnnotationController.prototype.saltarParagem360 = function(sentido) {
     const lista = this.paragens360();
-    const onde = lista.indexOf(this.paragem360);
-    if (onde < 0 || lista.length < 2) {
+    if (lista.indexOf(this.paragem360) < 0 || lista.length < 2) {
         return;
     }
-    this.abrirParagem360(lista[(onde + sentido + lista.length) % lista.length], sentido);
+    const onde = this.andarNoPercurso(this.percurso360, lista.length, sentido);
+    if (onde === null) {
+        return;
+    }
+    this.abrirParagem360(lista[onde], sentido);
 };
 
 /**
@@ -1681,11 +1680,7 @@ AnnotationController.prototype.saltarParagem360 = function(sentido) {
 AnnotationController.prototype.mostrarParagem360 = function(ann) {
     const palco = this.palco360;
     this.paragem360 = ann;
-    // Se esta paragem ainda faltava, é preciso sabê-lo antes de a marcar:
-    // é o que diz se é ela que fecha a colecção.
-    const annId = this.idDaAnotacao(ann);
-    const faltava = !this.viewedAnnotations.includes(annId);
-    this.marcarComoVisto(annId);
+    this.marcarComoVisto(this.idDaAnotacao(ann));
 
     // As barras surgem a esbater quando a janela abre; ao passar de uma
     // paragem para a outra já estavam à vista, e ficam como estão.
@@ -1710,7 +1705,6 @@ AnnotationController.prototype.mostrarParagem360 = function(ann) {
     rodape.className = 'rodape-do-meio';
     rodape.setAttribute('aria-hidden', 'true');
     palco.moldura.appendChild(rodape);
-    if (aAbrir) fazerSurgir(rodape);
     this.tapar360EnquantoChega(ann);
 
     clearTimeout(this.esperaDaJanela360);
@@ -1739,7 +1733,7 @@ AnnotationController.prototype.mostrarParagem360 = function(ann) {
     const lista = this.paragens360();
     const onde = lista.indexOf(ann);
     const avulso = onde < 0;
-    
+
     palco.esquerda.style.visibility = avulso ? 'hidden' : '';
     palco.direita.style.visibility = avulso ? 'hidden' : '';
     palco.setaEsquerda.style.visibility = avulso ? 'hidden' : '';
@@ -1747,17 +1741,17 @@ AnnotationController.prototype.mostrarParagem360 = function(ann) {
     // A fotografia do alto do bairro enche o ecrã todo.
     palco.modal.classList.toggle('inteira', !!ann.isImage);
 
-    if (!avulso) {
-        this.registarFechoDaColeccao(annId, lista, faltava);
+    // Ao abrir começa um percurso novo a partir daqui; ao passar de
+    // paragem o percurso já andou (ver saltarParagem360).
+    if (aAbrir || !this.percurso360) {
+        this.percurso360 = this.comecarPercurso(onde);
     }
-    const noFim = avulso ? true : this.noFimDaFila(lista, onde);
-    this.arrumarLadoDireito(palco.setaDireita, palco.direita, noFim);
-
     if (!avulso && lista.length > 1) {
-        this.encherPrevia360(palco.esquerda, lista[(onde - 1 + lista.length) % lista.length]);
-        if (!noFim) {
-            this.encherPrevia360(palco.direita, lista[(onde + 1) % lista.length]);
-        }
+        const lados = this.ladosDoPercurso(this.percurso360, lista);
+        this.arrumarLado(palco.setaEsquerda, palco.esquerda, BICO_ESQUERDA, lados.esquerda.cruz);
+        this.arrumarLado(palco.setaDireita, palco.direita, BICO_DIREITA, lados.direita.cruz);
+        if (lados.esquerda.ann) this.encherPrevia360(palco.esquerda, lados.esquerda.ann);
+        if (lados.direita.ann) this.encherPrevia360(palco.direita, lados.direita.ann);
     }
 
     abrirDeRepente(palco.modal);
@@ -1983,12 +1977,12 @@ AnnotationController.prototype.setupModal = function() {
     header.style.boxSizing = 'border-box';
     header.className = 'barra-do-nome';
     this.barraDoNome = header;
-    
+
     this.modalTitle = document.createElement('div');
     this.modalTitle.style.color = '#fff';
     this.modalTitle.style.fontWeight = '600';
     this.modalTitle.style.fontSize = '1.1rem';
-    
+
     header.appendChild(this.modalTitle);
     header.appendChild(this.criarBotoesDeTopo(() => closeModal()));
 
@@ -1996,14 +1990,14 @@ AnnotationController.prototype.setupModal = function() {
     const videoWrapper = document.createElement('div');
     videoWrapper.className = 'custom-video-container paused';
     this.videoWrapper = videoWrapper;
-    
+
     this.videoPlayer = document.createElement('video');
     this.videoPlayer.style.width = '100%';
     this.videoPlayer.style.height = '100%';
     this.videoPlayer.playsInline = true;
     this.videoPlayer.setAttribute('decoding', 'async'); // Optimize decoding performance for low-end devices
     this.videoPlayer.crossOrigin = "anonymous"; // Necessário para Web Audio API com URLs externos
-    
+
     // Big Play Button
     const bigPlayBtn = document.createElement('div');
     bigPlayBtn.className = 'big-play-btn';
@@ -2012,7 +2006,7 @@ AnnotationController.prototype.setupModal = function() {
     // Controls
     const controls = document.createElement('div');
     controls.className = 'video-controls';
-    
+
     // Progress bar
     const progressContainer = document.createElement('div');
     progressContainer.className = 'progress-container';
@@ -2028,7 +2022,7 @@ AnnotationController.prototype.setupModal = function() {
     // Left controls
     const controlsLeft = document.createElement('div');
     controlsLeft.className = 'controls-left';
-    
+
     const playPauseBtn = document.createElement('button');
     playPauseBtn.className = 'player-btn';
     const playIcon = '<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>';
@@ -2043,7 +2037,7 @@ AnnotationController.prototype.setupModal = function() {
     // Volume Control
     const volumeContainer = document.createElement('div');
     volumeContainer.className = 'volume-container';
-    
+
     const volumeBtn = document.createElement('button');
     volumeBtn.className = 'player-btn';
     const volHighIcon = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>';
@@ -2067,7 +2061,7 @@ AnnotationController.prototype.setupModal = function() {
 
     volumeSliderWrapper.appendChild(volumeSlider);
     volumeSliderWrapper.appendChild(volumePercentage);
-    
+
     volumeContainer.appendChild(volumeBtn);
     volumeContainer.appendChild(volumeSliderWrapper);
 
@@ -2102,10 +2096,10 @@ AnnotationController.prototype.setupModal = function() {
     const settingsBtn = document.createElement('button');
     settingsBtn.className = 'player-btn';
     settingsBtn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter"><circle cx="12" cy="12" r="3"></circle><path d="M10.08 4.85L10.07 1.58L13.93 1.58L13.92 4.85A7.4 7.4 0 0 1 17.23 6.77L20.06 5.12L21.99 8.46L19.15 10.08A7.4 7.4 0 0 1 19.15 13.92L21.99 15.54L20.06 18.88L17.23 17.23A7.4 7.4 0 0 1 13.92 19.15L13.93 22.42L10.07 22.42L10.08 19.15A7.4 7.4 0 0 1 6.77 17.23L3.94 18.88L2.01 15.54L4.85 13.92A7.4 7.4 0 0 1 4.85 10.08L2.01 8.46L3.94 5.12L6.77 6.77A7.4 7.4 0 0 1 10.08 4.85Z"></path></svg>';
-    
+
     this.qualityMenu = document.createElement('div');
     this.qualityMenu.className = 'quality-menu';
-    
+
     qualityContainer.appendChild(settingsBtn);
     qualityContainer.appendChild(this.qualityMenu);
 
@@ -2252,13 +2246,12 @@ AnnotationController.prototype.setupModal = function() {
         seta.title = window.Idiomas ? window.Idiomas.t(chave) : '';
         seta.addEventListener('click', (e) => {
             e.stopPropagation();
-            // Vista a colecção toda, esta seta já é a cruz de saída.
+            // No fim do percurso, esta seta já é a cruz de saída.
             if (seta.classList.contains('a-sair')) {
                 if (this.fecharModal) this.fecharModal();
                 return;
             }
-            const vizinha = sentido < 0 ? this.previaEsquerda : this.previaDireita;
-            const ann = this.annotations.find(a => a.video === vizinha.dataset.video);
+            const ann = this.testemunhoAoLado(sentido);
             if (ann) this.openVideoModal(ann.video, ann.label, sentido);
         });
         return seta;
@@ -2336,7 +2329,7 @@ AnnotationController.prototype.setupModal = function() {
         currentVolume = parseFloat(e.target.value);
         if (gainNode) gainNode.gain.value = currentVolume;
         volumePercentage.innerText = Math.round(currentVolume * 100) + '%';
-        
+
         if (currentVolume === 0) {
             volumeBtn.innerHTML = volMutedIcon;
             isMuted = true;
@@ -2518,7 +2511,7 @@ AnnotationController.prototype.setupModal = function() {
     videoWrapper.addEventListener('click', showControls);
     videoWrapper.addEventListener('mouseleave', mostrarRato);
     this.videoPlayer.addEventListener('pause', mostrarRato);
-    
+
     // Quando transita de um vídeo para o outro em fullscreen, o play
     // automático esconde logo a barra para não ficar visível.
     this.videoPlayer.addEventListener('play', () => {
@@ -2558,7 +2551,7 @@ AnnotationController.prototype.setupModal = function() {
 
         if (this.videoNome) {
             this.marcarComoUltima('video-' + this.videoNome);
-            
+
             const ann = this.annotations.find(a => a.video === this.videoNome);
             if (ann && this.entity.script && this.entity.script.cameraControls) {
                 const posAtual = this.entity.getPosition();
@@ -2570,30 +2563,30 @@ AnnotationController.prototype.setupModal = function() {
                 const posZ = ann.position.z + Math.sin(angulo) * dist;
                 const posY = ann.position.y + 25 + Math.random() * 25;
                 const novaPos = new pc.Vec3(posX, Math.max(1, posY), posZ);
-                
+
                 // Enquadramento da regra dos terços (interseção inferior esquerda/direita)
                 const UP = new pc.Vec3(0, 1, 0);
                 const forward = new pc.Vec3().sub2(ann.position, novaPos).normalize();
                 const right = new pc.Vec3().cross(forward, UP).normalize();
                 const up = new pc.Vec3().cross(right, forward).normalize();
-                
+
                 // Para a anotação ficar no terço de baixo, o foco tem de estar acima
                 const shiftY = 0.14 * dist;
                 // Para ficar num dos lados, o foco tem de estar no lado oposto
                 const sinalX = Math.random() < 0.5 ? -1 : 1;
                 const shiftX = 0.25 * dist * sinalX;
-                
+
                 const focus = new pc.Vec3().copy(ann.position);
                 focus.add(up.mulScalar(shiftY));
                 focus.add(right.mulScalar(shiftX));
-                
+
                 this.entity.script.cameraControls.recenter(novaPos, focus);
             }
         }
 
         this.modal.style.opacity = '0';
         this.modalContent.classList.remove('aberta');
-        
+
         setTimeout(() => {
             this.modal.style.display = 'none';
             this.fecharCinemaVR();
@@ -2628,23 +2621,23 @@ AnnotationController.prototype.setupModal = function() {
     // a mostrar: a janela fecha-se e devolve o bairro.
     this.videoPlayer.addEventListener('ended', () => {
         if (!this.videoNome) return;
-        // Como nas paragens 360º, é preciso saber se este ainda faltava
-        // antes de o marcar: é o que diz se é ele que fecha a colecção.
-        const annId = 'video-' + this.videoNome;
-        const faltava = !this.viewedAnnotations.includes(annId);
-        this.marcarComoVisto(annId);
+        this.marcarComoVisto('video-' + this.videoNome);
 
         const lista = this.annotations.filter(ann => !ann.is360 && ann.video);
         const onde = lista.findIndex(ann => ann.video === this.videoNome);
-        this.registarFechoDaColeccao(annId, lista, faltava);
         if (onde >= 0) {
             const isAutoPlay = localStorage.getItem('autoplay-videos') === 'true';
             if (isAutoPlay) {
-                if (this.noFimDaFila(lista, onde)) {
-                    closeModal();
+                // Segue para a frente no percurso — para o lado por onde
+                // se andou, ou para a direita se ainda não se andou. No
+                // fim dele, fecha.
+                const p = this.percursoTestemunhos;
+                const sentido = p && p.sentido ? p.sentido : 1;
+                const ann = this.testemunhoAoLado(sentido);
+                if (ann) {
+                    this.openVideoModal(ann.video, ann.label, sentido);
                 } else {
-                    const ann = lista[(onde + 1) % lista.length];
-                    this.openVideoModal(ann.video, ann.label, 1);
+                    closeModal();
                 }
             }
         }
@@ -2687,46 +2680,52 @@ AnnotationController.prototype.medirPalco = function(palco) {
 };
 
 /**
- * Põe nas janelas dos lados o testemunho anterior e o seguinte.
- *
- * A lista dá a volta: depois do último vem o primeiro, para nunca ficar um
- * lado vazio.
+ * Põe nas janelas dos lados o que o percurso tem de cada lado do
+ * testemunho que está a dar (ver {@link ladosDoPercurso}).
  *
  * @param {string} nomeAtual - O testemunho que está a dar.
+ * @param {number} [sentido] - O lado para onde se acabou de passar.
+ * @param {string} [oldCenterFrame] - A imagem de onde se vinha, para a
+ *     janela do lado de onde se veio não nascer preta.
  */
 AnnotationController.prototype.atualizarPalco = function(nomeAtual, sentido, oldCenterFrame) {
     const lista = this.annotations.filter(ann => !ann.is360 && ann.video);
     const onde = lista.findIndex(ann => ann.video === nomeAtual);
-    // Ao mudar de testemunho, a nota de quem fechou a colecção só se
-    // mantém se for este mesmo; senão larga-se, e a seta volta.
-    if (onde >= 0) {
-        this.registarFechoDaColeccao(this.idDaAnotacao(lista[onde]), lista, false);
-    }
-    const noFim = this.noFimDaFila(lista, onde);
-    this.arrumarLadoDireito(this.setaDireita, this.previaDireita, noFim);
-
     if (onde < 0 || lista.length < 2) {
         return;
     }
-    
-    const annEsq = lista[(onde - 1 + lista.length) % lista.length];
-    const annDir = lista[(onde + 1) % lista.length];
-
-    let posterEsq = null;
-    let posterDir = null;
-
-    if (sentido === 1) {
-        posterEsq = oldCenterFrame;
-    } else if (sentido === -1) {
-        posterDir = oldCenterFrame;
+    // Ao abrir começa um percurso novo a partir daqui; ao passar de
+    // testemunho o percurso já andou (ver testemunhoAoLado).
+    if (!sentido || !this.percursoTestemunhos) {
+        this.percursoTestemunhos = this.comecarPercurso(onde);
     }
+    const lados = this.ladosDoPercurso(this.percursoTestemunhos, lista);
+    this.arrumarLado(this.setaEsquerda, this.previaEsquerda, BICO_ESQUERDA, lados.esquerda.cruz);
+    this.arrumarLado(this.setaDireita, this.previaDireita, BICO_DIREITA, lados.direita.cruz);
 
-    this.encherPrevia(this.previaEsquerda, annEsq, posterEsq);
-    // No fim da fila a janela da direita está fora da vista: não vale a
-    // pena ir buscar o vídeo que ela mostraria.
-    if (!noFim) {
-        this.encherPrevia(this.previaDireita, annDir, posterDir);
+    // A janela do lado de onde se veio fica com a imagem de onde se vinha.
+    const posterEsq = sentido === 1 ? oldCenterFrame : null;
+    const posterDir = sentido === -1 ? oldCenterFrame : null;
+    if (lados.esquerda.ann) this.encherPrevia(this.previaEsquerda, lados.esquerda.ann, posterEsq);
+    if (lados.direita.ann) this.encherPrevia(this.previaDireita, lados.direita.ann, posterDir);
+};
+
+/**
+ * O testemunho que está de um dos lados no percurso, andando para lá.
+ *
+ * Anda mesmo no percurso: chamar isto é passar para esse lado. Devolve
+ * nada no fim do percurso, onde a seta já é a cruz.
+ *
+ * @param {number} sentido - -1 para a esquerda, 1 para a direita.
+ * @returns {object|null} O testemunho desse lado, ou nada.
+ */
+AnnotationController.prototype.testemunhoAoLado = function(sentido) {
+    const lista = this.annotations.filter(ann => !ann.is360 && ann.video);
+    if (!this.percursoTestemunhos || lista.length < 2) {
+        return null;
     }
+    const onde = this.andarNoPercurso(this.percursoTestemunhos, lista.length, sentido);
+    return onde === null ? null : lista[onde];
 };
 
 /**
@@ -2758,7 +2757,7 @@ AnnotationController.prototype.encherPrevia = function(previa, ann, posterDataUr
     const filme = previa.querySelector('.previa-janela video');
     if (filme.getAttribute('src') !== desejado) {
         filme.removeAttribute('poster');
-        
+
         if (posterDataUrl) {
             filme.poster = posterDataUrl;
             filme.style.opacity = '1';
@@ -2847,81 +2846,114 @@ AnnotationController.prototype.coleccaoVista = function(lista) {
 };
 
 /**
- * Arruma o lado direito do palco: ou a seta e a janela do que vem a
- * seguir, ou a cruz de saída.
+ * Arruma um dos lados do palco: ou a seta e a janela do que está desse
+ * lado, ou a cruz de saída.
  *
- * A cruz é do fim da fila, e não da colecção: só aparece a quem esteja na
- * última paragem de uma colecção já vista de ponta a ponta. Quem voltar
- * atrás sai do fim, e a seta e a janela do lado voltam com ele — dali
- * ainda há para onde ir.
- *
- * @param {HTMLElement} seta - A seta da direita.
- * @param {HTMLElement} previa - A janela do lado direito.
- * @param {boolean} noFimDaFila - Se se está na última paragem e já se viu tudo.
+ * @param {HTMLElement} seta - A seta desse lado.
+ * @param {HTMLElement} previa - A janela desse lado.
+ * @param {string} bico - O desenho da seta desse lado.
+ * @param {boolean} cruz - Se esse lado é o fim do percurso.
  */
-AnnotationController.prototype.arrumarLadoDireito = function(seta, previa, noFimDaFila) {
+AnnotationController.prototype.arrumarLado = function(seta, previa, bico, cruz) {
     if (previa) {
-        previa.classList.toggle('sem-seguinte', noFimDaFila);
+        previa.classList.toggle('sem-seguinte', cruz);
     }
     if (!seta) {
         return;
     }
-    seta.classList.toggle('a-sair', noFimDaFila);
-    seta.innerHTML = noFimDaFila ? DESENHO_DA_CRUZ : desenhoDaSeta(BICO_DIREITA);
-    const chave = noFimDaFila ? 'palco.sair' : 'palco.seguinte';
+    seta.classList.toggle('a-sair', cruz);
+    seta.innerHTML = cruz ? DESENHO_DA_CRUZ : desenhoDaSeta(bico);
+    const chave = cruz ? 'palco.sair' : (bico === BICO_ESQUERDA ? 'palco.anterior' : 'palco.seguinte');
     seta.setAttribute('data-i18n-title', chave);
     seta.title = window.Idiomas ? window.Idiomas.t(chave) : '';
 };
 
 /**
- * Se se está na última paragem de uma colecção já vista de ponta a ponta.
+ * O percurso de uma visita: por onde se entrou, para que lado se foi, e
+ * a quantos passos se está.
  *
- * É esta a única situação em que a seta da direita dá lugar à cruz: dali
- * para a frente a lista dava a volta e voltava ao princípio, e não há
- * nada de novo do lado de lá.
+ * A lista das paragens (ou dos testemunhos) dá a volta, mas quem a
+ * percorre não anda em círculo: entra num ponto e escolhe um lado com o
+ * primeiro passo. Dali em diante o percurso é uma linha — para a frente
+ * até à última que falta, para trás até ao ponto por onde se entrou —, e
+ * nas duas pontas a seta dá lugar à cruz de saída. Andar para trás refaz
+ * o caminho pela mesma ordem, e acaba no primeiro que se viu.
  *
- * @param {object[]} lista - As paragens da colecção, pela ordem delas.
- * @param {number} onde - Em qual delas se está.
- * @returns {boolean} Verdadeiro se for o fim da fila.
+ * @param {number} inicio - Onde se entrou, na lista.
+ * @returns {{inicio: number, sentido: number, passo: number}} O percurso.
  */
-AnnotationController.prototype.noFimDaFila = function(lista, onde) {
-    if (!this.coleccaoVista(lista)) {
-        return false;
-    }
-
-    // Na última paragem da lista há sempre fim de fila: dali para a frente
-    // a lista dá a volta e volta ao princípio.
-    if (onde === lista.length - 1) {
-        return true;
-    }
-
-    // Fora dela, a cruz só aparece na paragem que fechou a colecção, e só
-    // enquanto se está nela. Quem chega ao fim pelo meio da lista merece a
-    // cruz ali mesmo, sem ter de ir até à última; mas quem lá voltar mais
-    // tarde, dando a volta, ainda tem para onde ir e a seta tem de voltar.
-    return this.idDaAnotacao(lista[onde]) === this.fechouAColeccao;
+AnnotationController.prototype.comecarPercurso = function(inicio) {
+    return { inicio: Math.max(0, inicio), sentido: 0, passo: 0 };
 };
 
 /**
- * Toma nota da paragem que acabou de fechar a colecção, ou larga a nota
- * quando se sai dela.
+ * Dá um passo no percurso para um dos lados.
  *
- * Isto existe por causa de um engano fácil de fazer: perguntar qual foi a
- * última anotação a ser marcada como vista. Essa lista deixa de mudar
- * quando já se viu tudo, e a resposta fica congelada para sempre — a
- * paragem onde se completou a colecção passava a ostentar a cruz de saída
- * em todas as visitas seguintes, mesmo quando ainda havia lista adiante.
+ * O primeiro passo decide o lado do percurso. Para a frente anda-se até
+ * ao fim da lista; para trás, até ao ponto de entrada. Fora disso não
+ * há passo a dar: é onde está a cruz.
  *
- * @param {string} annId - A anotação que se está a ver.
- * @param {object[]} lista - As anotações da colecção a que ela pertence.
- * @param {boolean} faltavaAntes - Se ela ainda não tinha sido vista.
+ * @param {object} percurso - O percurso da visita.
+ * @param {number} total - Quantas paragens tem a lista.
+ * @param {number} sentido - -1 para a esquerda, 1 para a direita.
+ * @returns {number|null} Onde se fica, na lista; ou nada, se não há passo.
  */
-AnnotationController.prototype.registarFechoDaColeccao = function(annId, lista, faltavaAntes) {
-    if (faltavaAntes && this.coleccaoVista(lista)) {
-        this.fechouAColeccao = annId;
-    } else if (this.fechouAColeccao !== annId) {
-        this.fechouAColeccao = null;
+AnnotationController.prototype.andarNoPercurso = function(percurso, total, sentido) {
+    if (!percurso || total < 2 || !sentido) {
+        return null;
     }
+    if (percurso.sentido === 0) {
+        percurso.sentido = sentido;
+        percurso.passo = 1;
+    } else if (sentido === percurso.sentido) {
+        if (percurso.passo >= total - 1) return null;
+        percurso.passo++;
+    } else {
+        if (percurso.passo <= 0) return null;
+        percurso.passo--;
+    }
+    return this.lugarNoPercurso(percurso, total, percurso.passo);
+};
+
+/**
+ * Onde cai, na lista, um passo do percurso.
+ *
+ * @param {object} percurso - O percurso da visita.
+ * @param {number} total - Quantas paragens tem a lista.
+ * @param {number} passo - O passo, a contar do ponto de entrada.
+ * @returns {number} O lugar na lista.
+ */
+AnnotationController.prototype.lugarNoPercurso = function(percurso, total, passo) {
+    const sentido = percurso.sentido || 1;
+    return ((percurso.inicio + sentido * passo) % total + total) % total;
+};
+
+/**
+ * O que está de cada lado no percurso: a paragem que vem, ou a cruz.
+ *
+ * Antes do primeiro passo há uma paragem de cada lado. Depois, para a
+ * frente vem a seguinte — ou a cruz, na última — e para trás vem a
+ * anterior — ou a cruz, no ponto por onde se entrou.
+ *
+ * @param {object} percurso - O percurso da visita.
+ * @param {object[]} lista - As paragens, pela ordem delas.
+ * @returns {{esquerda: {cruz: boolean, ann: object|null}, direita: {cruz: boolean, ann: object|null}}}
+ */
+AnnotationController.prototype.ladosDoPercurso = function(percurso, lista) {
+    const total = lista.length;
+    const lado = (sentido) => {
+        if (total < 2) return { cruz: true, ann: null };
+        if (percurso.sentido === 0) {
+            return { cruz: false, ann: lista[((percurso.inicio + sentido) % total + total) % total] };
+        }
+        if (sentido === percurso.sentido) {
+            const cruz = percurso.passo >= total - 1;
+            return { cruz, ann: cruz ? null : lista[this.lugarNoPercurso(percurso, total, percurso.passo + 1)] };
+        }
+        const cruz = percurso.passo <= 0;
+        return { cruz, ann: cruz ? null : lista[this.lugarNoPercurso(percurso, total, percurso.passo - 1)] };
+    };
+    return { esquerda: lado(-1), direita: lado(1) };
 };
 
 /**
@@ -3023,7 +3055,7 @@ AnnotationController.prototype.abrirTestemunho = function(nome, title, sentido, 
     this.marcarComoVisto('video-' + nome);
     this.modalTitle.textContent = title;
     this.videoNome = nome;
-    
+
     if (this.progressFilled) this.progressFilled.style.width = '0%';
     if (this.timeDisplay) this.timeDisplay.innerText = '0:00 / 0:00';
 
@@ -3143,24 +3175,24 @@ AnnotationController.prototype.desenharMenuDeQualidade = function(fontes) {
     const criarOpcao = (texto, aoClicar) => {
         const label = document.createElement('label');
         label.className = 'settings-radio';
-        
+
         const input = document.createElement('input');
         input.type = 'radio';
         input.name = 'video-quality';
-        
+
         const span = document.createElement('span');
         span.innerText = texto;
-        
+
         label.appendChild(input);
         label.appendChild(span);
-        
+
         input.addEventListener('change', () => {
             if (input.checked) {
                 aoClicar();
                 setTimeout(() => this.qualityMenu.classList.remove('show'), 150);
             }
         });
-        
+
         optionsContainer.appendChild(label);
         return input;
     };
@@ -3276,7 +3308,7 @@ AnnotationController.prototype.update = function(dt) {
 
             // Use translate3d to stay on the GPU compositor layer (no layout/reflow)
             el.style.transform = `translate3d(${screenPos.x}px, ${screenPos.y}px, 0) scale(${scale.toFixed(3)}) translate(-50%, ${-MARKER_DOT_HALF}px)`;
-            
+
             // Set z-index based on distance so closer annotations appear on top
             el.style.zIndex = Math.max(1, Math.round(10000 - distance * 10));
         }
