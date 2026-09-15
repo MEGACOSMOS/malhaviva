@@ -316,7 +316,7 @@
         #menu-btn {
             display: none;
             background: transparent;
-            border: 1px solid transparent;
+            border: 0;
             width: 40px;
             height: 40px;
             padding: 0;
@@ -325,7 +325,7 @@
             justify-content: center;
             cursor: pointer;
             flex-shrink: 0;
-            transition: background 0.15s ease, border-color 0.15s ease;
+            transition: background 0.15s ease;
         }
 
         #menu-btn .fechado,
@@ -422,7 +422,7 @@
         /* Sem caixa nenhuma até o rato lá chegar. */
         #definicoes-btn, #dev-btn, #idioma-btn, #help-btn, #fullscreen-main-btn, #vr-btn {
             background: transparent;
-            border: 1px solid transparent;
+            border: 0;
             width: 40px;
             height: 40px;
             padding: 0;
@@ -431,7 +431,7 @@
             align-items: center;
             justify-content: center;
             cursor: pointer;
-            transition: background 0.15s ease, border-color 0.15s ease;
+            transition: background 0.15s ease;
             text-decoration: none;
         }
 
@@ -541,6 +541,29 @@
             color: #ffffff;
         }
 
+        #header button.adaptavel,
+        #header a.adaptavel {
+            position: relative;
+        }
+
+        /* O fio é o mesmo dos menus e do rodapé — o mesmo desenho, ponto
+           por ponto —, e nasce e some com o quadrado. */
+        #header button.adaptavel::after,
+        #header a.adaptavel::after,
+        #partilhar-btn::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            padding: 1px;
+            background: linear-gradient(rgba(255,255,255,0.3), rgba(255,255,255,0.3)), #05050a;
+            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor;
+            mask-composite: exclude;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.15s ease;
+        }
+
         #header button.adaptavel:hover,
         #header a.adaptavel:hover,
         .settings:has(.open) > #definicoes-btn,
@@ -549,7 +572,16 @@
         #partilhar-btn:hover,
         #partilhar-btn.aberto {
             background: #05050a;
-            border-color: rgba(255, 255, 255, 0.3);
+        }
+
+        #header button.adaptavel:hover::after,
+        #header a.adaptavel:hover::after,
+        .settings:has(.open) > #definicoes-btn::after,
+        .settings:has(.open) > #dev-btn::after,
+        .settings:has(.open) > #idioma-btn::after,
+        #partilhar-btn:hover::after,
+        #partilhar-btn.aberto::after {
+            opacity: 1;
         }
         
         #definicoes-menu, #dev-menu, #idioma-menu {
@@ -982,14 +1014,14 @@
             align-items: center;
             justify-content: center;
             background: transparent;
-            border: 1px solid transparent;
+            border: 0;
             border-radius: 0;
             cursor: pointer;
             padding: 0;
             opacity: 0;
             transform: translateY(8px);
             pointer-events: none;
-            transition: opacity 0.6s ease 0.3s, transform 0.6s ease 0.3s, background 0.15s ease, border-color 0.15s ease;
+            transition: opacity 0.6s ease 0.3s, transform 0.6s ease 0.3s, background 0.15s ease;
         }
 
         #partilhar-btn.visivel {
@@ -1203,7 +1235,10 @@
         .panel-glass, .btn-glass, .action-btn, .settings-panel, .filter-btn, 
         #coordinates-info, #camera-info, #loading-bar-container,
         #definicoes-menu, #dev-menu, #idioma-menu, #rodape-comandos, #camera-stuck-popup, #partilhar-menu {
-            border-color: transparent !important;
+            /* Sem rebordo nenhum, nem invisível: um rebordo invisível fica
+               por fora do fio e deixa ver o fundo escuro por baixo dele,
+               como um segundo fio, preto, a toda a volta. */
+            border: 0 !important;
         }
         .panel-glass, .btn-glass, .action-btn, .filter-btn {
             position: relative;
@@ -2255,7 +2290,7 @@
         <pc-asset id="splat-scene" src="splat/lod-meta.json" type="gsplat"></pc-asset>
         <pc-asset id="camera-controls-script" src="./camera-controls.mjs?v=23" type="script"></pc-asset>
         <pc-asset id="camera-coords-script" src="./coords.mjs?v=7" type="script"></pc-asset>
-        <pc-asset id="annotations-script" src="./annotations.mjs?v=58" type="script"></pc-asset>
+        <pc-asset id="annotations-script" src="./annotations.mjs?v=59" type="script"></pc-asset>
         <pc-asset id="trail-script" src="./trail.mjs?v=25" type="script"></pc-asset>
 
         <!-- Scene -->

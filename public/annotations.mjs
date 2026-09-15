@@ -968,7 +968,9 @@ AnnotationController.prototype.initialize = function() {
            Um fio de um ponto a toda a volta, de um só tom — o mais escuro do
            degradé que aqui houve — pousado sobre o fundo escuro do site. */
         .janela-do-palco, .previa, .quality-menu {
-            border-color: transparent !important;
+            /* Sem rebordo nenhum, nem invisível: ficaria por fora do fio,
+               com o fundo escuro a ver-se por baixo dele. */
+            border: 0 !important;
         }
         .janela-do-palco, .previa {
             position: relative;
