@@ -139,10 +139,9 @@ TrailController.prototype.initialize = function() {
     this.editPoints = [];
     
     this.dashColor = new pc.Color().fromString('#ff0000'); // RED
-    // Cor da rota quando o cursor passa por cima: o mesmo vermelho, mais
-    // quente e mais claro, para se ler tanto sobre um telhado escuro como
-    // sobre a terra clara.
-    this.dashHoverColor = new pc.Color().fromString('#ff6e64');
+    // Cor da rota quando o cursor passa por cima: branco puro, para se
+    // ler tanto sobre um telhado escuro como sobre a terra clara.
+    this.dashHoverColor = new pc.Color().fromString('#ffffff');
     this.dashLength = 2.0;
     this.dashGap = 1.5;
     this.dashWidth = 0.8;
