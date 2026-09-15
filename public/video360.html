@@ -348,6 +348,30 @@
             font-variant-numeric: tabular-nums;
             font-weight: 500;
         }
+
+        /* A janela das coordenadas do olhar: só para quem tem o menu de
+           desenvolvedor ligado no mapa. Diz para onde a câmara aponta —
+           a volta (yaw), a inclinação (pitch) e a abertura — e a que
+           segundo o filme vai. */
+        #coordenadas {
+            position: absolute;
+            top: 16px;
+            left: 16px;
+            z-index: 60;
+            display: none;
+            padding: 10px 12px;
+            background: rgba(5, 5, 10, 0.75);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 0.75rem;
+            line-height: 1.5;
+            font-variant-numeric: tabular-nums;
+            white-space: pre;
+            pointer-events: none;
+        }
+        #coordenadas.visivel {
+            display: block;
+        }
         
         /* Volume Slider */
         .volume-container {
@@ -510,6 +534,9 @@
             </button>
             <div class="espera-do-video" id="spinner"></div>
         </div>
+
+        <!-- As coordenadas do olhar, para quem afina as paragens. -->
+        <div id="coordenadas" aria-hidden="true"></div>
 
         <!-- Custom Controls Overlay -->
         <div id="ui-layer" class="paused">
@@ -1434,7 +1461,48 @@
             clearTimeout(ratoParado);
             document.body.classList.remove('hide-cursor');
         });
-        
+
+        // ---- As coordenadas do olhar ----
+        //
+        // Uma janela no canto, só para quem tem o menu de desenvolvedor
+        // ligado no mapa (a mesma memória do navegador diz-o aqui): a
+        // volta e a inclinação da câmara em graus, a abertura, e o segundo
+        // do filme. Serve para apontar de onde se quer que cada paragem
+        // comece a ser vista. Actualiza-se a cada imagem enquanto se vê.
+        (function coordenadasDoOlhar() {
+            const janela = document.getElementById('coordenadas');
+            if (!janela) return;
+            let ligada = false;
+            const verSeEstaLigada = () => {
+                let quer = false;
+                try { quer = localStorage.getItem('programador') === 'on'; } catch (e) { /* sem memória */ }
+                if (quer !== ligada) {
+                    ligada = quer;
+                    janela.classList.toggle('visivel', ligada);
+                }
+            };
+            const graus = (radianos) => {
+                let g = radianos * 180 / Math.PI;
+                g = ((g + 180) % 360 + 360) % 360 - 180;
+                return (g >= 0 ? '+' : '') + g.toFixed(1) + '°';
+            };
+            const escrever = () => {
+                verSeEstaLigada();
+                if (ligada) {
+                    const olhar = cameraEl && cameraEl.components && cameraEl.components['look-controls'];
+                    const volta = olhar ? graus(olhar.yawObject.rotation.y) : '—';
+                    const inclinacao = olhar ? graus(olhar.pitchObject.rotation.x) : '—';
+                    janela.textContent =
+                        'yaw    ' + volta + '\n' +
+                        'pitch  ' + inclinacao + '\n' +
+                        'fov    ' + angulo.toFixed(0) + '°\n' +
+                        'tempo  ' + video.currentTime.toFixed(1) + ' s';
+                }
+                requestAnimationFrame(escrever);
+            };
+            escrever();
+        })();
+
     </script>
 </body>
 </html>
