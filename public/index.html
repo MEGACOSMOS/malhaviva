@@ -945,7 +945,7 @@
            ecrãs tácteis; com rato e teclado há o WASD. */
         #joystick {
             position: fixed;
-            left: 166px;
+            right: 92px;
             bottom: 156px;
             z-index: 100;
             width: 112px;
@@ -2862,17 +2862,19 @@ void modifySplatColor(vec3 center, inout vec4 color) {
         }
 
         // O menu de desenvolvedor vive escondido. Escrever
-        // "filipeprogramador" em qualquer sítio da página liga-o (e
-        // escrever outra vez desliga-o); a escolha fica guardada.
+        // "filipeprogramador" (ou "filipedesenvolvedor") em qualquer sítio
+        // da página liga-o, e escrever outra vez desliga-o; a escolha fica
+        // guardada.
         (function cheatCode() {
-            const PALAVRA = 'filipeprogramador';
+            const PALAVRAS = ['filipeprogramador', 'filipedesenvolvedor'];
+            const MAIOR = Math.max(...PALAVRAS.map((p) => p.length));
             let escrito = '';
             const aplicar = () => document.body.classList.toggle('programador', localStorage.getItem('programador') === 'on');
             aplicar();
             document.addEventListener('keydown', (e) => {
                 if (e.key.length !== 1) return;
-                escrito = (escrito + e.key.toLowerCase()).slice(-PALAVRA.length);
-                if (escrito !== PALAVRA) return;
+                escrito = (escrito + e.key.toLowerCase()).slice(-MAIOR);
+                if (!PALAVRAS.some((p) => escrito.endsWith(p))) return;
                 escrito = '';
                 const ligado = localStorage.getItem('programador') !== 'on';
                 localStorage.setItem('programador', ligado ? 'on' : 'off');
