@@ -464,7 +464,7 @@ AnnotationController.prototype.initialize = function() {
             position: absolute;
             bottom: 50px;
             right: 15px;
-            background: linear-gradient(to bottom, rgba(255,255,255,0.05), transparent), rgba(5, 5, 10, 0.6);
+            background: linear-gradient(to bottom, rgba(255,255,255,0.05), transparent), #05050a;
             border: 1px solid rgba(255,255,255,0.15);
             border-radius: 0;
             padding: 16px;
@@ -913,7 +913,7 @@ AnnotationController.prototype.initialize = function() {
             position: absolute;
             top: calc(100% + 8px);
             right: 0;
-            background: linear-gradient(to bottom, rgba(255,255,255,0.05), transparent), rgba(5, 5, 10, 0.6);
+            background: linear-gradient(to bottom, rgba(255,255,255,0.05), transparent), #05050a;
             border: 1px solid rgba(255,255,255,0.15);
             border-radius: 0;
             padding: 16px;
