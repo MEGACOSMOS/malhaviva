@@ -1699,10 +1699,11 @@ AnnotationController.prototype.mostrarParagem360 = function(ann) {
     palco.titulo.textContent = this.nomeDaParagem360(ann);
     fazerSurgir(aAbrir ? '0.45s' : '0s', palco.barraDoNome);
     // A altura da barra dos comandos da página de lá só se mede quando
-    // ela carrega; até lá vale a última medida do mesmo tipo de paragem,
-    // para a janela nascer já do tamanho certo em vez de crescer depois.
-    const tipoDeParagem = ann.isImage ? 'foto' : 'rota';
-    const alturaLembrada = this.alturaDosComandos360 && this.alturaDosComandos360[tipoDeParagem];
+    // ela carrega; até lá vale a última medida do mesmo tipo de paragem
+    // (lembrada de visita para visita), para a janela nascer já do
+    // tamanho certo em vez de crescer depois — e para a barra de baixo,
+    // que é desenhada com essa altura, estar à vista desde o princípio.
+    const alturaLembrada = this.alturaLembradaDosComandos360(ann);
     if (alturaLembrada) {
         palco.modal.style.setProperty('--altura-controlos', alturaLembrada + 'px');
     }
@@ -1911,10 +1912,58 @@ AnnotationController.prototype.medirComandos360 = function() {
     } catch (e) { /* outra origem: fica a altura de omissão */ }
     if (barra && barra.offsetHeight > 0) {
         palco.modal.style.setProperty('--altura-controlos', barra.offsetHeight + 'px');
-        if (!this.alturaDosComandos360) this.alturaDosComandos360 = {};
-        this.alturaDosComandos360[this.paragem360 && this.paragem360.isImage ? 'foto' : 'rota'] = barra.offsetHeight;
+        this.lembrarAlturaDosComandos360(this.paragem360, barra.offsetHeight);
     }
     this.medirPalco(palco);
+};
+
+/**
+ * A chave com que se lembra a altura da barra dos comandos de uma
+ * paragem: o tipo dela (a barra da fotografia tem menos botões) e a
+ * largura do ecrã (num ecrã estreito a barra é mais apertada).
+ *
+ * @param {object} ann - A paragem.
+ * @returns {string} A chave.
+ */
+AnnotationController.prototype.chaveDaAlturaDosComandos360 = function(ann) {
+    return (ann && ann.isImage ? 'foto' : 'rota') + (window.innerWidth <= 900 ? '_estreito' : '_largo');
+};
+
+/**
+ * A altura da barra dos comandos de uma paragem, tal como foi medida da
+ * última vez — nesta visita ou numa anterior. Sem medida nenhuma, vale a
+ * altura de sempre da barra das rotas.
+ *
+ * @param {object} ann - A paragem.
+ * @returns {number} A altura, em pontos; zero se não se souber.
+ */
+AnnotationController.prototype.alturaLembradaDosComandos360 = function(ann) {
+    if (!this.alturaDosComandos360) {
+        this.alturaDosComandos360 = {};
+        try {
+            Object.assign(this.alturaDosComandos360, JSON.parse(localStorage.getItem('altura-comandos-360') || '{}'));
+        } catch (e) { /* sem memória: mede-se de novo */ }
+    }
+    const chave = this.chaveDaAlturaDosComandos360(ann);
+    if (this.alturaDosComandos360[chave]) return this.alturaDosComandos360[chave];
+    // Sem medida, a altura de sempre da barra das rotas: acerta na maior
+    // parte dos ecrãs, e onde não acertar a medida corrige-a de seguida.
+    return ann && ann.isImage ? 0 : 105;
+};
+
+/**
+ * Guarda a altura medida da barra dos comandos de uma paragem, para a
+ * próxima vez — e para a próxima visita.
+ *
+ * @param {object} ann - A paragem.
+ * @param {number} altura - A altura medida, em pontos.
+ */
+AnnotationController.prototype.lembrarAlturaDosComandos360 = function(ann, altura) {
+    if (!this.alturaDosComandos360) this.alturaDosComandos360 = {};
+    this.alturaDosComandos360[this.chaveDaAlturaDosComandos360(ann)] = altura;
+    try {
+        localStorage.setItem('altura-comandos-360', JSON.stringify(this.alturaDosComandos360));
+    } catch (e) { /* sem memória: fica só para esta visita */ }
 };
 
 /**
