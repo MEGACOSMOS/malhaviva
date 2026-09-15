@@ -729,11 +729,31 @@ AnnotationController.prototype.initialize = function() {
             background: #000;
             display: block;
         }
+        /* A barra dos comandos de reserva: veste-se como a da página da
+           rota e fica por baixo dela, no sítio dela, desde que a janela
+           abre — assim a barra de baixo surge com a de cima, e quando a
+           de lá chega assenta por cima sem se dar por isso. */
+        .moldura-360 .rodape-do-meio {
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            height: var(--altura-controlos, 0px);
+            box-sizing: border-box;
+            background: linear-gradient(to top, rgba(255,255,255,0.05), transparent), #05050a;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            pointer-events: none;
+        }
+        .moldura-360 .rodape-do-meio.a-surgir {
+            animation: botoes-a-surgir 0.5s ease-out both;
+            will-change: opacity;
+        }
+
         /* A imagem do primeiro instante, por cima da janela do meio
            enquanto a página da rota ainda está a chegar: é a mesma que a
            janela do lado mostrava, no mesmo sítio, e sai quando a página
            de lá tem a sua. Cobre só a parte da imagem; a barra dos
-           comandos fica a preto até vir a de lá. */
+           comandos é o rodapé de reserva até vir a de lá. */
         .moldura-360 .previa-do-meio {
             position: absolute;
             left: 0;
@@ -1678,22 +1698,41 @@ AnnotationController.prototype.mostrarParagem360 = function(ann) {
     if (alturaLembrada) {
         palco.modal.style.setProperty('--altura-controlos', alturaLembrada + 'px');
     }
-    palco.moldura.innerHTML = '<iframe src="' + this.enderecoDaParagem360(ann) +
-        '" allow="xr-spatial-tracking; fullscreen; autoplay" allowfullscreen></iframe>';
-    const janela = palco.moldura.querySelector('iframe');
-    this.tapar360EnquantoChega(ann, janela);
-    janela.addEventListener('load', () => {
-        this.medirComandos360();
-        // O foco entra na janela mal ela nasce: é lá dentro que as teclas
-        // do filme moram — o espaço, o W, A, S, D, os números — e as que
-        // são do mapa, o Escape e as setas dos lados, sabem voltar cá fora.
-        // Sem isto o foco ficava no marcador, atrás da janela, e o espaço
-        // voltava a abrir a paragem que já estava aberta. Sem deslocar
-        // nada: a dar o foco, o navegador puxa a janela para a vista, e
-        // com a tira a meio de um deslize arrastava o palco todo para o
-        // lado — e deixava-o lá.
-        janela.focus({ preventScroll: true });
-    });
+    palco.moldura.innerHTML = '';
+    // O rodapé de reserva e a imagem parada, que surgem com a barra do
+    // nome. A página da rota só é criada meio segundo depois: montar a
+    // cena dela ocupa o navegador, e criada logo travava estas animações
+    // a meio — as barras ficavam escuras enquanto o quadrado de espera
+    // rodava.
+    const rodape = document.createElement('div');
+    rodape.className = 'rodape-do-meio';
+    rodape.setAttribute('aria-hidden', 'true');
+    palco.moldura.appendChild(rodape);
+    fazerSurgir(rodape);
+    this.tapar360EnquantoChega(ann);
+
+    clearTimeout(this.esperaDaJanela360);
+    this.esperaDaJanela360 = setTimeout(() => {
+        if (this.paragem360 !== ann || palco.modal.style.display === 'none') return;
+        const janela = document.createElement('iframe');
+        janela.src = this.enderecoDaParagem360(ann);
+        janela.setAttribute('allow', 'xr-spatial-tracking; fullscreen; autoplay');
+        janela.setAttribute('allowfullscreen', '');
+        janela.addEventListener('load', () => {
+            this.medirComandos360();
+            // O foco entra na janela mal ela nasce: é lá dentro que as
+            // teclas do filme moram — o espaço, o W, A, S, D, os números —
+            // e as que são do mapa, o Escape e as setas dos lados, sabem
+            // voltar cá fora. Sem isto o foco ficava no marcador, atrás
+            // da janela, e o espaço voltava a abrir a paragem que já
+            // estava aberta. Sem deslocar nada: a dar o foco, o navegador
+            // puxa a janela para a vista, e com a tira a meio de um
+            // deslize arrastava o palco todo para o lado — e deixava-o lá.
+            janela.focus({ preventScroll: true });
+        });
+        // Por cima do rodapé de reserva, por baixo da imagem parada.
+        palco.moldura.insertBefore(janela, palco.moldura.querySelector('.previa-do-meio'));
+    }, 500);
 
     const lista = this.paragens360();
     const onde = lista.indexOf(ann);
@@ -1743,7 +1782,7 @@ AnnotationController.prototype.mostrarParagem360 = function(ann) {
  * @param {object} ann - A paragem que vai para o meio.
  * @param {HTMLIFrameElement} janela - A janela da página da rota.
  */
-AnnotationController.prototype.tapar360EnquantoChega = function(ann, janela) {
+AnnotationController.prototype.tapar360EnquantoChega = function(ann) {
     if (!ann || ann.isImage) {
         return;
     }
@@ -1760,9 +1799,7 @@ AnnotationController.prototype.tapar360EnquantoChega = function(ann, janela) {
     espera.className = 'espera-video';
     if (window.QuadradoDeEspera) window.QuadradoDeEspera.fazer(espera);
     tapa.appendChild(espera);
-    if (janela.parentNode === palco.moldura) {
-        palco.moldura.appendChild(tapa);
-    }
+    palco.moldura.appendChild(tapa);
 
     const jaDesenhada = [palco.esquerda, palco.direita]
         .map(lado => lado && lado.querySelector('.previa-janela canvas'))
@@ -1788,7 +1825,8 @@ AnnotationController.prototype.tapar360EnquantoChega = function(ann, janela) {
     // mostra por baixo — e assim nunca se ouve o filme com a imagem
     // parada por cima, nem se vê o preto de a cena ainda estar a nascer.
     const aoAviso = (e) => {
-        if (e.source !== janela.contentWindow || !e.data) return;
+        const janela = palco.moldura.querySelector('iframe');
+        if (!janela || e.source !== janela.contentWindow || !e.data) return;
         if (e.data.malhaViva === 'filme360aAndar' || e.data.malhaViva === 'botao360aEspera') {
             sair();
         }
@@ -1884,6 +1922,8 @@ AnnotationController.prototype.fecharPalco360 = function() {
     if (this.paragem360) {
         this.marcarComoUltima(this.idDaAnotacao(this.paragem360));
     }
+    // Uma página da rota que ainda estivesse para nascer já não nasce.
+    clearTimeout(this.esperaDaJanela360);
 
     palco.modal.style.opacity = '0';
     palco.meio.classList.remove('aberta');

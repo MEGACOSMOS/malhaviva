@@ -168,16 +168,24 @@
             display: flex;
             flex-direction: column;
             gap: 12px;
-            /* Os botões surgem a esbater quando a janela abre, na placa
-               gráfica (will-change) para correr liso com a página ocupada
-               a montar a cena. Em ecrã inteiro a barra tem o seu próprio
-               deslize, e não isto. */
-            animation: botoes-a-surgir 0.5s ease-out both;
-            will-change: opacity;
         }
+        /* Os botões surgem a esbater quando a página abre. É só o que
+           está dentro da barra que se esbate: a barra em si, com a sua
+           roupa, está lá desde o princípio — no mapa, uma de reserva
+           igual a esta já lá estava por baixo —, e assim, se o navegador
+           estiver ocupado a montar a cena e atrasar a animação, o que
+           espera são os botões, e não uma barra escura. Em ecrã inteiro
+           a barra tem o seu próprio deslize, e não isto. */
         @keyframes botoes-a-surgir {
             from { opacity: 0; }
             to { opacity: 1; }
+        }
+        .video-controls > * {
+            animation: botoes-a-surgir 0.5s ease-out both;
+            will-change: opacity;
+        }
+        body:fullscreen .video-controls > * {
+            animation: none;
         }
         /* Em ecrã inteiro a barra passa a ficar por cima da imagem, e por
            isso fica recolhida: a rota vê-se toda, sem uma tarja preta a
@@ -193,7 +201,6 @@
             transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
             transform: translateY(100%);
             z-index: 1000;
-            animation: none;
         }
         body:fullscreen.barra-a-espreitar .video-controls {
             transform: translateY(0);
