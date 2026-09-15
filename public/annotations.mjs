@@ -1724,13 +1724,17 @@ AnnotationController.prototype.tapar360EnquantoChega = function(ann, janela) {
         tapa.classList.add('a-sair');
         setTimeout(() => tapa.remove(), 400);
     };
+    // Sai quando a página de lá tem a sua imagem posta — ou, sem falta,
+    // quando o filme anda, para nunca se ouvir o filme com a imagem
+    // parada por cima.
     const aoAviso = (e) => {
-        if (e.source === janela.contentWindow && e.data && e.data.malhaViva === 'previa360pronta') {
+        if (e.source !== janela.contentWindow || !e.data) return;
+        if (e.data.malhaViva === 'previa360pronta' || e.data.malhaViva === 'filme360aAndar') {
             sair();
         }
     };
     window.addEventListener('message', aoAviso);
-    janela.addEventListener('load', () => setTimeout(sair, 2500), { once: true });
+    janela.addEventListener('load', () => setTimeout(sair, 600), { once: true });
     setTimeout(sair, 8000);
 };
 

@@ -696,8 +696,20 @@
         // caso das rotas, ou num ecrã grande à frente dele, que é como uma
         // entrevista se vê bem dentro dos óculos — como estar numa sala de
         // cinema vazia.
+        // A esfera (ou o ecrã) só mostra o filme depois de o A-Frame lhe
+        // ter feito a textura e de a cena estar a ser desenhada. Antes
+        // disso o filme pode andar — e o som com ele — sem se ver nada:
+        // é preciso saber quando é que se vê.
+        let texturaDoFilmePronta = false;
+        let cenaADesenhar = !!scene.renderStarted;
+        scene.addEventListener('renderstart', () => { cenaADesenhar = true; });
+        const vigiarATextura = (el) => {
+            el.addEventListener('materialtextureloaded', () => { texturaDoFilmePronta = true; });
+        };
+
         if (ecraPlano) {
             const painel = document.createElement('a-video');
+            vigiarATextura(painel);
             painel.setAttribute('src', '#video360');
             painel.setAttribute('width', '6.4');
             painel.setAttribute('height', '3.6');
@@ -715,6 +727,7 @@
             scene.appendChild(chao);
         } else {
             const videosphere = document.createElement('a-videosphere');
+            vigiarATextura(videosphere);
             videosphere.setAttribute('src', '#video360');
             videosphere.setAttribute('rotation', '0 180 0'); // Seam placed directly behind the user
             videosphere.setAttribute('segments-width', '128');
@@ -808,11 +821,17 @@
             playBtnInitial.innerHTML =
                 '<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>' +
                 (window.Idiomas ? window.Idiomas.t('video.oculos') : 'Ver com óculos');
+        } else {
+            // Enquanto o filme carrega está o quadrado de espera no meio,
+            // e não o botão: o botão só aparece se o navegador recusar o
+            // arranque automático, que é quando faz falta um toque.
+            playBtnInitial.style.display = 'none';
+            spinner.style.display = 'grid';
         }
 
         // ---- O arranque ----
         //
-        // O botão do meio está à vista desde o princípio, e a cortina
+        // O quadrado de espera está no meio desde o princípio, e a cortina
         // abre-se quando o vídeo anda de verdade — venha o arranque de
         // onde vier: de si mesmo, do botão, ou de uma troca de versão a
         // meio. Como a textura demora um pouco a ser puxada para a placa
@@ -832,6 +851,11 @@
             uiLayer.classList.remove('paused');
             despedirAPrevia();
             showControls();
+            // O mapa, que tapa esta janela com a imagem parada enquanto
+            // ela chega, fica a saber que o filme já anda.
+            if (window.parent !== window) {
+                window.parent.postMessage({ malhaViva: 'filme360aAndar', nome }, window.location.origin);
+            }
         };
 
         // Quantas imagens do filme o navegador já descodificou. É o sinal
@@ -878,11 +902,12 @@
             const haImagem = () => {
                 if (feito) return true;
                 if (video.paused || video.currentTime <= 0.05) return false;
+                // Passado muito tempo com o filme a andar e sem sinal de
+                // imagem, vale o relógio do vídeo, para não ficar preso.
+                if (performance.now() - comecou > 10000) return true;
+                if (!texturaDoFilmePronta || !cenaADesenhar) return false;
                 const imagens = imagensDescodificadas();
-                // Sem contagem, ou passado muito tempo com o filme a andar
-                // e a contagem parada, vale o relógio do vídeo.
-                if (imagens < 0 || performance.now() - comecou > 10000) return true;
-                return imagens >= 2;
+                return imagens < 0 || imagens >= 2;
             };
             const ver = () => {
                 if (feito) return;
@@ -911,13 +936,22 @@
         // som a começar com a imagem ainda preta. Quem carrega no botão
         // antes de o vídeo estar pronto fica com o quadrado de espera, e
         // o arranque faz-se sozinho mal esteja.
+        // E só arranca com a cena já a ser desenhada: arrancar antes era
+        // o filme a andar às escuras, e a imagem a chegar já uns segundos
+        // adiantada em relação ao princípio.
         const PRONTO = 4;
         const quandoPronto = (depois) => {
-            if (video.readyState >= PRONTO) {
+            let feito = false;
+            const ver = () => {
+                if (feito || video.readyState < PRONTO || !cenaADesenhar) return;
+                feito = true;
+                video.removeEventListener('canplaythrough', ver);
+                scene.removeEventListener('renderstart', ver);
                 depois();
-                return;
-            }
-            video.addEventListener('canplaythrough', depois, { once: true });
+            };
+            video.addEventListener('canplaythrough', ver);
+            scene.addEventListener('renderstart', ver);
+            ver();
         };
 
         playBtnInitial.addEventListener('click', () => {
@@ -947,23 +981,21 @@
         // navegador não deixa, fica o botão do meio à espera do toque que
         // ele exige — e esse toque traz o som consigo.
         if (!pedidoDeVR) {
-            video.addEventListener('canplaythrough', () => {
+            quandoPronto(() => {
                 if (!video.paused || cortinaAberta) return;
-                arrancarCalado().then(() => {
-                    // O navegador deixou: o filme vai andar, e enquanto a
-                    // imagem não chega o botão dá o lugar ao quadrado de
-                    // espera, para se ver que está a carregar.
-                    if (cortinaAberta) return;
-                    playBtnInitial.style.display = 'none';
-                    spinner.style.display = 'grid';
-                }).catch((erro) => {
+                arrancarCalado().catch((erro) => {
                     // Uma troca de versão a meio do arranque também
                     // interrompe o pedido; nesse caso o vídeo volta a
                     // arrancar sozinho e a cortina abre-se na mesma.
                     if (erro && erro.name === 'AbortError') return;
+                    // O navegador não deixou: fica o botão à espera do
+                    // toque, no lugar do quadrado de espera.
                     porOSom();
+                    if (cortinaAberta) return;
+                    spinner.style.display = 'none';
+                    playBtnInitial.style.display = 'flex';
                 });
-            }, { once: true });
+            });
         }
 
         playPauseBtn.addEventListener('click', togglePlay);
