@@ -7,11 +7,26 @@
     <meta name="description" content="Guia dos controlos do visualizador 3D Malha Viva. Navega como num mapa: arrasta com o rato, aproxima com o scroll, roda com Ctrl.">
     <script src="/idiomas.js?v=14"></script>
     <script src="/comando-paginas.js?v=4" defer></script>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
     <style>
+        /* A letra do site: a Liberation Mono, servida daqui mesmo (ficheiros
+           em /fonts, licença SIL Open Font). Dois pesos chegam: o normal
+           até ao meio-negro, o negro daí para cima. */
+        @font-face {
+            font-family: 'Liberation Mono';
+            src: url('/fonts/LiberationMono-Regular.ttf') format('truetype');
+            font-weight: 100 500;
+            font-style: normal;
+            font-display: swap;
+        }
+        @font-face {
+            font-family: 'Liberation Mono';
+            src: url('/fonts/LiberationMono-Bold.ttf') format('truetype');
+            font-weight: 600 900;
+            font-style: normal;
+            font-display: swap;
+        }
+
         *, *::before, *::after {
             margin: 0;
             padding: 0;
@@ -27,7 +42,7 @@
             --color-accent: #ffffff;
             --color-accent-dim: rgba(255, 255, 255, 0.7);
             --color-border: rgba(255, 255, 255, 0.15);
-            --font-main: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            --font-main: 'Liberation Mono', 'Courier New', monospace;
             --radius: 0px;
             --radius-sm: 0px;
         }
@@ -544,7 +559,14 @@
                 <div class="control-row">
                     <span class="control-action" data-i18n="ctl.olhar">Olhar à volta</span>
                     <div class="control-keys">
-                        <span class="kbd accent">🖱️ <span data-i18n="ctl.esquerdo">Esquerdo</span></span>
+                        <span class="kbd accent"><svg width="11" height="14" viewBox="0 0 12 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true" style="margin-right: 6px"><rect x="1" y="1" width="10" height="14"></rect><line x1="6" y1="4" x2="6" y2="7"></line></svg><span data-i18n="ctl.esquerdo">Esquerdo</span></span>
+                        <span class="key-separator" data-i18n="ctl.maisArrastar">+ arrastar</span>
+                    </div>
+                </div>
+                <div class="control-row">
+                    <span class="control-action" data-i18n="ctl.arrastarBairro">Arrastar o bairro</span>
+                    <div class="control-keys">
+                        <span class="kbd accent">Ctrl</span>
                         <span class="key-separator" data-i18n="ctl.maisArrastar">+ arrastar</span>
                     </div>
                 </div>

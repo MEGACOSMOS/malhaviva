@@ -1069,6 +1069,9 @@ class CameraControls extends Script {
         const fly = +(this._mode === 'fly');
         const double = +(this._state.touches > 1);
         const desktopPan = +(this._state.shift || this._state.mouse[1]);
+        // Com o Ctrl em baixo, arrastar com o rato não roda a vista: agarra o
+        // bairro e puxa-o, e a câmara anda na horizontal com ele.
+        const ctrlArrasto = this._state.ctrl > 0 && this._state.mouse[0] > 0;
         const mobileJoystick = +(this._flyMobileInput.layout.endsWith('joystick'));
 
         // rate-based multipliers (keyboard, gamepad, virtual joystick)
@@ -1228,7 +1231,7 @@ class CameraControls extends Script {
         v.set(0, 0, 0);
         
         // Target rotation based on mouse input (reduced multiplier to 0.4 for better tracking and slower speed)
-        const targetRotate = tmpV2.set(-mouse[0] * 0.4, -mouse[1] * 0.4, 0).mulScalar(rotateDeltaMult);
+        const targetRotate = tmpV2.set(-mouse[0] * 0.4, -mouse[1] * 0.4, 0).mulScalar(ctrlArrasto ? 0 : rotateDeltaMult);
         
         v.add(targetRotate);
         deltas.rotate.append([v.x, v.y, v.z]);
@@ -1324,9 +1327,24 @@ class CameraControls extends Script {
             
             // Apply ease in and out (inertia)
             this._smoothMoveVelocity.lerp(this._smoothMoveVelocity, targetVec, 5.0 * dt);
-            
+
             if (this._smoothMoveVelocity.length() > 0.00001) {
                 this._pose.position.add(this._smoothMoveVelocity);
+            }
+
+            // Ctrl + arrastar: o bairro segue o rato. Cada ponto de ecrã que
+            // o rato anda vale, em metros, o que um ponto de ecrã vale no
+            // chão à altura a que a câmara está — assim o que está debaixo
+            // do cursor fica debaixo do cursor, seja de perto ou de longe.
+            if (ctrlArrasto && (mouse[0] !== 0 || mouse[1] !== 0)) {
+                const altura = Math.max(3, this._pose.position.y);
+                const tela = this.app.graphicsDevice.canvas;
+                const alturaDaTela = (tela && tela.clientHeight) || 1;
+                const metrosPorPonto = 2 * altura * Math.tan(this._camera.fov * 0.5 * math.DEG_TO_RAD) / alturaDaTela;
+                const lado = -mouse[0] * metrosPorPonto;
+                const frente = mouse[1] * metrosPorPonto;
+                this._pose.position.x += flatRightX * lado + flatForwardX * frente;
+                this._pose.position.z += flatRightZ * lado + flatForwardZ * frente;
             }
             // NO ATTACH HERE!
         }

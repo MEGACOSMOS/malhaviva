@@ -921,7 +921,7 @@ TrailController.prototype.setupEditModeUI = function() {
     this.editUI.style.gap = '12px';
     this.editUI.style.zIndex = '1000';
     this.editUI.style.boxShadow = '0 4px 15px rgba(0,0,0,0.4)';
-    this.editUI.style.fontFamily = "'Inter', -apple-system, sans-serif";
+    this.editUI.style.fontFamily = "'Liberation Mono', 'Courier New', monospace";
     
     this.editUI.innerHTML = `
         <div style="color: #ffffff; font-weight: 600; font-size: 0.9rem; display: flex; align-items: center; gap: 8px;">

@@ -9,13 +9,30 @@
     <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
     <script src="/comando-paginas.js?v=4" defer></script>
     <style>
+        /* A letra do site: a Liberation Mono, servida daqui mesmo (ficheiros
+           em /fonts, licença SIL Open Font). Dois pesos chegam: o normal
+           até ao meio-negro, o negro daí para cima. */
+        @font-face {
+            font-family: 'Liberation Mono';
+            src: url('/fonts/LiberationMono-Regular.ttf') format('truetype');
+            font-weight: 100 500;
+            font-style: normal;
+            font-display: swap;
+        }
+        @font-face {
+            font-family: 'Liberation Mono';
+            src: url('/fonts/LiberationMono-Bold.ttf') format('truetype');
+            font-weight: 600 900;
+            font-style: normal;
+            font-display: swap;
+        }
         html { margin: 0; padding: 0; width: 100%; height: 100%; }
 
         /* A fotografia em cima e a barra dos comandos em baixo, uma por
            cima da outra: a barra deixa de tapar a paisagem. */
         body {
             margin: 0; padding: 0; width: 100%; height: 100%;
-            background: #05050a; overflow: hidden; font-family: sans-serif;
+            background: #05050a; overflow: hidden; font-family: 'Liberation Mono', 'Courier New', monospace;
             display: flex;
             flex-direction: column;
         }

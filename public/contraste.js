@@ -1,18 +1,19 @@
 /**
- * A tinta do cabeçalho — e do botão de partilhar, no canto de baixo —
- * segue o que está por baixo dela.
+ * O avesso de cada ícone do cabeçalho — e do botão de partilhar, no
+ * canto de baixo — segue o que está por baixo dele.
  *
- * Como a barra de estado de um telemóvel Android: sobre um fundo escuro os
- * ícones são brancos, sobre um fundo claro são pretos. Aqui o fundo é o
- * próprio bairro, que muda a cada passo — o céu por cima dos telhados é
- * quase branco, a sombra das ruas é quase preta — por isso não há maneira
- * de decidir de antemão: tem de se ir ver.
+ * Os ícones são brancos. Quando um é escolhido — o rato em cima, ou o
+ * menu dele aberto — toma a cor inversa da que tem por trás: o negativo
+ * do céu, dos telhados, da sombra da rua. Como o fundo é o próprio
+ * bairro, que muda a cada passo, não há maneira de decidir de antemão:
+ * tem de se ir ver.
  *
  * E é isso que este ficheiro faz. De fração em fração de segundo copia uma
- * tira fininha da imagem do bairro, a que fica mesmo por trás do cabeçalho,
- * mede o brilho debaixo de cada ícone e escolhe a tinta que se vê melhor.
- * Cada ícone decide por si: com o sol de um lado e a sombra do outro, uns
- * ficam pretos e outros brancos.
+ * tira fininha da imagem do bairro, a que fica mesmo por trás dos ícones,
+ * mede a cor média debaixo de cada um e escreve-lhe o avesso. Cada ícone
+ * decide por si: com o sol de um lado e a sombra do outro, cada um tem o
+ * seu. Um fundo a meio caminho — cinzento — teria um avesso igual a si
+ * próprio, e aí o avesso é o branco ou o preto, o que se vir melhor.
  */
 (function () {
     'use strict';
@@ -22,10 +23,10 @@
     var COLUNAS = 192;
     var LINHAS = 4;
 
-    // Dois limites, e não um, com uma folga no meio: assim a tinta não anda
-    // a piscar quando o fundo fica mesmo em cima da fronteira.
-    var PASSA_A_PRETO = 0.58;
-    var VOLTA_A_BRANCO = 0.42;
+    // Um fundo com brilho entre estes dois é cinzento: o negativo dele não
+    // se distinguiria dele, e aí vale o branco ou o preto.
+    var CINZENTO_DE = 0.36;
+    var CINZENTO_ATE = 0.64;
 
     // De quanto em quanto tempo se vai ver, em milésimos de segundo.
     var INTERVALO = 200;
@@ -156,35 +157,43 @@
             primeira = Math.max(0, Math.min(COLUNAS - 1, primeira));
             ultima = Math.max(primeira, Math.min(COLUNAS - 1, ultima));
 
-            var soma = 0;
+            var r = 0, g = 0, b = 0;
             var contados = 0;
             for (var linha = 0; linha < LINHAS; linha++) {
                 for (var coluna = primeira; coluna <= ultima; coluna++) {
                     var i = (linha * COLUNAS + coluna) * 4;
-                    // O verde pesa mais do que o azul porque é assim que o
-                    // olho vê: um verde e um azul da mesma medida não
-                    // parecem igualmente claros.
-                    soma += (0.2126 * dados[i] + 0.7152 * dados[i + 1] + 0.0722 * dados[i + 2]) / 255;
+                    r += dados[i];
+                    g += dados[i + 1];
+                    b += dados[i + 2];
                     contados++;
                 }
             }
             if (!contados) {
                 return;
             }
+            r /= contados;
+            g /= contados;
+            b /= contados;
 
-            var brilho = soma / contados;
-            var estaPreto = el.classList.contains('sobre-claro');
-            if (!estaPreto && brilho > PASSA_A_PRETO) {
-                el.classList.add('sobre-claro');
-            } else if (estaPreto && brilho < VOLTA_A_BRANCO) {
-                el.classList.remove('sobre-claro');
+            // O verde pesa mais do que o azul porque é assim que o olho
+            // vê: um verde e um azul da mesma medida não parecem igualmente
+            // claros.
+            var brilho = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+            var avesso;
+            if (brilho > CINZENTO_DE && brilho < CINZENTO_ATE) {
+                avesso = brilho < 0.5 ? '#ffffff' : '#05050a';
+            } else {
+                avesso = 'rgb(' + Math.round(255 - r) + ', ' + Math.round(255 - g) + ', ' + Math.round(255 - b) + ')';
+            }
+            if (el.style.getPropertyValue('--avesso') !== avesso) {
+                el.style.setProperty('--avesso', avesso);
             }
         });
     }
 
     // Deixado à vista para se poder pedir uma medição à mão e ver o que
     // ela decidiu, sem ter de esperar pela volta seguinte.
-    window.ContrasteDoCabecalho = { medir: medir };
+    window.ContrasteDoCabecalho = { medir: medir, pedir: function () { pedirMedicao(); } };
 
     /**
      * Se a câmara saiu do sítio desde a última vez que se olhou.
@@ -215,6 +224,37 @@
         return true;
     }
 
+    /**
+     * Mede no fim da imagem que o motor está a desenhar, e não entre imagens.
+     *
+     * Com o motor de desenho novo (WebGPU) a tela só se deixa ler enquanto
+     * a imagem está a ser feita: entre duas imagens vem tudo a preto, e
+     * medir aí era decidir às escuras — os ícones ficavam sempre com o
+     * avesso de preto, fosse o que fosse que tivessem por baixo. Por isso a
+     * medição é pedida aqui e feita pelo motor, mal acaba de desenhar.
+     * Enquanto o motor não acordou, mede-se logo, que é o que há.
+     */
+    var pedida = false;
+    var motorLigado = null;
+    function pedirMedicao() {
+        var pagina = document.querySelector('pc-app');
+        var app = pagina && pagina.app;
+        if (app && motorLigado !== app && typeof app.on === 'function') {
+            motorLigado = app;
+            app.on('frameend', function () {
+                if (pedida) {
+                    pedida = false;
+                    medir();
+                }
+            });
+        }
+        if (motorLigado) {
+            pedida = true;
+        } else {
+            medir();
+        }
+    }
+
     var ultimaVez = 0;
     var ultimaMedicao = 0;
     function aCadaImagem(agora) {
@@ -222,7 +262,7 @@
             ultimaVez = agora;
             if (camaraMexeu() || agora - ultimaMedicao >= DESCANSO) {
                 ultimaMedicao = agora;
-                medir();
+                pedirMedicao();
             }
         }
         requestAnimationFrame(aCadaImagem);

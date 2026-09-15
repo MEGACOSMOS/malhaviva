@@ -5,10 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Bairro de Penajóia — Malha Viva</title>
     <meta name="description" content="Exploração 3D interativa do Bairro de Penajóia através de Gaussian Splatting. Projeto Malha Viva.">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-
     <!-- As línguas do site. Fica antes de tudo o resto para o texto
          nascer já na língua certa, sem piscar em português primeiro. -->
     <script src="/idiomas.js?v=14"></script>
@@ -18,7 +14,7 @@
     <script src="/quadrado-de-espera.js?v=4"></script>
 
     <!-- A tinta do cabeçalho segue o brilho do bairro por trás dela. -->
-    <script src="/contraste.js?v=5"></script>
+    <script src="/contraste.js?v=6"></script>
 
     <!-- PlayCanvas Web Components (versões fixas para estabilidade em produção) -->
     <script type="importmap">
@@ -35,6 +31,24 @@
     <script type="module">import '@playcanvas/web-components';</script>
 
     <style>
+        /* A letra do site: a Liberation Mono, servida daqui mesmo (ficheiros
+           em /fonts, licença SIL Open Font). Dois pesos chegam: o normal
+           até ao meio-negro, o negro daí para cima. */
+        @font-face {
+            font-family: 'Liberation Mono';
+            src: url('/fonts/LiberationMono-Regular.ttf') format('truetype');
+            font-weight: 100 500;
+            font-style: normal;
+            font-display: swap;
+        }
+        @font-face {
+            font-family: 'Liberation Mono';
+            src: url('/fonts/LiberationMono-Bold.ttf') format('truetype');
+            font-weight: 600 900;
+            font-style: normal;
+            font-display: swap;
+        }
+
         *, *::before, *::after {
             margin: 0;
             padding: 0;
@@ -50,7 +64,7 @@
             --color-accent: #ffffff;
             --color-accent-glow: rgba(255, 255, 255, 0.3);
             --color-border: rgba(255, 255, 255, 0.06);
-            --font-main: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            --font-main: 'Liberation Mono', 'Courier New', monospace;
             --radius: 12px;
             --radius-sm: 8px;
         }
@@ -369,13 +383,6 @@
                 padding: 6px 0 4px;
             }
 
-            /* Com o menu aberto o ícone não vira do avesso: pousado sobre o
-               bairro, virar era desaparecer. Quem diz que está aberto é o
-               bico, virado para a esquerda. */
-            #acoes-do-cabecalho .settings:has(.open) > button {
-                color: var(--tinta);
-            }
-
             #acoes-do-cabecalho .seta-menu {
                 transform: rotate(-90deg);
             }
@@ -530,10 +537,10 @@
            Antes cada ícone fazia à sua maneira — e os de Definições e
            Desenvolvedor não faziam nada, porque a regra deles tinha ficado
            colada à regra seguinte e nunca chegou a existir. */
-        /* A tinta do cabeçalho segue o que lhe passa por baixo, como a
-           barra de estado de um telemóvel Android: sobre escuro fica
-           branca, sobre claro fica preta. Quem vai ver é o contraste.js,
-           que mede o brilho da imagem por trás de cada peça. */
+        /* A tinta dos ícones é branca. Escolhido — com o rato em cima ou
+           com o menu aberto — o ícone toma a cor inversa da que tem por
+           baixo: quem vai ver que cor é essa é o contraste.js, que lê a
+           imagem do bairro por trás de cada peça e escreve aqui o avesso. */
         #header .adaptavel,
         #partilhar-btn {
             --tinta: #ffffff;
@@ -542,15 +549,7 @@
             transition: color 0.25s ease;
         }
 
-        #header .adaptavel.sobre-claro,
-        #partilhar-btn.sobre-claro {
-            --tinta: #05050a;
-            --avesso: #ffffff;
-        }
-
-        /* Com o rato em cima — ou com o menu aberto, que é o mesmo que
-           estar escolhido — a tinta vira do avesso. Só a tinta: não nasce
-           caixa nenhuma por trás do ícone. */
+        /* Só a tinta: não nasce caixa nenhuma por trás do ícone. */
         #header button.adaptavel:hover,
         #header a.adaptavel:hover,
         .settings:has(.open) > #definicoes-btn,
@@ -1678,8 +1677,14 @@
             
         <div class="settings">
             <button id="idioma-btn" class="adaptavel" title="Idioma" data-i18n-title="cab.idioma">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" stroke="none">
-                    <path d="M12.87 15.07l-2.54-2.51.03-.03c1.74-1.94 2.98-4.17 3.71-6.53H17V4h-7V2H8v2H1v1.99h11.17C11.5 7.92 10.44 9.75 9 11.35 8.07 10.32 7.3 9.19 6.69 8h-2c.73 1.63 1.73 3.17 2.98 4.56l-5.09 5.02L4 19l5-5 3.11 3.11.76-2.04zM18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2l-4.5-12zm-2.62 7l1.62-4.33L19.12 17h-3.24z"></path>
+                <!-- Um 文 e um A, só a direito: o mesmo traço dos outros ícones. -->
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter">
+                    <line x1="6" y1="2.5" x2="6" y2="4"></line>
+                    <line x1="2" y1="5.5" x2="10" y2="5.5"></line>
+                    <line x1="3" y1="13.5" x2="9" y2="7.5"></line>
+                    <line x1="3" y1="7.5" x2="9" y2="13.5"></line>
+                    <polyline points="12.5 21.5 17 9.5 21.5 21.5"></polyline>
+                    <line x1="14.3" y1="17" x2="19.7" y2="17"></line>
                 </svg>
                 <svg class="seta-menu" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true"><polyline points="5 9 12 16 19 9"></polyline></svg>
             </button>
@@ -2266,10 +2271,10 @@
 
         <!-- Assets -->
         <pc-asset id="splat-scene" src="splat/lod-meta.json" type="gsplat"></pc-asset>
-        <pc-asset id="camera-controls-script" src="./camera-controls.mjs?v=22" type="script"></pc-asset>
+        <pc-asset id="camera-controls-script" src="./camera-controls.mjs?v=23" type="script"></pc-asset>
         <pc-asset id="camera-coords-script" src="./coords.mjs?v=7" type="script"></pc-asset>
         <pc-asset id="annotations-script" src="./annotations.mjs?v=58" type="script"></pc-asset>
-        <pc-asset id="trail-script" src="./trail.mjs?v=24" type="script"></pc-asset>
+        <pc-asset id="trail-script" src="./trail.mjs?v=25" type="script"></pc-asset>
 
         <!-- Scene -->
         <pc-scene>

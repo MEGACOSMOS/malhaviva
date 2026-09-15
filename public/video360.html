@@ -22,13 +22,31 @@
         });
     </script>
     <style>
+        /* A letra do site: a Liberation Mono, servida daqui mesmo (ficheiros
+           em /fonts, licença SIL Open Font). Dois pesos chegam: o normal
+           até ao meio-negro, o negro daí para cima. */
+        @font-face {
+            font-family: 'Liberation Mono';
+            src: url('/fonts/LiberationMono-Regular.ttf') format('truetype');
+            font-weight: 100 500;
+            font-style: normal;
+            font-display: swap;
+        }
+        @font-face {
+            font-family: 'Liberation Mono';
+            src: url('/fonts/LiberationMono-Bold.ttf') format('truetype');
+            font-weight: 600 900;
+            font-style: normal;
+            font-display: swap;
+        }
+
         html { margin: 0; padding: 0; width: 100%; height: 100%; }
 
         /* A imagem em cima e a barra dos comandos em baixo, uma por cima
            da outra: a barra deixa de tapar aquilo que se está a ver. */
         body {
             margin: 0; padding: 0; width: 100%; height: 100%;
-            background: #05050a; overflow: hidden; font-family: sans-serif;
+            background: #05050a; overflow: hidden; font-family: 'Liberation Mono', 'Courier New', monospace;
             display: flex;
             flex-direction: column;
         }
@@ -387,7 +405,7 @@
             width: 260px;
             z-index: 20;
             box-shadow: 0 4px 15px rgba(0,0,0,0.4);
-            font-family: sans-serif;
+            font-family: 'Liberation Mono', 'Courier New', monospace;
         }
         .quality-menu.show { display: flex; }
         
