@@ -1044,26 +1044,23 @@ AnnotationController.prototype.initialize = function() {
         const isViewed = this.viewedAnnotations.includes(annId);
 
         if (ann.is360) {
-            // As rotas mostram um cubo — só o contorno, sem as arestas de
-            // dentro — com uma seta a sair por cada um dos três eixos: um
-            // sítio onde se anda em três dimensões. O nome vai por baixo. As setas não tocam no cubo: com o ar entre eles o
-            // desenho lê-se ao tamanho do marcador, em vez de se fechar
-            // numa mancha. A fotografia do alto do bairro dispensa as duas
-            // coisas: fica só um olho, pousado no céu, sem legenda a tapar a
-            // paisagem.
+            // As rotas mostram quatro setas, uma para cada lado, postas em
+            // cruz grega: é o antigo ícone dos controlos, para mostrar que ali
+            // se pode olhar e andar à volta. O nome vai por baixo. A
+            // fotografia do alto do bairro dispensa as duas coisas: fica só
+            // um olho, pousado no céu, sem legenda a tapar a paisagem.
             const simbolo = ann.isImage
                 ? `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter">
                         <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"></path>
                         <circle cx="12" cy="12" r="3"></circle>
                    </svg>`
                 : `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="square" stroke-linejoin="miter">
-                        <polygon points="12.0 8.2 15.98 10.5 15.98 15.1 12.0 17.4 8.02 15.1 8.02 10.5"></polygon>
-                        <line x1="12.00" y1="6.80" x2="12.00" y2="1.80" stroke-linecap="butt"></line>
-                        <polyline points="10.23 3.57 12.00 1.80 13.77 3.57"></polyline>
-                        <line x1="6.81" y1="15.80" x2="2.48" y2="18.30" stroke-linecap="butt"></line>
-                        <polyline points="4.89 18.95 2.48 18.30 3.12 15.89"></polyline>
-                        <line x1="17.19" y1="15.80" x2="21.52" y2="18.30" stroke-linecap="butt"></line>
-                        <polyline points="20.88 15.89 21.52 18.30 19.11 18.95"></polyline>
+                        <polyline points="8.5 5.5 12 2 15.5 5.5"></polyline>
+                        <polyline points="8.5 18.5 12 22 15.5 18.5"></polyline>
+                        <polyline points="5.5 8.5 2 12 5.5 15.5"></polyline>
+                        <polyline points="18.5 8.5 22 12 18.5 15.5"></polyline>
+                        <line x1="12" y1="3" x2="12" y2="21"></line>
+                        <line x1="3" y1="12" x2="21" y2="12"></line>
                    </svg>`;
             el.innerHTML = `
                 <div class="marker-dot is-360 ${ann.isImage ? 'is-foto' : ''} ${isViewed ? 'viewed' : ''}">
@@ -1075,12 +1072,10 @@ AnnotationController.prototype.initialize = function() {
             el.innerHTML = `
                 <div class="marker-dot ${isViewed ? 'viewed' : ''}">
                     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter">
-                        <g transform="rotate(-45 12 12)">
-                            <polygon points="3 9 15 4 15 20 3 15"></polygon>
-                            <line x1="18" y1="12" x2="22" y2="12"></line>
-                            <line x1="18" y1="9.2" x2="22" y2="8"></line>
-                            <line x1="18" y1="14.8" x2="22" y2="16"></line>
-                        </g>
+                        <line x1="6" y1="6" x2="6" y2="18"></line>
+                        <line x1="10" y1="9" x2="10" y2="15"></line>
+                        <line x1="14" y1="3" x2="14" y2="21"></line>
+                        <line x1="18" y1="5" x2="18" y2="19"></line>
                     </svg>
                 </div>
                 <div class="marker-label">${ann.label}</div>
