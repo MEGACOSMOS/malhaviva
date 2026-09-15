@@ -938,7 +938,7 @@
             position: absolute;
             inset: 0;
             padding: 1px;
-            background: linear-gradient(to bottom right, rgba(255,255,255,0.7) 0%, rgba(255,255,255,0.3) 50%, rgba(255,255,255,0.7) 100%), #05050a;
+            background: linear-gradient(rgba(255,255,255,0.3), rgba(255,255,255,0.3)), #05050a;
             -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
             -webkit-mask-composite: xor;
             mask-composite: exclude;
@@ -1210,7 +1210,9 @@
             );
         }
 
-        /* ─── Premium Gradient Borders ─── */
+        /* ─── Contornos ───
+           Um fio de um ponto a toda a volta, de um só tom — o mais escuro do
+           degradé que aqui houve — pousado sobre o fundo escuro do site. */
         .panel-glass, .btn-glass, .action-btn, .settings-panel, .filter-btn, 
         #coordinates-info, #camera-info, #loading-bar-container,
         #definicoes-menu, #dev-menu, #idioma-menu, #rodape-comandos, #camera-stuck-popup, #partilhar-menu {
@@ -1231,7 +1233,7 @@
                não sobre o que estiver por trás do painel: assim tem a mesma
                cor no rodapé, pousado sobre o bairro, e nas janelas dos
                tocadores, pousadas sobre o escuro. */
-            background: linear-gradient(to bottom right, rgba(255,255,255,0.7) 0%, rgba(255,255,255,0.3) 50%, rgba(255,255,255,0.7) 100%), #05050a;
+            background: linear-gradient(rgba(255,255,255,0.3), rgba(255,255,255,0.3)), #05050a;
             -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
             -webkit-mask-composite: xor;
             mask-composite: exclude;
@@ -2266,7 +2268,7 @@
         <pc-asset id="splat-scene" src="splat/lod-meta.json" type="gsplat"></pc-asset>
         <pc-asset id="camera-controls-script" src="./camera-controls.mjs?v=22" type="script"></pc-asset>
         <pc-asset id="camera-coords-script" src="./coords.mjs?v=7" type="script"></pc-asset>
-        <pc-asset id="annotations-script" src="./annotations.mjs?v=57" type="script"></pc-asset>
+        <pc-asset id="annotations-script" src="./annotations.mjs?v=58" type="script"></pc-asset>
         <pc-asset id="trail-script" src="./trail.mjs?v=24" type="script"></pc-asset>
 
         <!-- Scene -->

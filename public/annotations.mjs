@@ -964,7 +964,9 @@ AnnotationController.prototype.initialize = function() {
             opacity: 1;
             transform: scale(1.1);
         }
-        /* ─── Premium Gradient Borders ─── */
+        /* ─── Contornos ───
+           Um fio de um ponto a toda a volta, de um só tom — o mais escuro do
+           degradé que aqui houve — pousado sobre o fundo escuro do site. */
         .janela-do-palco, .previa, .quality-menu {
             border-color: transparent !important;
         }
@@ -977,7 +979,7 @@ AnnotationController.prototype.initialize = function() {
             inset: 0;
             border-radius: inherit;
             padding: 1px;
-            background: linear-gradient(to bottom right, rgba(255,255,255,0.7) 0%, rgba(255,255,255,0.3) 50%, rgba(255,255,255,0.7) 100%);
+            background: linear-gradient(rgba(255,255,255,0.3), rgba(255,255,255,0.3)), #05050a;
             -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
             -webkit-mask-composite: xor;
             mask-composite: exclude;
