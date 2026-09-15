@@ -768,12 +768,6 @@ TrailController.prototype.setTrailHoverState = function(trail, isHovered) {
         for (const el of trail.glowElements) {
             el.style.opacity = trail.isHovered ? '1' : '0';
         }
-
-        // Com uma rota acesa, o bairro esbate-se por baixo dela (ver
-        // `ligarEsbaterDoBairro` na página).
-        if (typeof window.esbaterBairro === 'function') {
-            window.esbaterBairro(this.trailRenderData.some((t) => t.isHovered));
-        }
     }
 };
 

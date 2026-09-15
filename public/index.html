@@ -2306,7 +2306,7 @@
         <pc-asset id="camera-controls-script" src="./camera-controls.mjs?v=24" type="script"></pc-asset>
         <pc-asset id="camera-coords-script" src="./coords.mjs?v=7" type="script"></pc-asset>
         <pc-asset id="annotations-script" src="./annotations.mjs?v=59" type="script"></pc-asset>
-        <pc-asset id="trail-script" src="./trail.mjs?v=27" type="script"></pc-asset>
+        <pc-asset id="trail-script" src="./trail.mjs?v=26" type="script"></pc-asset>
 
         <!-- Scene -->
         <pc-scene>
@@ -2405,8 +2405,7 @@
         import { whenReady } from '@playcanvas/web-components';
         import {
             Vec3, Texture,
-            PIXELFORMAT_RGBA8, FILTER_LINEAR, ADDRESS_CLAMP_TO_EDGE,
-            SHADERLANGUAGE_GLSL, SHADERLANGUAGE_WGSL
+            PIXELFORMAT_RGBA8, FILTER_LINEAR, ADDRESS_CLAMP_TO_EDGE
         } from 'playcanvas';
         import { ligarLodNoCentroDaVista } from './lod-foco.mjs?v=6';
         import { criarModoVR } from './vr.mjs?v=3';
@@ -2672,56 +2671,6 @@ void modifySplatColor(vec3 center, inout vec4 color) {
 }`;
 
             comp.setWorkBufferModifier({ wgsl: wgsl, glsl: glsl });
-        }
-
-        /**
-         * Deixa o bairro esbater-se enquanto uma rota está acesa.
-         *
-         * O programa gráfico dos pontos do mapa tem uma porta para se mexer
-         * na cor de cada ponto ao pintá-lo; entra-se por ela com um número
-         * — a opacidade que fica — que se muda quando uma rota acende ou
-         * apaga. `window.esbaterBairro(true|false)` é a chamada, feita
-         * pelas rotas (trail.mjs); o número desliza em vez de saltar.
-         *
-         * @param {object} app - A aplicação 3D.
-         */
-        function ligarEsbaterDoBairro(app) {
-            const gsplat = app.scene && app.scene.gsplat;
-            const material = gsplat && gsplat.material;
-            if (!material || typeof material.getShaderChunks !== 'function') return;
-
-            const OPACIDADE_ESBATIDA = 0.5;
-            const VELOCIDADE = 4; // por segundo: uns 250 ms de uma ponta à outra
-
-            material.getShaderChunks(SHADERLANGUAGE_GLSL).set('gsplatModifyPS', `
-uniform float uOpacidadeDoBairro;
-void modifySplatColor(vec2 gaussianUV, inout vec4 color) {
-    color.a *= uOpacidadeDoBairro;
-}`);
-            material.getShaderChunks(SHADERLANGUAGE_WGSL).set('gsplatModifyPS', `
-uniform uOpacidadeDoBairro: f32;
-fn modifySplatColor(gaussianUV: vec2f, color: ptr<function, vec4f>) {
-    (*color).a = (*color).a * uniform.uOpacidadeDoBairro;
-}`);
-            material.shaderChunks.version = '2.21';
-            material.setParameter('uOpacidadeDoBairro', 1);
-            material.update();
-
-            let alvo = 1;
-            let atual = 1;
-            app.on('update', (dt) => {
-                if (atual === alvo) return;
-                const passo = VELOCIDADE * Math.min(dt, 0.1);
-                atual = atual < alvo ? Math.min(alvo, atual + passo) : Math.max(alvo, atual - passo);
-                material.setParameter('uOpacidadeDoBairro', atual);
-                // Sem isto o número fica no material de origem e não
-                // chega ao que desenha o bairro.
-                material.update();
-            });
-
-            window.esbaterBairro = (esbatido) => {
-                alvo = esbatido ? OPACIDADE_ESBATIDA : 1;
-            };
         }
 
         // Wait for the PlayCanvas app to be ready, then hide the loading overlay
@@ -3724,12 +3673,6 @@ fn modifySplatColor(gaussianUV: vec2f, color: ptr<function, vec4f>) {
             // lados e para trás das costas, e o que está fora do ecrã desce
             // um nível. Pinta as mesmas manchas no ecrã que antes, ou menos.
             window.lodFoco = ligarLodNoCentroDaVista(app);
-
-            // Com uma rota acesa, o bairro esbate-se um pouco por baixo
-            // dela, para o traço branco se ler contra os telhados. É uma
-            // conta por cada ponto do mapa já no desenho final, com um só
-            // número a mandar; o número desliza, para o bairro não piscar.
-            ligarEsbaterDoBairro(app);
 
             // O ecrã de espera só sai quando o bairro estiver mesmo lá.
             esperarPeloBairro(app).then(showUIOnce);
