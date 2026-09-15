@@ -350,7 +350,13 @@ AnnotationController.prototype.initialize = function() {
         .video-controls.a-surgir > *,
         .barra-do-nome.a-surgir > *,
         .barra-do-nome-360.a-surgir > * {
+            /* Só depois de a janela ter assentado (ela nasce um pouco
+               encolhida e leva a passagem a abrir): a esbater ao mesmo
+               tempo que a janela nascia, o esbatimento perdia-se dentro
+               da entrada dela e não se via — é assim que se vê nas rotas
+               360, onde os botões chegam depois de a janela estar aberta. */
             animation: botoes-a-surgir 0.5s ease-out both;
+            animation-delay: 0.45s;
             will-change: opacity;
         }
         .moldura-do-player:fullscreen .video-controls.a-surgir > * {
