@@ -6,18 +6,21 @@ import { carregarPrevia360 } from './previa-360.mjs?v=1';
 export const AnnotationController = pc.createScript('annotationController');
 
 /**
- * Faz uma ou mais barras surgirem a esbater, de novo a cada vez.
+ * Faz o que está dentro de uma ou mais barras surgir a esbater, de novo
+ * a cada vez.
  *
  * A animação vive na roupa (`a-surgir`); tirá-la e voltar a pô-la, com
  * uma medição pelo meio para o navegador dar pela mudança, recomeça-a.
  *
+ * @param {string} demora - Quanto esperar antes de esbater ('0.45s', '0s').
  * @param {...HTMLElement} barras - As barras a fazer surgir.
  */
-function fazerSurgir(...barras) {
+function fazerSurgir(demora, ...barras) {
     for (const barra of barras) {
         if (!barra) continue;
         barra.classList.remove('a-surgir');
         void barra.offsetWidth;
+        barra.style.setProperty('--demora-a-surgir', demora);
         barra.classList.add('a-surgir');
     }
 }
@@ -350,13 +353,15 @@ AnnotationController.prototype.initialize = function() {
         .video-controls.a-surgir > *,
         .barra-do-nome.a-surgir > *,
         .barra-do-nome-360.a-surgir > * {
-            /* Só depois de a janela ter assentado (ela nasce um pouco
-               encolhida e leva a passagem a abrir): a esbater ao mesmo
-               tempo que a janela nascia, o esbatimento perdia-se dentro
-               da entrada dela e não se via — é assim que se vê nas rotas
-               360, onde os botões chegam depois de a janela estar aberta. */
+            /* Ao abrir, só depois de a janela ter assentado (ela nasce
+               um pouco encolhida e leva a passagem a abrir): a esbater ao
+               mesmo tempo que a janela nascia, o esbatimento perdia-se
+               dentro da entrada dela e não se via — é assim que se vê nas
+               rotas 360, onde os botões chegam depois de a janela estar
+               aberta. Ao passar de um vídeo para o outro a janela já lá
+               está, e esbate-se logo (a demora vem de quem chama). */
             animation: botoes-a-surgir 0.5s ease-out both;
-            animation-delay: 0.45s;
+            animation-delay: var(--demora-a-surgir, 0.45s);
             will-change: opacity;
         }
         .moldura-do-player:fullscreen .video-controls.a-surgir > * {
@@ -1688,11 +1693,11 @@ AnnotationController.prototype.mostrarParagem360 = function(ann) {
     this.paragem360 = ann;
     this.marcarComoVisto(this.idDaAnotacao(ann));
 
-    // As barras surgem a esbater quando a janela abre; ao passar de uma
-    // paragem para a outra já estavam à vista, e ficam como estão.
+    // O que está na barra do nome surge a esbater: ao abrir, depois de a
+    // janela assentar; ao passar de uma paragem para a outra, logo.
     const aAbrir = palco.modal.style.display === 'none';
     palco.titulo.textContent = this.nomeDaParagem360(ann);
-    if (aAbrir) fazerSurgir(palco.barraDoNome);
+    fazerSurgir(aAbrir ? '0.45s' : '0s', palco.barraDoNome);
     // A altura da barra dos comandos da página de lá só se mede quando
     // ela carrega; até lá vale a última medida do mesmo tipo de paragem,
     // para a janela nascer já do tamanho certo em vez de crescer depois.
@@ -3121,10 +3126,9 @@ AnnotationController.prototype.abrirTestemunho = function(nome, title, sentido, 
     // janela em segundo plano essa imagem pode nunca chegar.
     void this.modal.offsetWidth;
     this.modalContent.classList.add('aberta');
-    // As duas barras surgem a esbater quando a janela abre; ao passar
-    // de um testemunho para o outro já estavam à vista, e ficam como
-    // estão.
-    if (!sentido) fazerSurgir(this.barraDoNome, this.barraDosComandos);
+    // O que está nas duas barras surge a esbater: ao abrir, depois de a
+    // janela assentar; ao passar de um testemunho para o outro, logo.
+    fazerSurgir(sentido ? '0s' : '0.45s', this.barraDoNome, this.barraDosComandos);
 
     apagarOBairroPorTras(this.app);
 };
