@@ -12,15 +12,17 @@ export const AnnotationController = pc.createScript('annotationController');
  * A animação vive na roupa (`a-surgir`); tirá-la e voltar a pô-la, com
  * uma medição pelo meio para o navegador dar pela mudança, recomeça-a.
  *
- * @param {string} demora - Quanto esperar antes de esbater ('0.45s', '0s').
+ * @param {{demora: string, soBotoes: boolean}} como - Quanto esperar antes
+ *     de esbater ('0.45s', '0s'), e se o nome fica de fora (só os botões).
  * @param {...HTMLElement} barras - As barras a fazer surgir.
  */
-function fazerSurgir(demora, ...barras) {
+function fazerSurgir(como, ...barras) {
     for (const barra of barras) {
         if (!barra) continue;
         barra.classList.remove('a-surgir');
         void barra.offsetWidth;
-        barra.style.setProperty('--demora-a-surgir', demora);
+        barra.style.setProperty('--demora-a-surgir', como.demora);
+        barra.classList.toggle('so-botoes', !!como.soBotoes);
         barra.classList.add('a-surgir');
     }
 }
@@ -367,6 +369,13 @@ AnnotationController.prototype.initialize = function() {
         .moldura-do-player:fullscreen .video-controls.a-surgir > * {
             animation: none;
         }
+        /* Ao passar de um vídeo para o outro o nome não se esbate: vem do
+           cinzento da janela do lado para o branco do meio, e esbater do
+           escuro por cima estragava essa passagem. Só os botões surgem. */
+        .barra-do-nome.a-surgir.so-botoes > .nome-do-video,
+        .barra-do-nome-360.a-surgir.so-botoes > .nome-do-video {
+            animation: none;
+        }
 
         /* A imagem e a barra são uma peça só, e é essa peça que vai a ecrã
            inteiro: assim os comandos vão juntos em vez de ficarem para
@@ -586,6 +595,10 @@ AnnotationController.prototype.initialize = function() {
             --janela-espaco: 110px;
             --previa-escala: 0.88;
             --previa-opacidade: 0.5;
+            /* A altura das barras do nome, no meio e nos lados: o botão de
+               fechar (24 px) com a folga de 16 px de cada lado e o fio de
+               1 px por baixo. */
+            --altura-barra-do-nome: 57px;
             --passagem: 0.45s cubic-bezier(0.25, 0.9, 0.3, 1);
             overflow: hidden;
         }
@@ -689,7 +702,11 @@ AnnotationController.prototype.initialize = function() {
             padding: 16px 24px;
             border-bottom: 1px solid rgba(255, 255, 255, 0.05);
             background: linear-gradient(to bottom, rgba(255,255,255,0.05), transparent);
-            min-height: 56px;
+            /* A mesma altura exacta da barra do nome da janela do meio (ver
+               --altura-barra-do-nome): a do meio tem o botão de fechar,
+               mais alto do que o nome, e passava dela por um ponto — e na
+               passagem de uma janela para a outra via-se a barra a crescer. */
+            height: var(--altura-barra-do-nome);
             box-sizing: border-box;
             display: flex;
             align-items: center;
@@ -1529,10 +1546,11 @@ AnnotationController.prototype.setupPalco360 = function() {
     header.style.alignItems = 'center';
     header.style.borderBottom = '1px solid rgba(255,255,255,0.05)';
     header.style.background = 'linear-gradient(to bottom, rgba(255,255,255,0.05), transparent)';
-    header.style.minHeight = '56px';
+    header.style.height = 'var(--altura-barra-do-nome)';
     header.style.boxSizing = 'border-box';
 
     const titulo = document.createElement('div');
+    titulo.className = 'nome-do-video';
     titulo.style.color = '#fff';
     titulo.style.fontWeight = '600';
     titulo.style.fontSize = '1.1rem';
@@ -1697,7 +1715,7 @@ AnnotationController.prototype.mostrarParagem360 = function(ann) {
     // janela assentar; ao passar de uma paragem para a outra, logo.
     const aAbrir = palco.modal.style.display === 'none';
     palco.titulo.textContent = this.nomeDaParagem360(ann);
-    fazerSurgir(aAbrir ? '0.45s' : '0s', palco.barraDoNome);
+    fazerSurgir({ demora: aAbrir ? '0.45s' : '0s', soBotoes: !aAbrir }, palco.barraDoNome);
     // A altura da barra dos comandos da página de lá só se mede quando
     // ela carrega; até lá vale a última medida do mesmo tipo de paragem
     // (lembrada de visita para visita), para a janela nascer já do
@@ -2033,12 +2051,13 @@ AnnotationController.prototype.setupModal = function() {
     header.style.alignItems = 'center';
     header.style.borderBottom = '1px solid rgba(255,255,255,0.05)';
     header.style.background = 'linear-gradient(to bottom, rgba(255,255,255,0.05), transparent)';
-    header.style.minHeight = '56px';
+    header.style.height = 'var(--altura-barra-do-nome)';
     header.style.boxSizing = 'border-box';
     header.className = 'barra-do-nome';
     this.barraDoNome = header;
 
     this.modalTitle = document.createElement('div');
+    this.modalTitle.className = 'nome-do-video';
     this.modalTitle.style.color = '#fff';
     this.modalTitle.style.fontWeight = '600';
     this.modalTitle.style.fontSize = '1.1rem';
@@ -3177,7 +3196,7 @@ AnnotationController.prototype.abrirTestemunho = function(nome, title, sentido, 
     this.modalContent.classList.add('aberta');
     // O que está nas duas barras surge a esbater: ao abrir, depois de a
     // janela assentar; ao passar de um testemunho para o outro, logo.
-    fazerSurgir(sentido ? '0s' : '0.45s', this.barraDoNome, this.barraDosComandos);
+    fazerSurgir({ demora: sentido ? '0s' : '0.45s', soBotoes: !!sentido }, this.barraDoNome, this.barraDosComandos);
 
     apagarOBairroPorTras(this.app);
 };
