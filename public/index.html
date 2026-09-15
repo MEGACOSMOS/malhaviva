@@ -1183,6 +1183,80 @@
     })();
     </script>
 
+    <script>
+    /**
+     * Quando a placa gráfica desiste.
+     *
+     * Num telemóvel com pouca memória gráfica, o navegador pode matar o
+     * desenho a meio — ou logo ao arrancar: o bairro fica preto ou branco,
+     * e o motor não se levanta sozinho. Isto vive aqui, no princípio da
+     * página, para ouvir desde o primeiro instante os erros que o motor
+     * deixa cair quando lhe acontece; as portas do próprio navegador para
+     * o dizer são ligadas mal o motor acorda (ver `vigiarAPlacaGrafica`).
+     *
+     * Faz-se uma de duas coisas: se ainda não se tentou, recarrega-se a
+     * página em modo de poupança, a pedir muito menos ao aparelho; se já
+     * se estava em poupança e mesmo assim não deu, diz-se com todas as
+     * letras, com um botão para tentar de novo — e a porta do ecrã de
+     * espera fica fechada, em vez de abrir para um ecrã preto.
+     */
+    (function () {
+        const t = (chave, senao) => (window.Idiomas && window.Idiomas.t(chave)) || senao;
+        const placa = { desistida: false, desistiu: null };
+
+        placa.desistiu = () => {
+            if (placa.desistida) return;
+            placa.desistida = true;
+
+            const overlay = document.getElementById('loading-overlay');
+            const letreiro = overlay && overlay.querySelector('.loading-text');
+            if (overlay) {
+                overlay.style.transition = 'none';
+                overlay.classList.remove('hidden');
+            }
+            // O aviso vermelho dos erros em bruto sai da frente: o que se
+            // diz aqui já o diz por palavras.
+            const bruto = document.getElementById('debug-error');
+            if (bruto) bruto.style.display = 'none';
+
+            if (!window.modoDePoupanca) {
+                try { sessionStorage.setItem('poupanca', '1'); } catch (e) { /* sem memória: tenta na mesma */ }
+                if (letreiro) letreiro.textContent = t('gpu.aTentar', 'O aparelho ficou sem memória gráfica. A tentar de novo com menos detalhe…');
+                setTimeout(() => window.location.reload(), 900);
+                return;
+            }
+
+            // Já era a poupança: não há mais por onde descer.
+            if (letreiro) {
+                letreiro.textContent = t('gpu.desistiu', 'Este aparelho não consegue mostrar o bairro em 3D.');
+                const botao = document.createElement('button');
+                botao.type = 'button';
+                botao.id = 'recenter-btn';
+                botao.style.marginTop = '18px';
+                botao.textContent = t('gpu.botao', 'Tentar de novo');
+                botao.addEventListener('click', () => {
+                    try { sessionStorage.removeItem('poupanca'); } catch (e) { /* nada */ }
+                    window.location.reload();
+                });
+                letreiro.insertAdjacentElement('afterend', botao);
+            }
+        };
+
+        // Os erros que o motor deixa cair quando a placa lhe foge debaixo
+        // dos pés — ou quando nem chega a tê-la.
+        const PARECE_A_PLACA = /clientWaitSync|mapAsync|handleDeviceLost|reading 'features'|context lost|device lost|GPUDevice|requestAdapter|WebGPU|CONTEXT_LOST/i;
+        window.addEventListener('unhandledrejection', (e) => {
+            const texto = String((e.reason && (e.reason.message || e.reason.stack)) || e.reason || '');
+            if (PARECE_A_PLACA.test(texto)) placa.desistiu();
+        });
+        window.addEventListener('error', (e) => {
+            if (PARECE_A_PLACA.test(String(e.message || ''))) placa.desistiu();
+        });
+
+        window.placaGrafica = placa;
+    })();
+    </script>
+
     <!-- Filter Panel -->
     <div id="filter-panel">
         <div class="filter-title">Filtro Visual</div>
@@ -2737,6 +2811,9 @@ void modifySplatColor(vec3 center, inout vec4 color) {
         let uiShown = false;
         const showUIOnce = () => {
             if (uiShown) return;
+            // Com a placa gráfica desistida não há bairro para mostrar: a
+            // porta fica fechada, com o aviso que lá está.
+            if (window.placaGrafica && window.placaGrafica.desistida) return;
             uiShown = true;
             showUI();
         };
@@ -2928,62 +3005,15 @@ void modifySplatColor(vec3 center, inout vec4 color) {
              */
             function vigiarAPlacaGrafica(app) {
                 const device = app.graphicsDevice;
-                if (!device) return;
-                let jaTratado = false;
-                const t = (chave, senao) => (window.Idiomas && window.Idiomas.t(chave)) || senao;
+                if (!device || !window.placaGrafica) return;
+                const desistiu = () => window.placaGrafica.desistiu();
 
-                const desistiu = () => {
-                    if (jaTratado) return;
-                    jaTratado = true;
-
-                    const overlay = document.getElementById('loading-overlay');
-                    const letreiro = overlay && overlay.querySelector('.loading-text');
-                    if (overlay) {
-                        overlay.style.transition = 'none';
-                        overlay.classList.remove('hidden');
-                    }
-                    // O aviso vermelho dos erros em bruto sai da frente: o
-                    // que se diz aqui já o diz por palavras.
-                    const bruto = document.getElementById('debug-error');
-                    if (bruto) bruto.style.display = 'none';
-
-                    if (!window.modoDePoupanca) {
-                        try { sessionStorage.setItem('poupanca', '1'); } catch (e) { /* sem memória: tenta na mesma */ }
-                        if (letreiro) letreiro.textContent = t('gpu.aTentar', 'O aparelho ficou sem memória gráfica. A tentar de novo com menos detalhe…');
-                        setTimeout(() => window.location.reload(), 900);
-                        return;
-                    }
-
-                    // Já era a poupança: não há mais por onde descer.
-                    if (letreiro) {
-                        letreiro.textContent = t('gpu.desistiu', 'Este aparelho não consegue mostrar o bairro em 3D.');
-                        const botao = document.createElement('button');
-                        botao.type = 'button';
-                        botao.id = 'recenter-btn';
-                        botao.style.marginTop = '18px';
-                        botao.textContent = t('gpu.botao', 'Tentar de novo');
-                        botao.addEventListener('click', () => {
-                            try { sessionStorage.removeItem('poupanca'); } catch (e) { /* nada */ }
-                            window.location.reload();
-                        });
-                        letreiro.insertAdjacentElement('afterend', botao);
-                    }
-                };
-
-                // As portas do navegador: uma para o WebGL, outra para o WebGPU.
+                // As portas do navegador: uma para o WebGL, outra para o
+                // WebGPU. Os erros que o motor deixa cair já são ouvidos
+                // desde o princípio da página (ver `placaGrafica`).
                 if (device.canvas) device.canvas.addEventListener('webglcontextlost', desistiu);
                 if (device.wgpu && device.wgpu.lost && device.wgpu.lost.then) device.wgpu.lost.then(desistiu, () => {});
                 if (typeof device.on === 'function') device.on('devicelost', desistiu);
-
-                // E os erros que o motor deixa cair quando a placa lhe foge
-                // debaixo dos pés, que são a maneira mais certa de dar por
-                // isso quando as portas de cima ficam caladas.
-                window.addEventListener('unhandledrejection', (e) => {
-                    const texto = String((e.reason && (e.reason.message || e.reason.stack)) || e.reason || '');
-                    if (/clientWaitSync|mapAsync|handleDeviceLost|reading 'features'|context lost|device lost/i.test(texto)) {
-                        desistiu();
-                    }
-                });
             }
 
             /**
@@ -3281,6 +3311,14 @@ void modifySplatColor(vec3 center, inout vec4 color) {
                 if (relogio || uiShown) return;
                 relogio = setTimeout(() => {
                     if (document.hidden) { parar(); return; }
+                    // Se ao fim deste tempo o motor nem chegou a acordar, não
+                    // é o bairro que está atrasado: é a placa gráfica que
+                    // não se levantou. Abrir a porta dava um ecrã preto.
+                    const motor = document.querySelector('pc-app');
+                    if (!(motor && motor.app) && window.placaGrafica) {
+                        window.placaGrafica.desistiu();
+                        return;
+                    }
                     showUIOnce();
                 }, ESPERA);
             };
