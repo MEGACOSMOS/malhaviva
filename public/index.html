@@ -325,6 +325,7 @@
             justify-content: center;
             cursor: pointer;
             flex-shrink: 0;
+            transition: background 0.15s ease, border-color 0.15s ease;
         }
 
         #menu-btn .fechado,
@@ -430,7 +431,7 @@
             align-items: center;
             justify-content: center;
             cursor: pointer;
-            transition: background 0.15s ease, box-shadow 0.15s ease;
+            transition: background 0.15s ease, border-color 0.15s ease;
             text-decoration: none;
         }
 
@@ -531,7 +532,10 @@
         /* Os ícones do cabeçalho — e o de partilhar — são sempre brancos.
            Com o rato em cima, ou com o menu aberto, nasce por trás do ícone
            um quadrado da cor do fundo do site, com o contorno de sempre; o
-           ícone fica branco na mesma. */
+           ícone fica branco na mesma. O contorno é o próprio rebordo do
+           botão, que já lá está invisível: assim é um fio só, do mesmo tom
+           e da mesma espessura que os outros contornos do site, sem um
+           segundo fio escuro a nascer por fora dele. */
         #header .adaptavel,
         #partilhar-btn {
             color: #ffffff;
@@ -545,7 +549,7 @@
         #partilhar-btn:hover,
         #partilhar-btn.aberto {
             background: #05050a;
-            box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.3);
+            border-color: rgba(255, 255, 255, 0.3);
         }
         
         #definicoes-menu, #dev-menu, #idioma-menu {
@@ -978,14 +982,14 @@
             align-items: center;
             justify-content: center;
             background: transparent;
-            border: none;
+            border: 1px solid transparent;
             border-radius: 0;
             cursor: pointer;
             padding: 0;
             opacity: 0;
             transform: translateY(8px);
             pointer-events: none;
-            transition: opacity 0.6s ease 0.3s, transform 0.6s ease 0.3s, background 0.15s ease, box-shadow 0.15s ease;
+            transition: opacity 0.6s ease 0.3s, transform 0.6s ease 0.3s, background 0.15s ease, border-color 0.15s ease;
         }
 
         #partilhar-btn.visivel {
