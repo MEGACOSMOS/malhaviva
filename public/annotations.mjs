@@ -1,6 +1,6 @@
 import * as pc from 'playcanvas';
-import { fontesDeVideo, previaDe, olharInicialDe, ABERTURA_INICIAL } from './videos.mjs?v=7';
-import { criarGestorDeQualidade } from './qualidade-video.mjs?v=9';
+import { fontesDeVideo, previaDe, olharInicialDe, ABERTURA_INICIAL } from './videos.mjs?v=8';
+import { criarGestorDeQualidade } from './qualidade-video.mjs?v=10';
 import { carregarPrevia360 } from './previa-360.mjs?v=1';
 
 export const AnnotationController = pc.createScript('annotationController');
