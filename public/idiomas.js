@@ -69,9 +69,9 @@
             'rod.umDedo': '1 dedo',
             'rod.doisDedos': '2 dedos',
             'rod.pinca': 'pinça',
-            'rod.joystick': 'joystick',
+            'rod.joystick': 'manípulo',
             'ctl.joystickAndar': 'Andar pelo bairro',
-            'ctl.joystick': 'Joystick',
+            'ctl.joystick': 'Manípulo',
             'ctl.joystickNota': 'canto inferior esquerdo',
             'ctl.manipuloLigar': 'Ligar o manípulo',
             'ctl.manipuloDefinicoes': 'Definições',
@@ -132,7 +132,7 @@
             'ctl.tecIrA': 'Ir a um ponto do filme',
             'ctl.tecInicioFim': 'Início / fim do filme',
             'ctl.toque': 'Ecrã Tátil',
-            'ctl.gamepad': 'Gamepad',
+            'ctl.gamepad': 'Comando',
             'ctl.interacoes': 'Interações',
             'ctl.dicas': 'Dicas',
             'ctl.arrastarBairro': 'Arrastar o bairro',
@@ -203,7 +203,7 @@
             'ctl.dicaPerf': 'Se o visualizador estiver lento num computador antigo, muda a qualidade gráfica para Baixa no ícone ⚙ do cabeçalho. Em mobile, a qualidade é ajustada automaticamente.',
             'ctl.dicaPerdidoTitulo': 'Perdido?',
             'ctl.dicaPerdido': 'Se a câmara atingir o limite da simulação, aparecerá um botão para recentrar automaticamente.',
-            'ctl.descricao': 'Guia completo dos controlos do visualizador 3D Malha Viva. Aprende a navegar com rato, teclado, toque e gamepad.'
+            'ctl.descricao': 'Guia completo dos controlos do visualizador 3D Malha Viva. Aprende a navegar com rato, teclado, toque e comando.'
         },
 
         en: {

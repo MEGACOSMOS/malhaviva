@@ -125,6 +125,14 @@ export function ligarComando(app) {
     // de um menu e volta a ele encontrar a linha onde estava.
     const foco = { mapa: 0, menu: 0 };
     let ultimoContexto = '';
+
+    // No mapa, com o comando na mão, o marcador escolhido é o que está
+    // mais perto do meio do ecrã: vira-se a vista e a escolha acompanha,
+    // como uma mira. A cruz direccional ainda passa de marcador em
+    // marcador; depois de a usar, a mira fica quieta um instante, para a
+    // escolha à mão não ser logo desfeita.
+    const MIRA_SUSPENSA_MS = 1500;
+    let miraSuspensaAte = 0;
     // As setas que estão carregadas com o Alt em baixo. Servem para virar a
     // cabeça nas paragens 360º, e têm de ser sabidas a cada imagem: uma
     // tecla carregada é uma coisa que dura, não um aviso que passa.
@@ -226,6 +234,28 @@ export function ligarComando(app) {
         return Array.from(caixa.querySelectorAll('.annotation-marker'))
             .filter(estaAVista)
             .sort((a, b) => a.getBoundingClientRect().left - b.getBoundingClientRect().left);
+    }
+
+    /**
+     * O marcador do bairro mais perto do meio do ecrã, de entre os que
+     * estão à vista.
+     *
+     * @returns {Element|null} O marcador, ou nada se não há nenhum à vista.
+     */
+    function marcadorMaisPertoDoMeio() {
+        const meioX = window.innerWidth / 2;
+        const meioY = window.innerHeight / 2;
+        let melhor = null;
+        let menor = Infinity;
+        for (const marcador of marcadoresAVista()) {
+            const ponto = marcador.querySelector('.marker-dot') || marcador;
+            const r = ponto.getBoundingClientRect();
+            const dx = r.left + r.width / 2 - meioX;
+            const dy = r.top + r.height / 2 - meioY;
+            const d = dx * dx + dy * dy;
+            if (d < menor) { menor = d; melhor = marcador; }
+        }
+        return melhor;
     }
 
     /**
@@ -486,8 +516,10 @@ export function ligarComando(app) {
         const paraDireita = passoDaCruz(pad, BOTAO.DIREITA, dt, eixoX > LIMIAR_DO_STICK);
 
         if (onde === 'mapa') {
-            if (paraEsquerda || paraCima) andarComOFoco(onde, -1);
-            if (paraDireita || paraBaixo) andarComOFoco(onde, 1);
+            if (paraEsquerda || paraCima) { andarComOFoco(onde, -1); miraSuspensaAte = performance.now() + MIRA_SUSPENSA_MS; }
+            if (paraDireita || paraBaixo) { andarComOFoco(onde, 1); miraSuspensaAte = performance.now() + MIRA_SUSPENSA_MS; }
+            // A mira: o marcador mais perto do meio do ecrã fica escolhido.
+            if (performance.now() >= miraSuspensaAte) acender(marcadorMaisPertoDoMeio());
             if (bateuAgora(pad, BOTAO.A)) activar(alvoAceso);
             if (bateuAgora(pad, BOTAO.B)) acender(null);
             if (bateuAgora(pad, BOTAO.X)) carregarEm('#recenter-btn');

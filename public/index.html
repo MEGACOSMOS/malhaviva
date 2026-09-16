@@ -7,7 +7,7 @@
     <meta name="description" content="Exploração 3D interativa do Bairro de Penajóia através de Gaussian Splatting. Projeto Malha Viva.">
     <!-- As línguas do site. Fica antes de tudo o resto para o texto
          nascer já na língua certa, sem piscar em português primeiro. -->
-    <script src="/idiomas.js?v=14"></script>
+    <script src="/idiomas.js?v=15"></script>
 
     <!-- O quadrado de espera, o mesmo em todo o site. Fica antes de o
          ecrã de espera se desenhar, para nascer já com a sua roupa. -->
@@ -1037,8 +1037,12 @@
                 bottom: 16px;
                 left: 16px;
                 right: 16px;
-                margin: 0 auto;
-                max-width: calc(100% - 32px);
+                margin: 0;
+                /* De lado a lado, por cima da largura que o guião lhe
+                   mede: assim a borda esquerda fica na mesma linha que a
+                   do manípulo, que está mesmo por cima. */
+                width: auto !important;
+                max-width: none;
                 font-size: 0.8rem;
                 padding: 12px 40px 12px 14px;
             }
@@ -1940,7 +1944,7 @@
         <div class="rodape-item rodape-toque">
             <span data-i18n="rod.andar">Andar</span>
             <span class="rodape-teclas">
-                <span class="rodape-tecla" data-i18n="rod.joystick">joystick</span>
+                <span class="rodape-tecla" data-i18n="rod.joystick">manípulo</span>
             </span>
         </div>
         <div class="rodape-item rodape-toque">
@@ -2513,7 +2517,7 @@
         import { ligarLodNoCentroDaVista } from './lod-foco.mjs?v=6';
         import { criarModoVR } from './vr.mjs?v=3';
         import { ligarCeu } from './ceu.mjs?v=15';
-        import { ligarComando } from './comando.mjs?v=8';
+        import { ligarComando } from './comando.mjs?v=9';
 
         // Resolução da grelha usada para medir o mapa, em metros.
         const RESOLUCAO_LIMITE = 4;
