@@ -1031,6 +1031,34 @@ class CameraControls extends Script {
     }
 
     /**
+     * Põe a câmara a direito — inclinação a zero — e virada de modo a que
+     * um ponto do bairro caia a um terço do meio do ecrã, para o lado
+     * pedido, a partir de onde a câmara está agora. Sem deslizar até lá.
+     *
+     * Serve ao enquadramento de quando se fecha um vídeo: mesmo que uma
+     * parede ou o chão da cúpula tenham entretanto empurrado a posição, a
+     * câmara fica nivelada e o marcador no lado certo do ecrã.
+     *
+     * @param {Vec3} ponto - O ponto a enquadrar.
+     * @param {number} lado - 1 para o terço da direita, -1 para o da esquerda.
+     */
+    apontarADireito(ponto, lado) {
+        const pos = this._pose.position;
+        const dx = ponto.x - pos.x;
+        const dz = ponto.z - pos.z;
+        if (Math.hypot(dx, dz) < 0.001) return;
+        // A volta que põe o ponto mesmo em frente...
+        const voltaAoPonto = Math.atan2(-dx, -dz);
+        // ...e o desvio que o leva a um terço do meio do ecrã, para o lado.
+        const aspecto = this._camera.aspectRatio || 1;
+        let tanV = Math.tan((this._camera.fov || 60) * 0.5 * math.DEG_TO_RAD);
+        if (this._camera.horizontalFov) tanV /= aspecto;
+        const desvio = Math.atan(tanV * aspecto / 3) * (lado < 0 ? -1 : 1);
+        this._pose.angles.set(0, (voltaAoPonto + desvio) * math.RAD_TO_DEG, 0);
+        this._controller.attach(this._pose, false);
+    }
+
+    /**
      * @param {number} dt - The time delta.
      */
     update(dt) {
