@@ -2903,39 +2903,20 @@ AnnotationController.prototype.enquadrarAoFechar = function(ann) {
     // preciso para o marcador cair no mesmo sítio do ecrã.
     let dist = 60 + Math.random() * 30;
     const chao = typeof comandos._alturaMinima === 'function' ? comandos._alturaMinima() : 1;
-    const alturaPara = (d) => Math.max(chao, P.y + tanV * d / 3);
-    if (alturaPara(dist) <= chao) {
+    let alturaDaCamara = P.y + tanV * dist / 3;
+    if (alturaDaCamara < chao) {
+        alturaDaCamara = chao;
         dist = (chao - P.y) * 3 / tanV;
     }
     const lado = Math.random() < 0.5 ? -1 : 1;
+    const paraOLado = lado * tanH * dist / 3;
 
-    // A câmara anda para trás do marcador ao longo desta linha: para trás
-    // e para o lado contrário àquele em que ele fica no ecrã.
-    const linha = frente.clone().mulScalar(-1).sub(direita.clone().mulScalar(lado * tanH / 3));
-
-    // A parede da cúpula do céu não deixa a câmara ir tão para trás como
-    // se queria: se a posição cai fora dela, encurta-se a distância até
-    // ficar dentro (com folga). Feito duas vezes, porque a parede muda
-    // com a altura e a altura com a distância.
-    const cupula = typeof comandos._medidasDaCupula === 'function' ? comandos._medidasDaCupula() : null;
-    if (cupula && typeof comandos._paredeA === 'function') {
-        for (let volta = 0; volta < 2; volta++) {
-            const parede = comandos._paredeA(cupula, alturaPara(dist)) - (comandos.margemDaCupula || 0) - 2;
-            const ax = P.x - cupula.centroX, az = P.z - cupula.centroZ;
-            // |A + linha·d|² = parede²  →  a·d² + b·d + c = 0
-            const a = linha.x * linha.x + linha.z * linha.z;
-            const b = 2 * (ax * linha.x + az * linha.z);
-            const c = ax * ax + az * az - parede * parede;
-            const delta = b * b - 4 * a * c;
-            if (delta >= 0 && a > 0) {
-                const maxima = (-b + Math.sqrt(delta)) / (2 * a);
-                if (maxima < dist) dist = Math.max(20, maxima);
-            }
-        }
-    }
-    const alturaDaCamara = alturaPara(dist);
-
-    const posicao = new pc.Vec3().copy(P).add(linha.clone().mulScalar(dist));
+    // A câmara: atrás do marcador, acima dele, e deslocada para o lado
+    // contrário àquele em que ele fica no ecrã.
+    const posicao = new pc.Vec3()
+        .copy(P)
+        .sub(frente.clone().mulScalar(dist))
+        .sub(direita.clone().mulScalar(paraOLado));
     posicao.y = alturaDaCamara;
 
     // A direito: o ponto para onde olha está à altura da câmara, em
@@ -2943,16 +2924,6 @@ AnnotationController.prototype.enquadrarAoFechar = function(ann) {
     const foco = new pc.Vec3().copy(posicao).add(frente.clone().mulScalar(dist));
 
     comandos.recenter(posicao, foco);
-    // E assim fica, mesmo que a parede ou o chão da cúpula empurrem a
-    // câmara nas imagens seguintes: de onde ela ficar, volta a apontar a
-    // direito, com o marcador a um terço do meio para o mesmo lado —
-    // logo a seguir e passado um instante.
-    if (typeof comandos.apontarADireito === 'function') {
-        const acertar = () => comandos.apontarADireito(P, lado);
-        acertar();
-        setTimeout(acertar, 60);
-        setTimeout(acertar, 400);
-    }
 };
 
 /**
