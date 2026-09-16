@@ -1255,13 +1255,14 @@ class CameraControls extends Script {
         // largura, se a abertura for medida de lado a lado). Ao aproximar,
         // a abertura encolhe e o dedo abranda com ela, como é natural.
         // Sobre isso, duas afinações pedidas: a vista anda mais depressa
-        // do que o dedo (VELOCIDADE_DO_DEDO), e na horizontal vira para o
-        // lado para onde o dedo vai, em vez de arrastar o bairro.
+        // do que o dedo (VELOCIDADE_DO_DEDO), e vira para o lado para onde
+        // o dedo vai — na horizontal e na vertical —, em vez de arrastar
+        // o bairro.
         v.set(0, 0, 0);
         const telaDoDedo = this.app.graphicsDevice.canvas;
         const medidaDaTela = (this._camera.horizontalFov ? telaDoDedo.clientWidth : telaDoDedo.clientHeight) || 1;
         const grausPorPonto = (this._camera.fov || 60) / medidaDaTela * VELOCIDADE_DO_DEDO;
-        const touchRotate = tmpV2.set(touch[0], -touch[1], 0);
+        const touchRotate = tmpV2.set(touch[0], touch[1], 0);
         // Multiply by (1 - double) so it only activates when exactly 1 finger is down.
         v.add(touchRotate.mulScalar((1 - double) * grausPorPonto));
         deltas.rotate.append([v.x, v.y, v.z]);
