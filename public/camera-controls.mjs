@@ -1167,11 +1167,11 @@ class CameraControls extends Script {
         }
 
         // Dois dedos a deslizar andam com a câmara, pelo mesmo sítio que
-        // as teclas: para o lado para onde os dedos vão, e para a frente
-        // quando sobem.
+        // as teclas: para o lado para onde os dedos vão, e para trás
+        // quando sobem — como se os dedos empurrassem o chão.
         if (double === 1 && (activeTouchX !== 0 || activeTouchY !== 0)) {
             keyMove.x += activeTouchX * 0.10;
-            keyMove.z += activeTouchY * 0.10; // Inverted Z
+            keyMove.z -= activeTouchY * 0.10;
         }
 
         // O stick esquerdo entra pelo mesmo sítio que as teclas, e não pelo
