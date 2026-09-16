@@ -2204,7 +2204,7 @@ AnnotationController.prototype.setupModal = function() {
     vrBtn.title = (window.Idiomas ? window.Idiomas.t('video.oculos') : 'Ver com óculos');
     vrBtn.setAttribute('data-i18n-title', 'video.oculos');
     vrBtn.style.display = 'none';
-    vrBtn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a3 3 0 0 1 3-3h12a3 3 0 0 1 3 3v3a3 3 0 0 1-3 3h-2.5a2 2 0 0 1-1.7-1l-.9-1.4a1.2 1.2 0 0 0-2 0l-.9 1.4a2 2 0 0 1-1.7 1H6a3 3 0 0 1-3-3z"></path></svg>';
+    vrBtn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter"><path d="M2 5h20v14h-6l-2-4h-4l-2 4H2z"></path><rect x="5" y="9" width="4" height="4"></rect><rect x="15" y="9" width="4" height="4"></rect></svg>';
 
     // Só aparece a quem tenha óculos — a sério, ou de cartão no telemóvel
     // (ver vr-cartao.js), que chegam um pouco depois de a página abrir.

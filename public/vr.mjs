@@ -58,6 +58,13 @@ const ALTURA_DOS_OLHOS = 1.6;
 // Nunca se desce abaixo disto, para não acabar com a cabeça dentro do chão.
 const ALTURA_MINIMA = 1.5;
 
+// Nos óculos de cartão não há comandos: anda-se com um toque no ecrã (o
+// botão do cartão), que põe a andar para onde se olha; outro toque pára.
+// Um toque conta se for curto e sem arrastar — o resto é o dedo a
+// acertar o telemóvel na armação.
+const TOQUE_CURTO_MS = 400;
+const TOQUE_SEM_ARRASTAR_PX = 24;
+
 /**
  * Prepara o modo VR.
  *
@@ -218,8 +225,7 @@ export function criarModoVR(app) {
         // descanso — não pode virar um salto no bairro. Trava-se o passo à
         // mesma medida com que a câmara do rato já se trava.
         dt = Math.min(dt, 0.1);
-        const fontes = app.xr.input && app.xr.input.inputSources;
-        if (!fontes || !fontes.length) return;
+        const fontes = (app.xr.input && app.xr.input.inputSources) || [];
 
         let andarX = 0, andarZ = 0, rodar = 0, rapido = false;
         for (const fonte of fontes) {
@@ -248,6 +254,8 @@ export function criarModoVR(app) {
             aRodar = false;
         }
 
+        // Sem comandos a mandar, vale o toque: a andar para a frente.
+        if (andarX === 0 && andarZ === 0 && aAndarPeloToque) andarZ = -1;
         if (andarX === 0 && andarZ === 0) return;
 
         // Anda-se para onde se está a olhar, mas sempre à altura a que se
@@ -268,6 +276,44 @@ export function criarModoVR(app) {
     }
 
     let aConduzir = null;
+
+    // O toque no ecrã dentro dos óculos de cartão.
+    let aAndarPeloToque = false;
+    let toqueComecou = null;
+    const aoPousarODedo = (e) => {
+        if (!app.xr.active) return;
+        toqueComecou = { x: e.clientX, y: e.clientY, quando: performance.now() };
+    };
+    const aoLevantarODedo = (e) => {
+        if (!app.xr.active || !toqueComecou) return;
+        const curto = performance.now() - toqueComecou.quando < TOQUE_CURTO_MS;
+        const parado = Math.hypot(e.clientX - toqueComecou.x, e.clientY - toqueComecou.y) < TOQUE_SEM_ARRASTAR_PX;
+        toqueComecou = null;
+        if (curto && parado) aAndarPeloToque = !aAndarPeloToque;
+    };
+    // O botão dos comandos a sério que não têm manípulo (o "select" do
+    // WebXR) faz o mesmo que o toque.
+    const aoSeleccionar = () => { if (app.xr.active) aAndarPeloToque = !aAndarPeloToque; };
+
+    function ouvirOToque() {
+        aAndarPeloToque = false;
+        toqueComecou = null;
+        // Só depois de o toque que abriu os óculos ter acabado.
+        setTimeout(() => {
+            if (!app.xr.active) return;
+            document.addEventListener('pointerdown', aoPousarODedo, true);
+            document.addEventListener('pointerup', aoLevantarODedo, true);
+            if (app.xr.input && app.xr.input.on) app.xr.input.on('select', aoSeleccionar);
+        }, 500);
+    }
+
+    function deixarDeOuvirOToque() {
+        aAndarPeloToque = false;
+        toqueComecou = null;
+        document.removeEventListener('pointerdown', aoPousarODedo, true);
+        document.removeEventListener('pointerup', aoLevantarODedo, true);
+        if (app.xr.input && app.xr.input.off) app.xr.input.off('select', aoSeleccionar);
+    }
 
     /**
      * Abre os óculos.
@@ -315,6 +361,7 @@ export function criarModoVR(app) {
 
                     aConduzir = (dt) => conduzir(dt);
                     app.on('update', aConduzir);
+                    ouvirOToque();
                     resolve('entrou');
                 }
             });
@@ -333,6 +380,7 @@ export function criarModoVR(app) {
             app.off('update', aConduzir);
             aConduzir = null;
         }
+        deixarDeOuvirOToque();
         desmontarSuporte();
         reporDefinicoes();
 

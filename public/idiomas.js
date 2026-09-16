@@ -33,6 +33,7 @@
             'cab.idioma': 'Idioma',
             'cab.vr': 'Modo VR',
             'cab.cartao': 'Óculos de cartão',
+            'cab.cartaoDica': 'Dentro dos óculos, um toque no ecrã põe a andar para onde olha; outro toque pára.',
             'cab.ecra': 'Ecrã Inteiro',
 
             'def.qualidade': 'Qualidade Gráfica',
@@ -213,6 +214,7 @@
             'cab.idioma': 'Language',
             'cab.vr': 'VR Mode',
             'cab.cartao': 'Cardboard headset',
+            'cab.cartaoDica': 'Inside the headset, one tap on the screen starts walking where you look; another tap stops.',
             'cab.ecra': 'Fullscreen',
 
             'def.qualidade': 'Graphics Quality',
@@ -393,6 +395,7 @@
             'cab.idioma': 'Idioma',
             'cab.vr': 'Modo RV',
             'cab.cartao': 'Gafas de cartón',
+            'cab.cartaoDica': 'Dentro de las gafas, un toque en la pantalla echa a andar hacia donde miras; otro toque para.',
             'cab.ecra': 'Pantalla completa',
 
             'def.qualidade': 'Calidad Gráfica',
@@ -573,6 +576,7 @@
             'cab.idioma': 'Lingua',
             'cab.vr': 'Modu VR',
             'cab.cartao': 'Óklus di karton',
+            'cab.cartaoDica': 'Dentu di óklus, un toki na ekran ta pô-bu anda pa undi bu ta odja; otu toki ta para.',
             'cab.ecra': 'Ekran interu',
 
             'def.qualidade': 'Kualidadi di imajen',

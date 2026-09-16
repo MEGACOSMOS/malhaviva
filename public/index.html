@@ -7,7 +7,7 @@
     <meta name="description" content="Exploração 3D interativa do Bairro de Penajóia através de Gaussian Splatting. Projeto Malha Viva.">
     <!-- As línguas do site. Fica antes de tudo o resto para o texto
          nascer já na língua certa, sem piscar em português primeiro. -->
-    <script src="/idiomas.js?v=16"></script>
+    <script src="/idiomas.js?v=17"></script>
 
     <!-- O quadrado de espera, o mesmo em todo o site. Fica antes de o
          ecrã de espera se desenhar, para nascer já com a sua roupa. -->
@@ -1893,7 +1893,7 @@
 
             <!-- Fora da gaveta: ficam no cabeçalho em qualquer ecrã. -->
             <button id="vr-btn" class="adaptavel" title="Modo VR" data-i18n-title="cab.vr" style="display: none;">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a3 3 0 0 1 3-3h12a3 3 0 0 1 3 3v3a3 3 0 0 1-3 3h-2.5a2 2 0 0 1-1.7-1l-.9-1.4a1.2 1.2 0 0 0-2 0l-.9 1.4a2 2 0 0 1-1.7 1H6a3 3 0 0 1-3-3z"></path></svg>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter"><path d="M2 5h20v14h-6l-2-4h-4l-2 4H2z"></path><rect x="5" y="9" width="4" height="4"></rect><rect x="15" y="9" width="4" height="4"></rect></svg>
             </button>
 
             <button id="fullscreen-main-btn" class="adaptavel" title="Ecrã Inteiro" data-i18n-title="cab.ecra">
@@ -2420,7 +2420,7 @@
         <pc-asset id="splat-scene" src="splat/lod-meta.json" type="gsplat"></pc-asset>
         <pc-asset id="camera-controls-script" src="./camera-controls.mjs?v=29" type="script"></pc-asset>
         <pc-asset id="camera-coords-script" src="./coords.mjs?v=7" type="script"></pc-asset>
-        <pc-asset id="annotations-script" src="./annotations.mjs?v=79" type="script"></pc-asset>
+        <pc-asset id="annotations-script" src="./annotations.mjs?v=80" type="script"></pc-asset>
         <pc-asset id="trail-script" src="./trail.mjs?v=26" type="script"></pc-asset>
 
         <!-- Scene -->
@@ -2523,7 +2523,7 @@
             PIXELFORMAT_RGBA8, FILTER_LINEAR, ADDRESS_CLAMP_TO_EDGE
         } from 'playcanvas';
         import { ligarLodNoCentroDaVista } from './lod-foco.mjs?v=6';
-        import { criarModoVR } from './vr.mjs?v=4';
+        import { criarModoVR } from './vr.mjs?v=5';
         import { ligarCeu } from './ceu.mjs?v=15';
         import { ligarComando } from './comando.mjs?v=9';
 
@@ -3485,6 +3485,12 @@ void modifySplatColor(vec3 center, inout vec4 color) {
                     // No iPhone o sensor de movimento pede licença, e só
                     // a dá a partir de um toque: este.
                     if (window.VRCartao) await window.VRCartao.pedirSensores();
+                    // Nos óculos de cartão não há comandos: diz-se como se
+                    // anda antes de a imagem ficar dividida em dois.
+                    if (window.vrPorCartao) {
+                        avisarVR((window.Idiomas && window.Idiomas.t('cab.cartaoDica')) ||
+                            'Dentro dos óculos, um toque no ecrã põe a andar para onde olha; outro toque pára.');
+                    }
                     const resposta = await modoVR.entrar();
                     if (resposta !== 'entrou' && resposta !== 'a recarregar') {
                         avisarVR(resposta);
