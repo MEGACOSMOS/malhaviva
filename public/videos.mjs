@@ -130,15 +130,14 @@ export function enderecoDe(nome, resolucao) {
     return BASE + encodeURIComponent(ficheiro);
 }
 
-// Para onde cada rota 360º olha ao começar — a volta (yaw), em graus,
-// lida na janela das coordenadas do olhar do player, e a inclinação
-// (pitch) a zero: a direito, sem olhar para cima nem para baixo.
+// Para onde cada rota 360º olha ao começar — a volta (yaw) e a inclinação
+// (pitch), em graus, lidos na janela das coordenadas do olhar do player.
 // É daqui que o player parte, é para aqui que o botão de endireitar
 // volta, e é assim que as janelas dos lados mostram a rota vizinha.
 const OLHAR_INICIAL = {
-    'Esvarena - 360 - A': { yaw: 116.5, pitch: 0 },
-    'Esvarena - 360 - B': { yaw: 84.3, pitch: 0 },
-    'Esvarena - 360 - C': { yaw: 81.4, pitch: 0 }
+    'Esvarena - 360 - A': { yaw: 116.5, pitch: -12.3 },
+    'Esvarena - 360 - B': { yaw: 84.3, pitch: -27.7 },
+    'Esvarena - 360 - C': { yaw: 81.4, pitch: -17.6 }
 };
 
 // A abertura da câmara com que uma rota se começa a ver, em graus.
