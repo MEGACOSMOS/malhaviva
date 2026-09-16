@@ -1025,9 +1025,11 @@
            de baixo à esquerda e o rodapé fica ao fundo, entre o manípulo e
            o botão de partilhar. */
         @media (hover: none) and (pointer: coarse) and (orientation: portrait) {
+            /* A altura de omissão é a do rodapé de sempre ao alto: com o
+               rodapé fechado, o manípulo fica no mesmo sítio. */
             #joystick {
                 left: 16px;
-                bottom: calc(var(--altura-do-rodape, 0px) + 28px);
+                bottom: calc(var(--altura-do-rodape, 124px) + 28px);
             }
             /* O rodapé ao fundo, centrado e de lado a lado (o botão de
                partilhar já não está no canto: vive na gaveta), com a letra
@@ -1983,7 +1985,6 @@
         // Quem fecha, não volta a ver.
         const fecharDeVez = () => {
             rodape.remove();
-            document.documentElement.style.setProperty('--altura-do-rodape', '0px');
             window.rodapeDosComandos = { mexeu: function () {} };
         };
 
@@ -2048,9 +2049,11 @@
                 rodape.style.width = (Math.ceil(maior + moldura) + 1) + 'px';
             }
             // A altura do rodapé, para o manípulo se pousar em cima dele
-            // no telemóvel ao alto. Fechado, não ocupa nada.
-            const altura = rodape.isConnected && getComputedStyle(rodape).display !== 'none' ? rodape.offsetHeight : 0;
-            document.documentElement.style.setProperty('--altura-do-rodape', altura + 'px');
+            // no telemóvel ao alto. Fechado o rodapé, o manípulo não desce:
+            // fica a última altura medida (ou a de sempre, se nunca a houve).
+            if (rodape.isConnected && getComputedStyle(rodape).display !== 'none' && rodape.offsetHeight > 0) {
+                document.documentElement.style.setProperty('--altura-do-rodape', rodape.offsetHeight + 'px');
+            }
         };
 
         // Segue o ecrã de espera: sai ele, entra o rodapé; volta ele, sai.
