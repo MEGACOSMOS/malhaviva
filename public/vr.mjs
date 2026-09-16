@@ -61,6 +61,13 @@ const ALTURA_DOS_OLHOS = 1.6;
 // Nunca se desce abaixo disto, para não acabar com a cabeça dentro do chão.
 const ALTURA_MINIMA = 1.5;
 
+// Dentro dos óculos os comandos de sempre continuam a servir: as teclas
+// (W, A, S, D e as setas; o Shift acelera), um comando de jogo ligado ao
+// aparelho (o manípulo esquerdo anda, o direito roda aos saltos) e o
+// rato ou o dedo a arrastar de lado, que rodam o suporte — quantos graus
+// por cada ponto de ecrã arrastado.
+const GRAUS_POR_PONTO_ARRASTADO = 0.3;
+
 /**
  * Prepara o modo VR.
  *
@@ -228,6 +235,34 @@ export function criarModoVR(app) {
         const fontes = (app.xr.input && app.xr.input.inputSources) || [];
 
         let andarX = 0, andarZ = 0, rodar = 0, rapido = false;
+
+        // As teclas.
+        if (teclas.frente) andarZ -= 1;
+        if (teclas.tras) andarZ += 1;
+        if (teclas.esquerda) andarX -= 1;
+        if (teclas.direita) andarX += 1;
+        if (teclas.rapido) rapido = true;
+
+        // Um comando de jogo ligado ao aparelho (não aos óculos).
+        const comandos = navigator.getGamepads ? navigator.getGamepads() : [];
+        for (const comando of comandos) {
+            if (!comando || !comando.connected || !comando.axes) continue;
+            const x = comando.axes[0] || 0;
+            const y = comando.axes[1] || 0;
+            const rx = comando.axes[2] || 0;
+            if (Math.abs(x) > ZONA_MORTA) andarX += x;
+            if (Math.abs(y) > ZONA_MORTA) andarZ += y;
+            if (Math.abs(rx) > ZONA_MORTA) rodar = rx;
+            if (comando.buttons && comando.buttons[10] && comando.buttons[10].pressed) rapido = true;
+        }
+
+        // O rato, ou o dedo, a arrastar de lado: roda o suporte, e não aos
+        // saltos — a mão que arrasta já sabe quanto está a rodar.
+        if (arrasto.pendente !== 0) {
+            suporte.rotateLocal(0, -arrasto.pendente * GRAUS_POR_PONTO_ARRASTADO, 0);
+            arrasto.pendente = 0;
+        }
+
         for (const fonte of fontes) {
             const comando = fonte.gamepad;
             if (!comando || !comando.axes) continue;
@@ -275,6 +310,62 @@ export function criarModoVR(app) {
 
     let aConduzir = null;
 
+    // ---- Os comandos de sempre, dentro dos óculos ----
+    const teclas = { frente: false, tras: false, esquerda: false, direita: false, rapido: false };
+    const arrasto = { activo: false, x: 0, pendente: 0 };
+
+    const aoCarregarNaTecla = (e, emBaixo) => {
+        if (!emOculos()) return;
+        if (e.target && /^(?:INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) return;
+        const tecla = e.key.toLowerCase();
+        if (tecla === 'w' || e.key === 'ArrowUp') teclas.frente = emBaixo;
+        else if (tecla === 's' || e.key === 'ArrowDown') teclas.tras = emBaixo;
+        else if (tecla === 'a' || e.key === 'ArrowLeft') teclas.esquerda = emBaixo;
+        else if (tecla === 'd' || e.key === 'ArrowRight') teclas.direita = emBaixo;
+        else if (e.key === 'Shift') teclas.rapido = emBaixo;
+        else return;
+        e.preventDefault();
+    };
+    const aoBaixarTecla = (e) => aoCarregarNaTecla(e, true);
+    const aoLevantarTecla = (e) => aoCarregarNaTecla(e, false);
+
+    const aoPousar = (e) => {
+        if (!emOculos()) return;
+        if (e.target && e.target.closest && e.target.closest('#cartao-sair')) return;
+        arrasto.activo = true;
+        arrasto.x = e.clientX;
+    };
+    const aoArrastar = (e) => {
+        if (!arrasto.activo) return;
+        arrasto.pendente += e.clientX - arrasto.x;
+        arrasto.x = e.clientX;
+    };
+    const aoLargar = () => { arrasto.activo = false; };
+
+    function ligarOsComandosDeSempre() {
+        for (const chave of Object.keys(teclas)) teclas[chave] = false;
+        arrasto.activo = false;
+        arrasto.pendente = 0;
+        window.addEventListener('keydown', aoBaixarTecla, true);
+        window.addEventListener('keyup', aoLevantarTecla, true);
+        window.addEventListener('pointerdown', aoPousar, true);
+        window.addEventListener('pointermove', aoArrastar, true);
+        window.addEventListener('pointerup', aoLargar, true);
+        window.addEventListener('pointercancel', aoLargar, true);
+    }
+
+    function desligarOsComandosDeSempre() {
+        window.removeEventListener('keydown', aoBaixarTecla, true);
+        window.removeEventListener('keyup', aoLevantarTecla, true);
+        window.removeEventListener('pointerdown', aoPousar, true);
+        window.removeEventListener('pointermove', aoArrastar, true);
+        window.removeEventListener('pointerup', aoLargar, true);
+        window.removeEventListener('pointercancel', aoLargar, true);
+        for (const chave of Object.keys(teclas)) teclas[chave] = false;
+        arrasto.activo = false;
+        arrasto.pendente = 0;
+    }
+
     /**
      * Abre os óculos.
      *
@@ -299,6 +390,7 @@ export function criarModoVR(app) {
             }
             aConduzir = (dt) => conduzir(dt);
             app.on('update', aConduzir);
+            ligarOsComandosDeSempre();
             return 'entrou';
         }
 
@@ -331,6 +423,7 @@ export function criarModoVR(app) {
 
                     aConduzir = (dt) => conduzir(dt);
                     app.on('update', aConduzir);
+                    ligarOsComandosDeSempre();
                     resolve('entrou');
                 }
             });
@@ -353,6 +446,7 @@ export function criarModoVR(app) {
             app.off('update', aConduzir);
             aConduzir = null;
         }
+        desligarOsComandosDeSempre();
         desmontarSuporte();
         reporDefinicoes();
     }
