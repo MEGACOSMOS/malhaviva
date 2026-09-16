@@ -1005,6 +1005,42 @@
             }
         }
 
+        /* ─── No telemóvel ───
+           Ao alto, o manípulo encosta ao lado esquerdo e o rodapé dos
+           comandos fica por baixo dele, encostado ao fundo; a altura do
+           rodapé é medida pelo guião (--altura-do-rodape), para o manípulo
+           assentar mesmo em cima dele. Deitado, o manípulo vai para o canto
+           de baixo à esquerda e o rodapé fica ao fundo, entre o manípulo e
+           o botão de partilhar. */
+        @media (hover: none) and (pointer: coarse) and (orientation: portrait) {
+            #joystick {
+                left: 16px;
+                bottom: calc(var(--altura-do-rodape, 0px) + 28px);
+            }
+            #rodape-comandos,
+            body.com-manipulo #rodape-comandos {
+                bottom: 16px;
+                left: 16px;
+                right: auto;
+                margin: 0;
+                max-width: calc(100% - 92px);
+            }
+        }
+        @media (hover: none) and (pointer: coarse) and (orientation: landscape) {
+            #joystick {
+                left: 16px;
+                bottom: 16px;
+            }
+            #rodape-comandos,
+            body.com-manipulo #rodape-comandos {
+                bottom: 16px;
+                left: 140px;
+                right: 76px;
+                margin: 0 auto;
+                max-width: calc(100% - 216px);
+            }
+        }
+
         /* ─── Partilhar ───
            Um botão no canto de baixo à direita, vestido como o rodapé, e um
            menu por cima dele com as redes por onde se pode mandar o bairro
@@ -1907,6 +1943,7 @@
         // Quem fecha, não volta a ver.
         const fecharDeVez = () => {
             rodape.remove();
+            document.documentElement.style.setProperty('--altura-do-rodape', '0px');
             window.rodapeDosComandos = { mexeu: function () {} };
         };
 
@@ -1963,12 +2000,17 @@
                     linhas.push({ topo: r.top, esq: r.left, dir: r.right });
                 }
             });
-            if (linhas.length < 2) return;
-            const maior = Math.max.apply(null, linhas.map((l) => l.dir - l.esq));
-            const estilo = getComputedStyle(rodape);
-            const moldura = parseFloat(estilo.paddingLeft) + parseFloat(estilo.paddingRight) +
-                parseFloat(estilo.borderLeftWidth) + parseFloat(estilo.borderRightWidth);
-            rodape.style.width = (Math.ceil(maior + moldura) + 1) + 'px';
+            if (linhas.length >= 2) {
+                const maior = Math.max.apply(null, linhas.map((l) => l.dir - l.esq));
+                const estilo = getComputedStyle(rodape);
+                const moldura = parseFloat(estilo.paddingLeft) + parseFloat(estilo.paddingRight) +
+                    parseFloat(estilo.borderLeftWidth) + parseFloat(estilo.borderRightWidth);
+                rodape.style.width = (Math.ceil(maior + moldura) + 1) + 'px';
+            }
+            // A altura do rodapé, para o manípulo se pousar em cima dele
+            // no telemóvel ao alto. Fechado, não ocupa nada.
+            const altura = rodape.isConnected && getComputedStyle(rodape).display !== 'none' ? rodape.offsetHeight : 0;
+            document.documentElement.style.setProperty('--altura-do-rodape', altura + 'px');
         };
 
         // Segue o ecrã de espera: sai ele, entra o rodapé; volta ele, sai.
