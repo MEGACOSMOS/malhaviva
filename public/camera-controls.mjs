@@ -162,6 +162,11 @@ const screenToWorld = (camera, dx, dy, dz, out = new Vec3()) => {
  * @enum {string}
  */
 // eslint-disable-next-line no-unused-vars
+// Quantas vezes mais depressa a vista anda do que o dedo, num ecrã
+// táctil: a um, o ponto agarrado ficava debaixo do dedo; acima disso a
+// vista adianta-se-lhe.
+const VELOCIDADE_DO_DEDO = 1.6;
+
 const MobileInputLayout = {
     JOYSTICK_JOYSTICK: 'joystick-joystick',
     JOYSTICK_TOUCH: 'joystick-touch',
@@ -1241,19 +1246,20 @@ class CameraControls extends Script {
         deltas.rotate.append([v.x, v.y, v.z]);
 
 
-        // Um dedo no ecrã arrasta o bairro: o ponto que se agarra fica
-        // debaixo do dedo. Para isso, cada ponto do ecrã que o dedo anda
-        // vale os graus que esse ponto ocupa na abertura da câmara — a
-        // abertura a dividir pela altura do ecrã (ou pela largura, se a
-        // abertura for medida de lado a lado). Ao aproximar, a abertura
-        // encolhe e o dedo abranda com ela, como é natural. Antes cada
-        // ponto valia um valor fixo, duas vezes e meia mais do que isto
-        // num telemóvel ao alto: o bairro fugia do dedo.
+        // Um dedo no ecrã vira a vista. A medida de base é a que faria o
+        // ponto agarrado ficar debaixo do dedo: cada ponto do ecrã que o
+        // dedo anda vale os graus que esse ponto ocupa na abertura da
+        // câmara — a abertura a dividir pela altura do ecrã (ou pela
+        // largura, se a abertura for medida de lado a lado). Ao aproximar,
+        // a abertura encolhe e o dedo abranda com ela, como é natural.
+        // Sobre isso, duas afinações pedidas: a vista anda mais depressa
+        // do que o dedo (VELOCIDADE_DO_DEDO), e na horizontal vira para o
+        // lado para onde o dedo vai, em vez de arrastar o bairro.
         v.set(0, 0, 0);
         const telaDoDedo = this.app.graphicsDevice.canvas;
         const medidaDaTela = (this._camera.horizontalFov ? telaDoDedo.clientWidth : telaDoDedo.clientHeight) || 1;
-        const grausPorPonto = (this._camera.fov || 60) / medidaDaTela;
-        const touchRotate = tmpV2.set(-touch[0], -touch[1], 0);
+        const grausPorPonto = (this._camera.fov || 60) / medidaDaTela * VELOCIDADE_DO_DEDO;
+        const touchRotate = tmpV2.set(touch[0], -touch[1], 0);
         // Multiply by (1 - double) so it only activates when exactly 1 finger is down.
         v.add(touchRotate.mulScalar((1 - double) * grausPorPonto));
         deltas.rotate.append([v.x, v.y, v.z]);
