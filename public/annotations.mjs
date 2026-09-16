@@ -248,8 +248,8 @@ AnnotationController.prototype.initialize = function() {
             color: #ffffff;
         }
         /* O último que se viu: uma caixinha da cor do fundo do site no
-           canto de cima à direita do marcador, com o sinal de "ir para o
-           fim" (um bico e um traço), para se saber por onde se ficou. */
+           canto de cima à direita do marcador, com o sinal de "voltar"
+           (uma seta que dá a volta), para se saber por onde se ficou. */
         .marker-dot.last-viewed {
             z-index: 10;
         }
@@ -260,7 +260,7 @@ AnnotationController.prototype.initialize = function() {
             right: -6px;
             width: 16px;
             height: 16px;
-            background: #05050a url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3' stroke-linecap='square' stroke-linejoin='miter'><polyline points='7 6 13 12 7 18'/><line x1='18' y1='6' x2='18' y2='18'/></svg>") center / 11px 11px no-repeat;
+            background: #05050a url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3' stroke-linecap='square' stroke-linejoin='miter'><polyline points='5 7 20 7 20 19 4 19'/><polyline points='9 3 5 7 9 11'/></svg>") center / 11px 11px no-repeat;
             box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
         }
         .marker-label {
