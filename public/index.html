@@ -7,7 +7,7 @@
     <meta name="description" content="Exploração 3D interativa do Bairro de Penajóia através de Gaussian Splatting. Projeto Malha Viva.">
     <!-- As línguas do site. Fica antes de tudo o resto para o texto
          nascer já na língua certa, sem piscar em português primeiro. -->
-    <script src="/idiomas.js?v=18"></script>
+    <script src="/idiomas.js?v=19"></script>
 
     <!-- O quadrado de espera, o mesmo em todo o site. Fica antes de o
          ecrã de espera se desenhar, para nascer já com a sua roupa. -->
@@ -437,7 +437,7 @@
         }
         
         /* Sem caixa nenhuma até o rato lá chegar. */
-        #definicoes-btn, #dev-btn, #idioma-btn, #help-btn, #fullscreen-main-btn, #vr-btn {
+        #definicoes-btn, #dev-btn, #idioma-btn, #help-btn, #fullscreen-main-btn, #vr-btn, #partilhar-btn-gaveta {
             background: transparent;
             border: 0;
             width: 40px;
@@ -581,24 +581,36 @@
             transition: opacity 0.15s ease;
         }
 
-        #header button.adaptavel:hover,
-        #header a.adaptavel:hover,
         .settings:has(.open) > #definicoes-btn,
         .settings:has(.open) > #dev-btn,
         .settings:has(.open) > #idioma-btn,
-        #partilhar-btn:hover,
+        .settings:has(.open) > #partilhar-btn-gaveta,
         #partilhar-btn.aberto {
             background: #05050a;
         }
 
-        #header button.adaptavel:hover::after,
-        #header a.adaptavel:hover::after,
         .settings:has(.open) > #definicoes-btn::after,
         .settings:has(.open) > #dev-btn::after,
         .settings:has(.open) > #idioma-btn::after,
-        #partilhar-btn:hover::after,
+        .settings:has(.open) > #partilhar-btn-gaveta::after,
         #partilhar-btn.aberto::after {
             opacity: 1;
+        }
+
+        /* O quadrado escuro do rato em cima só onde há rato: num ecrã
+           táctil o "rato em cima" fica agarrado ao último ícone tocado,
+           e o quadrado ficava lá a brilhar depois de o menu fechar. */
+        @media (hover: hover) {
+            #header button.adaptavel:hover,
+            #header a.adaptavel:hover,
+            #partilhar-btn:hover {
+                background: #05050a;
+            }
+            #header button.adaptavel:hover::after,
+            #header a.adaptavel:hover::after,
+            #partilhar-btn:hover::after {
+                opacity: 1;
+            }
         }
         
         #definicoes-menu, #dev-menu, #idioma-menu {
@@ -2564,7 +2576,7 @@
             PIXELFORMAT_RGBA8, FILTER_LINEAR, ADDRESS_CLAMP_TO_EDGE
         } from 'playcanvas';
         import { ligarLodNoCentroDaVista } from './lod-foco.mjs?v=6';
-        import { criarModoVR } from './vr.mjs?v=6';
+        import { criarModoVR } from './vr.mjs?v=8';
         import { ligarCeu } from './ceu.mjs?v=15';
         import { ligarComando } from './comando.mjs?v=9';
 
@@ -3057,6 +3069,26 @@ void modifySplatColor(vec3 center, inout vec4 color) {
         const menuBtn = document.getElementById('menu-btn');
         const headerEl = document.getElementById('header');
         const gaveta = document.getElementById('acoes-do-cabecalho');
+
+        // No telemóvel o ícone dos óculos vive na gaveta, ao pé dos outros;
+        // no computador fica no cabeçalho, ao lado do ecrã inteiro.
+        (function arrumarOsOculos() {
+            const oculos = document.getElementById('vr-btn');
+            const ladoDireito = document.getElementById('lado-direito');
+            const ecraInteiro = document.getElementById('fullscreen-main-btn');
+            const casaDasDefinicoes = definicoesBtn && definicoesBtn.closest('.settings');
+            if (!oculos || !ladoDireito || !casaDasDefinicoes) return;
+            const gavetaExiste = window.matchMedia('(max-width: 640px)');
+            const arrumar = () => {
+                if (gavetaExiste.matches) {
+                    if (oculos.parentNode !== gaveta) gaveta.insertBefore(oculos, casaDasDefinicoes);
+                } else if (oculos.parentNode === gaveta) {
+                    ladoDireito.insertBefore(oculos, ecraInteiro);
+                }
+            };
+            arrumar();
+            if (gavetaExiste.addEventListener) gavetaExiste.addEventListener('change', arrumar);
+        })();
         const abrirGaveta = (aberta) => {
             headerEl.classList.toggle('gaveta-aberta', aberta);
             menuBtn.setAttribute('aria-expanded', aberta ? 'true' : 'false');
@@ -3529,12 +3561,6 @@ void modifySplatColor(vec3 center, inout vec4 color) {
                     // No iPhone o sensor de movimento pede licença, e só
                     // a dá a partir de um toque: este.
                     if (window.VRCartao) await window.VRCartao.pedirSensores();
-                    // Nos óculos de cartão não há comandos: diz-se como se
-                    // anda antes de a imagem ficar dividida em dois.
-                    if (window.vrPorCartao) {
-                        avisarVR((window.Idiomas && window.Idiomas.t('cab.cartaoDica')) ||
-                            'Dentro dos óculos, um toque no ecrã põe a andar para onde olha; outro toque pára.');
-                    }
                     const resposta = await modoVR.entrar();
                     if (resposta !== 'entrou' && resposta !== 'a recarregar') {
                         avisarVR(resposta);

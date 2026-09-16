@@ -26,9 +26,11 @@ const MEIO_OLHO = 0.032;
 // do cartão deixam ver.
 const ABERTURA_DO_OLHO = 80;
 
-// Quanto a cabeça segue o sensor a cada imagem: um pouco de suavidade
-// tira o tremor do sensor sem deixar a imagem atrasada.
-const SUAVIDADE = 0.35;
+// Quantos pontos do ecrã se desenham por cada ponto, no máximo, dentro
+// dos óculos: um. Os telemóveis têm dois ou três pontos por ponto, e
+// desenhar tudo isso duas vezes (um olho de cada lado) deixava a imagem
+// a andar aos solavancos, muito atrás da cabeça.
+const PONTOS_POR_PONTO = 1;
 
 const RAD = Math.PI / 180;
 
@@ -48,7 +50,6 @@ export function criarCartao(app) {
     let aoSair = null;       // quem avisar quando se sai
     let acertouAVolta = false;
 
-    const q = new Quat();
     const qY = new Quat();
     const qX = new Quat();
     const qZ = new Quat();
@@ -76,6 +77,11 @@ export function criarCartao(app) {
     const aoRodarOTelemovel = (e) => {
         if (e.alpha === null || e.alpha === undefined) return;
         sensor = { alfa: e.alpha, beta: e.beta || 0, gama: e.gamma || 0 };
+        // A cabeça vira logo aqui, com a leitura acabada de chegar, e não
+        // só na imagem seguinte: o sensor fala mais vezes por segundo do
+        // que a imagem se desenha, e assim nunca se fica com uma leitura
+        // velha.
+        virarACabeca();
     };
 
     /**
@@ -89,9 +95,9 @@ export function criarCartao(app) {
     }
 
     /**
-     * A cada imagem: a cabeça segue o sensor.
+     * A cabeça segue o sensor, sem demora: a última leitura é a rotação.
      */
-    function passo() {
+    function virarACabeca() {
         if (!activo || !sensor || !cabeca) return;
         rotacaoDaCabeca(sensor.alfa, sensor.beta, sensor.gama, orientacaoDoEcra(), alvo);
 
@@ -109,11 +115,17 @@ export function criarCartao(app) {
                 const eul = suporte.getEulerAngles();
                 suporte.setEulerAngles(0, eul.y + (voltaQueSeQuer - voltaDaCabeca), 0);
             }
-            q.copy(alvo);
             return;
         }
-        q.slerp(q, alvo, SUAVIDADE);
-        cabeca.setLocalRotation(q);
+        cabeca.setLocalRotation(alvo);
+    }
+
+    /**
+     * A cada imagem, por garantia: se o sensor não falou desde a última,
+     * a cabeça fica onde está.
+     */
+    function passo() {
+        virarACabeca();
     }
 
     /**
@@ -134,8 +146,14 @@ export function criarCartao(app) {
             rect: camara.camera.rect.clone(),
             fov: camara.camera.fov,
             horizontalFov: camara.camera.horizontalFov,
+            pontosPorPonto: app.graphicsDevice.maxPixelRatio,
             voltaAntes
         };
+        // Desenhar mais leve: um ponto por ponto, no máximo.
+        try {
+            app.graphicsDevice.maxPixelRatio = Math.min(app.graphicsDevice.maxPixelRatio, PONTOS_POR_PONTO);
+            if (app.resizeCanvas) app.resizeCanvas();
+        } catch (e) { /* fica como está */ }
 
         // A cabeça, entre o suporte e a câmara: o suporte anda, a cabeça
         // roda com o sensor, e cada olho fica um pouco para o seu lado.
@@ -212,6 +230,12 @@ export function criarCartao(app) {
             camara.camera.horizontalFov = guardado.horizontalFov;
         }
         if (cabeca) { cabeca.destroy(); cabeca = null; }
+        try {
+            if (guardado && guardado.pontosPorPonto !== undefined) {
+                app.graphicsDevice.maxPixelRatio = guardado.pontosPorPonto;
+                if (app.resizeCanvas) app.resizeCanvas();
+            }
+        } catch (e) { /* fica como está */ }
         try {
             if (screen.orientation && screen.orientation.unlock) screen.orientation.unlock();
         } catch (e) { /* sem tranca */ }

@@ -1,5 +1,5 @@
 import { Entity, Vec3, XRTYPE_VR, XRSPACE_LOCALFLOOR } from 'playcanvas';
-import { criarCartao } from './cartao.mjs?v=1';
+import { criarCartao } from './cartao.mjs?v=2';
 
 /**
  * Modo VR: o bairro visto de dentro, com óculos.
@@ -30,8 +30,10 @@ import { criarCartao } from './cartao.mjs?v=1';
 // imagem perde nitidez mas ganha fluidez, que em VR conta muito mais.
 const ESCALA_DA_IMAGEM = 0.8;
 
-// Tecto de pontos do mapa enquanto se está em VR.
+// Tecto de pontos do mapa enquanto se está em VR — e mais baixo ainda
+// nos óculos de cartão, que são um telemóvel a desenhar duas vezes.
 const TECTO_DE_PONTOS_VR = 700000;
+const TECTO_DE_PONTOS_CARTAO = 350000;
 
 // Poupanças de nitidez: manchas minúsculas e manchas que quase não
 // contribuem para a cor são deitadas fora, e fora do centro do olhar essa
@@ -58,13 +60,6 @@ const ALTURA_DOS_OLHOS = 1.6;
 
 // Nunca se desce abaixo disto, para não acabar com a cabeça dentro do chão.
 const ALTURA_MINIMA = 1.5;
-
-// Nos óculos de cartão não há comandos: anda-se com um toque no ecrã (o
-// botão do cartão), que põe a andar para onde se olha; outro toque pára.
-// Um toque conta se for curto e sem arrastar — o resto é o dedo a
-// acertar o telemóvel na armação.
-const TOQUE_CURTO_MS = 400;
-const TOQUE_SEM_ARRASTAR_PX = 24;
 
 /**
  * Prepara o modo VR.
@@ -137,7 +132,7 @@ export function criarModoVR(app) {
         guardado.foveacao = g.foveationStrength;
         guardado.centro = g.foveationCenter;
 
-        g.splatBudget = Math.min(g.splatBudget || Infinity, TECTO_DE_PONTOS_VR);
+        g.splatBudget = Math.min(g.splatBudget || Infinity, window.vrPorCartao ? TECTO_DE_PONTOS_CARTAO : TECTO_DE_PONTOS_VR);
         g.minPixelSize = Math.max(g.minPixelSize, MINIMO_DE_PONTOS);
         g.minContribution = Math.max(g.minContribution, MINIMO_DE_CONTRIBUICAO);
         g.foveationCenter = CENTRO_DA_FOVEACAO;
@@ -259,8 +254,6 @@ export function criarModoVR(app) {
             aRodar = false;
         }
 
-        // Sem comandos a mandar, vale o toque: a andar para a frente.
-        if (andarX === 0 && andarZ === 0 && aAndarPeloToque) andarZ = -1;
         if (andarX === 0 && andarZ === 0) return;
 
         // Anda-se para onde se está a olhar, mas sempre à altura a que se
@@ -281,46 +274,6 @@ export function criarModoVR(app) {
     }
 
     let aConduzir = null;
-
-    // O toque no ecrã dentro dos óculos de cartão.
-    let aAndarPeloToque = false;
-    let toqueComecou = null;
-    const aoPousarODedo = (e) => {
-        if (!emOculos()) return;
-        // O botão de sair dos óculos de cartão não é um toque para andar.
-        if (e.target && e.target.closest && e.target.closest('#cartao-sair')) return;
-        toqueComecou = { x: e.clientX, y: e.clientY, quando: performance.now() };
-    };
-    const aoLevantarODedo = (e) => {
-        if (!emOculos() || !toqueComecou) return;
-        const curto = performance.now() - toqueComecou.quando < TOQUE_CURTO_MS;
-        const parado = Math.hypot(e.clientX - toqueComecou.x, e.clientY - toqueComecou.y) < TOQUE_SEM_ARRASTAR_PX;
-        toqueComecou = null;
-        if (curto && parado) aAndarPeloToque = !aAndarPeloToque;
-    };
-    // O botão dos comandos a sério que não têm manípulo (o "select" do
-    // WebXR) faz o mesmo que o toque.
-    const aoSeleccionar = () => { if (emOculos()) aAndarPeloToque = !aAndarPeloToque; };
-
-    function ouvirOToque() {
-        aAndarPeloToque = false;
-        toqueComecou = null;
-        // Só depois de o toque que abriu os óculos ter acabado.
-        setTimeout(() => {
-            if (!emOculos()) return;
-            document.addEventListener('pointerdown', aoPousarODedo, true);
-            document.addEventListener('pointerup', aoLevantarODedo, true);
-            if (app.xr.input && app.xr.input.on) app.xr.input.on('select', aoSeleccionar);
-        }, 500);
-    }
-
-    function deixarDeOuvirOToque() {
-        aAndarPeloToque = false;
-        toqueComecou = null;
-        document.removeEventListener('pointerdown', aoPousarODedo, true);
-        document.removeEventListener('pointerup', aoLevantarODedo, true);
-        if (app.xr.input && app.xr.input.off) app.xr.input.off('select', aoSeleccionar);
-    }
 
     /**
      * Abre os óculos.
@@ -346,7 +299,6 @@ export function criarModoVR(app) {
             }
             aConduzir = (dt) => conduzir(dt);
             app.on('update', aConduzir);
-            ouvirOToque();
             return 'entrou';
         }
 
@@ -379,7 +331,6 @@ export function criarModoVR(app) {
 
                     aConduzir = (dt) => conduzir(dt);
                     app.on('update', aConduzir);
-                    ouvirOToque();
                     resolve('entrou');
                 }
             });
@@ -402,7 +353,6 @@ export function criarModoVR(app) {
             app.off('update', aConduzir);
             aConduzir = null;
         }
-        deixarDeOuvirOToque();
         desmontarSuporte();
         reporDefinicoes();
     }
