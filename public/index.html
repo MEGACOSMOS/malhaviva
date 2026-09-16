@@ -7,11 +7,16 @@
     <meta name="description" content="Exploração 3D interativa do Bairro de Penajóia através de Gaussian Splatting. Projeto Malha Viva.">
     <!-- As línguas do site. Fica antes de tudo o resto para o texto
          nascer já na língua certa, sem piscar em português primeiro. -->
-    <script src="/idiomas.js?v=15"></script>
+    <script src="/idiomas.js?v=16"></script>
 
     <!-- O quadrado de espera, o mesmo em todo o site. Fica antes de o
          ecrã de espera se desenhar, para nascer já com a sua roupa. -->
     <script src="/quadrado-de-espera.js?v=4"></script>
+
+    <!-- Os óculos de cartão do telemóvel: quando o navegador não sabe
+         abrir óculos, vai buscar quem saiba. Antes do motor, para o motor
+         já os encontrar. -->
+    <script src="/vr-cartao.js?v=1"></script>
 
     <!-- PlayCanvas Web Components (versões fixas para estabilidade em produção) -->
     <script type="importmap">
@@ -2413,7 +2418,7 @@
 
         <!-- Assets -->
         <pc-asset id="splat-scene" src="splat/lod-meta.json" type="gsplat"></pc-asset>
-        <pc-asset id="camera-controls-script" src="./camera-controls.mjs?v=28" type="script"></pc-asset>
+        <pc-asset id="camera-controls-script" src="./camera-controls.mjs?v=29" type="script"></pc-asset>
         <pc-asset id="camera-coords-script" src="./coords.mjs?v=7" type="script"></pc-asset>
         <pc-asset id="annotations-script" src="./annotations.mjs?v=79" type="script"></pc-asset>
         <pc-asset id="trail-script" src="./trail.mjs?v=26" type="script"></pc-asset>
@@ -2518,7 +2523,7 @@
             PIXELFORMAT_RGBA8, FILTER_LINEAR, ADDRESS_CLAMP_TO_EDGE
         } from 'playcanvas';
         import { ligarLodNoCentroDaVista } from './lod-foco.mjs?v=6';
-        import { criarModoVR } from './vr.mjs?v=3';
+        import { criarModoVR } from './vr.mjs?v=4';
         import { ligarCeu } from './ceu.mjs?v=15';
         import { ligarComando } from './comando.mjs?v=9';
 
@@ -3456,6 +3461,12 @@ void modifySplatColor(vec3 center, inout vec4 color) {
             modoVR.disponivel().then((tem) => {
                 if (!tem || !botaoVR) return;
                 botaoVR.style.display = '';
+                // Nos óculos de cartão do telemóvel o botão passa a dizer
+                // o que é: entra-se com o telemóvel numa armação.
+                if (window.vrPorCartao) {
+                    botaoVR.title = (window.Idiomas && window.Idiomas.t('cab.cartao')) || 'Óculos de cartão';
+                    botaoVR.setAttribute('data-i18n-title', 'cab.cartao');
+                }
 
                 // Quando se volta de propósito para entrar em VR, os
                 // navegadores exigem um toque para abrir os óculos: fica
@@ -3471,6 +3482,9 @@ void modifySplatColor(vec3 center, inout vec4 color) {
                         return;
                     }
                     botaoVR.classList.remove('a-pedir-toque');
+                    // No iPhone o sensor de movimento pede licença, e só
+                    // a dá a partir de um toque: este.
+                    if (window.VRCartao) await window.VRCartao.pedirSensores();
                     const resposta = await modoVR.entrar();
                     if (resposta !== 'entrou' && resposta !== 'a recarregar') {
                         avisarVR(resposta);

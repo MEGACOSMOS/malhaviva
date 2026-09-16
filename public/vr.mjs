@@ -76,6 +76,13 @@ export function criarModoVR(app) {
      * @returns {Promise<boolean>} Verdadeiro se der para entrar em VR.
      */
     async function disponivel() {
+        // No telemóvel, os óculos de cartão (ver vr-cartao.js) chegam um
+        // pouco depois de a página abrir: espera-se por eles.
+        if (window.VRCartao && window.VRCartao.pronto) {
+            try {
+                if (await window.VRCartao.pronto) return true;
+            } catch (e) { /* segue pelo caminho de sempre */ }
+        }
         if (!navigator.xr || !navigator.xr.isSessionSupported) return false;
         try {
             return await navigator.xr.isSessionSupported('immersive-vr');
@@ -92,6 +99,8 @@ export function criarModoVR(app) {
     function motorServeParaVR() {
         const dispositivo = app.graphicsDevice;
         if (!dispositivo || !dispositivo.isWebGPU) return true;
+        // Os óculos de cartão só sabem desenhar com o motor antigo.
+        if (window.vrPorCartao) return false;
         return typeof window.XRGPUBinding !== 'undefined';
     }
 
@@ -280,6 +289,13 @@ export function criarModoVR(app) {
 
         if (!montarSuporte()) return 'Não consegui preparar a câmara para VR.';
         aplicarDefinicoesDeVR();
+
+        // Os óculos de cartão instalam-se depois de o motor ter nascido, e
+        // o motor ficou a pensar que não há óculos: diz-se-lhe que há.
+        if (window.vrPorCartao) {
+            app.xr._supported = true;
+            if (app.xr._available) app.xr._available[XRTYPE_VR] = true;
+        }
 
         return new Promise((resolve) => {
             app.xr.start(componente.camera, XRTYPE_VR, XRSPACE_LOCALFLOOR, {

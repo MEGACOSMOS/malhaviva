@@ -85,9 +85,11 @@ const frame = new InputFrame({
  */
 export const damp = (damping, dt) => 1 - Math.pow(damping, dt * 1000);
 
-// O amortecimento da rotação enquanto um dedo arrasta o bairro: quase
-// nenhum, para a vista chegar ao sítio do dedo na mesma imagem.
-const AMORTECIMENTO_DO_DEDO = 0.85;
+// O amortecimento da rotação enquanto um dedo vira a vista: pouco, para
+// a vista seguir o dedo de perto, mas algum, para o movimento sair liso
+// em vez de aos solavancos — a um valor mais baixo cada abanão do dedo
+// chegava inteiro à imagem.
+const AMORTECIMENTO_DO_DEDO = 0.94;
 
 /**
  * @param {number[]} stick - The stick
@@ -169,9 +171,10 @@ const screenToWorld = (camera, dx, dy, dz, out = new Vec3()) => {
 const GRAUS_POR_LARGURA_DE_ECRA = 180;
 
 // Depois de largar o dedo, durante quanto tempo a vista ainda responde
-// sem amortecimento, em milissegundos: o suficiente para acabar o pouco
-// caminho que faltava e parar onde o dedo parou, sem deslizar sozinha.
-const FOLGA_DEPOIS_DO_DEDO = 300;
+// com o amortecimento do dedo, em milissegundos: o suficiente para
+// acabar o pouco caminho que faltava e parar onde o dedo parou, sem
+// deslizar sozinha.
+const FOLGA_DEPOIS_DO_DEDO = 400;
 
 const MobileInputLayout = {
     JOYSTICK_JOYSTICK: 'joystick-joystick',

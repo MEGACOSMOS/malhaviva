@@ -32,6 +32,7 @@
             'cab.definicoes': 'Definições',
             'cab.idioma': 'Idioma',
             'cab.vr': 'Modo VR',
+            'cab.cartao': 'Óculos de cartão',
             'cab.ecra': 'Ecrã Inteiro',
 
             'def.qualidade': 'Qualidade Gráfica',
@@ -211,6 +212,7 @@
             'cab.definicoes': 'Settings',
             'cab.idioma': 'Language',
             'cab.vr': 'VR Mode',
+            'cab.cartao': 'Cardboard headset',
             'cab.ecra': 'Fullscreen',
 
             'def.qualidade': 'Graphics Quality',
@@ -390,6 +392,7 @@
             'cab.definicoes': 'Ajustes',
             'cab.idioma': 'Idioma',
             'cab.vr': 'Modo RV',
+            'cab.cartao': 'Gafas de cartón',
             'cab.ecra': 'Pantalla completa',
 
             'def.qualidade': 'Calidad Gráfica',
@@ -569,6 +572,7 @@
             'cab.definicoes': 'Definisons',
             'cab.idioma': 'Lingua',
             'cab.vr': 'Modu VR',
+            'cab.cartao': 'Óklus di karton',
             'cab.ecra': 'Ekran interu',
 
             'def.qualidade': 'Kualidadi di imajen',

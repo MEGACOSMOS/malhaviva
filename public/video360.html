@@ -4,8 +4,11 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>360 Video Player</title>
-    <script src="/idiomas.js?v=15"></script>
+    <script src="/idiomas.js?v=16"></script>
     <script src="/quadrado-de-espera.js?v=4"></script>
+    <!-- Os óculos de cartão do telemóvel, antes do A-Frame, para ele os
+         encontrar (ver vr-cartao.js). -->
+    <script src="/vr-cartao.js?v=1"></script>
     <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
     <!-- O dedo olha para todos os lados, e não só de lado a lado. -->
     <script src="/toque-360.js?v=1"></script>
@@ -1210,19 +1213,24 @@
 
         // --- Óculos de realidade virtual ---
 
-        // O botão só aparece a quem tenha óculos ligados.
-        if (navigator.xr && navigator.xr.isSessionSupported) {
-            navigator.xr.isSessionSupported('immersive-vr').then((tem) => {
-                if (tem) vrBtn.style.display = '';
-            }).catch(() => {});
-        }
+        // O botão só aparece a quem tenha óculos — a sério, ou de cartão no
+        // telemóvel (ver vr-cartao.js), que chegam um pouco depois.
+        const haOculos = window.VRCartao && window.VRCartao.pronto
+            ? window.VRCartao.pronto
+            : (navigator.xr && navigator.xr.isSessionSupported
+                ? navigator.xr.isSessionSupported('immersive-vr').catch(() => false)
+                : Promise.resolve(false));
+        haOculos.then((tem) => { if (tem) vrBtn.style.display = ''; });
 
-        vrBtn.addEventListener('click', (e) => {
+        vrBtn.addEventListener('click', async (e) => {
             e.stopPropagation();
             if (scene.is('vr-mode')) {
                 scene.exitVR();
                 return;
             }
+            // No iPhone o sensor de movimento pede licença a partir de um
+            // toque: este.
+            if (window.VRCartao) await window.VRCartao.pedirSensores();
             // Dentro dos óculos ninguém carrega no botão de arranque, por
             // isso o vídeo começa a andar aqui se ainda estiver parado.
             if (video.paused) {

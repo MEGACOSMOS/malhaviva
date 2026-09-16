@@ -2206,12 +2206,14 @@ AnnotationController.prototype.setupModal = function() {
     vrBtn.style.display = 'none';
     vrBtn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a3 3 0 0 1 3-3h12a3 3 0 0 1 3 3v3a3 3 0 0 1-3 3h-2.5a2 2 0 0 1-1.7-1l-.9-1.4a1.2 1.2 0 0 0-2 0l-.9 1.4a2 2 0 0 1-1.7 1H6a3 3 0 0 1-3-3z"></path></svg>';
 
-    // Só aparece a quem tenha óculos ligados.
-    if (navigator.xr && navigator.xr.isSessionSupported) {
-        navigator.xr.isSessionSupported('immersive-vr')
-            .then((tem) => { if (tem) vrBtn.style.display = ''; })
-            .catch(() => {});
-    }
+    // Só aparece a quem tenha óculos — a sério, ou de cartão no telemóvel
+    // (ver vr-cartao.js), que chegam um pouco depois de a página abrir.
+    const haOculos = window.VRCartao && window.VRCartao.pronto
+        ? window.VRCartao.pronto
+        : (navigator.xr && navigator.xr.isSessionSupported
+            ? navigator.xr.isSessionSupported('immersive-vr').catch(() => false)
+            : Promise.resolve(false));
+    haOculos.then((tem) => { if (tem) vrBtn.style.display = ''; });
 
     // Uma entrevista dentro dos óculos vê-se como num cinema vazio: um
     // ecrã grande à frente, com o vídeo a continuar de onde ia. Quem trata
