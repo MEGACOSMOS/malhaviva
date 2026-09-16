@@ -1166,9 +1166,11 @@ class CameraControls extends Script {
             this._zoomOffset += activePinch * -0.1;
         }
 
-        // Apply slide directly to keyMove for WASD mapping
+        // Dois dedos a deslizar andam com a câmara, pelo mesmo sítio que
+        // as teclas: para o lado para onde os dedos vão, e para a frente
+        // quando sobem.
         if (double === 1 && (activeTouchX !== 0 || activeTouchY !== 0)) {
-            keyMove.x -= activeTouchX * 0.10; // Inverted X
+            keyMove.x += activeTouchX * 0.10;
             keyMove.z += activeTouchY * 0.10; // Inverted Z
         }
 
