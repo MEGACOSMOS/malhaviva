@@ -1,4 +1,5 @@
 import { Entity, Vec3, XRTYPE_VR, XRSPACE_LOCALFLOOR } from 'playcanvas';
+import { criarCartao } from './cartao.mjs?v=1';
 
 /**
  * Modo VR: o bairro visto de dentro, com óculos.
@@ -77,14 +78,20 @@ export function criarModoVR(app) {
     let camara = null;
     let aRodar = false;
 
+    // Os óculos de cartão do telemóvel: o ecrã dividido em dois e o sensor
+    // de movimento a virar a cabeça, feitos pelo próprio mapa (cartao.mjs).
+    const cartao = criarCartao(app);
+
+    /** Se se está dentro de uns óculos, sejam a sério ou de cartão. */
+    const emOculos = () => !!(app.xr.active || cartao.activo);
+
     /**
      * Se este aparelho tem óculos ligados e o navegador os deixa usar.
      *
      * @returns {Promise<boolean>} Verdadeiro se der para entrar em VR.
      */
     async function disponivel() {
-        // No telemóvel, os óculos de cartão (ver vr-cartao.js) chegam um
-        // pouco depois de a página abrir: espera-se por eles.
+        // No telemóvel há sempre os óculos de cartão (ver vr-cartao.js).
         if (window.VRCartao && window.VRCartao.pronto) {
             try {
                 if (await window.VRCartao.pronto) return true;
@@ -106,8 +113,6 @@ export function criarModoVR(app) {
     function motorServeParaVR() {
         const dispositivo = app.graphicsDevice;
         if (!dispositivo || !dispositivo.isWebGPU) return true;
-        // Os óculos de cartão só sabem desenhar com o motor antigo.
-        if (window.vrPorCartao) return false;
         return typeof window.XRGPUBinding !== 'undefined';
     }
 
@@ -220,7 +225,7 @@ export function criarModoVR(app) {
      * @param {number} dt - Tempo desde a imagem anterior, em segundos.
      */
     function conduzir(dt) {
-        if (!app.xr.active || !suporte || !camara) return;
+        if (!emOculos() || !suporte || !camara) return;
         // Um salto no relógio — uma imagem que demorou, os óculos a voltar do
         // descanso — não pode virar um salto no bairro. Trava-se o passo à
         // mesma medida com que a câmara do rato já se trava.
@@ -281,11 +286,13 @@ export function criarModoVR(app) {
     let aAndarPeloToque = false;
     let toqueComecou = null;
     const aoPousarODedo = (e) => {
-        if (!app.xr.active) return;
+        if (!emOculos()) return;
+        // O botão de sair dos óculos de cartão não é um toque para andar.
+        if (e.target && e.target.closest && e.target.closest('#cartao-sair')) return;
         toqueComecou = { x: e.clientX, y: e.clientY, quando: performance.now() };
     };
     const aoLevantarODedo = (e) => {
-        if (!app.xr.active || !toqueComecou) return;
+        if (!emOculos() || !toqueComecou) return;
         const curto = performance.now() - toqueComecou.quando < TOQUE_CURTO_MS;
         const parado = Math.hypot(e.clientX - toqueComecou.x, e.clientY - toqueComecou.y) < TOQUE_SEM_ARRASTAR_PX;
         toqueComecou = null;
@@ -293,14 +300,14 @@ export function criarModoVR(app) {
     };
     // O botão dos comandos a sério que não têm manípulo (o "select" do
     // WebXR) faz o mesmo que o toque.
-    const aoSeleccionar = () => { if (app.xr.active) aAndarPeloToque = !aAndarPeloToque; };
+    const aoSeleccionar = () => { if (emOculos()) aAndarPeloToque = !aAndarPeloToque; };
 
     function ouvirOToque() {
         aAndarPeloToque = false;
         toqueComecou = null;
         // Só depois de o toque que abriu os óculos ter acabado.
         setTimeout(() => {
-            if (!app.xr.active) return;
+            if (!emOculos()) return;
             document.addEventListener('pointerdown', aoPousarODedo, true);
             document.addEventListener('pointerup', aoLevantarODedo, true);
             if (app.xr.input && app.xr.input.on) app.xr.input.on('select', aoSeleccionar);
@@ -322,8 +329,26 @@ export function criarModoVR(app) {
      *   ou uma mensagem de erro.
      */
     async function entrar() {
-        if (app.xr.active) return 'entrou';
+        if (emOculos()) return 'entrou';
         if (!await disponivel()) return 'Este aparelho não tem óculos de realidade virtual ligados.';
+
+        // Os óculos de cartão são feitos pelo próprio mapa: não precisam
+        // do motor antigo nem de recarregar a página.
+        if (window.vrPorCartao) {
+            if (!montarSuporte()) return 'Não consegui preparar a câmara para VR.';
+            aplicarDefinicoesDeVR();
+            const voltaAntes = suporte.getEulerAngles().y;
+            const resposta = await cartao.entrar(suporte, camara, voltaAntes, () => terminar());
+            if (resposta !== 'entrou') {
+                desmontarSuporte();
+                reporDefinicoes();
+                return resposta;
+            }
+            aConduzir = (dt) => conduzir(dt);
+            app.on('update', aConduzir);
+            ouvirOToque();
+            return 'entrou';
+        }
 
         if (!motorServeParaVR()) {
             recarregarParaVR();
@@ -335,13 +360,6 @@ export function criarModoVR(app) {
 
         if (!montarSuporte()) return 'Não consegui preparar a câmara para VR.';
         aplicarDefinicoesDeVR();
-
-        // Os óculos de cartão instalam-se depois de o motor ter nascido, e
-        // o motor ficou a pensar que não há óculos: diz-se-lhe que há.
-        if (window.vrPorCartao) {
-            app.xr._supported = true;
-            if (app.xr._available) app.xr._available[XRTYPE_VR] = true;
-        }
 
         return new Promise((resolve) => {
             app.xr.start(componente.camera, XRTYPE_VR, XRSPACE_LOCALFLOOR, {
@@ -372,10 +390,14 @@ export function criarModoVR(app) {
      * Fecha os óculos e devolve tudo ao que estava.
      */
     function sair() {
+        if (cartao.activo) { cartao.sair(); return; }
         if (app.xr.active) app.xr.end();
     }
 
-    app.xr.on('end', () => {
+    /**
+     * Arruma tudo ao sair dos óculos, sejam quais forem.
+     */
+    function terminar() {
         if (aConduzir) {
             app.off('update', aConduzir);
             aConduzir = null;
@@ -383,6 +405,10 @@ export function criarModoVR(app) {
         deixarDeOuvirOToque();
         desmontarSuporte();
         reporDefinicoes();
+    }
+
+    app.xr.on('end', () => {
+        terminar();
 
         // Tira a marca do endereço: quem sair dos óculos e mais tarde
         // recarregar a página volta ao motor de desenho rápido, sem ter de
@@ -401,7 +427,7 @@ export function criarModoVR(app) {
         entrar,
         sair,
         get activo() {
-            return !!app.xr.active;
+            return emOculos();
         },
         /** Se a página foi recarregada de propósito para entrar em VR. */
         get pedidoPendente() {

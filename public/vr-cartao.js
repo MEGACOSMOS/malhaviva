@@ -35,6 +35,12 @@
     // é um telemóvel.
     var aFingir = /[?&]cartao=1(&|$)/.test(window.location.search);
 
+    // Quem faz o cartão: o próprio mapa (cartao.mjs), que só precisa do
+    // sensor de movimento, ou o substituto do WebXR, para as páginas que
+    // deixam essa parte ao A-Frame. Diz-o o guião que chama este.
+    var guiaoActual = document.currentScript;
+    var modo = (guiaoActual && guiaoActual.getAttribute('data-modo')) || 'substituto';
+
     // O que o navegador tem de seu: `XRWebGLLayer` e companhia. Para o
     // substituto se instalar por inteiro, tudo isto sai do caminho.
     var NOMES_DO_WEBXR = [
@@ -112,6 +118,12 @@
     var pronto = haOculosASerio().then(function (tem) {
         if (tem) return true;
         if (!tactil && !aFingir) return false;
+        if (modo === 'proprio') {
+            // O mapa faz o cartão por si: chega haver sensor de movimento.
+            if (!('DeviceOrientationEvent' in window)) return false;
+            window.vrPorCartao = true;
+            return true;
+        }
         return instalarOCartao();
     });
 

@@ -7,7 +7,7 @@
     <meta name="description" content="Exploração 3D interativa do Bairro de Penajóia através de Gaussian Splatting. Projeto Malha Viva.">
     <!-- As línguas do site. Fica antes de tudo o resto para o texto
          nascer já na língua certa, sem piscar em português primeiro. -->
-    <script src="/idiomas.js?v=17"></script>
+    <script src="/idiomas.js?v=18"></script>
 
     <!-- O quadrado de espera, o mesmo em todo o site. Fica antes de o
          ecrã de espera se desenhar, para nascer já com a sua roupa. -->
@@ -16,7 +16,7 @@
     <!-- Os óculos de cartão do telemóvel: quando o navegador não sabe
          abrir óculos, vai buscar quem saiba. Antes do motor, para o motor
          já os encontrar. -->
-    <script src="/vr-cartao.js?v=1"></script>
+    <script src="/vr-cartao.js?v=2" data-modo="proprio"></script>
 
     <!-- PlayCanvas Web Components (versões fixas para estabilidade em produção) -->
     <script type="importmap">
@@ -1067,6 +1067,39 @@
                 margin: 0 auto;
                 max-width: calc(100% - 216px);
             }
+        }
+
+        /* ─── Os óculos de cartão ───
+           Dentro deles só há o bairro, dividido em dois, e uma cruz
+           pequena ao canto para sair. Tudo o resto — cabeçalho, marcadores,
+           manípulo, rodapé — sai do ecrã. */
+        body.em-cartao #header,
+        body.em-cartao #annotations-container,
+        body.em-cartao #joystick,
+        body.em-cartao #rodape-comandos,
+        body.em-cartao #partilhar-btn,
+        body.em-cartao #partilhar-menu,
+        body.em-cartao #camera-stuck-popup {
+            display: none !important;
+        }
+        #cartao-sair {
+            position: fixed;
+            top: 12px;
+            left: 12px;
+            z-index: 3000;
+            width: 40px;
+            height: 40px;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            background: rgba(5, 5, 10, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: #ffffff;
+            padding: 0;
+            cursor: pointer;
+        }
+        body.em-cartao #cartao-sair {
+            display: flex;
         }
 
         /* ─── Partilhar ───
@@ -2177,6 +2210,14 @@
     })();
     </script>
 
+    <!-- A cruz para sair dos óculos de cartão. -->
+    <button type="button" id="cartao-sair" aria-label="Sair dos óculos" title="Sair dos óculos" data-i18n-aria="cab.sairCartao" data-i18n-title="cab.sairCartao">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true">
+            <line x1="5" y1="5" x2="19" y2="19"></line>
+            <line x1="19" y1="5" x2="5" y2="19"></line>
+        </svg>
+    </button>
+
     <!-- Partilhar: o botão do canto e o menu das redes. -->
     <button type="button" id="partilhar-btn" class="adaptavel" aria-label="Partilhar" title="Partilhar" data-i18n-aria="par.botao" data-i18n-title="par.botao" aria-haspopup="true" aria-expanded="false" aria-controls="partilhar-menu">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true">
@@ -2523,7 +2564,7 @@
             PIXELFORMAT_RGBA8, FILTER_LINEAR, ADDRESS_CLAMP_TO_EDGE
         } from 'playcanvas';
         import { ligarLodNoCentroDaVista } from './lod-foco.mjs?v=6';
-        import { criarModoVR } from './vr.mjs?v=5';
+        import { criarModoVR } from './vr.mjs?v=6';
         import { ligarCeu } from './ceu.mjs?v=15';
         import { ligarComando } from './comando.mjs?v=9';
 
@@ -3475,6 +3516,9 @@ void modifySplatColor(vec3 center, inout vec4 color) {
                     botaoVR.classList.add('a-pedir-toque');
                     botaoVR.title = 'Tocar para entrar em VR';
                 }
+
+                const sairDoCartao = document.getElementById('cartao-sair');
+                if (sairDoCartao) sairDoCartao.addEventListener('click', () => modoVR.sair());
 
                 botaoVR.addEventListener('click', async () => {
                     if (modoVR.activo) {
