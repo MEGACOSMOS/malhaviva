@@ -162,10 +162,16 @@ const screenToWorld = (camera, dx, dy, dz, out = new Vec3()) => {
  * @enum {string}
  */
 // eslint-disable-next-line no-unused-vars
-// Quantas vezes mais depressa a vista anda do que o dedo, num ecrã
-// táctil: a um, o ponto agarrado ficava debaixo do dedo; acima disso a
-// vista adianta-se-lhe.
-const VELOCIDADE_DO_DEDO = 1.6;
+// Quantos graus a vista vira quando um dedo atravessa o ecrã de lado a
+// lado, num ecrã táctil — à maneira dos jogos de telemóvel (o Minecraft
+// é o exemplo): meia volta por cada largura de ecrã, sempre a mesma,
+// esteja a vista aproximada ou não.
+const GRAUS_POR_LARGURA_DE_ECRA = 180;
+
+// Depois de largar o dedo, durante quanto tempo a vista ainda responde
+// sem amortecimento, em milissegundos: o suficiente para acabar o pouco
+// caminho que faltava e parar onde o dedo parou, sem deslizar sozinha.
+const FOLGA_DEPOIS_DO_DEDO = 300;
 
 const MobileInputLayout = {
     JOYSTICK_JOYSTICK: 'joystick-joystick',
@@ -1248,34 +1254,33 @@ class CameraControls extends Script {
         deltas.rotate.append([v.x, v.y, v.z]);
 
 
-        // Um dedo no ecrã vira a vista. A medida de base é a que faria o
-        // ponto agarrado ficar debaixo do dedo: cada ponto do ecrã que o
-        // dedo anda vale os graus que esse ponto ocupa na abertura da
-        // câmara — a abertura a dividir pela altura do ecrã (ou pela
-        // largura, se a abertura for medida de lado a lado). Ao aproximar,
-        // a abertura encolhe e o dedo abranda com ela, como é natural.
-        // Sobre isso, duas afinações pedidas: a vista anda mais depressa
-        // do que o dedo (VELOCIDADE_DO_DEDO), e vira para o lado para onde
-        // o dedo vai — na horizontal e na vertical —, em vez de arrastar
-        // o bairro.
+        // Um dedo no ecrã vira a vista, à maneira dos jogos de telemóvel:
+        // para o lado para onde o dedo vai, na horizontal e na vertical,
+        // e sempre com a mesma medida — meia volta por cada largura de
+        // ecrã (GRAUS_POR_LARGURA_DE_ECRA), esteja a vista aproximada ou
+        // não. Não é o bairro que se arrasta; é a cabeça que se vira.
         v.set(0, 0, 0);
         const telaDoDedo = this.app.graphicsDevice.canvas;
-        const medidaDaTela = (this._camera.horizontalFov ? telaDoDedo.clientWidth : telaDoDedo.clientHeight) || 1;
-        const grausPorPonto = (this._camera.fov || 60) / medidaDaTela * VELOCIDADE_DO_DEDO;
+        const grausPorPonto = GRAUS_POR_LARGURA_DE_ECRA / (telaDoDedo.clientWidth || 1);
         const touchRotate = tmpV2.set(touch[0], touch[1], 0);
         // Multiply by (1 - double) so it only activates when exactly 1 finger is down.
         v.add(touchRotate.mulScalar((1 - double) * grausPorPonto));
         deltas.rotate.append([v.x, v.y, v.z]);
 
-        // E enquanto o dedo está no ecrã a vista segue-o de perto, sem o
-        // amortecimento que com o rato dá suavidade mas aqui deixava o
-        // bairro a chegar atrasado ao sítio do dedo. Largado o dedo, o
-        // amortecimento volta, para o resto do caminho acabar em suave.
+        // E a vista segue o dedo de perto, sem o amortecimento que com o
+        // rato dá suavidade mas aqui deixava o bairro a chegar atrasado
+        // ao sítio do dedo — e continua assim um instante depois de o
+        // largar, para acabar o pouco que faltava e parar onde o dedo
+        // parou, em vez de deslizar sozinha. Só depois disso o
+        // amortecimento do rato volta.
         const umDedo = this._state.touches === 1;
+        const agora = performance.now();
+        if (umDedo) this._ultimoDedoEm = agora;
+        const dedoRecente = umDedo || (this._ultimoDedoEm !== undefined && agora - this._ultimoDedoEm < FOLGA_DEPOIS_DO_DEDO);
         if (this._amortecimentoDeOrigem === undefined) {
             this._amortecimentoDeOrigem = this.rotateDamping;
         }
-        const amortecimento = umDedo ? AMORTECIMENTO_DO_DEDO : this._amortecimentoDeOrigem;
+        const amortecimento = dedoRecente ? AMORTECIMENTO_DO_DEDO : this._amortecimentoDeOrigem;
         if (this.rotateDamping !== amortecimento) {
             this.rotateDamping = amortecimento;
         }
