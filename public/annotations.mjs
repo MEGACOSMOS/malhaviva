@@ -307,7 +307,7 @@ AnnotationController.prototype.initialize = function() {
             width: 40px;
             height: 40px;
             border-radius: 0;
-            border: 4px solid rgba(255, 255, 255, 0.15);
+            border: 1px solid rgba(255, 255, 255, 0.15);
             background: #05050a;
             display: flex;
             align-items: center;
@@ -467,7 +467,7 @@ AnnotationController.prototype.initialize = function() {
         }
         .player-btn {
             background: transparent;
-            border: 4px solid rgba(255, 255, 255, 0.15);
+            border: 1px solid rgba(255, 255, 255, 0.15);
             color: white;
             cursor: pointer;
             display: flex;
@@ -1020,7 +1020,7 @@ AnnotationController.prototype.initialize = function() {
             align-items: center;
             gap: 8px;
             background: transparent;
-            border: 4px solid rgba(255, 255, 255, 0.15);
+            border: 1px solid rgba(255, 255, 255, 0.15);
             border-radius: 0;
             color: #fff;
             padding: 8px 16px;
@@ -1038,7 +1038,7 @@ AnnotationController.prototype.initialize = function() {
             top: calc(100% + 8px);
             right: 0;
             background: linear-gradient(to bottom, rgba(255,255,255,0.05), transparent), #05050a;
-            border: 4px solid rgba(255,255,255,0.15);
+            border: 1px solid rgba(255,255,255,0.15);
             border-radius: 0;
             padding: 16px;
             display: flex;
@@ -1089,7 +1089,7 @@ AnnotationController.prototype.initialize = function() {
             transform: scale(1.1);
         }
         /* ─── Contornos ───
-           Um fio de quatro pontos a toda a volta, de um só tom — o mais escuro do
+           Um fio de dois pontos a toda a volta, de um só tom — o mais escuro do
            degradé que aqui houve — pousado sobre o fundo escuro do site. */
         .janela-do-palco, .previa, .quality-menu {
             /* Sem rebordo nenhum, nem invisível: ficaria por fora do fio,
@@ -1104,7 +1104,7 @@ AnnotationController.prototype.initialize = function() {
             position: absolute;
             inset: 0;
             border-radius: inherit;
-            padding: 4px;
+            padding: 2px;
             background: linear-gradient(rgba(255,255,255,0.3), rgba(255,255,255,0.3)), #05050a;
             -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
             -webkit-mask-composite: xor;

@@ -39,7 +39,7 @@
         '.rede-titulo { font-size: 0.95rem; font-weight: 600; letter-spacing: -0.01em; color: #ffffff; }',
         '.rede-sub { font-size: 0.82rem; color: rgba(255, 255, 255, 0.7); margin-bottom: 14px; }',
         /* A tecla é uma tecla, como as do rodapé do bairro: só o traço e a letra. */
-        '.rede-tecla { background: transparent; color: #ffffff; border: 4px solid rgba(255, 255, 255, 0.25);',
+        '.rede-tecla { background: transparent; color: #ffffff; border: 1px solid rgba(255, 255, 255, 0.25);',
         '  padding: 9px 18px; border-radius: 0; font-size: 0.72rem; font-weight: 600; text-transform: uppercase;',
         '  letter-spacing: 0.08em; font-family: inherit; cursor: pointer;',
         '  transition: background 0.15s ease, border-color 0.15s ease, transform 0.1s; }',
