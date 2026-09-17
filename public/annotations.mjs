@@ -1865,7 +1865,8 @@ AnnotationController.prototype.tapar360EnquantoChega = function(ann) {
     const aoAviso = (e) => {
         const janela = palco.moldura.querySelector('iframe');
         if (!janela || e.source !== janela.contentWindow || !e.data) return;
-        if (e.data.malhaViva === 'filme360aAndar' || e.data.malhaViva === 'botao360aEspera') {
+        if (e.data.malhaViva === 'filme360aAndar' || e.data.malhaViva === 'botao360aEspera' ||
+            e.data.malhaViva === 'aviso360') {
             sair();
         }
     };

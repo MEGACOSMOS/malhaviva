@@ -4,8 +4,11 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Fotografia 360º</title>
-    <script src="/idiomas.js?v=20"></script>
+    <script src="/idiomas.js?v=21"></script>
     <script src="/quadrado-de-espera.js?v=4"></script>
+    <!-- O aviso de "está a demorar" e a tecla de tentar de novo, os
+         mesmos em todo o site. -->
+    <script src="/rede-de-seguranca.js?v=1"></script>
     <script src="/motor/aframe-1.4.0.min.js"></script>
     <!-- O dedo olha para todos os lados, e não só de lado a lado. -->
     <script src="/toque-360.js?v=1"></script>
@@ -172,18 +175,36 @@
             window.QuadradoDeEspera.fazer(document.getElementById('espera'));
         }
 
+        // A rede de segurança da janela (ver rede-de-seguranca.js): se a
+        // fotografia demorar demais, diz-se que está a demorar e dá-se a
+        // tecla de tentar de novo; se algo falhar de vez — o visor 360º
+        // que não veio, a fotografia que não há — diz-se logo, e o
+        // quadrado de espera sai, porque já não há espera nenhuma.
+        const rede = window.RedeDeSeguranca ? window.RedeDeSeguranca.vigiar({
+            espera: 40,
+            pronto: () => overlay.classList.contains('escondido'),
+            caixa: () => overlay
+        }) : null;
+        const falhou = (chave, textoPt) => {
+            document.getElementById('espera').style.display = 'none';
+            overlay.querySelector('.aviso').style.display = 'none';
+            if (rede) rede.avisar(chave, textoPt);
+            else overlay.textContent = (window.Idiomas && window.Idiomas.t(chave)) || textoPt;
+        };
+        const semVisor = !window.AFRAME;
+        if (semVisor) falhou('visor.erro', 'Não foi possível abrir o visor 360º.');
+
         // A fotografia é trazida à parte para se saber ao certo quando está
         // pronta — e para haver um aviso claro se não vier.
         const fotografia = new Image();
         fotografia.crossOrigin = 'anonymous';
         fotografia.onload = () => {
+            // Sem visor não há onde a pôr: fica o aviso que já lá está.
+            if (semVisor) return;
             ceu.setAttribute('material', { shader: 'flat', src: endereco, side: 'back' });
             overlay.classList.add('escondido');
         };
-        fotografia.onerror = () => {
-            overlay.innerHTML = '<div class="aviso">' +
-                (window.Idiomas ? window.Idiomas.t('foto.erro') : 'Não foi possível carregar a fotografia 360º.') + '</div>';
-        };
+        fotografia.onerror = () => falhou('foto.erro', 'Não foi possível carregar a fotografia 360º.');
         fotografia.src = endereco;
 
         // Ecrã inteiro. O pedido é feito à página toda (e não só ao corpo),

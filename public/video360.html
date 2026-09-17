@@ -4,8 +4,11 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>360 Video Player</title>
-    <script src="/idiomas.js?v=20"></script>
+    <script src="/idiomas.js?v=21"></script>
     <script src="/quadrado-de-espera.js?v=4"></script>
+    <!-- O aviso de "está a demorar" e a tecla de tentar de novo, os
+         mesmos em todo o site. -->
+    <script src="/rede-de-seguranca.js?v=1"></script>
     <!-- Os óculos de cartão do telemóvel, antes do A-Frame, para ele os
          encontrar (ver vr-cartao.js). -->
     <script src="/vr-cartao.js?v=3" data-modo="substituto"></script>
@@ -14,7 +17,9 @@
     <script src="/toque-360.js?v=1"></script>
     <script src="/comando-paginas.js?v=4" defer></script>
     <script>
-        AFRAME.registerComponent('fix-seam', {
+        // Sem o visor (ver a rede de segurança, mais abaixo) não há a quem
+        // ensinar isto — e a página tem de continuar para o poder dizer.
+        if (window.AFRAME) AFRAME.registerComponent('fix-seam', {
             init: function () {
                 this.el.addEventListener('materialtextureloaded', () => {
                     const mesh = this.el.getObject3D('mesh');
@@ -565,6 +570,60 @@
         <!-- As coordenadas do olhar, para quem afina as paragens. -->
         <div id="coordenadas" aria-hidden="true"></div>
 
+        <script>
+        /**
+         * A rede de segurança da janela (ver rede-de-seguranca.js).
+         *
+         * Se o filme demorar demais a andar, diz-se que está a demorar e
+         * dá-se a tecla de tentar de novo, por baixo do quadrado de
+         * espera. O tempo em que a página está à espera de um toque no
+         * botão do meio não conta: essa espera é da pessoa. Se algo falhar
+         * de vez — o visor 360º que não veio, o vídeo que não há — diz-se
+         * logo, e o quadrado sai, porque já não há espera nenhuma.
+         *
+         * Fica aqui, fora do código principal da página e antes dele, de
+         * propósito: se esse código nunca chegar a correr, este corre na
+         * mesma. O código principal chama `window.rede360.falhou` quando
+         * é o vídeo que falha.
+         *
+         * O mapa tapa esta janela com a imagem parada até o filme andar:
+         * quando há um aviso, diz-se-lhe que destape, para ele se ver.
+         */
+        (function () {
+            var rede = window.RedeDeSeguranca;
+            if (!rede) return;
+            var overlay = document.getElementById('play-overlay');
+            var botao = document.getElementById('play-btn-initial');
+            var spinner = document.getElementById('spinner');
+            var nome = new URLSearchParams(window.location.search).get('nome') || '';
+
+            var destaparOMapa = function () {
+                if (window.parent !== window) {
+                    window.parent.postMessage({ malhaViva: 'aviso360', nome: nome }, window.location.origin);
+                }
+            };
+
+            var guarda = rede.vigiar({
+                espera: 40,
+                pronto: function () { return !document.body.classList.contains('a-carregar'); },
+                parado: function () { return botao.style.display === 'flex'; },
+                caixa: function () { return overlay; },
+                aoAvisar: destaparOMapa
+            });
+
+            var falhou = function (chave, textoPt) {
+                window.rede360.falhado = true;
+                spinner.style.display = 'none';
+                botao.style.display = 'none';
+                guarda.avisar(chave, textoPt);
+            };
+            window.rede360 = { falhou: falhou, falhado: false };
+
+            // Sem o visor não há onde pôr o filme: diz-se já.
+            if (!window.AFRAME) falhou('visor.erro', 'Não foi possível abrir o visor 360º.');
+        })();
+        </script>
+
         <!-- Custom Controls Overlay -->
         <div id="ui-layer" class="paused">
             <!-- O quadrado de espera de quando falta imagem -->
@@ -719,6 +778,18 @@
         video.preload = 'auto';
         assets.appendChild(video);
 
+        // Se o vídeo não vier — a ligação caiu, o ficheiro não está lá —
+        // a rede de segurança diz-o em vez de deixar o quadrado a rodar.
+        // Só enquanto a cortina está fechada: depois disso o filme já
+        // andou, e uma falha a meio é o quadrado de espera do vídeo que
+        // a mostra. Um pedido interrompido (troca de versão) não é falha.
+        video.addEventListener('error', () => {
+            const erro = video.error;
+            if (!erro || erro.code === erro.MEDIA_ERR_ABORTED) return;
+            if (!document.body.classList.contains('a-carregar')) return;
+            if (window.rede360) window.rede360.falhou('video.erro', 'Não foi possível carregar o vídeo.');
+        });
+
         // Duas maneiras de mostrar o vídeo: à volta do observador, que é o
         // caso das rotas, ou num ecrã grande à frente dele, que é como uma
         // entrevista se vê bem dentro dos óculos — como estar numa sala de
@@ -856,10 +927,12 @@
             playBtnInitial.innerHTML =
                 '<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>' +
                 (window.Idiomas ? window.Idiomas.t('video.oculos') : 'Ver com óculos');
-        } else {
+        } else if (!(window.rede360 && window.rede360.falhado)) {
             // Enquanto o filme carrega está o quadrado de espera no meio,
             // e não o botão: o botão só aparece se o navegador recusar o
-            // arranque automático, que é quando faz falta um toque.
+            // arranque automático, que é quando faz falta um toque. (Se a
+            // rede de segurança já disse que não há visor, fica o aviso
+            // dela, sem quadrado.)
             playBtnInitial.style.display = 'none';
             spinner.style.display = 'grid';
         }

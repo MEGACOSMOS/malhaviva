@@ -7,11 +7,16 @@
     <meta name="description" content="Exploração 3D interativa do Bairro de Penajóia através de Gaussian Splatting. Projeto Malha Viva.">
     <!-- As línguas do site. Fica antes de tudo o resto para o texto
          nascer já na língua certa, sem piscar em português primeiro. -->
-    <script src="/idiomas.js?v=20"></script>
+    <script src="/idiomas.js?v=21"></script>
 
     <!-- O quadrado de espera, o mesmo em todo o site. Fica antes de o
          ecrã de espera se desenhar, para nascer já com a sua roupa. -->
     <script src="/quadrado-de-espera.js?v=4"></script>
+
+    <!-- O aviso de "está a demorar" e a tecla de tentar de novo, os
+         mesmos em todo o site. Antes de tudo, para estar cá mesmo que o
+         resto não chegue. -->
+    <script src="/rede-de-seguranca.js?v=1"></script>
 
     <!-- Os óculos de cartão do telemóvel: quando o navegador não sabe
          abrir óculos, vai buscar quem saiba. Antes do motor, para o motor
@@ -790,18 +795,6 @@
             visibility: visible;
         }
 
-        /* O mesmo aviso, quando nasce dentro do ecrã de espera: por baixo
-           do quadrado, sem cartão à volta — o ecrã de espera já é escuro. */
-        .arranque-aviso {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 8px;
-            max-width: 420px;
-            padding: 0 16px;
-            text-align: center;
-        }
-
         .stuck-text {
             font-size: 0.95rem;
             font-weight: 600;
@@ -816,7 +809,7 @@
         }
 
         /* O botão é uma tecla, como as do rodapé: só o traço e a letra. */
-        #recenter-btn, .tecla-de-aviso {
+        #recenter-btn {
             background: transparent;
             color: var(--color-text);
             border: 1px solid rgba(255, 255, 255, 0.25);
@@ -831,11 +824,11 @@
             transition: background 0.15s ease, border-color 0.15s ease, transform 0.1s;
         }
 
-        #recenter-btn:hover, .tecla-de-aviso:hover {
+        #recenter-btn:hover {
             background: rgba(255, 255, 255, 0.1);
             border-color: rgba(255, 255, 255, 0.45);
         }
-        #recenter-btn:active, .tecla-de-aviso:active {
+        #recenter-btn:active {
             transform: scale(0.97);
         }
 
@@ -1607,7 +1600,7 @@
 
     <script>
     /**
-     * A rede de segurança do arranque.
+     * A rede de segurança do arranque do bairro.
      *
      * Ninguém deve ficar a olhar para um ecrã preto sem saber porquê. Os
      * outros guardas da página tratam do que faz barulho — a placa gráfica
@@ -1617,9 +1610,10 @@
      * travou-o, o navegador serviu uma versão antiga que já não encaixa),
      * ou o bairro que nunca vem. Isto é um relógio que conta o tempo em
      * que a página está à vista e, se ao fim dele o site ainda não deu
-     * sinal de vida, diz por palavras que está a demorar e dá um botão para
-     * tentar de novo — a ir buscar tudo de fresco ao servidor, e não a
-     * repetir o que o navegador tinha guardado.
+     * sinal de vida, diz por palavras que está a demorar e dá uma tecla
+     * para tentar de novo. O aviso e a tecla são os de todo o site (ver
+     * `rede-de-seguranca.js`); o relógio é deste, porque o bairro tem dois
+     * sinais de vida e não um.
      *
      * Vive fora do código principal, e antes dele, de propósito: se esse
      * código nunca chegar a correr, este continua a correr na mesma.
@@ -1641,71 +1635,23 @@
         var relogio = null;
         var aviso = null;
 
-        var t = function (chave, senao) {
-            return (window.Idiomas && window.Idiomas.t(chave)) || senao;
-        };
-
         /**
-         * Volta a pedir ao servidor a página e o código que ela já foi
-         * buscar, saltando por cima do que o navegador tem guardado, e só
-         * depois recarrega. O motor 3D fica de fora: tem a versão no nome e
-         * nunca muda. Se algum pedido ficar pendurado, recarrega-se na
-         * mesma ao fim de uns segundos.
+         * Monta o aviso: o de todo o site, se chegou; se nem esse chegou,
+         * o mínimo à mão — a frase e uma tecla que recarrega.
          */
-        function recarregarDeFresco() {
-            var urls = [location.href];
-            try {
-                performance.getEntriesByType('resource').forEach(function (r) {
-                    var u = r.name;
-                    if (u.indexOf(location.origin + '/') === 0 &&
-                        /\.m?js(\?|$)/.test(u) &&
-                        u.indexOf('/motor/') === -1) urls.push(u);
-                });
-            } catch (e) { /* sem lista: vai só a página */ }
-
-            var pedidos = [];
-            urls.forEach(function (u) {
-                try {
-                    pedidos.push(fetch(u, { cache: 'reload', credentials: 'same-origin' }).catch(function () {}));
-                } catch (e) { /* sem fetch: recarrega-se na mesma */ }
-            });
-            var limite = new Promise(function (resolve) { setTimeout(resolve, 4000); });
-            var recarregar = function () { window.location.reload(); };
-            Promise.race([Promise.all(pedidos), limite]).then(recarregar, recarregar);
-        }
-
-        /**
-         * Monta o aviso: uma linha a dizer o que se passa, outra a dizer o
-         * que pode ser, e a tecla de tentar de novo. As chaves das línguas
-         * ficam nos elementos, para o aviso mudar de língua com o resto.
-         *
-         * @param {string} chaveTitulo - A chave da primeira linha.
-         * @param {string} tituloPt - A mesma, em português, para o caso de
-         * as línguas não terem chegado.
-         * @param {Element} caixa - Onde montar.
-         */
-        function montarAviso(chaveTitulo, tituloPt, caixa) {
-            var titulo = document.createElement('div');
-            titulo.className = 'stuck-text';
-            titulo.setAttribute('data-i18n', chaveTitulo);
-            titulo.textContent = t(chaveTitulo, tituloPt);
-
-            var sub = document.createElement('div');
-            sub.className = 'stuck-subtext';
-            sub.setAttribute('data-i18n', 'arranque.sub');
-            sub.textContent = t('arranque.sub', 'Pode ser a ligação à internet. Se continuar assim, tenta de novo.');
-
-            var botao = document.createElement('button');
-            botao.type = 'button';
-            botao.className = 'tecla-de-aviso';
-            botao.setAttribute('data-i18n', 'gpu.botao');
-            botao.textContent = t('gpu.botao', 'Tentar de novo');
-            botao.addEventListener('click', recarregarDeFresco);
-
+        function montar(chave, textoPt, caixa) {
+            if (window.RedeDeSeguranca) {
+                window.RedeDeSeguranca.montarAviso(chave, textoPt, caixa);
+                return;
+            }
+            var t = function (c, senao) { return (window.Idiomas && window.Idiomas.t(c)) || senao; };
             caixa.setAttribute('role', 'status');
-            caixa.appendChild(titulo);
-            caixa.appendChild(sub);
-            caixa.appendChild(botao);
+            caixa.textContent = t(chave, textoPt) + ' ';
+            var tecla = document.createElement('button');
+            tecla.type = 'button';
+            tecla.textContent = t('gpu.botao', 'Tentar de novo');
+            tecla.addEventListener('click', function () { window.location.reload(); });
+            caixa.appendChild(tecla);
         }
 
         /** O aviso dentro do ecrã de espera, por baixo do quadrado. */
@@ -1714,8 +1660,7 @@
             var conteudo = overlay && overlay.querySelector('.loading-content');
             if (!conteudo) return;
             aviso = document.createElement('div');
-            aviso.className = 'arranque-aviso';
-            montarAviso('arranque.demora', 'Está a demorar mais do que o costume.', aviso);
+            montar('arranque.demora', 'Está a demorar mais do que o costume.', aviso);
             conteudo.appendChild(aviso);
         }
 
@@ -1723,7 +1668,7 @@
         function avisarPorCima() {
             aviso = document.createElement('div');
             aviso.id = 'arranque-popup';
-            montarAviso('arranque.bairro', 'O bairro está a demorar a chegar.', aviso);
+            montar('arranque.bairro', 'O bairro está a demorar a chegar.', aviso);
             document.body.appendChild(aviso);
             // Obriga o navegador a medir o cartão antes de o acender, para
             // ele entrar a desvanecer e não a saltar.
@@ -1770,7 +1715,6 @@
                 calar();
                 if (marco === 'bairro') parar();
             },
-            recarregarDeFresco: recarregarDeFresco,
             // Para se espreitar da consola o que o relógio já viu.
             estado: function () { return { marcos: marcos, decorrido: decorrido, aviso: !!aviso }; }
         };
@@ -2672,7 +2616,7 @@
         <pc-asset id="splat-scene" src="splat/lod-meta.json" type="gsplat"></pc-asset>
         <pc-asset id="camera-controls-script" src="./camera-controls.mjs?v=29" type="script"></pc-asset>
         <pc-asset id="camera-coords-script" src="./coords.mjs?v=7" type="script"></pc-asset>
-        <pc-asset id="annotations-script" src="./annotations.mjs?v=80" type="script"></pc-asset>
+        <pc-asset id="annotations-script" src="./annotations.mjs?v=81" type="script"></pc-asset>
         <pc-asset id="trail-script" src="./trail.mjs?v=27" type="script"></pc-asset>
 
         <!-- Scene -->
