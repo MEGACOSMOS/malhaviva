@@ -85,13 +85,14 @@ const CSS = `
         gap: 14px;
         padding: 8px 0;
     }
-    /* O título de cada colecção, encostado ao lado esquerdo das janelas
-       e em baixo no seu espaço, rente à janela que se lhe segue. */
+    /* O título de cada colecção, encostado ao lado esquerdo das janelas,
+       com um fio por baixo da largura delas. */
     #videos-ao-lado .video-ao-lado-separador {
         flex: none;
         width: ${JANELA.largura + 2}px;
         margin: 6px 0 -2px;
-        padding-top: 5px;
+        padding-bottom: 4px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.15);
         color: var(--color-text-muted, rgba(255, 255, 255, 0.7));
         font-size: 0.7rem;
         font-weight: 600;
