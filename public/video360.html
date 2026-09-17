@@ -8,7 +8,7 @@
     <script src="/quadrado-de-espera.js?v=4"></script>
     <!-- O aviso de "está a demorar" e a tecla de tentar de novo, os
          mesmos em todo o site. -->
-    <script src="/rede-de-seguranca.js?v=1"></script>
+    <script src="/rede-de-seguranca.js?v=2"></script>
     <!-- Os óculos de cartão do telemóvel, antes do A-Frame, para ele os
          encontrar (ver vr-cartao.js). -->
     <script src="/vr-cartao.js?v=3" data-modo="substituto"></script>
@@ -82,7 +82,7 @@
             display: flex; flex-direction: column; align-items: center; justify-content: center;
         }
         #play-btn-initial {
-            background: rgba(255, 255, 255, 0.1); color: white; border: 1px solid rgba(255, 255, 255, 0.15); padding: 15px 40px; border-radius: 0;
+            background: rgba(255, 255, 255, 0.1); color: white; border: 3px solid rgba(255, 255, 255, 0.15); padding: 15px 40px; border-radius: 0;
             font-size: 1.2rem; font-weight: 600; cursor: pointer; transition: background 0.2s, transform 0.2s;
             box-shadow: 0 4px 15px rgba(0,0,0,0.4);
             display: flex; align-items: center; gap: 10px;
@@ -308,7 +308,7 @@
             max-width: 420px;
             width: 100%;
             background: #05050a;
-            border: 1px solid rgba(255, 255, 255, 0.15);
+            border: 3px solid rgba(255, 255, 255, 0.15);
             padding: 22px 24px;
         }
         .ajuda-titulo {
@@ -358,7 +358,7 @@
 
         .player-btn {
             background: transparent;
-            border: 1px solid rgba(255, 255, 255, 0.15);
+            border: 3px solid rgba(255, 255, 255, 0.15);
             color: white;
             cursor: pointer;
             display: flex;
@@ -520,7 +520,7 @@
         }
 
         /* ─── Contornos ───
-           Um fio de dois pontos a toda a volta, de um só tom — o mais escuro do
+           Um fio de três pontos a toda a volta, de um só tom — o mais escuro do
            degradé que aqui houve — pousado sobre o fundo escuro do site. */
         .quality-menu {
             border-color: transparent !important;
@@ -530,7 +530,7 @@
             position: absolute;
             inset: 0;
             border-radius: inherit;
-            padding: 2px;
+            padding: 3px;
             background: linear-gradient(rgba(255,255,255,0.3), rgba(255,255,255,0.3)), #05050a;
             -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
             -webkit-mask-composite: xor;
