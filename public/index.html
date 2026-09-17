@@ -7,7 +7,7 @@
     <meta name="description" content="Exploração 3D interativa do Bairro de Penajóia através de Gaussian Splatting. Projeto Malha Viva.">
     <!-- As línguas do site. Fica antes de tudo o resto para o texto
          nascer já na língua certa, sem piscar em português primeiro. -->
-    <script src="/idiomas.js?v=19"></script>
+    <script src="/idiomas.js?v=20"></script>
 
     <!-- O quadrado de espera, o mesmo em todo o site. Fica antes de o
          ecrã de espera se desenhar, para nascer já com a sua roupa. -->
@@ -758,7 +758,10 @@
 
 
         /* ─── Camera Stuck Popup ─── */
-        #camera-stuck-popup {
+        /* O aviso do limite do mapa e o aviso do arranque (ver `arranque`)
+           são o mesmo cartão: um deles vive na página, o outro nasce só
+           quando é preciso. */
+        #camera-stuck-popup, #arranque-popup {
             position: fixed;
             top: 50%;
             left: 50%;
@@ -782,9 +785,21 @@
             text-align: center;
         }
 
-        #camera-stuck-popup.visible {
+        #camera-stuck-popup.visible, #arranque-popup.visible {
             opacity: 1;
             visibility: visible;
+        }
+
+        /* O mesmo aviso, quando nasce dentro do ecrã de espera: por baixo
+           do quadrado, sem cartão à volta — o ecrã de espera já é escuro. */
+        .arranque-aviso {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            max-width: 420px;
+            padding: 0 16px;
+            text-align: center;
         }
 
         .stuck-text {
@@ -801,7 +816,7 @@
         }
 
         /* O botão é uma tecla, como as do rodapé: só o traço e a letra. */
-        #recenter-btn {
+        #recenter-btn, .tecla-de-aviso {
             background: transparent;
             color: var(--color-text);
             border: 1px solid rgba(255, 255, 255, 0.25);
@@ -816,11 +831,11 @@
             transition: background 0.15s ease, border-color 0.15s ease, transform 0.1s;
         }
 
-        #recenter-btn:hover {
+        #recenter-btn:hover, .tecla-de-aviso:hover {
             background: rgba(255, 255, 255, 0.1);
             border-color: rgba(255, 255, 255, 0.45);
         }
-        #recenter-btn:active {
+        #recenter-btn:active, .tecla-de-aviso:active {
             transform: scale(0.97);
         }
 
@@ -1366,7 +1381,7 @@
            degradé que aqui houve — pousado sobre o fundo escuro do site. */
         .panel-glass, .btn-glass, .action-btn, .settings-panel, .filter-btn, 
         #coordinates-info, #camera-info, #loading-bar-container,
-        #definicoes-menu, #dev-menu, #idioma-menu, #rodape-comandos, #camera-stuck-popup, #partilhar-menu {
+        #definicoes-menu, #dev-menu, #idioma-menu, #rodape-comandos, #camera-stuck-popup, #arranque-popup, #partilhar-menu {
             /* Sem rebordo nenhum, nem invisível: um rebordo invisível fica
                por fora do fio e deixa ver o fundo escuro por baixo dele,
                como um segundo fio, preto, a toda a volta. */
@@ -1377,7 +1392,7 @@
         }
         .panel-glass::after, .btn-glass::after, .action-btn::after, .settings-panel::after, .filter-btn::after,
         #coordinates-info::after, #camera-info::after, #loading-bar-container::after,
-        #definicoes-menu::after, #dev-menu::after, #idioma-menu::after, #rodape-comandos::after, #camera-stuck-popup::after, #partilhar-menu::after {
+        #definicoes-menu::after, #dev-menu::after, #idioma-menu::after, #rodape-comandos::after, #camera-stuck-popup::after, #arranque-popup::after, #partilhar-menu::after {
             content: "";
             position: absolute;
             inset: 0;
@@ -1587,6 +1602,180 @@
         });
 
         window.placaGrafica = placa;
+    })();
+    </script>
+
+    <script>
+    /**
+     * A rede de segurança do arranque.
+     *
+     * Ninguém deve ficar a olhar para um ecrã preto sem saber porquê. Os
+     * outros guardas da página tratam do que faz barulho — a placa gráfica
+     * a desistir, o motor que não acorda (ver `placaGrafica` e o limite de
+     * segurança no código principal). Mas há coisas que não fazem barulho
+     * nenhum: o código do site que não chega (a ligação caiu, um bloqueador
+     * travou-o, o navegador serviu uma versão antiga que já não encaixa),
+     * ou o bairro que nunca vem. Isto é um relógio que conta o tempo em
+     * que a página está à vista e, se ao fim dele o site ainda não deu
+     * sinal de vida, diz por palavras que está a demorar e dá um botão para
+     * tentar de novo — a ir buscar tudo de fresco ao servidor, e não a
+     * repetir o que o navegador tinha guardado.
+     *
+     * Vive fora do código principal, e antes dele, de propósito: se esse
+     * código nunca chegar a correr, este continua a correr na mesma.
+     *
+     * Os sinais de vida vêm do código principal (`window.arranque.marcar`):
+     *   `modulo` — o código do site chegou e começou a correr;
+     *   `bairro` — o primeiro bocado do bairro foi desenhado no ecrã.
+     * Com o bairro à vista o relógio pára e o aviso, se lá estiver, sai.
+     * Enquanto a placa gráfica estiver a tratar de um erro dela, isto
+     * cala-se: o aviso dela já está no ecrã.
+     */
+    (function () {
+        // Quanto tempo à vista, em segundos, antes de se dizer alguma coisa.
+        var SEM_CODIGO = 40;   // sem o código do site ter começado a correr
+        var SEM_BAIRRO = 60;   // sem um bocado do bairro ter chegado ao ecrã
+
+        var marcos = { modulo: false, bairro: false };
+        var decorrido = 0;
+        var relogio = null;
+        var aviso = null;
+
+        var t = function (chave, senao) {
+            return (window.Idiomas && window.Idiomas.t(chave)) || senao;
+        };
+
+        /**
+         * Volta a pedir ao servidor a página e o código que ela já foi
+         * buscar, saltando por cima do que o navegador tem guardado, e só
+         * depois recarrega. O motor 3D fica de fora: tem a versão no nome e
+         * nunca muda. Se algum pedido ficar pendurado, recarrega-se na
+         * mesma ao fim de uns segundos.
+         */
+        function recarregarDeFresco() {
+            var urls = [location.href];
+            try {
+                performance.getEntriesByType('resource').forEach(function (r) {
+                    var u = r.name;
+                    if (u.indexOf(location.origin + '/') === 0 &&
+                        /\.m?js(\?|$)/.test(u) &&
+                        u.indexOf('/motor/') === -1) urls.push(u);
+                });
+            } catch (e) { /* sem lista: vai só a página */ }
+
+            var pedidos = [];
+            urls.forEach(function (u) {
+                try {
+                    pedidos.push(fetch(u, { cache: 'reload', credentials: 'same-origin' }).catch(function () {}));
+                } catch (e) { /* sem fetch: recarrega-se na mesma */ }
+            });
+            var limite = new Promise(function (resolve) { setTimeout(resolve, 4000); });
+            var recarregar = function () { window.location.reload(); };
+            Promise.race([Promise.all(pedidos), limite]).then(recarregar, recarregar);
+        }
+
+        /**
+         * Monta o aviso: uma linha a dizer o que se passa, outra a dizer o
+         * que pode ser, e a tecla de tentar de novo. As chaves das línguas
+         * ficam nos elementos, para o aviso mudar de língua com o resto.
+         *
+         * @param {string} chaveTitulo - A chave da primeira linha.
+         * @param {string} tituloPt - A mesma, em português, para o caso de
+         * as línguas não terem chegado.
+         * @param {Element} caixa - Onde montar.
+         */
+        function montarAviso(chaveTitulo, tituloPt, caixa) {
+            var titulo = document.createElement('div');
+            titulo.className = 'stuck-text';
+            titulo.setAttribute('data-i18n', chaveTitulo);
+            titulo.textContent = t(chaveTitulo, tituloPt);
+
+            var sub = document.createElement('div');
+            sub.className = 'stuck-subtext';
+            sub.setAttribute('data-i18n', 'arranque.sub');
+            sub.textContent = t('arranque.sub', 'Pode ser a ligação à internet. Se continuar assim, tenta de novo.');
+
+            var botao = document.createElement('button');
+            botao.type = 'button';
+            botao.className = 'tecla-de-aviso';
+            botao.setAttribute('data-i18n', 'gpu.botao');
+            botao.textContent = t('gpu.botao', 'Tentar de novo');
+            botao.addEventListener('click', recarregarDeFresco);
+
+            caixa.setAttribute('role', 'status');
+            caixa.appendChild(titulo);
+            caixa.appendChild(sub);
+            caixa.appendChild(botao);
+        }
+
+        /** O aviso dentro do ecrã de espera, por baixo do quadrado. */
+        function avisarNoEcraDeEspera() {
+            var overlay = document.getElementById('loading-overlay');
+            var conteudo = overlay && overlay.querySelector('.loading-content');
+            if (!conteudo) return;
+            aviso = document.createElement('div');
+            aviso.className = 'arranque-aviso';
+            montarAviso('arranque.demora', 'Está a demorar mais do que o costume.', aviso);
+            conteudo.appendChild(aviso);
+        }
+
+        /** O aviso por cima do bairro, quando o ecrã de espera já saiu. */
+        function avisarPorCima() {
+            aviso = document.createElement('div');
+            aviso.id = 'arranque-popup';
+            montarAviso('arranque.bairro', 'O bairro está a demorar a chegar.', aviso);
+            document.body.appendChild(aviso);
+            // Obriga o navegador a medir o cartão antes de o acender, para
+            // ele entrar a desvanecer e não a saltar.
+            void aviso.offsetWidth;
+            aviso.classList.add('visible');
+        }
+
+        function calar() {
+            if (aviso && aviso.parentNode) aviso.parentNode.removeChild(aviso);
+            aviso = null;
+        }
+
+        function parar() {
+            clearInterval(relogio);
+            relogio = null;
+        }
+
+        // Uma vez por segundo, só com a página à vista: escondida, o
+        // navegador não desenha nem descarrega grande coisa, e contar esse
+        // tempo era acusar a ligação de uma demora que não foi dela.
+        function ver() {
+            if (document.hidden) return;
+            decorrido++;
+            if (aviso) return;
+            if (window.placaGrafica && window.placaGrafica.desistida) return;
+
+            var overlay = document.getElementById('loading-overlay');
+            var aEspera = !!overlay && !overlay.classList.contains('hidden');
+
+            if (!marcos.modulo && decorrido >= SEM_CODIGO) {
+                avisarNoEcraDeEspera();
+            } else if (!marcos.bairro && decorrido >= SEM_BAIRRO) {
+                if (aEspera) avisarNoEcraDeEspera();
+                else avisarPorCima();
+            }
+        }
+
+        window.arranque = {
+            marcar: function (marco) {
+                if (!(marco in marcos) || marcos[marco]) return;
+                marcos[marco] = true;
+                // Um sinal de vida tira o aviso da frente: o que estava a
+                // demorar acabou de chegar. Com o bairro à vista, acabou.
+                calar();
+                if (marco === 'bairro') parar();
+            },
+            recarregarDeFresco: recarregarDeFresco,
+            // Para se espreitar da consola o que o relógio já viu.
+            estado: function () { return { marcos: marcos, decorrido: decorrido, aviso: !!aviso }; }
+        };
+
+        relogio = setInterval(ver, 1000);
     })();
     </script>
 
@@ -2591,6 +2780,10 @@
         import { ligarComando } from './comando.mjs?v=9';
         import { ligarVideosAoLado } from './videos-ao-lado.mjs?v=10';
 
+        // O código do site chegou e está a correr: o primeiro sinal de vida
+        // para a rede de segurança do arranque (ver `arranque`).
+        if (window.arranque) window.arranque.marcar('modulo');
+
         // Resolução da grelha usada para medir o mapa, em metros.
         const RESOLUCAO_LIMITE = 4;
 
@@ -3356,6 +3549,11 @@ void modifySplatColor(vec3 center, inout vec4 color) {
                         if (bocados[i].loaded) chegaram++;
                     }
                     const aCaminho = bocados.length - chegaram;
+
+                    // O primeiro bocado do bairro passou pelo ecrã: a partir
+                    // daqui já não há ecrã preto, e a rede de segurança do
+                    // arranque pode descansar (ver `arranque`).
+                    if (chegaram > 0 && window.arranque) window.arranque.marcar('bairro');
 
                     // A barra deixa de andar a fingir nesta última parte: o
                     // quarto final são bocados contados de verdade.

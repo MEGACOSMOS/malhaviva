@@ -58,6 +58,9 @@
             'gpu.aTentar': 'O aparelho ficou sem memória gráfica. A tentar de novo com menos detalhe…',
             'gpu.desistiu': 'Este aparelho não consegue mostrar o bairro em 3D.',
             'gpu.botao': 'Tentar de novo',
+            'arranque.demora': 'Está a demorar mais do que o costume.',
+            'arranque.bairro': 'O bairro está a demorar a chegar.',
+            'arranque.sub': 'Pode ser a ligação à internet. Se continuar assim, tenta de novo.',
 
             'limite.titulo': 'Chegaste ao limite do mapa.',
             'limite.sub': 'Não há terreno para lá desta zona.',
@@ -239,6 +242,9 @@
             'gpu.aTentar': 'The device ran out of graphics memory. Trying again with less detail…',
             'gpu.desistiu': 'This device cannot display the neighbourhood in 3D.',
             'gpu.botao': 'Try again',
+            'arranque.demora': 'This is taking longer than usual.',
+            'arranque.bairro': 'The neighbourhood is taking a while to arrive.',
+            'arranque.sub': 'It may be the internet connection. If it stays like this, try again.',
 
             'limite.titulo': 'You have reached the edge of the map.',
             'limite.sub': 'There is no ground beyond this area.',
@@ -420,6 +426,9 @@
             'gpu.aTentar': 'El dispositivo se quedó sin memoria gráfica. Intentando de nuevo con menos detalle…',
             'gpu.desistiu': 'Este dispositivo no puede mostrar el barrio en 3D.',
             'gpu.botao': 'Intentar de nuevo',
+            'arranque.demora': 'Está tardando más de lo habitual.',
+            'arranque.bairro': 'El barrio está tardando en llegar.',
+            'arranque.sub': 'Puede ser la conexión a internet. Si sigue así, inténtalo de nuevo.',
 
             'limite.titulo': 'Has llegado al límite del mapa.',
             'limite.sub': 'No hay terreno más allá de esta zona.',
@@ -598,9 +607,12 @@
 
             'carga.modelo': 'Ta karega modelu 3D…',
             'carga.restaurar': 'Ta restaura anbienti 3D…',
-            'gpu.aTentar': 'El dispositivo se quedó sin memoria gráfica. Intentando de nuevo con menos detalle…',
-            'gpu.desistiu': 'Este dispositivo no puede mostrar el barrio en 3D.',
-            'gpu.botao': 'Intentar de nuevo',
+            'gpu.aTentar': 'Aparelhu fika sen memória gráfika. Ta tenta di novu ku ménus detalhi…',
+            'gpu.desistiu': 'Es aparelhu ka konsigi mostra bairu na 3D.',
+            'gpu.botao': 'Tenta di novu',
+            'arranque.demora': 'Sta ta dura más ki kustuma.',
+            'arranque.bairro': 'Bairu sta ta dura pa txiga.',
+            'arranque.sub': 'Pode ser ligason di internet. Si kontinua asi, tenta di novu.',
 
             'limite.titulo': 'Bu txiga na fin di mapa.',
             'limite.sub': 'Ka ten txon pa la di es zona.',
