@@ -4,12 +4,19 @@ import { Entity, Quat, Vec3, Vec4 } from 'playcanvas';
  * Os óculos de cartão do mapa: o telemóvel numa armação com duas lentes.
  *
  * Os navegadores dos telemóveis já não abrem óculos de realidade virtual
- * (ver vr-cartao.js), e por isso o mapa faz o cartão pelas suas mãos: o
- * ecrã é dividido em dois, com uma câmara para cada olho, um pouco
- * afastadas uma da outra como os olhos estão; e é o sensor de movimento
- * do telemóvel — o mesmo que roda as fotografias — que vira a cabeça. O
- * resto (o suporte que anda, os toques, as poupanças de detalhe) é o do
- * modo VR de sempre, em vr.mjs; isto só trata da imagem e da cabeça.
+ * (ver vr-cartao.js), e por isso o mapa faz o cartão pelas suas mãos. E
+ * fá-lo da maneira mais simples que há: os óculos são o próprio mapa,
+ * tal e qual, visto por dois olhos. A câmara continua a ser a de sempre,
+ * a andar e a rodar com os comandos de sempre (as teclas, o rato ou o
+ * dedo, o comando de jogo, o manípulo); por cima disso, e só por cima,
+ * a cabeça vira com o sensor de movimento do telemóvel — o mesmo que roda
+ * as fotografias — e cada olho fica um pouco para o seu lado. Ao sair,
+ * tira-se a cabeça e os olhos e a câmara fica exactamente onde a pessoa
+ * a deixou.
+ *
+ * A cabeça conta a partir de onde o telemóvel estava quando se entrou:
+ * nesse instante vê-se o que se via no mapa, e virar o telemóvel para a
+ * esquerda vira a vista para a esquerda, a partir daí.
  *
  * A conta que passa os três ângulos do sensor (alfa, beta, gama) para a
  * rotação da cabeça é a de sempre destas coisas, a mesma do three.js: os
@@ -32,8 +39,6 @@ const ABERTURA_DO_OLHO = 80;
 // a andar aos solavancos, muito atrás da cabeça.
 const PONTOS_POR_PONTO = 1;
 
-const RAD = Math.PI / 180;
-
 /**
  * Cria os óculos de cartão.
  *
@@ -44,18 +49,19 @@ export function criarCartao(app) {
     let activo = false;
     let camara = null;
     let cabeca = null;
-    let olhoDireito = null;
+    let olhos = [];
     let guardado = null;
     let sensor = null;       // os últimos ângulos do sensor
     let aoSair = null;       // quem avisar quando se sai
-    let acertouAVolta = false;
+    let referencia = null;   // a rotação do telemóvel quando se entrou, invertida
 
     const qY = new Quat();
     const qX = new Quat();
     const qZ = new Quat();
     const qDeitado = new Quat().setFromAxisAngle(Vec3.RIGHT, -90);
     const qEcra = new Quat();
-    const alvo = new Quat();
+    const lida = new Quat();
+    const relativa = new Quat();
 
     /**
      * A rotação da cabeça a partir dos ângulos do sensor.
@@ -95,29 +101,15 @@ export function criarCartao(app) {
     }
 
     /**
-     * A cabeça segue o sensor, sem demora: a última leitura é a rotação.
+     * A cabeça segue o sensor, sem demora: a última leitura, descontada a
+     * de quando se entrou, é a rotação da cabeça em cima da câmara.
      */
     function virarACabeca() {
         if (!activo || !sensor || !cabeca) return;
-        rotacaoDaCabeca(sensor.alfa, sensor.beta, sensor.gama, orientacaoDoEcra(), alvo);
-
-        // Na primeira leitura, o suporte roda para a pessoa continuar a
-        // olhar para onde olhava antes de pôr os óculos: o sensor conta a
-        // volta a partir de onde o telemóvel estava, e não do bairro.
-        if (!acertouAVolta) {
-            acertouAVolta = true;
-            cabeca.setLocalRotation(alvo);
-            const frente = cabeca.forward;
-            const voltaDaCabeca = Math.atan2(-frente.x, -frente.z) / RAD;
-            const suporte = cabeca.parent;
-            if (suporte) {
-                const voltaQueSeQuer = guardado.voltaAntes;
-                const eul = suporte.getEulerAngles();
-                suporte.setEulerAngles(0, eul.y + (voltaQueSeQuer - voltaDaCabeca), 0);
-            }
-            return;
-        }
-        cabeca.setLocalRotation(alvo);
+        rotacaoDaCabeca(sensor.alfa, sensor.beta, sensor.gama, orientacaoDoEcra(), lida);
+        if (!referencia) referencia = new Quat().copy(lida).invert();
+        relativa.copy(referencia).mul(lida);
+        cabeca.setLocalRotation(relativa);
     }
 
     /**
@@ -129,25 +121,45 @@ export function criarCartao(app) {
     }
 
     /**
+     * Faz um olho: uma câmara igual à do mapa, a ver metade do ecrã.
+     *
+     * @param {string} nome - O nome do olho.
+     * @param {number} lado - -1 para o esquerdo, 1 para o direito.
+     * @returns {Entity} O olho.
+     */
+    function fazerOlho(nome, lado) {
+        const olho = new Entity(nome);
+        olho.addComponent('camera', {
+            rect: new Vec4(lado < 0 ? 0 : 0.5, 0, 0.5, 1),
+            fov: ABERTURA_DO_OLHO,
+            horizontalFov: false,
+            nearClip: camara.camera.nearClip,
+            farClip: camara.camera.farClip,
+            clearColor: camara.camera.clearColor.clone(),
+            layers: camara.camera.layers.slice(),
+            priority: camara.camera.priority + (lado < 0 ? 1 : 2),
+            toneMapping: camara.camera.toneMapping,
+            gammaCorrection: camara.camera.gammaCorrection
+        });
+        cabeca.addChild(olho);
+        olho.setLocalPosition(lado * MEIO_OLHO, 0, 0);
+        return olho;
+    }
+
+    /**
      * Entra nos óculos de cartão.
      *
-     * @param {Entity} suporte - O suporte que anda pelo bairro (de vr.mjs).
-     * @param {Entity} camaraDoMapa - A câmara do mapa, já dentro do suporte.
-     * @param {number} voltaAntes - Para onde se olhava antes, em graus.
+     * @param {Entity} camaraDoMapa - A câmara do mapa, que fica a mandar.
      * @param {Function} quandoSair - Quem avisar quando se sai (a pessoa
      *     pode sair pelo botão ou ao sair do ecrã inteiro).
      * @returns {Promise<string>} 'entrou' ou o que correu mal.
      */
-    async function entrar(suporte, camaraDoMapa, voltaAntes, quandoSair) {
+    async function entrar(camaraDoMapa, quandoSair) {
         if (activo) return 'entrou';
         camara = camaraDoMapa;
         aoSair = quandoSair;
         guardado = {
-            rect: camara.camera.rect.clone(),
-            fov: camara.camera.fov,
-            horizontalFov: camara.camera.horizontalFov,
-            pontosPorPonto: app.graphicsDevice.maxPixelRatio,
-            voltaAntes
+            pontosPorPonto: app.graphicsDevice.maxPixelRatio
         };
         // Desenhar mais leve: um ponto por ponto, no máximo.
         try {
@@ -155,35 +167,19 @@ export function criarCartao(app) {
             if (app.resizeCanvas) app.resizeCanvas();
         } catch (e) { /* fica como está */ }
 
-        // A cabeça, entre o suporte e a câmara: o suporte anda, a cabeça
-        // roda com o sensor, e cada olho fica um pouco para o seu lado.
+        // A cabeça, pendurada na câmara do mapa: a câmara anda e roda com
+        // os comandos, a cabeça roda com o sensor por cima disso, e cada
+        // olho fica um pouco para o seu lado. A câmara do mapa deixa de
+        // desenhar — desenham os olhos — mas continua a ser ela a mandar.
         cabeca = new Entity('cabeca-do-cartao');
-        suporte.addChild(cabeca);
-        camara.reparent(cabeca);
-        camara.setLocalPosition(-MEIO_OLHO, 0, 0);
-        camara.setLocalEulerAngles(0, 0, 0);
-        camara.camera.rect = new Vec4(0, 0, 0.5, 1);
-        camara.camera.fov = ABERTURA_DO_OLHO;
-        camara.camera.horizontalFov = false;
-
-        olhoDireito = new Entity('olho-direito');
-        olhoDireito.addComponent('camera', {
-            rect: new Vec4(0.5, 0, 0.5, 1),
-            fov: ABERTURA_DO_OLHO,
-            horizontalFov: false,
-            nearClip: camara.camera.nearClip,
-            farClip: camara.camera.farClip,
-            clearColor: camara.camera.clearColor.clone(),
-            layers: camara.camera.layers.slice(),
-            priority: camara.camera.priority + 1,
-            toneMapping: camara.camera.toneMapping,
-            gammaCorrection: camara.camera.gammaCorrection
-        });
-        cabeca.addChild(olhoDireito);
-        olhoDireito.setLocalPosition(MEIO_OLHO, 0, 0);
+        camara.addChild(cabeca);
+        cabeca.setLocalPosition(0, 0, 0);
+        cabeca.setLocalEulerAngles(0, 0, 0);
+        olhos = [fazerOlho('olho-esquerdo', -1), fazerOlho('olho-direito', 1)];
+        camara.camera.enabled = false;
 
         sensor = null;
-        acertouAVolta = false;
+        referencia = null;
         window.addEventListener('deviceorientation', aoRodarOTelemovel, true);
         app.on('update', passo);
         document.body.classList.add('em-cartao');
@@ -209,7 +205,8 @@ export function criarCartao(app) {
     };
 
     /**
-     * Sai dos óculos de cartão e devolve a câmara como estava.
+     * Sai dos óculos de cartão: tira a cabeça e os olhos, e a câmara do
+     * mapa volta a desenhar de onde ficou.
      */
     function sair() {
         if (!activo) return;
@@ -219,17 +216,10 @@ export function criarCartao(app) {
         app.off('update', passo);
         document.body.classList.remove('em-cartao');
 
-        if (olhoDireito) { olhoDireito.destroy(); olhoDireito = null; }
-        if (camara && cabeca) {
-            const suporte = cabeca.parent;
-            if (suporte) camara.reparent(suporte);
-            camara.setLocalPosition(0, 0, 0);
-            camara.setLocalEulerAngles(0, 0, 0);
-            camara.camera.rect = guardado.rect;
-            camara.camera.fov = guardado.fov;
-            camara.camera.horizontalFov = guardado.horizontalFov;
-        }
+        for (const olho of olhos) olho.destroy();
+        olhos = [];
         if (cabeca) { cabeca.destroy(); cabeca = null; }
+        if (camara) camara.camera.enabled = true;
         try {
             if (guardado && guardado.pontosPorPonto !== undefined) {
                 app.graphicsDevice.maxPixelRatio = guardado.pontosPorPonto;

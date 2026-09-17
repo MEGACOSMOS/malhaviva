@@ -1,5 +1,5 @@
 import { Entity, Vec3, XRTYPE_VR, XRSPACE_LOCALFLOOR } from 'playcanvas';
-import { criarCartao } from './cartao.mjs?v=2';
+import { criarCartao } from './cartao.mjs?v=3';
 import { criarMarcadoresVR } from './marcadores-vr.mjs?v=1';
 
 /**
@@ -15,10 +15,16 @@ import { criarMarcadoresVR } from './marcadores-vr.mjs?v=1';
  * convite para tocar uma segunda vez. Onde o motor novo já sirva, entra-se
  * directamente, sem recarregar nada.
  *
- * A segunda é que em VR a cabeça manda na câmara. Os comandos de sempre
- * são desligados e a câmara passa a viajar dentro de um suporte — como uma
- * pessoa dentro de um carrinho: a cabeça olha à vontade, e é o carrinho
- * que se desloca com os comandos.
+ * A segunda é que, com óculos a sério, a cabeça manda na câmara. Os
+ * comandos de sempre são desligados e a câmara passa a viajar dentro de
+ * um suporte — como uma pessoa dentro de um carrinho: a cabeça olha à
+ * vontade, e é o carrinho que se desloca com os comandos.
+ *
+ * Os óculos de cartão (o telemóvel numa armação) são outra coisa, e mais
+ * simples: são o próprio mapa, tal e qual, com os comandos de sempre, só
+ * que visto por dois olhos e com a cabeça a virar com o telemóvel. Disso
+ * trata cartao.mjs; aqui só se lhe juntam as placas dos marcadores e as
+ * poupanças de desenho.
  *
  * Sobre o esforço pedido ao equipamento: desenhar duas imagens setenta e
  * duas vezes por segundo custa muito mais do que uma imagem a sessenta.
@@ -178,12 +184,6 @@ export function criarModoVR(app) {
         guardado.controlos = camara.script && camara.script.cameraControls;
         if (guardado.controlos) guardado.controlos.enabled = false;
 
-        // As etiquetas dos testemunhos são feitas de HTML, e dentro dos
-        // óculos o HTML não existe. Continuavam a ser recalculadas a cada
-        // imagem sem ninguém as ver: desligam-se enquanto durar a visita.
-        guardado.anotacoes = camara.script && camara.script.annotationController;
-        if (guardado.anotacoes) guardado.anotacoes.enabled = false;
-
         suporte = new Entity('suporte-vr');
         app.root.addChild(suporte);
         suporte.setPosition(
@@ -199,7 +199,20 @@ export function criarModoVR(app) {
         camara.setLocalPosition(0, 0, 0);
         camara.setLocalEulerAngles(0, 0, 0);
 
-        // As placas dos marcadores, com os nomes e o já visto do mapa.
+        porAsPlacas();
+        return true;
+    }
+
+    /**
+     * As etiquetas dos testemunhos são feitas de HTML, e dentro dos óculos
+     * o HTML não existe. Desligam-se enquanto durar a visita (continuavam
+     * a ser recalculadas a cada imagem sem ninguém as ver) e no seu lugar
+     * entram as placas no próprio bairro, com os nomes e o já visto do
+     * mapa.
+     */
+    function porAsPlacas() {
+        guardado.anotacoes = camara.script && camara.script.annotationController;
+        if (guardado.anotacoes) guardado.anotacoes.enabled = false;
         const controlador = guardado.anotacoes;
         if (controlador && controlador.annotations) {
             const vistos = controlador.viewedAnnotations || [];
@@ -209,19 +222,28 @@ export function criarModoVR(app) {
                 (ann) => controlador.idDaAnotacao ? vistos.includes(controlador.idDaAnotacao(ann)) : false
             );
         }
-        return true;
+    }
+
+    /**
+     * Tira as placas e devolve as etiquetas de HTML.
+     */
+    function tirarAsPlacas() {
+        marcadores.esconder();
+        if (guardado.anotacoes) {
+            guardado.anotacoes.enabled = true;
+            guardado.anotacoes = null;
+        }
     }
 
     /**
      * Desmonta o suporte e devolve a câmara ao sítio de onde veio.
      */
     function desmontarSuporte() {
-        marcadores.esconder();
-        if (!camara) return;
+        tirarAsPlacas();
+        if (!camara || !suporte) return;
         camara.reparent(guardado.pai || app.root);
         camara.setPosition(guardado.posicao);
         camara.setRotation(guardado.rotacao);
-        if (guardado.anotacoes) guardado.anotacoes.enabled = true;
         if (guardado.controlos) {
             guardado.controlos.enabled = true;
             // O controlador guarda a sua própria ideia de onde está a
@@ -396,18 +418,20 @@ export function criarModoVR(app) {
         // Os óculos de cartão são feitos pelo próprio mapa: não precisam
         // do motor antigo nem de recarregar a página.
         if (window.vrPorCartao) {
-            if (!montarSuporte()) return 'Não consegui preparar a câmara para VR.';
+            camara = app.root.findByName('camera');
+            if (!camara || !camara.camera) return 'Não consegui preparar a câmara para VR.';
+            porAsPlacas();
             aplicarDefinicoesDeVR();
-            const voltaAntes = suporte.getEulerAngles().y;
-            const resposta = await cartao.entrar(suporte, camara, voltaAntes, () => terminar());
+            const resposta = await cartao.entrar(camara, () => terminar());
             if (resposta !== 'entrou') {
-                desmontarSuporte();
+                tirarAsPlacas();
                 reporDefinicoes();
                 return resposta;
             }
-            aConduzir = (dt) => conduzir(dt);
+            // Só as placas a virarem-se para quem olha: o andar e o rodar
+            // são os do mapa, que continua a mandar na câmara.
+            aConduzir = () => marcadores.virarPara(camara.getPosition());
             app.on('update', aConduzir);
-            ligarOsComandosDeSempre();
             return 'entrou';
         }
 
@@ -464,7 +488,8 @@ export function criarModoVR(app) {
             aConduzir = null;
         }
         desligarOsComandosDeSempre();
-        desmontarSuporte();
+        if (suporte) desmontarSuporte();
+        else tirarAsPlacas();
         reporDefinicoes();
     }
 
