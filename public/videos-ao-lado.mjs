@@ -49,8 +49,11 @@ const CSS = `
     #videos-ao-lado {
         position: fixed;
         left: ${24 - FOLGA}px;
-        /* A meio da altura do ecrã, e com pouco mais de metade dela. */
-        top: 22%;
+        /* A meio da altura do ecrã, e com pouco mais de metade dela. A
+           coluna sobe o que a faixa lhe dá de folga em cima (ver .faixa):
+           assim o primeiro título fica onde ficava, já fora da ponta
+           esbatida, e o esbatimento acontece por cima dele. */
+        top: calc(22% - 32px);
         bottom: 22%;
         z-index: 100;
         width: ${JANELA.largura + 2 + FOLGA * 2}px;
@@ -86,7 +89,9 @@ const CSS = `
         display: flex;
         flex-direction: column;
         gap: 14px;
-        padding: 8px 0;
+        /* Em cima, a folga é a ponta esbatida inteira: o primeiro título
+           nasce logo a seguir a ela, bem legível. */
+        padding: 40px 0 8px;
     }
     /* O título de cada colecção, encostado ao lado esquerdo das janelas,
        com um fio por baixo da largura delas. */
