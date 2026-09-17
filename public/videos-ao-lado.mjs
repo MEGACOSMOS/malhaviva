@@ -2,14 +2,14 @@ import { fontesDeVideo, previaDe, olharInicialDe, ABERTURA_INICIAL } from './vid
 import { carregarPrevia360 } from './previa-360.mjs?v=1';
 
 /**
- * A roleta de vídeos do lado esquerdo.
+ * A coluna de vídeos do lado esquerdo.
  *
  * Quando o ecrã está deitado (mais largo do que alto) sobra espaço à
  * esquerda do bairro, e nele fica uma coluna com os testemunhos e as
- * rotas 360º: uma janela pequena com o primeiro instante de cada vídeo,
- * com o contorno fino dos menus do site, e o nome por baixo. A coluna
- * não tem fim: a roda do rato (ou o dedo) puxa-a para onde se quiser, e
- * quando o último passa volta o primeiro — uma roleta.
+ * rotas 360º, cada colecção com o seu título por cima, encostado ao lado
+ * direito das janelas: uma janela pequena com o primeiro instante de
+ * cada vídeo, com o contorno fino dos menus do site, e o nome por baixo.
+ * A roda do rato (ou o dedo) desliza a coluna quando não cabe toda.
  *
  * Cada janela é o marcador dessa pessoa ou rota noutra roupa: carregar
  * nela abre o mesmo vídeo, fica cinzenta quando já se viu e leva a
@@ -23,10 +23,6 @@ import { carregarPrevia360 } from './previa-360.mjs?v=1';
  * mais nada, com tudo o que os outros têm — o nome vem de lá, a imagem
  * vem do vídeo, o visto e o aceso vêm do marcador. Só as fotografias 360º
  * (o Olho de Águia) ficam de fora: não são vídeos.
- *
- * Para a roleta não ter fim, a lista é posta várias vezes seguidas e a
- * coluna anda sempre pela cópia do meio: quando chega ao fim dessa cópia
- * salta, sem se ver, para o mesmo ponto da cópia anterior.
  */
 
 // A janela de cada vídeo, em pontos, no computador e num telemóvel
@@ -63,9 +59,6 @@ const CSS = `
         overflow-x: hidden;
         overscroll-behavior: contain;
         scrollbar-width: none;
-        /* As pontas esbatem-se: as janelas entram e saem a desvanecer. */
-        -webkit-mask-image: linear-gradient(to bottom, transparent, #000 40px, #000 calc(100% - 40px), transparent);
-        mask-image: linear-gradient(to bottom, transparent, #000 40px, #000 calc(100% - 40px), transparent);
         opacity: 0;
         transform: translateX(-8px);
         pointer-events: none;
@@ -91,6 +84,28 @@ const CSS = `
         flex-direction: column;
         gap: 14px;
         padding: 8px 0;
+    }
+    /* O título de cada colecção, encostado ao lado direito das janelas,
+       com um fio por baixo da largura delas. */
+    #videos-ao-lado .video-ao-lado-separador {
+        flex: none;
+        width: ${JANELA.largura + 2}px;
+        margin: 6px 0 -2px;
+        padding-bottom: 4px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+        color: var(--color-text-muted, rgba(255, 255, 255, 0.7));
+        font-size: 0.7rem;
+        font-weight: 600;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        text-align: right;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
+    }
+    #videos-ao-lado .video-ao-lado-separador:first-child {
+        margin-top: 0;
     }
     #videos-ao-lado .video-ao-lado {
         position: relative;
@@ -191,11 +206,15 @@ const CSS = `
             max-width: ${JANELA_PEQUENA.largura}px;
             font-size: 0.7rem;
         }
+        #videos-ao-lado .video-ao-lado-separador {
+            width: ${JANELA_PEQUENA.largura + 2}px;
+            font-size: 0.62rem;
+        }
     }
 `;
 
 /**
- * Liga a roleta de vídeos ao mapa.
+ * Liga a coluna de vídeos ao mapa.
  *
  * @param {object} app - A aplicação 3D.
  */
@@ -237,13 +256,20 @@ export function ligarVideosAoLado(app) {
     const eRota = (ann) => !!ann.is360 && !ann.isImage;
     const entradas = [];
     for (const ann of controlador.annotations) {
-        if (eTestemunho(ann)) entradas.push({ ann, nome: ann.label, imagem: null, janelas: [], acesoNoMapa: false });
+        if (eTestemunho(ann)) entradas.push({ ann, coleccao: 'testemunhos', nome: ann.label, imagem: null, janelas: [], acesoNoMapa: false });
     }
     for (const ann of controlador.annotations) {
         // O nome curto: o sítio e a letra da rota ("Esvarena B").
-        if (eRota(ann)) entradas.push({ ann, nome: ann.label + ' ' + videoDaRota(ann).slice(-1), imagem: null, janelas: [], acesoNoMapa: false });
+        if (eRota(ann)) entradas.push({ ann, coleccao: 'rotas', nome: ann.label + ' ' + videoDaRota(ann).slice(-1), imagem: null, janelas: [], acesoNoMapa: false });
     }
     if (entradas.length === 0) return;
+
+    // As colecções, pela ordem em que aparecem, com o título de cada uma
+    // (a mesma palavra que as definições usam para elas).
+    const COLECCOES = [
+        { id: 'testemunhos', chave: 'def.testemunhos', titulo: 'Testemunhos' },
+        { id: 'rotas', chave: 'def.rotas360', titulo: 'Rotas 360º' }
+    ];
 
     /**
      * Copia a imagem de uma entrada para todas as suas janelas.
@@ -442,35 +468,35 @@ export function ligarVideosAoLado(app) {
     }
 
     /**
-     * Quantas vezes a lista tem de ser posta para a coluna nunca mostrar
-     * uma ponta: a cópia do meio mais uma de cada lado, e mais as que
-     * forem precisas se a coluna for mais alta do que uma lista.
+     * Põe as janelas na coluna, colecção a colecção, cada uma com o seu
+     * título por cima.
      */
-    let copias = 0;
-    let alturaDaLista = 0;
-    const quantasPrecisas = () => (alturaDaLista > 0 ? Math.max(3, Math.ceil(coluna.clientHeight / alturaDaLista) + 2) : 3);
+    const separadores = [];
     function encher() {
-        const precisas = quantasPrecisas();
-        if (precisas === copias) return;
-        copias = precisas;
         faixa.innerHTML = '';
         for (const entrada of entradas) entrada.janelas = [];
-        for (let c = 0; c < copias; c++) {
-            for (const entrada of entradas) faixa.appendChild(fazerJanela(entrada));
+        for (const coleccao of COLECCOES) {
+            const suas = entradas.filter((entrada) => entrada.coleccao === coleccao.id);
+            if (suas.length === 0) continue;
+            const separador = document.createElement('div');
+            separador.className = 'video-ao-lado-separador';
+            separador.dataset.chave = coleccao.chave;
+            separador.textContent = coleccao.titulo;
+            faixa.appendChild(separador);
+            separadores.push(separador);
+            for (const entrada of suas) faixa.appendChild(fazerJanela(entrada));
         }
         for (const entrada of entradas) pintar(entrada);
         nomear();
         copiarDosMarcadores();
-        // A altura de uma lista: do primeiro da primeira cópia ao primeiro
-        // da segunda.
-        alturaDaLista = faixa.children[entradas.length].offsetTop - faixa.children[0].offsetTop;
-        coluna.scrollTop = alturaDaLista;
-        // Medida a lista, pode ser que afinal façam falta mais cópias.
-        if (quantasPrecisas() !== copias) encher();
     }
 
     /** Os nomes por que se dão a conhecer, na língua do momento. */
     function nomear() {
+        for (const separador of separadores) {
+            const titulo = window.Idiomas && window.Idiomas.t ? window.Idiomas.t(separador.dataset.chave) : '';
+            if (titulo) separador.textContent = titulo;
+        }
         for (const entrada of entradas) {
             const nome = controlador.nomeAcessivel ? controlador.nomeAcessivel(entrada.ann) : entrada.nome;
             for (const tela of entrada.janelas) {
@@ -520,19 +546,6 @@ export function ligarVideosAoLado(app) {
 
     document.body.appendChild(coluna);
     encher();
-    if (window.ResizeObserver) new ResizeObserver(encher).observe(coluna);
-
-    // ---- A roleta ----
-    // A roda do rato mexe a coluna por si (é uma coluna que desliza, como
-    // qualquer outra); o que se faz aqui é a volta sem fim: anda sempre
-    // pela cópia do meio, e passada uma lista para qualquer dos lados
-    // salta uma lista para trás — não se vê.
-    coluna.addEventListener('scroll', () => {
-        if (alturaDaLista <= 0) return;
-        const posicao = coluna.scrollTop;
-        if (posicao >= alturaDaLista * 2) coluna.scrollTop = posicao - alturaDaLista;
-        else if (posicao < alturaDaLista) coluna.scrollTop = posicao + alturaDaLista;
-    }, { passive: true });
 
     // Nasce com o cabeçalho.
     const cabecalho = document.getElementById('header');
