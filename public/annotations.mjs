@@ -1089,7 +1089,7 @@ AnnotationController.prototype.initialize = function() {
             transform: scale(1.1);
         }
         /* ─── Contornos ───
-           Um fio de dois pontos a toda a volta, de um só tom — o mais escuro do
+           Um fio de quatro pontos a toda a volta, de um só tom — o mais escuro do
            degradé que aqui houve — pousado sobre o fundo escuro do site. */
         .janela-do-palco, .previa, .quality-menu {
             /* Sem rebordo nenhum, nem invisível: ficaria por fora do fio,
@@ -1104,7 +1104,7 @@ AnnotationController.prototype.initialize = function() {
             position: absolute;
             inset: 0;
             border-radius: inherit;
-            padding: 2px;
+            padding: 4px;
             background: linear-gradient(rgba(255,255,255,0.3), rgba(255,255,255,0.3)), #05050a;
             -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
             -webkit-mask-composite: xor;
