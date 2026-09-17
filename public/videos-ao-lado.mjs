@@ -59,6 +59,9 @@ const CSS = `
         overflow-x: hidden;
         overscroll-behavior: contain;
         scrollbar-width: none;
+        /* As pontas esbatem-se: as janelas entram e saem a desvanecer. */
+        -webkit-mask-image: linear-gradient(to bottom, transparent, #000 40px, #000 calc(100% - 40px), transparent);
+        mask-image: linear-gradient(to bottom, transparent, #000 40px, #000 calc(100% - 40px), transparent);
         opacity: 0;
         transform: translateX(-8px);
         pointer-events: none;
