@@ -7,7 +7,7 @@
     <meta name="description" content="Exploração 3D interativa do Bairro de Penajóia através de Gaussian Splatting. Projeto Malha Viva.">
     <!-- As línguas do site. Fica antes de tudo o resto para o texto
          nascer já na língua certa, sem piscar em português primeiro. -->
-    <script src="/idiomas.js?v=21"></script>
+    <script src="/idiomas.js?v=22"></script>
 
     <!-- O quadrado de espera, o mesmo em todo o site. Fica antes de o
          ecrã de espera se desenhar, para nascer já com a sua roupa. -->
@@ -2059,19 +2059,21 @@
                     </label>
                 </div>
 
-                <div class="settings-title" style="margin-top: 18px;" data-i18n="def.cenario">Cenário</div>
+                <!-- O que se vê à volta do bairro e se pode dispensar: a
+                     coluna de vídeos ao lado, o manípulo e a paisagem. -->
+                <div class="settings-title" style="margin-top: 18px;" data-i18n="def.interface">Interface</div>
                 <div class="settings-options">
                     <label class="settings-radio">
-                        <input type="checkbox" id="paisagem-ligada">
-                        <span data-i18n="def.paisagem">Paisagem</span>
+                        <input type="checkbox" id="coluna-ligada" checked>
+                        <span data-i18n="def.slider">Slider vertical</span>
                     </label>
-                </div>
-
-                <div class="settings-title" style="margin-top: 18px;" data-i18n="def.controlos">Controlos</div>
-                <div class="settings-options">
                     <label class="settings-radio">
                         <input type="checkbox" id="manipulo-ligado">
                         <span data-i18n="def.manipulo">Manípulo</span>
+                    </label>
+                    <label class="settings-radio">
+                        <input type="checkbox" id="paisagem-ligada">
+                        <span data-i18n="def.paisagem">Paisagem</span>
                     </label>
                 </div>
             </div>
@@ -2722,7 +2724,7 @@
         import { criarModoVR } from './vr.mjs?v=11';
         import { ligarCeu } from './ceu.mjs?v=15';
         import { ligarComando } from './comando.mjs?v=9';
-        import { ligarVideosAoLado } from './videos-ao-lado.mjs?v=14';
+        import { ligarVideosAoLado } from './videos-ao-lado.mjs?v=15';
 
         // O código do site chegou e está a correr: o primeiro sinal de vida
         // para a rede de segurança do arranque (ver `arranque`).
@@ -3411,6 +3413,21 @@ void modifySplatColor(vec3 center, inout vec4 color) {
                 const gemeo = document.getElementById('ceu-ligado');
                 if (gemeo) gemeo.checked = caixaDaPaisagem.checked;
             });
+        }
+
+        // A coluna de vídeos ao lado do bairro (o "slider vertical"). Vem
+        // ligada; quem não a quiser desliga-a nas definições, e a escolha
+        // fica guardada. A coluna própria lê a classe no corpo da página.
+        const caixaDaColuna = document.getElementById('coluna-ligada');
+        if (caixaDaColuna) {
+            const guardado = localStorage.getItem('colunaDeVideos');
+            caixaDaColuna.checked = guardado ? guardado === 'on' : true;
+            const aplicarColuna = () => document.body.classList.toggle('sem-coluna-de-videos', !caixaDaColuna.checked);
+            caixaDaColuna.addEventListener('change', () => {
+                localStorage.setItem('colunaDeVideos', caixaDaColuna.checked ? 'on' : 'off');
+                aplicarColuna();
+            });
+            aplicarColuna();
         }
 
         // O manípulo do ecrã. Vem ligado em qualquer aparelho; quem não o

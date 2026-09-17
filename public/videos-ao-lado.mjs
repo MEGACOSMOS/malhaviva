@@ -85,6 +85,10 @@ const CSS = `
     body.em-cartao #videos-ao-lado {
         display: none;
     }
+    /* Desligada nas definições ("Slider vertical", em Interface). */
+    body.sem-coluna-de-videos #videos-ao-lado {
+        display: none;
+    }
     #videos-ao-lado .faixa {
         display: flex;
         flex-direction: column;
