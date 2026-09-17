@@ -34,6 +34,11 @@ const JANELA_PEQUENA = { largura: 88, altura: 50 };
 // não ficar cortado.
 const FOLGA = 12;
 
+// Quanto de cada ponta da coluna se esbate, em pontos: no computador e
+// num telemóvel deitado, onde há pouca altura.
+const ESBATIMENTO = 40;
+const ESBATIMENTO_PEQUENO = 20;
+
 // As letras das rotas 360º, pela ordem dos trilhos (como no mapa), para
 // quando o controlador dos marcadores não souber dizer o nome do vídeo.
 const LETRAS_DAS_ROTAS = ['A', 'B', 'C'];
@@ -46,31 +51,40 @@ const PASSO_A_PROCURAR = 0.5;
 const ATE_ONDE_PROCURAR = 6;
 
 const CSS = `
+    /* A coluna é uma caixa parada com as pontas esbatidas; o que rola é
+       o rolo lá dentro. O esbatimento fica assim numa caixa que não se
+       mexe — no próprio elemento que rola, o navegador deixava por vezes
+       de repintar as janelas ao rolar, e elas desapareciam. */
     #videos-ao-lado {
         position: fixed;
         left: ${24 - FOLGA}px;
         /* A meio da altura do ecrã, e com pouco mais de metade dela. A
-           coluna sobe o que a faixa lhe dá de folga em cima (ver .faixa):
-           assim o primeiro título fica onde ficava, já fora da ponta
-           esbatida, e o esbatimento acontece por cima dele. */
-        top: calc(22% - 32px);
-        bottom: 22%;
+           caixa cresce, em cima e em baixo, o que a faixa lhe dá de folga
+           (ver .faixa): assim o primeiro título e a última janela ficam
+           onde ficavam, já fora das pontas esbatidas, e o esbatimento
+           acontece para lá deles. */
+        top: calc(22% - ${ESBATIMENTO - 8}px);
+        bottom: calc(22% - ${ESBATIMENTO - 8}px);
         z-index: 100;
         width: ${JANELA.largura + 2 + FOLGA * 2}px;
-        padding: 0 ${FOLGA}px;
-        overflow-y: auto;
-        overflow-x: hidden;
-        overscroll-behavior: contain;
-        scrollbar-width: none;
+        overflow: hidden;
         /* As pontas esbatem-se: as janelas entram e saem a desvanecer. */
-        -webkit-mask-image: linear-gradient(to bottom, transparent, #000 40px, #000 calc(100% - 40px), transparent);
-        mask-image: linear-gradient(to bottom, transparent, #000 40px, #000 calc(100% - 40px), transparent);
+        -webkit-mask-image: linear-gradient(to bottom, transparent, #000 ${ESBATIMENTO}px, #000 calc(100% - ${ESBATIMENTO}px), transparent);
+        mask-image: linear-gradient(to bottom, transparent, #000 ${ESBATIMENTO}px, #000 calc(100% - ${ESBATIMENTO}px), transparent);
         opacity: 0;
         transform: translateX(-8px);
         pointer-events: none;
         transition: opacity 0.6s ease 0.3s, transform 0.6s ease 0.3s;
     }
-    #videos-ao-lado::-webkit-scrollbar {
+    #videos-ao-lado .rolo {
+        height: 100%;
+        padding: 0 ${FOLGA}px;
+        overflow-y: auto;
+        overflow-x: hidden;
+        overscroll-behavior: contain;
+        scrollbar-width: none;
+    }
+    #videos-ao-lado .rolo::-webkit-scrollbar {
         display: none;
     }
     #videos-ao-lado.visivel {
@@ -93,9 +107,10 @@ const CSS = `
         display: flex;
         flex-direction: column;
         gap: 14px;
-        /* Em cima, a folga é a ponta esbatida inteira: o primeiro título
-           nasce logo a seguir a ela, bem legível. */
-        padding: 40px 0 8px;
+        /* A folga de cada ponta é a ponta esbatida inteira: o primeiro
+           título nasce logo a seguir a ela, e a última janela acaba logo
+           antes da outra, os dois bem legíveis. */
+        padding: ${ESBATIMENTO}px 0;
     }
     /* O título de cada colecção, encostado ao lado esquerdo das janelas,
        com um fio por baixo da largura delas. */
@@ -206,9 +221,13 @@ const CSS = `
             top: 64px;
             bottom: 140px;
             width: ${JANELA_PEQUENA.largura + 2 + FOLGA * 2}px;
+            /* Com pouca altura, pontas mais curtas. */
+            -webkit-mask-image: linear-gradient(to bottom, transparent, #000 ${ESBATIMENTO_PEQUENO}px, #000 calc(100% - ${ESBATIMENTO_PEQUENO}px), transparent);
+            mask-image: linear-gradient(to bottom, transparent, #000 ${ESBATIMENTO_PEQUENO}px, #000 calc(100% - ${ESBATIMENTO_PEQUENO}px), transparent);
         }
         #videos-ao-lado .faixa {
             gap: 10px;
+            padding: ${ESBATIMENTO_PEQUENO}px 0;
         }
         #videos-ao-lado .video-ao-lado-janela {
             width: ${JANELA_PEQUENA.largura}px;
@@ -247,9 +266,12 @@ export function ligarVideosAoLado(app) {
     const coluna = document.createElement('nav');
     coluna.id = 'videos-ao-lado';
     coluna.setAttribute('aria-label', 'Vídeos');
+    const rolo = document.createElement('div');
+    rolo.className = 'rolo';
     const faixa = document.createElement('div');
     faixa.className = 'faixa';
-    coluna.appendChild(faixa);
+    rolo.appendChild(faixa);
+    coluna.appendChild(rolo);
 
     const trilhos = camara.script.trailController || null;
 
