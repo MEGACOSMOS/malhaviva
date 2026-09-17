@@ -7,7 +7,7 @@ import { carregarPrevia360 } from './previa-360.mjs?v=1';
  * Quando o ecrã está deitado (mais largo do que alto) sobra espaço à
  * esquerda do bairro, e nele fica uma coluna com os testemunhos e as
  * rotas 360º, cada colecção com o seu título por cima, encostado ao lado
- * direito das janelas: uma janela pequena com o primeiro instante de
+ * esquerdo das janelas: uma janela pequena com o primeiro instante de
  * cada vídeo, com o contorno fino dos menus do site, e o nome por baixo.
  * A roda do rato (ou o dedo) desliza a coluna quando não cabe toda.
  *
@@ -85,20 +85,19 @@ const CSS = `
         gap: 14px;
         padding: 8px 0;
     }
-    /* O título de cada colecção, encostado ao lado direito das janelas,
-       com um fio por baixo da largura delas. */
+    /* O título de cada colecção, encostado ao lado esquerdo das janelas
+       e em baixo no seu espaço, rente à janela que se lhe segue. */
     #videos-ao-lado .video-ao-lado-separador {
         flex: none;
         width: ${JANELA.largura + 2}px;
         margin: 6px 0 -2px;
-        padding-bottom: 4px;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+        padding-top: 5px;
         color: var(--color-text-muted, rgba(255, 255, 255, 0.7));
         font-size: 0.7rem;
         font-weight: 600;
         letter-spacing: 0.04em;
         text-transform: uppercase;
-        text-align: right;
+        text-align: left;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
