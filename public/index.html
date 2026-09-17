@@ -974,7 +974,9 @@
            ecrãs tácteis; com rato e teclado há o WASD. */
         #joystick {
             position: fixed;
-            left: 92px;
+            /* No computador vive do lado direito; num telemóvel ou tablet
+               vai para a esquerda (ver mais abaixo). */
+            right: 92px;
             bottom: 156px;
             z-index: 100;
             width: 112px;
@@ -1046,6 +1048,7 @@
                rodapé fechado, o manípulo fica no mesmo sítio. */
             #joystick {
                 left: 16px;
+                right: auto;
                 bottom: calc(var(--altura-do-rodape, 124px) + 28px);
             }
             /* O rodapé ao fundo, centrado e de lado a lado (o botão de
@@ -1069,6 +1072,7 @@
         @media (hover: none) and (pointer: coarse) and (orientation: landscape) {
             #joystick {
                 left: 16px;
+                right: auto;
                 bottom: 16px;
             }
             #rodape-comandos,
@@ -2579,7 +2583,7 @@
         import { criarModoVR } from './vr.mjs?v=11';
         import { ligarCeu } from './ceu.mjs?v=15';
         import { ligarComando } from './comando.mjs?v=9';
-        import { ligarVideosAoLado } from './videos-ao-lado.mjs?v=2';
+        import { ligarVideosAoLado } from './videos-ao-lado.mjs?v=4';
 
         // Resolução da grelha usada para medir o mapa, em metros.
         const RESOLUCAO_LIMITE = 4;

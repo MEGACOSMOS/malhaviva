@@ -5,11 +5,13 @@ import { fontesDeVideo } from './videos.mjs?v=7';
  *
  * Quando o ecrã está deitado (mais largo do que alto) sobra espaço à
  * esquerda do bairro, e nele fica uma coluna com os testemunhos: uma
- * janela pequena com o primeiro instante de cada vídeo e o nome por
- * baixo. Carregar numa é o mesmo que carregar no marcador dessa pessoa
- * no mapa — abre o mesmo vídeo, fica marcado como visto da mesma maneira
- * (cinzento, e a caixinha de "voltar" no último que se viu). Ao alto,
- * num telemóvel de pé, a coluna não existe: não há largura para ela.
+ * caixa pequena, com a moldura dos menus do site, com o primeiro
+ * instante de cada vídeo e o nome por baixo. Cada caixa é o marcador
+ * dessa pessoa noutra roupa: carregar nela abre o mesmo vídeo, fica
+ * cinzenta quando já se viu e leva a caixinha de "voltar" no último que
+ * se viu; e quando o rato pára numa caixa acende-se o marcador no mapa,
+ * e ao contrário, com o mesmo salto de tamanho. Ao alto, num telemóvel
+ * de pé, a coluna não existe: não há largura para ela.
  *
  * A coluna nasce com o cabeçalho e desaparece dentro dos óculos de
  * cartão, como o resto da interface.
@@ -20,14 +22,19 @@ const CSS = `
         position: fixed;
         left: 24px;
         top: 88px;
-        /* Pára acima do manípulo, que vive no canto de baixo à esquerda. */
-        bottom: 290px;
+        bottom: 24px;
         z-index: 100;
         display: flex;
         flex-direction: column;
         gap: 14px;
-        width: 112px;
+        /* A largura da caixa (a janela e a moldura) mais a folga. */
+        width: 150px;
+        /* Folga para o salto de tamanho ao passar o rato não ficar
+           cortado pelas bordas da coluna. */
+        padding: 8px 12px;
+        margin-left: -12px;
         overflow-y: auto;
+        overflow-x: hidden;
         overscroll-behavior: contain;
         scrollbar-width: none;
         opacity: 0;
@@ -43,9 +50,6 @@ const CSS = `
         transform: none;
         pointer-events: auto;
     }
-    body:not(.com-manipulo) #videos-ao-lado {
-        bottom: 100px;
-    }
     /* Só deitado: ao alto não há largura para uma coluna ao lado. */
     @media (orientation: portrait) {
         #videos-ao-lado { display: none; }
@@ -53,19 +57,31 @@ const CSS = `
     body.em-cartao #videos-ao-lado {
         display: none;
     }
+    /* A caixa de cada testemunho: a moldura dos menus do site. */
     #videos-ao-lado .video-ao-lado {
+        position: relative;
         flex: none;
         display: flex;
         flex-direction: column;
         gap: 6px;
-        padding: 0;
+        padding: 6px;
         margin: 0;
-        border: none;
-        background: none;
+        background: linear-gradient(to bottom, rgba(255,255,255,0.05), transparent), #05050a;
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        border-radius: 0;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.4);
         color: #ffffff;
         font-family: inherit;
         cursor: pointer;
         text-align: center;
+        /* O mesmo salto de tamanho dos marcadores do mapa, na caixa toda. */
+        transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    #videos-ao-lado .video-ao-lado:hover,
+    #videos-ao-lado .video-ao-lado.realce,
+    #videos-ao-lado .video-ao-lado:focus-visible {
+        transform: scale(1.15);
+        z-index: 1;
     }
     #videos-ao-lado .video-ao-lado:focus {
         outline: none;
@@ -75,14 +91,9 @@ const CSS = `
         outline-offset: 3px;
     }
     #videos-ao-lado .video-ao-lado-janela {
-        position: relative;
         width: 112px;
         height: 63px;
         background: #05050a;
-        border: 1px solid rgba(255, 255, 255, 0.15);
-        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
-        overflow: hidden;
-        transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
     }
     #videos-ao-lado .video-ao-lado-janela video {
         display: block;
@@ -101,44 +112,36 @@ const CSS = `
         opacity: 0.55;
     }
     /* O último que se viu: a mesma caixinha com a seta de "voltar" que
-       o marcador leva no mapa. */
-    #videos-ao-lado .video-ao-lado.ultimo .video-ao-lado-janela::after {
+       o marcador leva no mapa, no mesmo canto — tal e qual. */
+    #videos-ao-lado .video-ao-lado.ultimo::after {
         content: "";
         position: absolute;
-        top: 0;
-        right: 0;
+        top: -6px;
+        right: -6px;
         width: 16px;
         height: 16px;
-        background-color: #05050a;
-        background-repeat: no-repeat;
-        background-position: center;
-        background-size: 10px 10px;
-        background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23ffffff' stroke-width='3' stroke-linecap='square' stroke-linejoin='miter'><polyline points='9 14 4 9 9 4'/><path d='M4 9h11a5 5 0 0 1 0 10h-3'/></svg>");
+        background: #05050a url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3' stroke-linecap='square' stroke-linejoin='miter'><polyline points='5 7 20 7 20 19 4 19'/><polyline points='9 3 5 7 9 11'/></svg>") center / 11px 11px no-repeat;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
     }
     #videos-ao-lado .video-ao-lado-nome {
-        font-size: 0.78rem;
+        font-size: 0.75rem;
         font-weight: 600;
         line-height: 1.2;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
-        text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
-    }
-    @media (hover: hover) {
-        #videos-ao-lado .video-ao-lado:hover .video-ao-lado-janela {
-            transform: scale(1.08);
-        }
     }
     /* Num telemóvel deitado há pouca altura: a coluna encosta mais ao
        cabeçalho e pára em cima do manípulo, e as janelas são mais
        pequenas. */
     @media (hover: none) and (pointer: coarse) and (orientation: landscape) {
-        #videos-ao-lado,
-        body:not(.com-manipulo) #videos-ao-lado {
+        #videos-ao-lado {
             left: 16px;
             top: 64px;
+            /* Pára em cima do manípulo, que aqui vive no canto de baixo
+               à esquerda. */
             bottom: 140px;
-            width: 88px;
+            width: 126px;
             gap: 10px;
         }
         #videos-ao-lado .video-ao-lado-janela {
@@ -213,6 +216,19 @@ export function ligarVideosAoLado(app) {
         botao.addEventListener('click', () => {
             if (ann.element) ann.element.click();
         });
+        // O rato em cima da caixa acende o marcador no mapa (a mesma
+        // classe com que o comando de jogo o acende), e o rato em cima
+        // do marcador acende a caixa.
+        botao.addEventListener('mouseenter', () => {
+            if (ann.element) ann.element.classList.add('force-hover');
+        });
+        botao.addEventListener('mouseleave', () => {
+            if (ann.element) ann.element.classList.remove('force-hover');
+        });
+        if (ann.element) {
+            ann.element.addEventListener('mouseenter', () => botao.classList.add('realce'));
+            ann.element.addEventListener('mouseleave', () => botao.classList.remove('realce'));
+        }
         coluna.appendChild(botao);
         entradas.push({ ann, botao });
     }
@@ -234,12 +250,16 @@ export function ligarVideosAoLado(app) {
     nomear();
     window.addEventListener('idiomamudou', nomear);
 
-    /** O visto e o último visto, copiados dos marcadores do mapa. */
+    /** O visto, o último visto e o aceso, copiados dos marcadores do mapa. */
     function copiarOVisto() {
         for (const { ann, botao } of entradas) {
             const ponto = ann.element && ann.element.querySelector('.marker-dot');
             botao.classList.toggle('visto', !!ponto && ponto.classList.contains('viewed'));
             botao.classList.toggle('ultimo', !!ponto && ponto.classList.contains('last-viewed'));
+            // O comando de jogo acende o marcador por esta classe; a caixa
+            // acende com ele (e apaga-se quando ele se apaga).
+            if (ann.element && ann.element.classList.contains('force-hover')) botao.classList.add('realce');
+            else if (!botao.matches(':hover')) botao.classList.remove('realce');
         }
     }
     copiarOVisto();
