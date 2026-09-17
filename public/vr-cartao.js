@@ -28,7 +28,7 @@
 (function () {
     'use strict';
 
-    var POLYFILL = 'https://cdn.jsdelivr.net/npm/webxr-polyfill@2.0.3/build/webxr-polyfill.min.js';
+    var POLYFILL = '/motor/webxr-polyfill-2.0.3.min.js';
 
     var tactil = !!(window.matchMedia && window.matchMedia('(hover: none) and (pointer: coarse)').matches);
     // Para afinar num computador: `?cartao=1` no endereço faz de conta que
