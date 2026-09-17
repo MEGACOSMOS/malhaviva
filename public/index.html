@@ -2579,6 +2579,7 @@
         import { criarModoVR } from './vr.mjs?v=11';
         import { ligarCeu } from './ceu.mjs?v=15';
         import { ligarComando } from './comando.mjs?v=9';
+        import { ligarVideosAoLado } from './videos-ao-lado.mjs?v=2';
 
         // Resolução da grelha usada para medir o mapa, em metros.
         const RESOLUCAO_LIMITE = 4;
@@ -3487,6 +3488,11 @@ void modifySplatColor(vec3 center, inout vec4 color) {
             // também. Quem não tiver comando ligado não dá por isto.
             window.comando = ligarComando(app);
             espiarOComando(app);
+
+            // --- A coluna de vídeos à esquerda ---
+            // Com o ecrã deitado, os testemunhos ficam também numa coluna
+            // ao lado do bairro, para se abrirem sem os procurar no mapa.
+            ligarVideosAoLado(app);
 
             // A partir daqui é a cúpula do céu que diz à câmara até onde pode
             // andar: as paredes da taça são o fim do mundo visível, e passar
