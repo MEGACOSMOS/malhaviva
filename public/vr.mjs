@@ -1,5 +1,6 @@
 import { Entity, Vec3, XRTYPE_VR, XRSPACE_LOCALFLOOR } from 'playcanvas';
 import { criarCartao } from './cartao.mjs?v=2';
+import { criarMarcadoresVR } from './marcadores-vr.mjs?v=1';
 
 /**
  * Modo VR: o bairro visto de dentro, com óculos.
@@ -83,6 +84,9 @@ export function criarModoVR(app) {
     // Os óculos de cartão do telemóvel: o ecrã dividido em dois e o sensor
     // de movimento a virar a cabeça, feitos pelo próprio mapa (cartao.mjs).
     const cartao = criarCartao(app);
+
+    // Os marcadores do bairro, como placas, dentro dos óculos.
+    const marcadores = criarMarcadoresVR(app);
 
     /** Se se está dentro de uns óculos, sejam a sério ou de cartão. */
     const emOculos = () => !!(app.xr.active || cartao.activo);
@@ -194,6 +198,17 @@ export function criarModoVR(app) {
         camara.reparent(suporte);
         camara.setLocalPosition(0, 0, 0);
         camara.setLocalEulerAngles(0, 0, 0);
+
+        // As placas dos marcadores, com os nomes e o já visto do mapa.
+        const controlador = guardado.anotacoes;
+        if (controlador && controlador.annotations) {
+            const vistos = controlador.viewedAnnotations || [];
+            marcadores.mostrar(
+                controlador.annotations,
+                (ann) => ann.is360 && controlador.nomeDaParagem360 ? controlador.nomeDaParagem360(ann) : (ann.label || ''),
+                (ann) => controlador.idDaAnotacao ? vistos.includes(controlador.idDaAnotacao(ann)) : false
+            );
+        }
         return true;
     }
 
@@ -201,6 +216,7 @@ export function criarModoVR(app) {
      * Desmonta o suporte e devolve a câmara ao sítio de onde veio.
      */
     function desmontarSuporte() {
+        marcadores.esconder();
         if (!camara) return;
         camara.reparent(guardado.pai || app.root);
         camara.setPosition(guardado.posicao);
@@ -228,6 +244,7 @@ export function criarModoVR(app) {
      */
     function conduzir(dt) {
         if (!emOculos() || !suporte || !camara) return;
+        marcadores.virarPara(camara.getPosition());
         // Um salto no relógio — uma imagem que demorou, os óculos a voltar do
         // descanso — não pode virar um salto no bairro. Trava-se o passo à
         // mesma medida com que a câmara do rato já se trava.
