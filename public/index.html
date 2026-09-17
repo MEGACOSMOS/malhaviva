@@ -18,18 +18,24 @@
          já os encontrar. -->
     <script src="/vr-cartao.js?v=2" data-modo="proprio"></script>
 
-    <!-- PlayCanvas Web Components (versões fixas para estabilidade em produção) -->
+    <!-- O motor 3D (PlayCanvas) e os seus componentes, em versões fixas.
+         Vivem dentro do próprio site, em `motor/`, e não num servidor de
+         terceiros: assim o bairro não fica refém de um servidor alheio
+         estar em baixo ou de um bloqueador de conteúdos o travar. O número
+         no nome do ficheiro é a versão; para mudar de versão muda-se o
+         nome, e nunca o conteúdo, porque o navegador guarda estes ficheiros
+         durante um ano sem voltar a perguntar. -->
     <script type="importmap">
         {
             "imports": {
-                "playcanvas": "https://cdn.jsdelivr.net/npm/playcanvas@2.21.4/build/playcanvas.mjs",
-                "@playcanvas/web-components": "https://cdn.jsdelivr.net/npm/@playcanvas/web-components@0.15.0/dist/pwc.mjs"
+                "playcanvas": "/motor/playcanvas-2.21.4.mjs",
+                "@playcanvas/web-components": "/motor/pwc-0.15.0.mjs"
             }
         }
     </script>
     <!-- Descarrega o motor e os componentes em paralelo (evita fila de espera) -->
-    <link rel="modulepreload" href="https://cdn.jsdelivr.net/npm/playcanvas@2.21.4/build/playcanvas.mjs">
-    <link rel="modulepreload" href="https://cdn.jsdelivr.net/npm/@playcanvas/web-components@0.15.0/dist/pwc.mjs">
+    <link rel="modulepreload" href="/motor/playcanvas-2.21.4.mjs">
+    <link rel="modulepreload" href="/motor/pwc-0.15.0.mjs">
     <script type="module">import '@playcanvas/web-components';</script>
 
     <style>

@@ -11,7 +11,9 @@
 	},
 	"devDependencies": {
 		"@cloudflare/vitest-pool-workers": "^0.12.4",
+		"@playcanvas/web-components": "0.15.0",
 		"@types/node": "^25.5.0",
+		"playcanvas": "2.21.4",
 		"typescript": "^5.5.2",
 		"vitest": "~3.2.0",
 		"wrangler": "^4.78.0"

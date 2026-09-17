@@ -1,3 +1,29 @@
+# A página e o código do site: guardam-se, mas o navegador confirma sempre
+# com o servidor se ainda são os actuais antes de os usar. A confirmação é
+# uma pergunta minúscula ("ainda é este?") e a resposta, quase sempre, um
+# "sim" sem ficheiro nenhum. É o que impede alguém de abrir uma versão
+# antiga da página misturada com pedaços novos — e ficar a olhar para um
+# ecrã preto sem perceber porquê.
+/
+  Cache-Control: no-cache
+
+/*.html
+  Cache-Control: no-cache
+
+/*.js
+  Cache-Control: no-cache
+
+/*.mjs
+  Cache-Control: no-cache
+
+# O motor 3D tem a versão no nome do ficheiro: um ficheiro com aquele nome
+# nunca muda, por isso pode ficar guardado um ano sem voltar a perguntar.
+# (A regra dos `.mjs` acima também apanha estes ficheiros; a linha com `!`
+# tira-lhes essa ordem antes de dar a certa.)
+/motor/*
+  ! Cache-Control
+  Cache-Control: public, max-age=31536000, immutable
+
 # Cache dos dados pesados do modelo 3D e média:
 # frescos durante 1 dia; até 7 dias servidos do cache enquanto revalidam em segundo plano.
 /splat/*
@@ -8,8 +34,6 @@
 
 /videos/*
   Cache-Control: public, max-age=86400, stale-while-revalidate=604800
-
-
 
 /fonts/*
   Cache-Control: public, max-age=31536000, immutable
