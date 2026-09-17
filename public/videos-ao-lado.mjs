@@ -53,8 +53,9 @@ const CSS = `
     #videos-ao-lado {
         position: fixed;
         left: ${24 - FOLGA}px;
-        top: 88px;
-        bottom: 24px;
+        /* A meio da altura do ecrã, e com pouco mais de metade dela. */
+        top: 22%;
+        bottom: 22%;
         z-index: 100;
         width: ${JANELA.largura + 2 + FOLGA * 2}px;
         padding: 0 ${FOLGA}px;
@@ -391,6 +392,9 @@ export function ligarVideosAoLado(app) {
         const botao = document.createElement('button');
         botao.type = 'button';
         botao.className = 'video-ao-lado';
+        // A rota a que pertence, para o controlador dos trilhos saber qual
+        // acender quando o rato aqui pára.
+        if (ann.trailIndex !== undefined) botao.dataset.trailIndex = ann.trailIndex;
 
         const janela = document.createElement('div');
         janela.className = 'video-ao-lado-janela';
