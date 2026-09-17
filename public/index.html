@@ -895,6 +895,23 @@
             transition: opacity 0.4s ease, transform 0.4s ease;
         }
 
+        /* Esbatido: fica quase transparente, para não se pôr à frente do
+           bairro. Assim fica enquanto se navega e sempre que o rato sai de
+           cima dele; volta, num acender lento, quando o rato lhe passa por
+           cima — ou alguém lhe chega pela tecla Tab. */
+        #rodape-comandos.visivel.a-navegar {
+            opacity: 0.08;
+            transition: opacity 0.4s ease, transform 0.4s ease;
+        }
+
+        #rodape-comandos.visivel:hover,
+        #rodape-comandos.visivel:focus-within,
+        #rodape-comandos.visivel.a-navegar:hover,
+        #rodape-comandos.visivel.a-navegar:focus-within {
+            opacity: 1;
+            transition: opacity 0.7s ease, transform 0.7s ease;
+        }
+
         .rodape-item {
             display: flex;
             align-items: center;
@@ -2137,13 +2154,15 @@
 
     <script>
     /**
-     * O rodapé dos comandos: quando aparece, e a cruz.
+     * O rodapé dos comandos: quando aparece, quando se esbate, e a cruz.
      *
      * Aparece com o cabeçalho, mal o ecrã de espera sai — e esconde-se se
-     * ele voltar, ao repor o bairro depois de uma janela 360º. Fica sempre
-     * inteiro, também enquanto se navega. A cruz fecha-o de vez: fica
-     * escrito na memória do navegador, e nas visitas seguintes já não
-     * nasce.
+     * ele voltar, ao repor o bairro depois de uma janela 360º. Enquanto se
+     * navega fica quase transparente: quem sabe que a câmara se mexeu é o
+     * guião do bairro, que avisa aqui por `mexeu`. Assim fica até o rato
+     * lhe passar por cima — não volta sozinho com o tempo — e volta a
+     * esbater-se mal o rato sai. A cruz fecha-o de vez: fica escrito na
+     * memória do navegador, e nas visitas seguintes já não nasce.
      *
      * A tira é só da largura do que diz, também quando o que diz não cabe
      * numa linha: nesse caso mede-se a linha mais comprida e a tira fica
@@ -2159,11 +2178,31 @@
         const CHAVE = 'rodape-comandos';
 
         // Quem fecha, não volta a ver.
-        const fecharDeVez = () => rodape.remove();
+        const fecharDeVez = () => {
+            rodape.remove();
+            window.rodapeDosComandos = { mexeu: function () {} };
+        };
 
         let fechado = false;
         try { fechado = localStorage.getItem(CHAVE) === 'fechado'; } catch (e) { /* sem memória: aparece */ }
         if (fechado) { fecharDeVez(); return; }
+
+        // A câmara mexeu-se: esbate-se. Não há relógio a trazê-lo de volta —
+        // quem o traz é o rato a passar-lhe por cima, ou um dedo a tocar-lhe
+        // num ecrã táctil; e mal o rato sai de cima dele, esbate-se outra
+        // vez. Enquanto o rato lá está, a câmara a acabar de deslizar não
+        // conta: o rodapé fica aceso até o rato sair.
+        let sobre = false;
+        const mexeu = () => { if (!sobre) rodape.classList.add('a-navegar'); };
+        rodape.addEventListener('pointerenter', () => {
+            sobre = true;
+            rodape.classList.remove('a-navegar');
+        });
+        rodape.addEventListener('pointerleave', () => {
+            sobre = false;
+            rodape.classList.add('a-navegar');
+        });
+        const voltar = () => rodape.classList.remove('a-navegar');
 
         rodape.querySelector('.menu-fechar').addEventListener('click', () => {
             try { localStorage.setItem(CHAVE, 'fechado'); } catch (e) { /* sem memória: fecha só desta vez */ }
@@ -2224,6 +2263,7 @@
                 aNascer = setTimeout(() => rodape.classList.add('nascido'), 1000);
             } else {
                 rodape.classList.remove('visivel', 'nascido');
+                voltar();
             }
         };
         new MutationObserver(seguir).observe(overlay, { attributes: true, attributeFilter: ['class'] });
@@ -2235,6 +2275,8 @@
         // mais larga ou mais estreita do que a que a substitui entretanto.
         if (document.fonts && document.fonts.ready) document.fonts.ready.then(ajustarLargura);
         ajustarLargura();
+
+        window.rodapeDosComandos = { mexeu };
     })();
     </script>
 
@@ -3631,6 +3673,31 @@ void modifySplatColor(vec3 center, inout vec4 color) {
             if (comandosDaCamara) comandosDaCamara.setCupula(ceu);
             ligarComandosDoCeu(ceu);
             if (caixaDaPaisagem) caixaDaPaisagem.checked = ceu.definicoes.ligado !== false;
+
+            // --- Rodapé dos comandos ---
+            // O rodapé esbate-se enquanto se navega. Em vez de ouvir cada
+            // rato, tecla, dedo e comando de jogo, olha-se para onde todos
+            // vão dar: a câmara. Se ela andou ou virou desde a imagem
+            // anterior, está-se a navegar — e o rodapé é avisado. As
+            // medidas são pequenas de propósito, para o travão a acabar de
+            // parar não contar como andar.
+            if (camaraDoMapa && window.rodapeDosComandos) {
+                const ANDOU = 0.002;    // metros, de uma imagem para a outra
+                const VIROU = 0.005;    // graus
+                const posicaoAnterior = camaraDoMapa.getPosition().clone();
+                const anguloAnterior = camaraDoMapa.getEulerAngles().clone();
+                app.on('update', () => {
+                    const posicao = camaraDoMapa.getPosition();
+                    const angulo = camaraDoMapa.getEulerAngles();
+                    const andou = posicao.distance(posicaoAnterior) > ANDOU;
+                    const virou = Math.abs(angulo.x - anguloAnterior.x) > VIROU ||
+                        Math.abs(angulo.y - anguloAnterior.y) > VIROU ||
+                        Math.abs(angulo.z - anguloAnterior.z) > VIROU;
+                    if (andou || virou) window.rodapeDosComandos.mexeu();
+                    posicaoAnterior.copy(posicao);
+                    anguloAnterior.copy(angulo);
+                });
+            }
 
             // --- Modo VR ---
             // O botão só aparece a quem tenha óculos; a quem não tenha, não
