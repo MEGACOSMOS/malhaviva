@@ -8,26 +8,26 @@ import { carregarPrevia360 } from './previa-360.mjs?v=1';
  * esquerda do bairro, e nele fica uma coluna com os testemunhos e as
  * rotas 360º: uma janela pequena com o primeiro instante de cada vídeo,
  * com o contorno fino dos menus do site, e o nome por baixo. A coluna
- * roda sozinha, devagarinho, e não tem fim: quando o último passa, volta
- * o primeiro — uma roleta. A roda do rato (ou o dedo) puxa-a para onde
- * se quiser, e enquanto o rato está em cima dela pára, para se poder
- * carregar numa janela sem ela fugir.
+ * não tem fim: a roda do rato (ou o dedo) puxa-a para onde se quiser, e
+ * quando o último passa volta o primeiro — uma roleta.
  *
  * Cada janela é o marcador dessa pessoa ou rota noutra roupa: carregar
  * nela abre o mesmo vídeo, fica cinzenta quando já se viu e leva a
  * caixinha de "voltar" no último que se viu; e quando o rato pára numa
- * janela acende-se o marcador no mapa, e ao contrário, com o mesmo salto
- * de tamanho. Ao alto, num telemóvel de pé, a coluna não existe: não há
- * largura para ela.
+ * janela acende-se o marcador no mapa (e, nas rotas, o trilho no chão),
+ * e ao contrário, com o mesmo salto de tamanho. Ao alto, num telemóvel
+ * de pé, a coluna não existe: não há largura para ela.
+ *
+ * A lista é a das anotações do mapa (annotations.mjs), tal e qual: um
+ * testemunho novo ou uma rota nova acrescentados lá aparecem aqui sem
+ * mais nada, com tudo o que os outros têm — o nome vem de lá, a imagem
+ * vem do vídeo, o visto e o aceso vêm do marcador. Só as fotografias 360º
+ * (o Olho de Águia) ficam de fora: não são vídeos.
  *
  * Para a roleta não ter fim, a lista é posta várias vezes seguidas e a
  * coluna anda sempre pela cópia do meio: quando chega ao fim dessa cópia
  * salta, sem se ver, para o mesmo ponto da cópia anterior.
  */
-
-// A que velocidade a roleta roda sozinha, em pontos por segundo: quase
-// nada — uma janela leva perto de vinte segundos a passar.
-const VELOCIDADE = 6;
 
 // A janela de cada vídeo, em pontos, no computador e num telemóvel
 // deitado.
@@ -38,8 +38,16 @@ const JANELA_PEQUENA = { largura: 88, altura: 50 };
 // não ficar cortado.
 const FOLGA = 12;
 
-// As letras das rotas 360º, pela ordem dos trilhos (como no mapa).
+// As letras das rotas 360º, pela ordem dos trilhos (como no mapa), para
+// quando o controlador dos marcadores não souber dizer o nome do vídeo.
 const LETRAS_DAS_ROTAS = ['A', 'B', 'C'];
+
+// Uma imagem do primeiro instante toda preta (um vídeo que começa do
+// escuro) não serve de janela: procura-se mais à frente, de meio em meio
+// segundo, até aqui.
+const CLARIDADE_MINIMA = 6;
+const PASSO_A_PROCURAR = 0.5;
+const ATE_ONDE_PROCURAR = 6;
 
 const CSS = `
     #videos-ao-lado {
@@ -211,18 +219,28 @@ export function ligarVideosAoLado(app) {
     faixa.className = 'faixa';
     coluna.appendChild(faixa);
 
+    const trilhos = camara.script.trailController || null;
+
+    /**
+     * O nome do vídeo de uma rota 360º, pelo controlador dos marcadores
+     * (é ele que sabe), ou pela letra do trilho se ele não souber.
+     */
+    const videoDaRota = (ann) => (controlador.videoDaRota360 ? controlador.videoDaRota360(ann) :
+        ('Esvarena - 360 - ' + (LETRAS_DAS_ROTAS[ann.trailIndex] || LETRAS_DAS_ROTAS[0])));
+
     // ---- O que há para ver: os testemunhos primeiro, as rotas depois ----
-    // Cada entrada guarda a imagem do primeiro instante numa tela própria,
-    // de onde se copia para cada janela (a lista é posta várias vezes).
+    // Tudo vem da lista de anotações do mapa. Cada entrada guarda a
+    // imagem do primeiro instante numa tela própria, de onde se copia
+    // para cada janela (a lista é posta várias vezes).
+    const eTestemunho = (ann) => !ann.is360 && !!ann.video;
+    const eRota = (ann) => !!ann.is360 && !ann.isImage;
     const entradas = [];
     for (const ann of controlador.annotations) {
-        if (ann.is360 || !ann.video) continue;
-        entradas.push({ ann, nome: ann.label, imagem: null, janelas: [], acesoNoMapa: false });
+        if (eTestemunho(ann)) entradas.push({ ann, nome: ann.label, imagem: null, janelas: [], acesoNoMapa: false });
     }
     for (const ann of controlador.annotations) {
-        if (!ann.is360 || ann.isImage) continue;
-        const letra = LETRAS_DAS_ROTAS[ann.trailIndex] || LETRAS_DAS_ROTAS[0];
-        entradas.push({ ann, nome: ann.label + ' ' + letra, imagem: null, janelas: [], acesoNoMapa: false });
+        // O nome curto: o sítio e a letra da rota ("Esvarena B").
+        if (eRota(ann)) entradas.push({ ann, nome: ann.label + ' ' + videoDaRota(ann).slice(-1), imagem: null, janelas: [], acesoNoMapa: false });
     }
     if (entradas.length === 0) return;
 
@@ -245,44 +263,118 @@ export function ligarVideosAoLado(app) {
     // rotas, a fotografia 360º vista com a câmara com que o player começa.
     const LARGURA_DA_IMAGEM = JANELA.largura * 2;
     const ALTURA_DA_IMAGEM = JANELA.altura * 2;
+    /**
+     * Se uma tela está praticamente toda preta — uma imagem que ainda não
+     * chegou, ou um vídeo que começa do escuro. Numa tela que o navegador
+     * não deixa ler (vídeo sem licença de origem) dá-se por boa.
+     *
+     * @param {HTMLCanvasElement} tela - A tela.
+     * @returns {boolean} Se está preta.
+     */
+    function estaPreta(tela) {
+        try {
+            const amostra = document.createElement('canvas');
+            amostra.width = 16;
+            amostra.height = 9;
+            const c = amostra.getContext('2d', { willReadFrequently: true });
+            c.drawImage(tela, 0, 0, 16, 9);
+            const p = c.getImageData(0, 0, 16, 9).data;
+            let soma = 0;
+            for (let i = 0; i < p.length; i += 4) soma += Math.max(p[i], p[i + 1], p[i + 2]);
+            return soma / (p.length / 4) < CLARIDADE_MINIMA;
+        } catch (e) {
+            return false;
+        }
+    }
+
+    /**
+     * Vai buscar a imagem do primeiro instante de um testemunho: abre-se
+     * o vídeo leve, espera-se por uma imagem a sério (e não por um preto
+     * antes de a imagem chegar) e guarda-se numa tela. Se o navegador não
+     * deixar ler o vídeo com licença de origem, tenta-se sem ela.
+     *
+     * @param {object} entrada - A entrada.
+     * @param {string} endereco - O vídeo leve.
+     * @param {boolean} comLicenca - Se se pede a licença de origem.
+     */
+    function irBuscarOInstante(entrada, endereco, comLicenca) {
+        const filme = document.createElement('video');
+        filme.muted = true;
+        filme.playsInline = true;
+        filme.preload = 'auto';
+        if (comLicenca) filme.crossOrigin = 'anonymous';
+        let aProcurar = 0;
+        let arrumado = false;
+
+        const arrumar = () => {
+            if (arrumado) return;
+            arrumado = true;
+            filme.removeAttribute('src');
+            filme.load();
+        };
+        const tentar = () => {
+            if (entrada.imagem || arrumado) return;
+            if (filme.readyState < 2 || !filme.videoWidth) return;
+            const tela = document.createElement('canvas');
+            tela.width = LARGURA_DA_IMAGEM;
+            tela.height = ALTURA_DA_IMAGEM;
+            // A imagem inteira, cortada ao centro para caber na janela.
+            const escala = Math.max(LARGURA_DA_IMAGEM / filme.videoWidth, ALTURA_DA_IMAGEM / filme.videoHeight);
+            const w = filme.videoWidth * escala;
+            const h = filme.videoHeight * escala;
+            tela.getContext('2d').drawImage(filme, (LARGURA_DA_IMAGEM - w) / 2, (ALTURA_DA_IMAGEM - h) / 2, w, h);
+            if (estaPreta(tela)) {
+                // Ainda escuro: mais à frente, até um certo ponto.
+                if (aProcurar < ATE_ONDE_PROCURAR) {
+                    aProcurar += PASSO_A_PROCURAR;
+                    filme.currentTime = aProcurar;
+                } else {
+                    entrada.imagem = tela;
+                    pintar(entrada);
+                    arrumar();
+                }
+                return;
+            }
+            entrada.imagem = tela;
+            pintar(entrada);
+            // Com a imagem guardada, o vídeo já não faz falta.
+            arrumar();
+        };
+        filme.addEventListener('loadeddata', tentar);
+        filme.addEventListener('seeked', tentar);
+        filme.addEventListener('canplay', tentar);
+        // Onde o navegador sabe dizer quando uma imagem foi mesmo
+        // desenhada, é o aviso mais seguro.
+        if (typeof filme.requestVideoFrameCallback === 'function') {
+            const aoDesenhar = () => {
+                tentar();
+                if (!entrada.imagem && !arrumado) filme.requestVideoFrameCallback(aoDesenhar);
+            };
+            filme.requestVideoFrameCallback(aoDesenhar);
+        }
+        filme.addEventListener('error', () => {
+            if (entrada.imagem || arrumado) return;
+            arrumado = true;
+            if (comLicenca) irBuscarOInstante(entrada, endereco, false);
+        });
+        // O "#t=0.001" pede ao navegador a imagem do primeiro instante.
+        filme.src = endereco + '#t=0.001';
+        filme.load();
+    }
+
     for (const entrada of entradas) {
         const { ann } = entrada;
         if (ann.is360) {
-            const video = controlador.videoDaRota360 ? controlador.videoDaRota360(ann) : ('Esvarena - 360 - ' + (LETRAS_DAS_ROTAS[ann.trailIndex] || 'A'));
+            const video = videoDaRota(ann);
             const tela = document.createElement('canvas');
             carregarPrevia360(tela, previaDe(video), olharInicialDe(video), ABERTURA_INICIAL, LARGURA_DA_IMAGEM, ALTURA_DA_IMAGEM)
                 .then(() => { entrada.imagem = tela; pintar(entrada); })
-                .catch(() => { /* sem prévia: a janela fica escura */ });
+                .catch((e) => console.warn('Coluna de vídeos: sem a prévia da rota.', e));
         } else {
             const fontes = fontesDeVideo(ann.video);
             const leve = fontes['480p'] || fontes['720p'] || Object.values(fontes)[0];
             if (!leve) continue;
-            const filme = document.createElement('video');
-            filme.muted = true;
-            filme.playsInline = true;
-            filme.preload = 'metadata';
-            filme.crossOrigin = 'anonymous';
-            const guardarOInstante = () => {
-                if (filme.readyState < 2 || entrada.imagem) return;
-                const tela = document.createElement('canvas');
-                tela.width = LARGURA_DA_IMAGEM;
-                tela.height = ALTURA_DA_IMAGEM;
-                // A imagem inteira, cortada ao centro para caber na janela.
-                const escala = Math.max(LARGURA_DA_IMAGEM / filme.videoWidth, ALTURA_DA_IMAGEM / filme.videoHeight);
-                const w = filme.videoWidth * escala;
-                const h = filme.videoHeight * escala;
-                tela.getContext('2d').drawImage(filme, (LARGURA_DA_IMAGEM - w) / 2, (ALTURA_DA_IMAGEM - h) / 2, w, h);
-                entrada.imagem = tela;
-                pintar(entrada);
-                // Com a imagem guardada, o vídeo já não faz falta.
-                filme.removeAttribute('src');
-                filme.load();
-            };
-            filme.addEventListener('loadeddata', guardarOInstante);
-            filme.addEventListener('seeked', guardarOInstante);
-            // O "#t=0.001" pede ao navegador a imagem do primeiro instante.
-            filme.src = leve + '#t=0.001';
-            filme.load();
+            irBuscarOInstante(entrada, leve, true);
         }
     }
 
@@ -319,14 +411,30 @@ export function ligarVideosAoLado(app) {
             if (ann.element) ann.element.click();
         });
         // O rato em cima da janela acende o marcador no mapa (a mesma
-        // classe com que o comando de jogo o acende).
+        // classe com que o comando de jogo o acende) e, numa rota, o
+        // trilho no chão — como quando o rato pára no próprio marcador.
         botao.addEventListener('mouseenter', () => {
             if (ann.element) ann.element.classList.add('force-hover');
+            acenderOTrilho(ann, true);
         });
         botao.addEventListener('mouseleave', () => {
             if (ann.element) ann.element.classList.remove('force-hover');
+            acenderOTrilho(ann, false);
         });
         return botao;
+    }
+
+    /**
+     * Acende ou apaga o trilho de uma rota no chão do bairro.
+     *
+     * @param {object} ann - A anotação (só as rotas têm trilho).
+     * @param {boolean} aceso - Se acende.
+     */
+    function acenderOTrilho(ann, aceso) {
+        if (!trilhos || !trilhos.trailRenderData || ann.trailIndex === undefined) return;
+        if (trilhos._trailsVisible === false) return;
+        const trilho = trilhos.trailRenderData[ann.trailIndex];
+        if (trilho && trilhos.setTrailHoverState) trilhos.setTrailHoverState(trilho, aceso);
     }
 
     /**
@@ -411,33 +519,16 @@ export function ligarVideosAoLado(app) {
     if (window.ResizeObserver) new ResizeObserver(encher).observe(coluna);
 
     // ---- A roleta ----
-    // A cada imagem a coluna desce um bocadinho; a roda do rato mexe-a
-    // por si (é uma coluna que desliza, como qualquer outra), e enquanto
-    // o rato está em cima dela fica parada.
-    let parada = false;
-    coluna.addEventListener('mouseenter', () => { parada = true; });
-    coluna.addEventListener('mouseleave', () => { parada = false; });
-    let resto = 0;
-    let antes = 0;
-    function passo(agora) {
-        requestAnimationFrame(passo);
-        const dt = Math.min(0.1, (agora - antes) / 1000);
-        antes = agora;
-        if (coluna.clientHeight === 0 || alturaDaLista <= 0) return;
-        let posicao = coluna.scrollTop;
-        if (!parada && coluna.classList.contains('visivel')) {
-            posicao += resto + VELOCIDADE * dt;
-        }
-        // Anda sempre pela cópia do meio: passada uma lista para qualquer
-        // dos lados, salta uma lista para trás — não se vê.
-        if (posicao >= alturaDaLista * 2) posicao -= alturaDaLista;
-        else if (posicao < alturaDaLista) posicao += alturaDaLista;
-        coluna.scrollTop = posicao;
-        // O que o navegador arredondou fica guardado para a imagem seguinte.
-        resto = posicao - coluna.scrollTop;
-        if (Math.abs(resto) > 1) resto = 0;
-    }
-    requestAnimationFrame((t) => { antes = t; passo(t); });
+    // A roda do rato mexe a coluna por si (é uma coluna que desliza, como
+    // qualquer outra); o que se faz aqui é a volta sem fim: anda sempre
+    // pela cópia do meio, e passada uma lista para qualquer dos lados
+    // salta uma lista para trás — não se vê.
+    coluna.addEventListener('scroll', () => {
+        if (alturaDaLista <= 0) return;
+        const posicao = coluna.scrollTop;
+        if (posicao >= alturaDaLista * 2) coluna.scrollTop = posicao - alturaDaLista;
+        else if (posicao < alturaDaLista) coluna.scrollTop = posicao + alturaDaLista;
+    }, { passive: true });
 
     // Nasce com o cabeçalho.
     const cabecalho = document.getElementById('header');

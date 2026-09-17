@@ -45,6 +45,12 @@ O código reclama sozinho se o ponto 1 for esquecido: `baptizarMarcadores()`
 escreve um erro na consola com a anotação em falta. Um erro na consola não
 é um aviso a pedir atenção — é uma anotação que ninguém consegue abrir.
 
+A coluna de vídeos do lado esquerdo (`public/videos-ao-lado.mjs`) lê a
+mesma lista: um testemunho (com `video`) ou uma rota 360º (com
+`trailIndex`) acrescentados a `initialize()` aparecem lá sozinhos, com o
+nome, a imagem, o visto e o acender do marcador. Não há nada a fazer à
+mão — e é por isso que uma anotação criada por outro caminho fica de fora.
+
 ### Como verificar, em dez segundos
 
 Com o site a correr, na consola do navegador:
