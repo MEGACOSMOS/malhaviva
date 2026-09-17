@@ -145,7 +145,7 @@ const CSS = `
         width: ${JANELA.largura}px;
         height: ${JANELA.altura}px;
         background: #05050a;
-        border: 1px solid rgba(255, 255, 255, 0.15);
+        border: 4px solid rgba(255, 255, 255, 0.15);
         box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
     }
     #videos-ao-lado .video-ao-lado-janela canvas {

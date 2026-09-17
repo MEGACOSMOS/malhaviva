@@ -307,7 +307,7 @@ AnnotationController.prototype.initialize = function() {
             width: 40px;
             height: 40px;
             border-radius: 0;
-            border: 1px solid rgba(255, 255, 255, 0.15);
+            border: 4px solid rgba(255, 255, 255, 0.15);
             background: #05050a;
             display: flex;
             align-items: center;
@@ -467,7 +467,7 @@ AnnotationController.prototype.initialize = function() {
         }
         .player-btn {
             background: transparent;
-            border: 1px solid rgba(255, 255, 255, 0.15);
+            border: 4px solid rgba(255, 255, 255, 0.15);
             color: white;
             cursor: pointer;
             display: flex;
@@ -1020,7 +1020,7 @@ AnnotationController.prototype.initialize = function() {
             align-items: center;
             gap: 8px;
             background: transparent;
-            border: 1px solid rgba(255, 255, 255, 0.15);
+            border: 4px solid rgba(255, 255, 255, 0.15);
             border-radius: 0;
             color: #fff;
             padding: 8px 16px;
@@ -1038,7 +1038,7 @@ AnnotationController.prototype.initialize = function() {
             top: calc(100% + 8px);
             right: 0;
             background: linear-gradient(to bottom, rgba(255,255,255,0.05), transparent), #05050a;
-            border: 1px solid rgba(255,255,255,0.15);
+            border: 4px solid rgba(255,255,255,0.15);
             border-radius: 0;
             padding: 16px;
             display: flex;
