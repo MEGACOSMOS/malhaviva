@@ -476,13 +476,19 @@
 
             .control-row {
                 padding: 12px 14px;
-                flex-direction: column;
-                align-items: flex-start;
+                flex-direction: row;
+                flex-wrap: wrap;
+                align-items: center;
+                justify-content: space-between;
                 gap: 8px;
             }
 
+            .control-action {
+                flex: 1 1 auto;
+            }
+
             .control-keys {
-                align-self: flex-end;
+                margin-left: auto;
             }
 
             .section-desc {
