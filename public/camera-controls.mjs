@@ -85,12 +85,6 @@ const frame = new InputFrame({
  */
 export const damp = (damping, dt) => 1 - Math.pow(damping, dt * 1000);
 
-// O amortecimento da rotação enquanto um dedo vira a vista: pouco, para
-// a vista seguir o dedo de perto, mas algum, para o movimento sair liso
-// em vez de aos solavancos — a um valor mais baixo cada abanão do dedo
-// chegava inteiro à imagem.
-const AMORTECIMENTO_DO_DEDO = 0.94;
-
 /**
  * @param {number[]} stick - The stick
  * @param {number} low - The low dead zone
@@ -169,12 +163,6 @@ const screenToWorld = (camera, dx, dy, dz, out = new Vec3()) => {
 // é o exemplo): meia volta por cada largura de ecrã, sempre a mesma,
 // esteja a vista aproximada ou não.
 const GRAUS_POR_LARGURA_DE_ECRA = 180;
-
-// Depois de largar o dedo, durante quanto tempo a vista ainda responde
-// com o amortecimento do dedo, em milissegundos: o suficiente para
-// acabar o pouco caminho que faltava e parar onde o dedo parou, sem
-// deslizar sozinha.
-const FOLGA_DEPOIS_DO_DEDO = 400;
 
 const MobileInputLayout = {
     JOYSTICK_JOYSTICK: 'joystick-joystick',
@@ -1270,23 +1258,9 @@ class CameraControls extends Script {
         v.add(touchRotate.mulScalar((1 - double) * grausPorPonto));
         deltas.rotate.append([v.x, v.y, v.z]);
 
-        // E a vista segue o dedo de perto, sem o amortecimento que com o
-        // rato dá suavidade mas aqui deixava o bairro a chegar atrasado
-        // ao sítio do dedo — e continua assim um instante depois de o
-        // largar, para acabar o pouco que faltava e parar onde o dedo
-        // parou, em vez de deslizar sozinha. Só depois disso o
-        // amortecimento do rato volta.
-        const umDedo = this._state.touches === 1;
-        const agora = performance.now();
-        if (umDedo) this._ultimoDedoEm = agora;
-        const dedoRecente = umDedo || (this._ultimoDedoEm !== undefined && agora - this._ultimoDedoEm < FOLGA_DEPOIS_DO_DEDO);
-        if (this._amortecimentoDeOrigem === undefined) {
-            this._amortecimentoDeOrigem = this.rotateDamping;
-        }
-        const amortecimento = dedoRecente ? AMORTECIMENTO_DO_DEDO : this._amortecimentoDeOrigem;
-        if (this.rotateDamping !== amortecimento) {
-            this.rotateDamping = amortecimento;
-        }
+        // A vista segue o dedo com o mesmo amortecimento do rato,
+        // garantindo um movimento mais uniforme e com uma animação 
+        // de ease in e out natural e suave.
 
         // gamepad move
         v.set(0, 0, 0);
