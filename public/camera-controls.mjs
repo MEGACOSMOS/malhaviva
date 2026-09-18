@@ -1163,13 +1163,13 @@ class CameraControls extends Script {
             this._zoomOffset += activePinch * -0.1;
         }
 
-        // Suaviza os deltas de toque para um pan (arrasto) muito mais suave.
+        // Suaviza os deltas de toque para um pan (arrasto) suave, com metade da duração anterior.
         // Acontece sempre para que o abrandamento (ease out) continue mesmo depois de largar.
         if (!this._smoothTouchPan) this._smoothTouchPan = new Vec2(0, 0);
         const targetPanX = (double === 1) ? activeTouchX : 0;
         const targetPanY = (double === 1) ? activeTouchY : 0;
-        this._smoothTouchPan.x = math.lerp(this._smoothTouchPan.x, targetPanX, 2.5 * dt);
-        this._smoothTouchPan.y = math.lerp(this._smoothTouchPan.y, targetPanY, 2.5 * dt);
+        this._smoothTouchPan.x = math.lerp(this._smoothTouchPan.x, targetPanX, 5.0 * dt);
+        this._smoothTouchPan.y = math.lerp(this._smoothTouchPan.y, targetPanY, 5.0 * dt);
 
         // Dois dedos a deslizar andam com a câmara, pelo mesmo sítio que
         // as teclas: para o lado para onde os dedos vão, e para a frente
@@ -1203,10 +1203,10 @@ class CameraControls extends Script {
 
         // O manípulo do ecrã táctil entra pelo mesmo sítio, com a mesma
         // conta: para a direita e para a frente, nunca mais depressa do
-        // que as teclas. Suavizado para um ease-in/out perfeito.
+        // que as teclas. Suavizado para um ease-in/out moderado.
         if (!this._smoothJoystick) this._smoothJoystick = new Vec2(0, 0);
-        this._smoothJoystick.x = math.lerp(this._smoothJoystick.x, this._joystick.x, 3.0 * dt);
-        this._smoothJoystick.y = math.lerp(this._smoothJoystick.y, this._joystick.y, 3.0 * dt);
+        this._smoothJoystick.x = math.lerp(this._smoothJoystick.x, this._joystick.x, 6.0 * dt);
+        this._smoothJoystick.y = math.lerp(this._smoothJoystick.y, this._joystick.y, 6.0 * dt);
 
         if (Math.abs(this._smoothJoystick.x) > 0.001 || Math.abs(this._smoothJoystick.y) > 0.001) {
             keyMove.x += this._smoothJoystick.x;
@@ -1258,13 +1258,13 @@ class CameraControls extends Script {
 
 
         // Um dedo no ecrã vira a vista, à maneira dos jogos de telemóvel.
-        // Suavizamos profundamente o input (low-pass filter) para garantir
-        // uma animação de ease in e ease out extremamente fluida (muito mais suave).
+        // Suavizamos o input (low-pass filter) para garantir
+        // uma animação de ease in e ease out agradável.
         if (!this._smoothTouchRotate) this._smoothTouchRotate = new Vec2(0, 0);
         const targetRotX = (1 - double) * touch[0];
         const targetRotY = (1 - double) * touch[1];
-        this._smoothTouchRotate.x = math.lerp(this._smoothTouchRotate.x, targetRotX, 2.5 * dt);
-        this._smoothTouchRotate.y = math.lerp(this._smoothTouchRotate.y, targetRotY, 2.5 * dt);
+        this._smoothTouchRotate.x = math.lerp(this._smoothTouchRotate.x, targetRotX, 5.0 * dt);
+        this._smoothTouchRotate.y = math.lerp(this._smoothTouchRotate.y, targetRotY, 5.0 * dt);
 
         v.set(0, 0, 0);
         const telaDoDedo = this.app.graphicsDevice.canvas;
