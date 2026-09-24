@@ -574,19 +574,18 @@
             position: relative;
         }
 
-        /* O fio é o mesmo dos menus e do rodapé — o mesmo desenho, ponto
-           por ponto —, e nasce e some com o quadrado. */
+        /* O fio é o mesmo dos menus — o mesmo desenho, ponto por ponto —,
+           e nasce e some com o quadrado. */
         #header button.adaptavel::after,
         #header a.adaptavel::after,
         #partilhar-btn::after {
             content: "";
             position: absolute;
             inset: 0;
-            padding: 2.5px;
-            background: linear-gradient(rgba(255,255,255,0.3), rgba(255,255,255,0.3)), #05050a;
-            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-            -webkit-mask-composite: xor;
-            mask-composite: exclude;
+            /* Um rebordo a sério, e não um recorte: o navegador acerta-o aos
+               pontos do ecrã, e fica com a mesma grossura dos quatro lados.
+               A cor é a do branco a 30% sobre o fundo escuro do site. */
+            border: 2.5px solid #505054;
             pointer-events: none;
             opacity: 0;
             transition: opacity 0.15s ease;
@@ -900,10 +899,14 @@
             bottom: 8px;
         }
 
+        /* A bússola fica ao prumo do botão de ecrã inteiro: o centro
+           dela na mesma vertical que o centro dele. O botão tem 40 de
+           largo e está à margem do cabeçalho (24, ou 16 no telemóvel); a
+           bússola tem 36, e por isso afasta-se mais 2 da margem. */
         #compass-container {
             position: fixed;
             top: 80px;
-            right: 24px;
+            right: calc(24px + (40px - 36px) / 2);
             width: 36px;
             height: 36px;
             z-index: 90;
@@ -913,6 +916,12 @@
             background: transparent;
             border: none;
             pointer-events: none;
+        }
+
+        @media (max-width: 640px) {
+            #compass-container {
+                right: calc(16px + (40px - 36px) / 2);
+            }
         }
 
         #compass-needle {
@@ -1176,15 +1185,11 @@
             position: absolute;
             inset: 0;
             border-radius: inherit;
-            padding: 2.5px;
-            /* O fio de luz assenta sempre sobre o fundo escuro do site, e
-               não sobre o que estiver por trás do painel: assim tem a mesma
-               cor no rodapé, pousado sobre o bairro, e nas janelas dos
-               tocadores, pousadas sobre o escuro. */
-            background: linear-gradient(rgba(255,255,255,0.3), rgba(255,255,255,0.3)), #05050a;
-            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-            -webkit-mask-composite: xor;
-            mask-composite: exclude;
+            /* Um rebordo a sério, e não um recorte: o navegador acerta-o aos
+               pontos do ecrã, e fica com a mesma grossura dos quatro lados.
+               A cor é opaca — a do branco a 30% sobre o fundo escuro do
+               site —, e por isso é a mesma sobre o bairro e sobre o escuro. */
+            border: 2.5px solid #505054;
             pointer-events: none;
             z-index: 10;
         }
@@ -2135,7 +2140,7 @@
         <pc-asset id="splat-scene" src="splat/lod-meta.json" type="gsplat"></pc-asset>
         <pc-asset id="camera-controls-script" src="./camera-controls.mjs?v=30" type="script"></pc-asset>
         <pc-asset id="camera-coords-script" src="./coords.mjs?v=7" type="script"></pc-asset>
-        <pc-asset id="annotations-script" src="./annotations.mjs?v=84" type="script"></pc-asset>
+        <pc-asset id="annotations-script" src="./annotations.mjs?v=85" type="script"></pc-asset>
         <pc-asset id="trail-script" src="./trail.mjs?v=28" type="script"></pc-asset>
         <pc-asset id="measure-script" src="./measure.mjs?v=1" type="script"></pc-asset>
         <pc-asset id="escala-script" src="./escala.mjs?v=1" type="script"></pc-asset>

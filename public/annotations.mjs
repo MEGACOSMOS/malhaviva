@@ -1104,11 +1104,10 @@ AnnotationController.prototype.initialize = function() {
             position: absolute;
             inset: 0;
             border-radius: inherit;
-            padding: 2.5px;
-            background: linear-gradient(rgba(255,255,255,0.3), rgba(255,255,255,0.3)), #05050a;
-            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-            -webkit-mask-composite: xor;
-            mask-composite: exclude;
+            /* Um rebordo a sério, e não um recorte: o navegador acerta-o aos
+               pontos do ecrã, e fica com a mesma grossura dos quatro lados.
+               A cor é a do branco a 30% sobre o fundo escuro do site. */
+            border: 2.5px solid #505054;
             pointer-events: none;
             z-index: 10;
         }
