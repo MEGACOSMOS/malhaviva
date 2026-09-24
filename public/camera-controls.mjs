@@ -177,13 +177,13 @@ const GRAUS_POR_LARGURA_DE_ECRA = 180;
 
 // ─── Apontar e ir ───
 // Um clique (ou um toque) num sítio do bairro leva a câmara até lá: sem
-// descer nem se virar, desliza pelo chão na direcção dele — à mesma altura e
-// a olhar para o mesmo lado — e fica muito mais perto, inclinada para baixo
-// o que for preciso para o ter no meio do ecrã. Nunca recua. Com o rato,
-// uma pirâmide verde de bico para baixo mostra, antes do clique, o sítio
-// aonde ele leva. A viagem demora mais ou menos o mesmo, perto ou longe —
-// e por isso, quanto mais longe o sítio, mais depressa se anda. Começa
-// devagar e acaba devagar.
+// descer, sem se virar e sem se inclinar, desliza pelo chão na direcção
+// dele — à mesma altura e a olhar como olhava — e fica muito mais perto.
+// Nunca recua. Com o rato, uma pirâmide verde de bico para baixo, pousada
+// sobre um quadrado deitado no chão, mostra antes do clique o sítio aonde
+// ele leva. A viagem demora mais ou menos o mesmo, perto ou longe — e por
+// isso, quanto mais longe o sítio, mais depressa se anda. Começa devagar e
+// acaba devagar.
 
 // Quanto o rato ou o dedo podem mexer, entre carregar e largar, para ainda
 // contar como clique e não como arrasto (pontos de ecrã).
@@ -204,12 +204,10 @@ const VIAGEM_DISTANCIA_LONGA = 150;
 // chão até ele, fica a faltar só esta fracção.
 const VIAGEM_APROXIMACAO = 0.3;
 
-// A inclinação com que se chega, em graus para baixo: a que for preciso
-// para olhar para o sítio, mas nunca menos de VIAGEM_INCLINACAO_MINIMA nem
-// mais de VIAGEM_INCLINACAO_MAXIMA — a pique perde-se o bairro, e por isso
-// a câmara não chega mais perto do que o que esta inclinação deixa ver.
-const VIAGEM_INCLINACAO_MINIMA = 20;
-const VIAGEM_INCLINACAO_MAXIMA = 65;
+// A câmara não se inclina, e por isso, ao aproximar-se, o sítio desce no
+// ecrã. Não chega tão perto que ele fique mais do que isto abaixo do meio
+// da vista, em graus: assim nunca sai pelo fundo do ecrã.
+const VIAGEM_ABAIXO_DO_MEIO = 20;
 
 // A pirâmide que mostra o sítio: a altura com que se vê no ecrã, em pontos
 // (é do mesmo tamanho perto ou longe), e de quanto em quanto tempo se
@@ -228,6 +226,17 @@ const PIRAMIDE_CORES = {
     clara: [16, 185, 129],
     escura: [4, 120, 87]
 };
+// O quadrado deitado no chão por baixo da pirâmide: o lado, em relação à
+// altura da pirâmide, e a grossura do contorno, em relação ao lado.
+const QUADRADO_LADO = 1.3;
+const QUADRADO_TRACO = 0.08;
+// Para o quadrado se deitar como o chão — numa encosta, num telhado —
+// pergunta-se também pelos sítios a esta distância do rato, em pontos de
+// ecrã, para a direita e para baixo. Um chão mais inclinado do que
+// QUADRADO_INCLINACAO_MAXIMA graus é uma parede ou um engano, e aí o
+// quadrado fica deitado a direito.
+const QUADRADO_VIZINHOS = 24;
+const QUADRADO_INCLINACAO_MAXIMA = 40;
 
 // A que altura fica o chão do bairro, para quando a placa gráfica não diz
 // onde se carregou (em metros, no sistema do mapa).
@@ -440,8 +449,12 @@ class CameraControls extends Script {
         mexeu: false,
         aLer: false,
         ultimaLeitura: 0,
-        // O sítio debaixo do rato, ou nada (céu, fora do bairro).
+        // O sítio debaixo do rato, ou nada (céu, fora do bairro), e para
+        // onde aponta o chão lá — e para onde aponta o quadrado, que vai
+        // atrás dele devagar.
         sitio: null,
+        chao: new Vec3(0, 1, 0),
+        chaoDoQuadrado: new Vec3(0, 1, 0),
         // Onde a pirâmide está desenhada, e quanto se vê (de zero a um).
         onde: new Vec3(),
         opacidade: 0,
@@ -1202,15 +1215,37 @@ class CameraControls extends Script {
      * @private
      */
     _sitioEm(px, py) {
+        const noChao = () => this._sitioValido(this._sitioNoChao(px, py));
+        const ler = this._prepararLeitura();
+        if (!ler) {
+            return Promise.resolve(noChao());
+        }
+        return ler(px, py)
+        .then(ponto => (ponto ? this._sitioValido(ponto) : noChao()))
+        .catch(() => noChao());
+    }
+
+    /**
+     * Manda a placa gráfica desenhar o bairro para o leitor de
+     * profundidade, e devolve com que se lê, depois, o sítio que está em
+     * cada ponto do ecrã — tantos pontos quantos se quiser, desta mesma
+     * vez. Ou nada, se a placa não o souber fazer.
+     *
+     * A um quarto da resolução chega para acertar num sítio, e poupa a
+     * placa gráfica. A pirâmide e o quadrado saem de cena enquanto se
+     * desenha, para não serem eles a resposta.
+     *
+     * @returns {((px: number, py: number) => Promise<Vec3|null>)|null} O
+     * leitor.
+     * @private
+     */
+    _prepararLeitura() {
         const tela = this.app.graphicsDevice.canvas;
-        // A um quarto da resolução chega para acertar num sítio, e poupa a
-        // placa gráfica.
         const ESCALA = 0.25;
         const largura = Math.max(1, Math.floor(tela.clientWidth * ESCALA));
         const altura = Math.max(1, Math.floor(tela.clientHeight * ESCALA));
-        const noChao = () => this._sitioValido(this._sitioNoChao(px, py));
-        const piramide = this._piramide && this._piramide.entidade;
-        const piramideAcesa = !!(piramide && piramide.enabled);
+        const marcas = this._piramide ?
+            [this._piramide.entidade, this._piramide.quadrado].filter(e => e.enabled) : [];
 
         try {
             if (!this._leitorDoSitio) {
@@ -1218,22 +1253,66 @@ class CameraControls extends Script {
             } else if (this._leitorDoSitio.width !== largura || this._leitorDoSitio.height !== altura) {
                 this._leitorDoSitio.resize(largura, altura);
             }
-            if (piramideAcesa) {
-                piramide.enabled = false;
-            }
+            marcas.forEach((e) => { e.enabled = false; });
             this._leitorDoSitio.prepare(this._camera, this.app.scene);
-            if (piramideAcesa) {
-                piramide.enabled = true;
-            }
-            return this._leitorDoSitio.getWorldPointAsync(Math.floor(px * ESCALA), Math.floor(py * ESCALA))
-            .then(ponto => (ponto ? this._sitioValido(ponto.clone()) : noChao()))
-            .catch(() => noChao());
         } catch (e) {
-            if (piramideAcesa) {
-                piramide.enabled = true;
-            }
+            return null;
+        } finally {
+            marcas.forEach((e) => { e.enabled = true; });
+        }
+
+        const leitor = this._leitorDoSitio;
+        return (px, py) => {
+            const x = math.clamp(Math.floor(px * ESCALA), 0, largura - 1);
+            const y = math.clamp(Math.floor(py * ESCALA), 0, altura - 1);
+            return leitor.getWorldPointAsync(x, y).then(ponto => (ponto ? ponto.clone() : null));
+        };
+    }
+
+    /**
+     * Como `_sitioEm`, e também para que lado está virado o chão nesse
+     * sítio: pergunta-se pelos pontos um pouco à direita e um pouco abaixo,
+     * e o chão é o plano que passa pelos três. Se algum faltar, ou o chão
+     * sair mais inclinado do que QUADRADO_INCLINACAO_MAXIMA, fica a direito.
+     *
+     * @param {number} px - Na tela, da esquerda.
+     * @param {number} py - Na tela, de cima.
+     * @returns {Promise<{sitio: Vec3|null, chao: Vec3}>} O sítio, e para
+     * onde aponta o chão lá (para cima, se não se souber).
+     * @private
+     */
+    _sitioEChaoEm(px, py) {
+        const aDireito = () => new Vec3(0, 1, 0);
+        const noChao = () => ({ sitio: this._sitioValido(this._sitioNoChao(px, py)), chao: aDireito() });
+        const ler = this._prepararLeitura();
+        if (!ler) {
             return Promise.resolve(noChao());
         }
+        return Promise.all([
+            ler(px, py),
+            ler(px + QUADRADO_VIZINHOS, py),
+            ler(px, py + QUADRADO_VIZINHOS)
+        ]).then(([meio, direita, baixo]) => {
+            if (!meio) {
+                return noChao();
+            }
+            let chao = aDireito();
+            if (direita && baixo) {
+                const lado = new Vec3().sub2(direita, meio);
+                const fundo = new Vec3().sub2(baixo, meio);
+                const normal = new Vec3().cross(lado, fundo);
+                if (normal.y < 0) {
+                    normal.mulScalar(-1);
+                }
+                if (normal.length() > 1e-6) {
+                    normal.normalize();
+                    if (Math.acos(math.clamp(normal.y, -1, 1)) * math.RAD_TO_DEG <= QUADRADO_INCLINACAO_MAXIMA) {
+                        chao = normal;
+                    }
+                }
+            }
+            return { sitio: this._sitioValido(meio), chao };
+        }).catch(() => noChao());
     }
 
     /**
@@ -1283,13 +1362,12 @@ class CameraControls extends Script {
     /**
      * Põe a câmara a caminho de um sítio do bairro.
      *
-     * A câmara não desce nem se vira: fica à mesma altura e a olhar para
-     * o mesmo lado, e desliza pelo chão na direcção do sítio — de lado, o
-     * bastante para o ter à frente, e para a frente até só faltar
-     * VIAGEM_APROXIMACAO do caminho. Inclina-se para baixo para olhar para
-     * ele, e por isso chega com o sítio no meio do ecrã. Nunca recua: com
-     * o sítio já perto, só desliza de lado e se inclina. E não chega tão
-     * perto que tenha de olhar mais a pique do que VIAGEM_INCLINACAO_MAXIMA.
+     * A câmara não desce, não se vira e não se inclina: fica à mesma
+     * altura e a olhar como olhava, e desliza pelo chão na direcção do
+     * sítio — de lado, o bastante para o ter à frente, e para a frente até
+     * só faltar VIAGEM_APROXIMACAO do caminho. Nunca recua: com o sítio já
+     * perto, só desliza de lado. E não chega tão perto que o sítio fique
+     * mais de VIAGEM_ABAIXO_DO_MEIO graus abaixo do meio da vista.
      *
      * @param {Vec3} sitio - Para onde ir.
      * @private
@@ -1298,9 +1376,9 @@ class CameraControls extends Script {
         const posicao = this._pose.position;
         const angulos = this._pose.angles;
 
-        let inclinacao0 = angulos.x;
-        while (inclinacao0 > 180) inclinacao0 -= 360;
-        while (inclinacao0 < -180) inclinacao0 += 360;
+        let inclinacao = angulos.x;
+        while (inclinacao > 180) inclinacao -= 360;
+        while (inclinacao < -180) inclinacao += 360;
 
         // Para onde se olha continua igual; o que conta é quanto o sítio
         // está à frente, nessa direcção, pelo chão.
@@ -1310,21 +1388,15 @@ class CameraControls extends Script {
         const aFrente = (sitio.x - posicao.x) * frenteX + (sitio.z - posicao.z) * frenteZ;
         const desnivel = Math.max(0.5, posicao.y - sitio.y);
 
-        // Fica a faltar só uma fracção do caminho — mas não mais perto do
-        // que o que se vê à inclinação máxima, e nunca para trás.
-        const pertoDeMais = desnivel / Math.tan(VIAGEM_INCLINACAO_MAXIMA * math.DEG_TO_RAD);
+        // Fica a faltar só uma fracção do caminho — mas não tão perto que
+        // o sítio escorregue para o fundo do ecrã, e nunca para trás.
+        const olharMaisBaixo = Math.min(89, Math.max(0, -inclinacao) + VIAGEM_ABAIXO_DO_MEIO);
+        const pertoDeMais = desnivel / Math.tan(olharMaisBaixo * math.DEG_TO_RAD);
         const fica = Math.max(0, Math.min(aFrente, Math.max(aFrente * VIAGEM_APROXIMACAO, pertoDeMais)));
         const para = new Vec3(sitio.x - frenteX * fica, posicao.y, sitio.z - frenteZ * fica);
 
-        // Inclinada para o sítio.
-        const inclinacao1 = -math.clamp(
-            Math.atan2(desnivel, Math.max(fica, 0.001)) * math.RAD_TO_DEG,
-            VIAGEM_INCLINACAO_MINIMA,
-            VIAGEM_INCLINACAO_MAXIMA
-        );
-
         const percurso = posicao.distance(para);
-        if (percurso < 0.05 && Math.abs(inclinacao1 - inclinacao0) < 0.5) {
+        if (percurso < 0.05) {
             return;
         }
 
@@ -1338,8 +1410,8 @@ class CameraControls extends Script {
             de: posicao.clone(),
             para,
             sitio: sitio.clone(),
-            inclinacao0,
-            inclinacao1,
+            inclinacao0: inclinacao,
+            inclinacao1: inclinacao,
             rumo0: angulos.y,
             rumo1: angulos.y,
             t: 0,
@@ -1408,19 +1480,57 @@ class CameraControls extends Script {
         });
         entidade.enabled = false;
         this.app.root.addChild(entidade);
-        this._piramide = { entidade, material, opacidade: -1 };
+
+        // O quadrado deitado no chão: só o contorno, branco, com um metro
+        // de lado e o meio no ponto (0, 0, 0). Aparece e some com a
+        // pirâmide, pelo mesmo material.
+        const fora = 0.5;
+        const dentro = 0.5 - QUADRADO_TRACO;
+        const cantosDeFora = [[-fora, -fora], [fora, -fora], [fora, fora], [-fora, fora]];
+        const cantosDeDentro = [[-dentro, -dentro], [dentro, -dentro], [dentro, dentro], [-dentro, dentro]];
+        const posicoesDoQuadrado = [];
+        const coresDoQuadrado = [];
+        [...cantosDeFora, ...cantosDeDentro].forEach(([x, z]) => {
+            posicoesDoQuadrado.push(x, 0, z);
+            coresDoQuadrado.push(255, 255, 255, 255);
+        });
+        const indicesDoQuadrado = [];
+        for (let i = 0; i < 4; i++) {
+            const j = (i + 1) % 4;
+            indicesDoQuadrado.push(i, j, 4 + j, i, 4 + j, 4 + i);
+        }
+        const malhaDoQuadrado = new Mesh(this.app.graphicsDevice);
+        malhaDoQuadrado.setPositions(posicoesDoQuadrado);
+        malhaDoQuadrado.setColors32(coresDoQuadrado);
+        malhaDoQuadrado.setIndices(indicesDoQuadrado);
+        malhaDoQuadrado.update();
+
+        const quadrado = new Entity('chao-do-clique');
+        quadrado.addComponent('render', {
+            meshInstances: [new MeshInstance(malhaDoQuadrado, material)],
+            layers: camada ? [camada.id] : undefined,
+            castShadows: false,
+            receiveShadows: false
+        });
+        quadrado.enabled = false;
+        this.app.root.addChild(quadrado);
+
+        this._piramide = { entidade, quadrado, material, opacidade: -1 };
     }
 
     /**
-     * A pirâmide a cada imagem: onde está, quanto se vê, e o balanço.
+     * A pirâmide e o quadrado a cada imagem: onde estão, quanto se vêem, e
+     * o balanço.
      *
-     * Durante uma viagem fica pousada no sítio para onde se vai. Fora
-     * disso, segue o rato — quando ele está em cima do bairro, sem estar a
-     * arrastar — e desliza de um sítio para o outro em vez de saltar. De
+     * Durante uma viagem ficam pousados no sítio para onde se vai. Fora
+     * disso, seguem o rato — quando ele está em cima do bairro, sem estar
+     * a arrastar — e deslizam de um sítio para o outro em vez de saltar. De
      * PIRAMIDE_LEITURA_MS em PIRAMIDE_LEITURA_MS pergunta-se à placa
      * gráfica o que está debaixo do rato, se o rato ou a câmara se tiverem
-     * mexido. Aparece e some a esbater-se, e balança um nada no ar, a
-     * rodar devagar, para se ver que está viva.
+     * mexido. Aparecem e somem a esbater-se. A pirâmide balança um nada no
+     * ar, a rodar devagar, para se ver que está viva; o quadrado fica
+     * deitado no chão, inclinado como ele, e com os lados alinhados com a
+     * vista.
      *
      * @param {number} dt - O tempo desde a imagem anterior.
      * @private
@@ -1442,8 +1552,9 @@ class CameraControls extends Script {
                 apontar.ultimaLeitura = agora;
                 apontar.camara.copy(camara.getPosition());
                 apontar.angulos.copy(camara.getEulerAngles());
-                this._sitioEm(apontar.x, apontar.y).then((sitio) => {
+                this._sitioEChaoEm(apontar.x, apontar.y).then(({ sitio, chao }) => {
                     apontar.sitio = sitio;
+                    apontar.chao.copy(chao);
                     apontar.aLer = false;
                 });
             }
@@ -1456,13 +1567,14 @@ class CameraControls extends Script {
             }
             this._fazerPiramide();
         }
-        const { entidade, material } = this._piramide;
+        const { entidade, quadrado, material } = this._piramide;
 
         // Aparecer e sumir, a esbater.
         apontar.opacidade = math.lerp(apontar.opacidade, alvo ? 1 : 0, Math.min(1, 12 * dt));
         if (!alvo && apontar.opacidade < 0.02) {
             apontar.opacidade = 0;
             entidade.enabled = false;
+            quadrado.enabled = false;
             return;
         }
         if (Math.abs(this._piramide.opacidade - apontar.opacidade) > 0.01) {
@@ -1475,11 +1587,14 @@ class CameraControls extends Script {
         if (alvo) {
             if (!entidade.enabled || apontar.opacidade < 0.1) {
                 apontar.onde.copy(alvo);
+                apontar.chaoDoQuadrado.copy(apontar.chao);
             } else {
                 apontar.onde.lerp(apontar.onde, alvo, Math.min(1, 18 * dt));
+                apontar.chaoDoQuadrado.lerp(apontar.chaoDoQuadrado, apontar.chao, Math.min(1, 10 * dt)).normalize();
             }
         }
         entidade.enabled = true;
+        quadrado.enabled = true;
 
         // Do mesmo tamanho no ecrã, perto ou longe.
         const tela = this.app.graphicsDevice.canvas;
@@ -1504,6 +1619,19 @@ class CameraControls extends Script {
         tmpQ2.setFromAxisAngle(Vec3.UP, apontar.tempo * 45);
         tmpQ1.mul(tmpQ2);
         entidade.setRotation(tmpQ1);
+
+        // O quadrado, deitado no chão debaixo do bico: primeiro virado como
+        // a vista, depois inclinado como o chão. Fica um nada acima dele,
+        // para não se misturar com a terra.
+        const chao = apontar.chaoDoQuadrado;
+        tmpQ1.setFromDirections(Vec3.UP, chao);
+        tmpQ2.setFromAxisAngle(Vec3.UP, this._pose.angles.y);
+        tmpQ1.mul(tmpQ2);
+        quadrado.setRotation(tmpQ1);
+        const folga = tamanho * 0.03;
+        quadrado.setPosition(apontar.onde.x + chao.x * folga, apontar.onde.y + chao.y * folga, apontar.onde.z + chao.z * folga);
+        const lado = tamanho * QUADRADO_LADO;
+        quadrado.setLocalScale(lado, lado, lado);
     }
 
     /**
