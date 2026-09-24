@@ -1056,10 +1056,12 @@
         }
 
         /* ─── Legenda do mapa ───
-           No canto de baixo à esquerda, vestida como os menus: cada tipo de
-           marcador — o mesmo quadrado, com o mesmo desenho — e ao lado o
-           que se encontra nele. Nasce com o cabeçalho, quando o ecrã de
-           espera sai. Um tipo desligado nas definições fica esbatido. */
+           No canto de baixo à esquerda, sem caixa, pousada no bairro como
+           a escala: cada tipo de marcador — o mesmo quadrado, com o mesmo
+           desenho — e ao lado o que se encontra nele, com uma sombra por
+           trás das letras para se lerem sobre a fotografia. Nasce com o
+           cabeçalho, quando o ecrã de espera sai. Um tipo desligado nas
+           definições fica esbatido. */
         #legenda-mapa {
             position: fixed;
             left: 24px;
@@ -1069,12 +1071,12 @@
             flex-direction: column;
             gap: 8px;
             margin: 0;
-            padding: 12px 16px 12px 12px;
+            padding: 0;
             list-style: none;
-            background: linear-gradient(to bottom, rgba(255,255,255,0.05), transparent), #05050a;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.4);
             font-size: 0.8rem;
-            color: var(--color-text);
+            font-weight: 600;
+            color: #ffffff;
+            text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
             opacity: 0;
             transform: translateY(8px);
             pointer-events: none;
@@ -1107,6 +1109,7 @@
             align-items: center;
             justify-content: center;
             color: #ffffff;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
         }
         .legenda-marcador.testemunho { background: #10b981; }
         .legenda-marcador.rota { background: #ff0000; }
@@ -1642,7 +1645,7 @@
            degradé que aqui houve — pousado sobre o fundo escuro do site. */
         .panel-glass, .btn-glass, .action-btn, .settings-panel, .filter-btn, 
         #coordinates-info, #camera-info, #loading-bar-container,
-        #definicoes-menu, #dev-menu, #idioma-menu, #camera-stuck-popup, #arranque-popup, #partilhar-menu, #legenda-mapa, .instrucoes-cartao {
+        #definicoes-menu, #dev-menu, #idioma-menu, #camera-stuck-popup, #arranque-popup, #partilhar-menu, .instrucoes-cartao {
             /* Sem rebordo nenhum, nem invisível: um rebordo invisível fica
                por fora do fio e deixa ver o fundo escuro por baixo dele,
                como um segundo fio, preto, a toda a volta. */
@@ -1653,7 +1656,7 @@
         }
         .panel-glass::after, .btn-glass::after, .action-btn::after, .settings-panel::after, .filter-btn::after,
         #coordinates-info::after, #camera-info::after, #loading-bar-container::after,
-        #definicoes-menu::after, #dev-menu::after, #idioma-menu::after, #camera-stuck-popup::after, #arranque-popup::after, #partilhar-menu::after, #legenda-mapa::after, .instrucoes-cartao::after {
+        #definicoes-menu::after, #dev-menu::after, #idioma-menu::after, #camera-stuck-popup::after, #arranque-popup::after, #partilhar-menu::after, .instrucoes-cartao::after {
             content: "";
             position: absolute;
             inset: 0;
