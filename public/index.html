@@ -1352,10 +1352,10 @@
         }
 
         /* 1 · Ir até um sítio: o rato vai, a pirâmide verde aparece no
-           sítio, carrega-se, e a câmara aproxima-se — o chão cresce e o
-           horizonte sobe para fora do desenho, que é o que se vê quando a
-           câmara anda para a frente e se inclina para baixo — até o sítio
-           ficar no meio.
+           sítio, pousada no seu quadrado, carrega-se, e a câmara
+           aproxima-se sem se inclinar — o chão cresce a partir do
+           horizonte, que fica onde está, e o sítio vem para o meio e para
+           baixo, como se vê quando a câmara anda para a frente.
 
            A pirâmide nasce invisível e apaga-se antes de a volta
            recomeçar: acesa no fim de uma volta e apagada no começo da
@@ -1365,8 +1365,8 @@
         }
         @keyframes ins-ir-aproxima {
             0%, 44% { transform: translate(0, 0) scale(1); opacity: 1; }
-            80%, 88% { transform: translate(-180px, -78px) scale(1.6); opacity: 1; }
-            94% { transform: translate(-180px, -78px) scale(1.6); opacity: 0; }
+            80%, 88% { transform: translate(-130px, -15.4px) scale(1.35); opacity: 1; }
+            94% { transform: translate(-130px, -15.4px) scale(1.35); opacity: 0; }
             95% { transform: translate(0, 0) scale(1); opacity: 0; }
             100% { transform: translate(0, 0) scale(1); opacity: 1; }
         }
@@ -1376,7 +1376,7 @@
         }
         @keyframes ins-ir-sitio {
             0%, 44% { transform: translate(200px, 104px); }
-            80%, 93% { transform: translate(140px, 88px); }
+            80%, 93% { transform: translate(140px, 125px); }
             94%, 100% { transform: translate(200px, 104px); }
         }
         #instrucoes .ins-ir-piramide {
@@ -1406,8 +1406,8 @@
         }
 
         /* 2 · Olhar à volta: arrasta-se, e o horizonte vai atrás. O rato,
-           desenhado ao canto com o botão da esquerda carregado, anda para o
-           lado com a seta. */
+           desenhado com o botão da esquerda carregado no mesmo sítio em que
+           está no passo da roda, anda um pouco para o lado com a seta. */
         #instrucoes .ins-olhar-vista {
             animation: ins-olhar-vista 4s ease-in-out infinite;
         }
@@ -1426,13 +1426,13 @@
             100% { transform: translate(170px, 96px); }
         }
         #instrucoes .ins-olhar-rato {
-            transform: translate(240px, 94px);
+            transform: translate(240px, 56px);
             animation: ins-olhar-rato 4s ease-in-out infinite;
         }
         @keyframes ins-olhar-rato {
-            0%, 12% { transform: translate(240px, 94px); }
-            50%, 62% { transform: translate(206px, 94px); }
-            100% { transform: translate(240px, 94px); }
+            0%, 12% { transform: translate(240px, 56px); }
+            50%, 62% { transform: translate(222px, 56px); }
+            100% { transform: translate(240px, 56px); }
         }
 
         /* 3 · Aproximar e afastar: a roda gira, ou os dedos abrem. */
@@ -2485,6 +2485,11 @@
                     <polygon points="0,-13 9,-17 0,0" fill="#047857"></polygon>
                     <polygon points="-9,-17 0,-21 9,-17 0,-13" fill="#6ee7b7"></polygon>
                 </g>
+                <!-- O quadrado deitado no chão por baixo da pirâmide, visto
+                     em perspectiva, com o meio logo abaixo do bico dela. -->
+                <g id="ins-quadrado">
+                    <polygon points="-11,-1 11,-1 14,6 -14,6" fill="none" stroke="#ffffff" stroke-width="1.75" stroke-linejoin="miter"></polygon>
+                </g>
                 <!-- A seta do rato, com o bico no ponto (0, 0). -->
                 <g id="ins-seta-rato"><path fill="#ffffff" stroke="#05050a" stroke-width="1.2" stroke-linejoin="round" d="M0 0L0 17L4.6 12.8L8 20L11 18.6L7.7 11.6L13 11.6Z"></path></g>
             </defs>
@@ -2509,7 +2514,7 @@
                                 <use href="#ins-casas"></use>
                                 <g transform="translate(200 0)"><use href="#ins-casas"></use></g>
                             </g>
-                            <g class="ins-ir-sitio"><g class="ins-ir-piramide"><g class="ins-boia"><use href="#ins-piramide"></use></g></g></g>
+                            <g class="ins-ir-sitio"><g class="ins-ir-piramide"><use href="#ins-quadrado"></use><g class="ins-boia"><use href="#ins-piramide"></use></g></g></g>
                             <g class="ins-cursor ins-ir-cursor">
                                 <use class="so-rato" href="#ins-seta-rato"></use>
                                 <circle class="so-toque ins-dedo" cx="0" cy="0" r="10"></circle>
