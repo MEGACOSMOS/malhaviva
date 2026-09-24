@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Controlos do Mapa — Malha Viva</title>
     <meta name="description" content="Guia dos controlos do visualizador 3D Malha Viva. Navega como num mapa: arrasta com o rato, aproxima com o scroll, roda com Ctrl.">
-    <script src="/idiomas.js?v=22"></script>
+    <script src="/idiomas.js?v=23"></script>
     <script src="/comando-paginas.js?v=4" defer></script>
 
     <style>
@@ -499,15 +499,15 @@
         /* ─── Contornos ───
            Um fio de dois pontos e meio a toda a volta, de um só tom — o mais escuro do
            degradé que aqui houve — pousado sobre o fundo escuro do site. */
-        .back-link, .section, #idioma-menu, .joystick-base {
+        .back-link, .section, #idioma-menu {
             /* Sem rebordo nenhum, nem invisível: ficaria por fora do fio,
                com o fundo escuro a ver-se por baixo dele. */
             border: 0 !important;
         }
-        .back-link, .section, .joystick-base {
+        .back-link, .section {
             position: relative;
         }
-        .back-link::after, .section::after, #idioma-menu::after, .joystick-base::after {
+        .back-link::after, .section::after, #idioma-menu::after {
             content: "";
             position: absolute;
             inset: 0;
@@ -600,20 +600,6 @@
                     <span class="control-action" data-i18n="ctl.zoomVista">Aproximar visão (Zoom)</span>
                     <div class="control-keys">
                         <span class="kbd">Scroll</span>
-                    </div>
-                </div>
-                <div class="control-row">
-                    <span class="control-action" data-i18n="ctl.manipuloLigar">Ligar o manípulo</span>
-                    <div class="control-keys">
-                        <span class="kbd accent" data-i18n="ctl.manipuloDefinicoes">Definições</span>
-                        <span class="key-separator" data-i18n="ctl.manipuloCaminho">→ Interface → Manípulo</span>
-                    </div>
-                </div>
-                <div class="control-row">
-                    <span class="control-action" data-i18n="ctl.joystickAndar">Andar pelo bairro</span>
-                    <div class="control-keys">
-                        <span class="kbd accent" data-i18n="ctl.manipulo">Manípulo</span>
-                        <span class="key-separator" data-i18n="ctl.manipuloNota">arrastar o quadrado, canto inferior esquerdo</span>
                     </div>
                 </div>
             </div>
@@ -875,13 +861,6 @@
                     <div class="control-keys">
                         <span class="kbd" data-i18n="ctl.doisDedos">2 dedos</span>
                         <span class="key-separator" data-i18n="ctl.arrastarGesto">arrastar</span>
-                    </div>
-                </div>
-                <div class="control-row">
-                    <span class="control-action" data-i18n="ctl.joystickAndar">Andar pelo bairro</span>
-                    <div class="control-keys">
-                        <span class="kbd accent" data-i18n="ctl.joystick">Manípulo</span>
-                        <span class="key-separator" data-i18n="ctl.joystickNota">canto inferior esquerdo</span>
                     </div>
                 </div>
             </div>

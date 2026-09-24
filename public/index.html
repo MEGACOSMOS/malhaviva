@@ -7,7 +7,7 @@
     <meta name="description" content="Exploração 3D interativa do Bairro de Penajóia através de Gaussian Splatting. Projeto Malha Viva.">
     <!-- As línguas do site. Fica antes de tudo o resto para o texto
          nascer já na língua certa, sem piscar em português primeiro. -->
-    <script src="/idiomas.js?v=22"></script>
+    <script src="/idiomas.js?v=23"></script>
 
     <!-- O quadrado de espera, o mesmo em todo o site. Fica antes de o
          ecrã de espera se desenhar, para nascer já com a sua roupa. -->
@@ -981,102 +981,18 @@
             }
         }
 
-        /* ─── O manípulo do ecrã táctil ───
-           Um quadrado ao canto de baixo à esquerda, com um quadrado mais
-           pequeno lá dentro que se empurra com o polegar para andar pelo
-           bairro: para a frente, para trás e para os lados. Só existe em
-           ecrãs tácteis; com rato e teclado há o WASD. */
-        #joystick {
-            position: fixed;
-            /* No computador vive do lado direito; num telemóvel ou tablet
-               vai para a esquerda (ver mais abaixo). */
-            right: 92px;
-            bottom: 156px;
-            z-index: 100;
-            width: 112px;
-            height: 112px;
-            display: none;
-            background: linear-gradient(to bottom, rgba(255,255,255,0.05), transparent), rgba(5, 5, 10, 0.6);
-            box-shadow: 0 4px 15px rgba(0,0,0,0.4);
-            touch-action: none;
-            user-select: none;
-            -webkit-user-select: none;
-            opacity: 0;
-            transition: opacity 0.6s ease 0.3s;
-        }
-
-        #joystick.visivel {
-            opacity: 1;
-        }
-
-        #joystick::after {
-            content: "";
-            position: absolute;
-            inset: 0;
-            padding: 2.5px;
-            background: linear-gradient(rgba(255,255,255,0.3), rgba(255,255,255,0.3)), #05050a;
-            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-            -webkit-mask-composite: xor;
-            mask-composite: exclude;
-            pointer-events: none;
-        }
-
-        #joystick-manipulo {
-            position: absolute;
-            left: 50%;
-            top: 50%;
-            width: 40px;
-            height: 40px;
-            margin: -20px 0 0 -20px;
-            background: #ffffff;
-            transition: transform 0.15s ease;
-        }
-
-        #joystick.a-empurrar #joystick-manipulo {
-            transition: none;
-            background: rgba(255, 255, 255, 0.85);
-        }
-
-        /* O manípulo vem ligado de origem e desliga-se nas definições
-           ("Controlos → Manípulo"). É a classe no corpo da página que o
-           mostra. */
-        body.com-manipulo #joystick {
-            display: block;
-        }
-        @media (max-width: 900px) {
-            /* O rodapé sobe para cima do manípulo e do botão de partilhar. */
-            body.com-manipulo #rodape-comandos {
-                bottom: 290px;
-            }
-        }
-
         /* ─── No telemóvel ───
-           Ao alto, o manípulo encosta ao lado esquerdo e o rodapé dos
-           comandos fica por baixo dele, encostado ao fundo; a altura do
-           rodapé é medida pelo guião (--altura-do-rodape), para o manípulo
-           assentar mesmo em cima dele. Deitado, o manípulo vai para o canto
-           de baixo à esquerda e o rodapé fica ao fundo, entre o manípulo e
-           o botão de partilhar. */
+           Ao alto, o rodapé dos comandos vai de lado a lado, encostado ao
+           fundo; deitado, fica ao fundo entre o canto esquerdo e o botão
+           de partilhar. */
         @media (hover: none) and (pointer: coarse) and (orientation: portrait) {
-            /* A altura de omissão é a do rodapé de sempre ao alto: com o
-               rodapé fechado, o manípulo fica no mesmo sítio. */
-            #joystick {
-                left: 16px;
-                right: auto;
-                bottom: calc(var(--altura-do-rodape, 124px) + 28px);
-            }
-            /* O rodapé ao fundo, centrado e de lado a lado (o botão de
-               partilhar já não está no canto: vive na gaveta), com a letra
-               um pouco mais pequena para o que diz caber dentro dele. */
-            #rodape-comandos,
-            body.com-manipulo #rodape-comandos {
+            /* De lado a lado, por cima da largura que o guião lhe mede, com
+               a letra um pouco mais pequena para o que diz caber dentro. */
+            #rodape-comandos {
                 bottom: 16px;
                 left: 16px;
                 right: 16px;
                 margin: 0;
-                /* De lado a lado, por cima da largura que o guião lhe
-                   mede: assim a borda esquerda fica na mesma linha que a
-                   do manípulo, que está mesmo por cima. */
                 width: auto !important;
                 max-width: none;
                 font-size: 0.8rem;
@@ -1084,28 +1000,21 @@
             }
         }
         @media (hover: none) and (pointer: coarse) and (orientation: landscape) {
-            #joystick {
-                left: 16px;
-                right: auto;
+            #rodape-comandos {
                 bottom: 16px;
-            }
-            #rodape-comandos,
-            body.com-manipulo #rodape-comandos {
-                bottom: 16px;
-                left: 140px;
+                left: 76px;
                 right: 76px;
                 margin: 0 auto;
-                max-width: calc(100% - 216px);
+                max-width: calc(100% - 152px);
             }
         }
 
         /* ─── Os óculos de cartão ───
            Dentro deles só há o bairro, dividido em dois, e uma cruz
            pequena ao canto para sair. Tudo o resto — cabeçalho, marcadores,
-           manípulo, rodapé — sai do ecrã. */
+           rodapé — sai do ecrã. */
         body.em-cartao #header,
         body.em-cartao #annotations-container,
-        body.em-cartao #joystick,
         body.em-cartao #rodape-comandos,
         body.em-cartao #partilhar-btn,
         body.em-cartao #partilhar-menu,
@@ -2108,14 +2017,10 @@
                     </label>
                 </div>
 
-                <!-- O que se vê à volta do bairro e se pode dispensar: o
-                     manípulo e a paisagem. -->
+                <!-- O que se vê à volta do bairro e se pode dispensar: a
+                     paisagem. -->
                 <div class="settings-title" style="margin-top: 18px;" data-i18n="def.interface">Interface</div>
                 <div class="settings-options">
-                    <label class="settings-radio">
-                        <input type="checkbox" id="manipulo-ligado">
-                        <span data-i18n="def.manipulo">Manípulo</span>
-                    </label>
                     <label class="settings-radio">
                         <input type="checkbox" id="paisagem-ligada">
                         <span data-i18n="def.paisagem">Paisagem</span>
@@ -2181,12 +2086,6 @@
             <span data-i18n="rod.olhar">Olhar à volta</span>
             <span class="rodape-teclas">
                 <span class="rodape-tecla"><span data-i18n="rod.umDedo">1 dedo</span> · <span data-i18n="rod.arrastar">arrastar</span></span>
-            </span>
-        </div>
-        <div class="rodape-item rodape-toque">
-            <span data-i18n="rod.andar">Andar</span>
-            <span class="rodape-teclas">
-                <span class="rodape-tecla" data-i18n="rod.joystick">manípulo</span>
             </span>
         </div>
         <div class="rodape-item rodape-toque">
@@ -2288,12 +2187,6 @@
                     parseFloat(estilo.borderLeftWidth) + parseFloat(estilo.borderRightWidth);
                 rodape.style.width = (Math.ceil(maior + moldura) + 1) + 'px';
             }
-            // A altura do rodapé, para o manípulo se pousar em cima dele
-            // no telemóvel ao alto. Fechado o rodapé, o manípulo não desce:
-            // fica a última altura medida (ou a de sempre, se nunca a houve).
-            if (rodape.isConnected && getComputedStyle(rodape).display !== 'none' && rodape.offsetHeight > 0) {
-                document.documentElement.style.setProperty('--altura-do-rodape', rodape.offsetHeight + 'px');
-            }
         };
 
         // Segue o ecrã de espera: sai ele, entra o rodapé; volta ele, sai.
@@ -2322,93 +2215,6 @@
         ajustarLargura();
 
         window.rodapeDosComandos = { mexeu };
-    })();
-    </script>
-
-    <!-- O manípulo do ecrã táctil. É só desenho para quem ouve a página:
-         o teclado e os marcadores continuam a ser o caminho de quem não vê. -->
-    <div id="joystick" aria-hidden="true">
-        <div id="joystick-manipulo"></div>
-    </div>
-
-    <script>
-    /**
-     * O manípulo do ecrã táctil.
-     *
-     * Um polegar no quadrado empurra o quadrado pequeno; a distância ao
-     * centro, de menos um a um em cada eixo, é dita à câmara a cada
-     * mexida, e ela anda por ali como andaria com as teclas. A área é um
-     * quadrado, e o quadrado pequeno anda dentro dela sem sair — cada eixo
-     * conta por si, sem arredondar a um círculo. Ao largar, volta ao meio
-     * e a câmara pára. Nasce com o cabeçalho, quando o ecrã de espera sai.
-     */
-    (function () {
-        const area = document.getElementById('joystick');
-        const manipulo = document.getElementById('joystick-manipulo');
-        const overlay = document.getElementById('loading-overlay');
-        if (!area || !manipulo || !overlay) return;
-
-        let dedo = null;
-
-        // Os comandos da câmara só existem depois de o motor acordar;
-        // procuram-se quando fazem falta.
-        const comandos = () => {
-            const motor = document.querySelector('pc-app');
-            const app = motor && motor.app;
-            const camara = app && app.root && app.root.findByName('camera');
-            return camara && camara.script && camara.script.cameraControls;
-        };
-
-        const dizer = (lado, frente) => {
-            const c = comandos();
-            if (c && typeof c.setJoystick === 'function') c.setJoystick(lado, frente);
-        };
-
-        const empurrar = (e) => {
-            const caixa = area.getBoundingClientRect();
-            // Até onde o quadrado pequeno pode ir, em cada eixo.
-            const alcance = (caixa.width - manipulo.offsetWidth) / 2;
-            const dx = Math.max(-alcance, Math.min(alcance, e.clientX - (caixa.left + caixa.width / 2)));
-            const dy = Math.max(-alcance, Math.min(alcance, e.clientY - (caixa.top + caixa.height / 2)));
-            manipulo.style.transform = 'translate(' + dx + 'px, ' + dy + 'px)';
-            dizer(dx / alcance, -dy / alcance);
-        };
-
-        const largar = () => {
-            dedo = null;
-            area.classList.remove('a-empurrar');
-            manipulo.style.transform = '';
-            dizer(0, 0);
-        };
-
-        area.addEventListener('pointerdown', (e) => {
-            if (dedo !== null) return;
-            dedo = e.pointerId;
-            try { area.setPointerCapture(dedo); } catch (erro) { /* sem captura, anda na mesma */ }
-            area.classList.add('a-empurrar');
-            empurrar(e);
-            e.preventDefault();
-        });
-        area.addEventListener('pointermove', (e) => {
-            if (e.pointerId !== dedo) return;
-            empurrar(e);
-            e.preventDefault();
-        });
-        area.addEventListener('pointerup', (e) => { if (e.pointerId === dedo) largar(); });
-        area.addEventListener('pointercancel', (e) => { if (e.pointerId === dedo) largar(); });
-        area.addEventListener('lostpointercapture', () => { if (dedo !== null) largar(); });
-
-        // Nasce com o cabeçalho; esconde-se se o ecrã de espera voltar.
-        const seguir = () => {
-            if (overlay.classList.contains('hidden')) {
-                area.classList.add('visivel');
-            } else {
-                area.classList.remove('visivel');
-                largar();
-            }
-        };
-        new MutationObserver(seguir).observe(overlay, { attributes: true, attributeFilter: ['class'] });
-        seguir();
     })();
     </script>
 
@@ -2672,10 +2478,10 @@
 
         <!-- Assets -->
         <pc-asset id="splat-scene" src="splat/lod-meta.json" type="gsplat"></pc-asset>
-        <pc-asset id="camera-controls-script" src="./camera-controls.mjs?v=29" type="script"></pc-asset>
+        <pc-asset id="camera-controls-script" src="./camera-controls.mjs?v=30" type="script"></pc-asset>
         <pc-asset id="camera-coords-script" src="./coords.mjs?v=7" type="script"></pc-asset>
         <pc-asset id="annotations-script" src="./annotations.mjs?v=84" type="script"></pc-asset>
-        <pc-asset id="trail-script" src="./trail.mjs?v=27" type="script"></pc-asset>
+        <pc-asset id="trail-script" src="./trail.mjs?v=28" type="script"></pc-asset>
         <pc-asset id="measure-script" src="./measure.mjs?v=1" type="script"></pc-asset>
         <pc-asset id="escala-script" src="./escala.mjs?v=1" type="script"></pc-asset>
         <pc-asset id="compass-script" src="./compass.mjs?v=2" type="script"></pc-asset>
@@ -3454,20 +3260,6 @@ void modifySplatColor(vec3 center, inout vec4 color) {
                 const gemeo = document.getElementById('ceu-ligado');
                 if (gemeo) gemeo.checked = caixaDaPaisagem.checked;
             });
-        }
-
-        // O manípulo do ecrã. Vem ligado em qualquer aparelho; quem não o
-        // quiser desliga-o nas definições, e a escolha fica guardada.
-        const caixaDoManipulo = document.getElementById('manipulo-ligado');
-        if (caixaDoManipulo) {
-            const guardado = localStorage.getItem('manipulo');
-            caixaDoManipulo.checked = guardado ? guardado === 'on' : true;
-            const aplicarManipulo = () => document.body.classList.toggle('com-manipulo', caixaDoManipulo.checked);
-            caixaDoManipulo.addEventListener('change', () => {
-                localStorage.setItem('manipulo', caixaDoManipulo.checked ? 'on' : 'off');
-                aplicarManipulo();
-            });
-            aplicarManipulo();
         }
 
         tiposDeAnotacao.forEach(({ id, chave }) => {
