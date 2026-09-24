@@ -7,7 +7,7 @@
     <meta name="description" content="Exploração 3D interativa do Bairro de Penajóia através de Gaussian Splatting. Projeto Malha Viva.">
     <!-- As línguas do site. Fica antes de tudo o resto para o texto
          nascer já na língua certa, sem piscar em português primeiro. -->
-    <script src="/idiomas.js?v=23"></script>
+    <script src="/idiomas.js?v=24"></script>
 
     <!-- O quadrado de espera, o mesmo em todo o site. Fica antes de o
          ecrã de espera se desenhar, para nascer já com a sua roupa. -->
@@ -841,181 +841,12 @@
             outline-offset: 2px;
         }
 
-        /* ─── Rodapé dos comandos ───
-           Uma tira ao fundo do ecrã, a meio e só da largura do que diz, com
-           os três gestos que fazem falta para andar pelo bairro. Nasce com
-           o cabeçalho, quando o ecrã de espera sai; esbate-se quase até
-           desaparecer enquanto se navega e volta mal o rato lhe passa por
-           cima; e tem uma cruz no canto para quem já não precisa dela —
-           fechada, não volta a aparecer. Veste-se como os outros painéis,
-           mas sem a orla escura deles: o contorno de luz fica logo na
-           borda, sem um fio de fundo por fora. */
-        #rodape-comandos {
-            position: fixed;
-            bottom: 40px;
-            left: 0;
-            right: 0;
-            margin: 0 auto;
-            /* Só da largura do que diz. Quando o que diz passa a duas
-               linhas, é o guião que mede a mais comprida e acerta a
-               largura por ela (ver `ajustarLargura`). */
-            width: fit-content;
-            /* Deixa livre, de cada lado, o canto onde vive o botão de
-               partilhar: antes de lhe chegar, o que diz passa a duas
-               linhas. */
-            max-width: calc(100% - 152px);
-            z-index: 100;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            flex-wrap: wrap;
-            gap: 10px 30px;
-            padding: 15px 54px 15px 24px;
-            background: linear-gradient(to bottom, rgba(255,255,255,0.05), transparent), #05050a;
-            border: none;
-            border-radius: 0;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.4);
-            font-size: 0.88rem;
-            color: var(--color-text-muted);
-            opacity: 0;
-            transform: translateY(8px);
-            pointer-events: none;
-        }
-
-        /* Nasce devagar, com o cabeçalho; depois de nascido, o que lhe
-           acontece é mais breve. */
-        #rodape-comandos.visivel {
-            opacity: 1;
-            transform: translateY(0);
-            pointer-events: auto;
-            transition: opacity 0.6s ease 0.3s, transform 0.6s ease 0.3s;
-        }
-
-        #rodape-comandos.visivel.nascido {
-            transition: opacity 0.4s ease, transform 0.4s ease;
-        }
-
-        /* Esbatido: fica quase transparente, para não se pôr à frente do
-           bairro. Assim fica enquanto se navega e sempre que o rato sai de
-           cima dele; volta, num acender lento, quando o rato lhe passa por
-           cima — ou alguém lhe chega pela tecla Tab. */
-        #rodape-comandos.visivel.a-navegar {
-            opacity: 0.08;
-            transition: opacity 0.4s ease, transform 0.4s ease;
-        }
-
-        #rodape-comandos.visivel:hover,
-        #rodape-comandos.visivel:focus-within,
-        #rodape-comandos.visivel.a-navegar:hover,
-        #rodape-comandos.visivel.a-navegar:focus-within {
-            opacity: 1;
-            transition: opacity 0.7s ease, transform 0.7s ease;
-        }
-
-        .rodape-item {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            white-space: nowrap;
-        }
-
-        .rodape-teclas {
-            display: flex;
-            align-items: center;
-            gap: 5px;
-        }
-
-        /* Uma tecla, como as da página dos controlos. */
-        .rodape-tecla {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 5px;
-            min-width: 28px;
-            height: 28px;
-            padding: 0 9px;
-            border: 2.5px solid rgba(255, 255, 255, 0.25);
-            font-family: var(--font-main);
-            font-size: 0.76rem;
-            font-weight: 600;
-            letter-spacing: 0.02em;
-            color: var(--color-text);
-        }
-
-        .rodape-tecla svg {
-            display: block;
-        }
-
-        /* A cruz de fechar, no canto de cima à direita. */
-        #rodape-comandos .menu-fechar {
-            top: 6px;
-            right: 6px;
-            width: 26px;
-            height: 26px;
-        }
-
-        /* Há duas versões do que se diz: a do rato e teclado, e a dos
-           dedos. Só se vê a que serve ao aparelho. */
-        .rodape-toque {
-            display: none;
-        }
-
-        @media (hover: none) and (pointer: coarse) {
-            .rodape-rato {
-                display: none;
-            }
-            .rodape-toque {
-                display: flex;
-            }
-        }
-
-        @media (max-width: 640px) {
-            /* Num ecrã estreito o rodapé vai quase de lado a lado e
-               chocava com o botão de partilhar, no canto: sobe para cima
-               dele. */
-            #rodape-comandos {
-                bottom: 80px;
-                max-width: calc(100% - 32px);
-                gap: 8px 22px;
-                padding: 13px 46px 13px 18px;
-            }
-        }
-
-        /* ─── No telemóvel ───
-           Ao alto, o rodapé dos comandos vai de lado a lado, encostado ao
-           fundo; deitado, fica ao fundo entre o canto esquerdo e o botão
-           de partilhar. */
-        @media (hover: none) and (pointer: coarse) and (orientation: portrait) {
-            /* De lado a lado, por cima da largura que o guião lhe mede, com
-               a letra um pouco mais pequena para o que diz caber dentro. */
-            #rodape-comandos {
-                bottom: 16px;
-                left: 16px;
-                right: 16px;
-                margin: 0;
-                width: auto !important;
-                max-width: none;
-                font-size: 0.8rem;
-                padding: 12px 40px 12px 14px;
-            }
-        }
-        @media (hover: none) and (pointer: coarse) and (orientation: landscape) {
-            #rodape-comandos {
-                bottom: 16px;
-                left: 76px;
-                right: 76px;
-                margin: 0 auto;
-                max-width: calc(100% - 152px);
-            }
-        }
-
         /* ─── Os óculos de cartão ───
            Dentro deles só há o bairro, dividido em dois, e uma cruz
            pequena ao canto para sair. Tudo o resto — cabeçalho, marcadores,
-           rodapé — sai do ecrã. */
+           botões — sai do ecrã. */
         body.em-cartao #header,
         body.em-cartao #annotations-container,
-        body.em-cartao #rodape-comandos,
         body.em-cartao #partilhar-btn,
         body.em-cartao #partilhar-menu,
         body.em-cartao #camera-stuck-popup {
@@ -1329,7 +1160,7 @@
            degradé que aqui houve — pousado sobre o fundo escuro do site. */
         .panel-glass, .btn-glass, .action-btn, .settings-panel, .filter-btn, 
         #coordinates-info, #camera-info, #loading-bar-container,
-        #definicoes-menu, #dev-menu, #idioma-menu, #rodape-comandos, #camera-stuck-popup, #arranque-popup, #partilhar-menu {
+        #definicoes-menu, #dev-menu, #idioma-menu, #camera-stuck-popup, #arranque-popup, #partilhar-menu {
             /* Sem rebordo nenhum, nem invisível: um rebordo invisível fica
                por fora do fio e deixa ver o fundo escuro por baixo dele,
                como um segundo fio, preto, a toda a volta. */
@@ -1340,7 +1171,7 @@
         }
         .panel-glass::after, .btn-glass::after, .action-btn::after, .settings-panel::after, .filter-btn::after,
         #coordinates-info::after, #camera-info::after, #loading-bar-container::after,
-        #definicoes-menu::after, #dev-menu::after, #idioma-menu::after, #rodape-comandos::after, #camera-stuck-popup::after, #arranque-popup::after, #partilhar-menu::after {
+        #definicoes-menu::after, #dev-menu::after, #idioma-menu::after, #camera-stuck-popup::after, #arranque-popup::after, #partilhar-menu::after {
             content: "";
             position: absolute;
             inset: 0;
@@ -2041,182 +1872,6 @@
             </button>
         </div>
     </div>
-
-    <!-- Rodapé dos comandos: os três gestos que fazem falta para andar
-         pelo bairro. A versão do rato e a dos dedos estão as duas aqui, e
-         é a roupa que decide qual se vê. O que a cruz faz, e o esbater
-         enquanto se navega, está no pequeno guião logo a seguir. -->
-    <div id="rodape-comandos" role="note" aria-label="Comandos" data-i18n-aria="rod.titulo">
-        <button type="button" class="menu-fechar" aria-label="Fechar os comandos" title="Fechar os comandos" data-i18n-aria="rod.fechar" data-i18n-title="rod.fechar">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true">
-                <line x1="5" y1="5" x2="19" y2="19"></line>
-                <line x1="19" y1="5" x2="5" y2="19"></line>
-            </svg>
-        </button>
-
-        <div class="rodape-item rodape-rato">
-            <span data-i18n="rod.olhar">Olhar à volta</span>
-            <span class="rodape-teclas">
-                <span class="rodape-tecla">
-                    <svg width="11" height="14" viewBox="0 0 12 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true">
-                        <rect x="1" y="1" width="10" height="14"></rect>
-                        <line x1="6" y1="4" x2="6" y2="7"></line>
-                    </svg>
-                    <span data-i18n="rod.arrastar">arrastar</span>
-                </span>
-            </span>
-        </div>
-        <div class="rodape-item rodape-rato">
-            <span data-i18n="rod.andar">Andar</span>
-            <span class="rodape-teclas">
-                <span class="rodape-tecla">W</span>
-                <span class="rodape-tecla">A</span>
-                <span class="rodape-tecla">S</span>
-                <span class="rodape-tecla">D</span>
-            </span>
-        </div>
-        <div class="rodape-item rodape-rato">
-            <span data-i18n="rod.zoom">Aproximar / afastar</span>
-            <span class="rodape-teclas">
-                <span class="rodape-tecla">Scroll</span>
-            </span>
-        </div>
-
-        <div class="rodape-item rodape-toque">
-            <span data-i18n="rod.olhar">Olhar à volta</span>
-            <span class="rodape-teclas">
-                <span class="rodape-tecla"><span data-i18n="rod.umDedo">1 dedo</span> · <span data-i18n="rod.arrastar">arrastar</span></span>
-            </span>
-        </div>
-        <div class="rodape-item rodape-toque">
-            <span data-i18n="rod.zoom">Aproximar / afastar</span>
-            <span class="rodape-teclas">
-                <span class="rodape-tecla"><span data-i18n="rod.doisDedos">2 dedos</span> · <span data-i18n="rod.pinca">pinça</span></span>
-            </span>
-        </div>
-    </div>
-
-    <script>
-    /**
-     * O rodapé dos comandos: quando aparece, quando se esbate, e a cruz.
-     *
-     * Aparece com o cabeçalho, mal o ecrã de espera sai — e esconde-se se
-     * ele voltar, ao repor o bairro depois de uma janela 360º. Enquanto se
-     * navega fica quase transparente: quem sabe que a câmara se mexeu é o
-     * guião do bairro, que avisa aqui por `mexeu`. Assim fica até o rato
-     * lhe passar por cima — não volta sozinho com o tempo — e volta a
-     * esbater-se mal o rato sai. A cruz fecha-o de vez: fica escrito na
-     * memória do navegador, e nas visitas seguintes já não nasce.
-     *
-     * A tira é só da largura do que diz, também quando o que diz não cabe
-     * numa linha: nesse caso mede-se a linha mais comprida e a tira fica
-     * dessa medida, em vez de se esticar até à margem e ficar com ar dos
-     * lados. Mede-se de novo sempre que a janela muda de tamanho ou a
-     * língua muda — que é quando as palavras mudam de comprimento.
-     */
-    (function () {
-        const rodape = document.getElementById('rodape-comandos');
-        const overlay = document.getElementById('loading-overlay');
-        if (!rodape || !overlay) return;
-
-        const CHAVE = 'rodape-comandos';
-
-        // Quem fecha, não volta a ver.
-        const fecharDeVez = () => {
-            rodape.remove();
-            window.rodapeDosComandos = { mexeu: function () {} };
-        };
-
-        let fechado = false;
-        try { fechado = localStorage.getItem(CHAVE) === 'fechado'; } catch (e) { /* sem memória: aparece */ }
-        if (fechado) { fecharDeVez(); return; }
-
-        // A câmara mexeu-se: esbate-se. Não há relógio a trazê-lo de volta —
-        // quem o traz é o rato a passar-lhe por cima, ou um dedo a tocar-lhe
-        // num ecrã táctil; e mal o rato sai de cima dele, esbate-se outra
-        // vez. Enquanto o rato lá está, a câmara a acabar de deslizar não
-        // conta: o rodapé fica aceso até o rato sair.
-        let sobre = false;
-        const mexeu = () => { if (!sobre) rodape.classList.add('a-navegar'); };
-        rodape.addEventListener('pointerenter', () => {
-            sobre = true;
-            rodape.classList.remove('a-navegar');
-        });
-        rodape.addEventListener('pointerleave', () => {
-            sobre = false;
-            rodape.classList.add('a-navegar');
-        });
-        const voltar = () => rodape.classList.remove('a-navegar');
-
-        rodape.querySelector('.menu-fechar').addEventListener('click', () => {
-            try { localStorage.setItem(CHAVE, 'fechado'); } catch (e) { /* sem memória: fecha só desta vez */ }
-            fecharDeVez();
-        });
-
-        /**
-         * Acerta a largura da tira pela linha mais comprida do que ela diz.
-         *
-         * Numa linha só, a tira já é da largura do que diz e não há nada a
-         * fazer. Em duas ou mais, o navegador estica-a até ao máximo que
-         * lhe é permitido e arruma as linhas lá dentro, com ar dos lados:
-         * mede-se então cada linha — os gestos que ficaram à mesma altura —
-         * e a tira fica da medida da mais comprida, mais a moldura. Uma
-         * folga de um ponto evita que um arredondamento mande um gesto para
-         * a linha de baixo.
-         */
-        const ajustarLargura = () => {
-            if (!rodape.isConnected) return;
-            rodape.style.width = '';
-            const gestos = Array.from(rodape.querySelectorAll('.rodape-item'))
-                .filter((el) => el.offsetParent !== null);
-            const linhas = [];
-            gestos.forEach((el) => {
-                const r = el.getBoundingClientRect();
-                const linha = linhas.find((l) => Math.abs(l.topo - r.top) < 1);
-                if (linha) {
-                    linha.esq = Math.min(linha.esq, r.left);
-                    linha.dir = Math.max(linha.dir, r.right);
-                } else {
-                    linhas.push({ topo: r.top, esq: r.left, dir: r.right });
-                }
-            });
-            if (linhas.length >= 2) {
-                const maior = Math.max.apply(null, linhas.map((l) => l.dir - l.esq));
-                const estilo = getComputedStyle(rodape);
-                const moldura = parseFloat(estilo.paddingLeft) + parseFloat(estilo.paddingRight) +
-                    parseFloat(estilo.borderLeftWidth) + parseFloat(estilo.borderRightWidth);
-                rodape.style.width = (Math.ceil(maior + moldura) + 1) + 'px';
-            }
-        };
-
-        // Segue o ecrã de espera: sai ele, entra o rodapé; volta ele, sai.
-        // O nascer é devagar; passado esse instante fica marcado como
-        // nascido, e daí em diante responde depressa.
-        let aNascer = null;
-        const seguir = () => {
-            clearTimeout(aNascer);
-            if (overlay.classList.contains('hidden')) {
-                ajustarLargura();
-                rodape.classList.add('visivel');
-                aNascer = setTimeout(() => rodape.classList.add('nascido'), 1000);
-            } else {
-                rodape.classList.remove('visivel', 'nascido');
-                voltar();
-            }
-        };
-        new MutationObserver(seguir).observe(overlay, { attributes: true, attributeFilter: ['class'] });
-        seguir();
-
-        window.addEventListener('resize', ajustarLargura);
-        window.addEventListener('idiomamudou', ajustarLargura);
-        // A letra do site chega da rede um instante depois da página, e é
-        // mais larga ou mais estreita do que a que a substitui entretanto.
-        if (document.fonts && document.fonts.ready) document.fonts.ready.then(ajustarLargura);
-        ajustarLargura();
-
-        window.rodapeDosComandos = { mexeu };
-    })();
-    </script>
 
     <!-- A cruz para sair dos óculos de cartão. -->
     <button type="button" id="cartao-sair" aria-label="Sair dos óculos" title="Sair dos óculos" data-i18n-aria="cab.sairCartao" data-i18n-title="cab.sairCartao">
@@ -3486,31 +3141,6 @@ void modifySplatColor(vec3 center, inout vec4 color) {
             if (comandosDaCamara) comandosDaCamara.setCupula(ceu);
             ligarComandosDoCeu(ceu);
             if (caixaDaPaisagem) caixaDaPaisagem.checked = ceu.definicoes.ligado !== false;
-
-            // --- Rodapé dos comandos ---
-            // O rodapé esbate-se enquanto se navega. Em vez de ouvir cada
-            // rato, tecla, dedo e comando de jogo, olha-se para onde todos
-            // vão dar: a câmara. Se ela andou ou virou desde a imagem
-            // anterior, está-se a navegar — e o rodapé é avisado. As
-            // medidas são pequenas de propósito, para o travão a acabar de
-            // parar não contar como andar.
-            if (camaraDoMapa && window.rodapeDosComandos) {
-                const ANDOU = 0.002;    // metros, de uma imagem para a outra
-                const VIROU = 0.005;    // graus
-                const posicaoAnterior = camaraDoMapa.getPosition().clone();
-                const anguloAnterior = camaraDoMapa.getEulerAngles().clone();
-                app.on('update', () => {
-                    const posicao = camaraDoMapa.getPosition();
-                    const angulo = camaraDoMapa.getEulerAngles();
-                    const andou = posicao.distance(posicaoAnterior) > ANDOU;
-                    const virou = Math.abs(angulo.x - anguloAnterior.x) > VIROU ||
-                        Math.abs(angulo.y - anguloAnterior.y) > VIROU ||
-                        Math.abs(angulo.z - anguloAnterior.z) > VIROU;
-                    if (andou || virou) window.rodapeDosComandos.mexeu();
-                    posicaoAnterior.copy(posicao);
-                    anguloAnterior.copy(angulo);
-                });
-            }
 
             // --- Modo VR ---
             // O botão só aparece a quem tenha óculos; a quem não tenha, não
