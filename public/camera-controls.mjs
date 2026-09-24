@@ -8,6 +8,7 @@ import {
     KeyboardMouseSource,
     MultiTouchSource,
     OrbitController,
+    Picker,
     Pose,
     PROJECTION_PERSPECTIVE,
     Script,
@@ -164,6 +165,62 @@ const screenToWorld = (camera, dx, dy, dz, out = new Vec3()) => {
 // esteja a vista aproximada ou não.
 const GRAUS_POR_LARGURA_DE_ECRA = 180;
 
+// ─── Apontar e ir ───
+// Um clique (ou um toque) num sítio do bairro leva a câmara até lá: vira-se
+// para ele e aproxima-se, até o ter no meio do ecrã e mais perto. A viagem
+// demora mais ou menos o mesmo, perto ou longe — e por isso, quanto mais
+// longe o sítio, mais depressa se anda. Começa devagar e acaba devagar.
+
+// Quanto o rato ou o dedo podem mexer, entre carregar e largar, para ainda
+// contar como clique e não como arrasto (pontos de ecrã).
+const CLIQUE_MEXIDA_RATO = 6;
+const CLIQUE_MEXIDA_DEDO = 12;
+// Quanto tempo pode durar um clique, em milissegundos. Mais do que isto é
+// alguém a segurar o bairro, não a apontar.
+const CLIQUE_DURACAO_MAXIMA = 450;
+
+// A duração da viagem, em segundos: a mais curta, e quanto se lhe soma até
+// à distância em que deixa de crescer (em metros). Assim uma viagem de dez
+// metros anda a uns dez metros por segundo e uma de duzentos a mais de cem.
+const VIAGEM_DURACAO_MINIMA = 0.9;
+const VIAGEM_DURACAO_EXTRA = 0.6;
+const VIAGEM_DISTANCIA_LONGA = 150;
+
+// A inclinação com que se chega ao sítio, em graus para baixo: a que a
+// câmara já tinha, mas nunca menos de VIAGEM_INCLINACAO_MINIMA (senão, com
+// a câmara quase ao alto, o sítio ficava a quilómetros) nem mais de
+// VIAGEM_INCLINACAO_MAXIMA (a olhar a pique perde-se o bairro).
+const VIAGEM_INCLINACAO_MINIMA = 20;
+const VIAGEM_INCLINACAO_MAXIMA = 70;
+
+// Quanto se aproxima do sítio em cada clique: fica-se a esta fracção da
+// distância a que se estava, e nunca a menos de VIAGEM_DISTANCIA_MINIMA
+// metros dele.
+const VIAGEM_APROXIMACAO = 0.45;
+const VIAGEM_DISTANCIA_MINIMA = 25;
+
+// A altura mais baixa a que a câmara anda (a mesma de `update`, que não a
+// deixa furar o bairro).
+const ALTURA_MINIMA_DA_CAMARA = 15;
+
+// A que altura fica o chão do bairro, para quando a placa gráfica não diz
+// onde se carregou (em metros, no sistema do mapa).
+const ALTURA_DO_CHAO = -3;
+
+// Até onde um sítio pode estar para lá da beira do terreno e ainda contar
+// como bairro (em metros). Mais longe é o céu ou a paisagem ao fundo, e aí
+// o clique não leva a lado nenhum.
+const FOLGA_FORA_DO_TERRENO = 25;
+
+/**
+ * Começa devagar, anda, e acaba devagar (a curva cúbica de entrada e
+ * saída).
+ *
+ * @param {number} t - De zero a um.
+ * @returns {number} De zero a um.
+ */
+const entradaESaida = t => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+
 const MobileInputLayout = {
     JOYSTICK_JOYSTICK: 'joystick-joystick',
     JOYSTICK_TOUCH: 'joystick-touch',
@@ -314,6 +371,25 @@ class CameraControls extends Script {
      * @private
      */
     _setas = new Vec3();
+
+    /**
+     * A viagem em curso, de um clique no bairro até ao sítio apontado, ou
+     * nada. Ver `_irAte`.
+     *
+     * @type {{de: Vec3, para: Vec3, inclinacao0: number, inclinacao1: number,
+     *         rumo0: number, rumo1: number, t: number, duracao: number}|null}
+     * @private
+     */
+    _viagem = null;
+
+    /**
+     * O leitor de profundidade que diz em que sítio do bairro se carregou.
+     * Nasce no primeiro clique.
+     *
+     * @type {Picker|null}
+     * @private
+     */
+    _leitorDoSitio = null;
 
     _state = {
         axis: new Vec3(),
@@ -829,6 +905,9 @@ class CameraControls extends Script {
         this._flyMobileInput.attach(this.app.graphicsDevice.canvas);
         this._gamepadInput.attach(this.app.graphicsDevice.canvas);
 
+        // Apontar e ir: um clique no bairro leva a câmara até lá.
+        this._escutarCliques(this.app.graphicsDevice.canvas);
+
         // Native wheel event for FOV Zoom - Attaching to window with capture to bypass engine suppression
         if (typeof window !== 'undefined') {
             window.addEventListener('wheel', (e) => {
@@ -893,6 +972,308 @@ class CameraControls extends Script {
 
         this._flyController.destroy();
         this._orbitController.destroy();
+
+        if (this._largarCliques) {
+            this._largarCliques();
+        }
+    }
+
+    /**
+     * Ouve os cliques e os toques no bairro, e distingue-os dos arrastos.
+     *
+     * Conta como clique o que se larga depressa e quase no mesmo sítio em
+     * que se carregou, com o botão esquerdo, sem Ctrl, Shift nem Alt, e
+     * com um dedo só do princípio ao fim: dois dedos são pinça ou
+     * deslize, nunca um clique. Os marcadores e os menus estão por cima do
+     * bairro e ficam-lhe com os cliques; aqui só chegam os do bairro.
+     *
+     * @param {HTMLCanvasElement} tela - A tela onde o bairro é desenhado.
+     * @private
+     */
+    _escutarCliques(tela) {
+        /** @type {Map<number, {x: number, y: number, t: number}>} */
+        const pousados = new Map();
+        let variosDedos = false;
+
+        const aoPousar = (e) => {
+            if (pousados.size === 0) {
+                variosDedos = false;
+            }
+            pousados.set(e.pointerId, { x: e.clientX, y: e.clientY, t: performance.now() });
+            if (pousados.size > 1) {
+                variosDedos = true;
+            }
+        };
+
+        const aoLargar = (e) => {
+            const inicio = pousados.get(e.pointerId);
+            pousados.delete(e.pointerId);
+            if (!inicio || variosDedos) {
+                return;
+            }
+            if (e.pointerType === 'mouse' && e.button !== 0) {
+                return;
+            }
+            if (e.ctrlKey || e.shiftKey || e.altKey || e.metaKey) {
+                return;
+            }
+            const mexida = Math.hypot(e.clientX - inicio.x, e.clientY - inicio.y);
+            const limite = e.pointerType === 'mouse' ? CLIQUE_MEXIDA_RATO : CLIQUE_MEXIDA_DEDO;
+            if (mexida > limite || performance.now() - inicio.t > CLIQUE_DURACAO_MAXIMA) {
+                return;
+            }
+            this._cliqueNoBairro(e.clientX, e.clientY);
+        };
+
+        // O navegador tirou o dedo ao site (para rolar, para um gesto dele):
+        // o que ia a meio já não é um clique.
+        const aoDesistir = (e) => {
+            pousados.delete(e.pointerId);
+            variosDedos = true;
+        };
+
+        tela.addEventListener('pointerdown', aoPousar);
+        tela.addEventListener('pointerup', aoLargar);
+        tela.addEventListener('pointercancel', aoDesistir);
+
+        this._largarCliques = () => {
+            tela.removeEventListener('pointerdown', aoPousar);
+            tela.removeEventListener('pointerup', aoLargar);
+            tela.removeEventListener('pointercancel', aoDesistir);
+        };
+    }
+
+    /**
+     * Carregou-se num ponto do bairro: descobre-se que sítio é, e vai-se lá.
+     *
+     * Não se vai a lado nenhum com os óculos postos, nem com as
+     * ferramentas de medir ou de desenhar trilhos ligadas no menu de
+     * desenvolvedor — aí o clique é delas.
+     *
+     * @param {number} x - Onde se carregou, em pontos da janela.
+     * @param {number} y - Onde se carregou, em pontos da janela.
+     * @private
+     */
+    _cliqueNoBairro(x, y) {
+        if (!this.enabled || this.app.xr?.active) {
+            return;
+        }
+        if (typeof document !== 'undefined') {
+            if (document.body.classList.contains('em-cartao')) {
+                return;
+            }
+            const medir = document.getElementById('dev-measure-mode');
+            const trilhos = document.getElementById('dev-trail-edit');
+            if ((medir && medir.checked) || (trilhos && trilhos.checked)) {
+                return;
+            }
+        }
+
+        const caixa = this.app.graphicsDevice.canvas.getBoundingClientRect();
+        const px = x - caixa.left;
+        const py = y - caixa.top;
+
+        this._sitioEm(px, py).then((sitio) => {
+            if (sitio) {
+                this._irAte(sitio);
+                this._marcarOndeSeCarregou(x, y);
+            }
+        });
+    }
+
+    /**
+     * O sítio do bairro que está num ponto do ecrã, ou nada se ali só
+     * houver céu.
+     *
+     * Pergunta-se à placa gráfica a que distância está o que ela desenhou
+     * nesse ponto — é a maneira de acertar no telhado, na rua ou na encosta
+     * que lá está de facto. Se ela não souber, vale o chão do bairro, um
+     * plano à altura de ALTURA_DO_CHAO.
+     *
+     * @param {number} px - Na tela, da esquerda.
+     * @param {number} py - Na tela, de cima.
+     * @returns {Promise<Vec3|null>} O sítio.
+     * @private
+     */
+    _sitioEm(px, py) {
+        const tela = this.app.graphicsDevice.canvas;
+        // A um quarto da resolução chega para acertar num sítio, e poupa a
+        // placa gráfica.
+        const ESCALA = 0.25;
+        const largura = Math.max(1, Math.floor(tela.clientWidth * ESCALA));
+        const altura = Math.max(1, Math.floor(tela.clientHeight * ESCALA));
+        const noChao = () => this._sitioValido(this._sitioNoChao(px, py));
+
+        try {
+            if (!this._leitorDoSitio) {
+                this._leitorDoSitio = new Picker(this.app, largura, altura, true);
+            } else if (this._leitorDoSitio.width !== largura || this._leitorDoSitio.height !== altura) {
+                this._leitorDoSitio.resize(largura, altura);
+            }
+            this._leitorDoSitio.prepare(this._camera, this.app.scene);
+            return this._leitorDoSitio.getWorldPointAsync(Math.floor(px * ESCALA), Math.floor(py * ESCALA))
+            .then(ponto => (ponto ? this._sitioValido(ponto.clone()) : noChao()))
+            .catch(() => noChao());
+        } catch (e) {
+            return Promise.resolve(noChao());
+        }
+    }
+
+    /**
+     * Onde o raio que sai da câmara por um ponto do ecrã bate no chão do
+     * bairro, ou nada se o raio for para o céu.
+     *
+     * @param {number} px - Na tela, da esquerda.
+     * @param {number} py - Na tela, de cima.
+     * @returns {Vec3|null} O sítio.
+     * @private
+     */
+    _sitioNoChao(px, py) {
+        const origem = this._camera.screenToWorld(px, py, this._camera.nearClip, new Vec3());
+        const direcao = this._camera.screenToWorld(px, py, this._camera.farClip, new Vec3()).sub(origem).normalize();
+        if (direcao.y > -0.01) {
+            return null;
+        }
+        const t = (ALTURA_DO_CHAO - origem.y) / direcao.y;
+        return t > 0 ? origem.add(direcao.mulScalar(t)) : null;
+    }
+
+    /**
+     * Deixa passar só os sítios que são bairro: o céu e a paisagem ao
+     * fundo também são desenhados, mas não são sítio aonde se vá.
+     *
+     * @param {Vec3|null} sitio - O sítio.
+     * @returns {Vec3|null} O mesmo sítio, ou nada.
+     * @private
+     */
+    _sitioValido(sitio) {
+        if (!sitio) {
+            return null;
+        }
+        const camara = this._pose.position;
+        if (sitio.y >= camara.y) {
+            return null;
+        }
+        if (this._playArea && typeof this._playArea.distanceTo === 'function') {
+            const fora = this._playArea.contains(sitio.x, sitio.z) ? 0 : this._playArea.distanceTo(sitio.x, sitio.z);
+            if (!(fora <= FOLGA_FORA_DO_TERRENO)) {
+                return null;
+            }
+        }
+        return sitio;
+    }
+
+    /**
+     * Põe a câmara a caminho de um sítio do bairro.
+     *
+     * A câmara vira-se para o sítio e aproxima-se dele: acaba a
+     * VIAGEM_APROXIMACAO da distância a que estava (nunca a menos de
+     * VIAGEM_DISTANCIA_MINIMA), a olhar para ele com a inclinação que já
+     * tinha (dentro de VIAGEM_INCLINACAO_MINIMA e _MAXIMA) — e por isso com
+     * o sítio no meio do ecrã. Desce ou sobe o que for preciso para isso,
+     * sem sair das alturas a que a câmara pode andar; se não puder descer
+     * mais, fica mais afastada, com o sítio na mesma ao meio.
+     *
+     * @param {Vec3} sitio - Para onde ir.
+     * @private
+     */
+    _irAte(sitio) {
+        const posicao = this._pose.position;
+        const angulos = this._pose.angles;
+
+        let inclinacao0 = angulos.x;
+        while (inclinacao0 > 180) inclinacao0 -= 360;
+        while (inclinacao0 < -180) inclinacao0 += 360;
+
+        const dx = sitio.x - posicao.x;
+        const dz = sitio.z - posicao.z;
+        const distancia = Math.hypot(dx, dz);
+
+        // A que distância do sítio se fica, e a que altura.
+        const descida = math.clamp(-inclinacao0, VIAGEM_INCLINACAO_MINIMA, VIAGEM_INCLINACAO_MAXIMA) * math.DEG_TO_RAD;
+        const longe = posicao.distance(sitio);
+        const perto = Math.min(longe, Math.max(longe * VIAGEM_APROXIMACAO, VIAGEM_DISTANCIA_MINIMA));
+        const alturaMaxima = this._initialY !== undefined ? this._initialY : posicao.y;
+        const altura = math.clamp(sitio.y + perto * Math.sin(descida), ALTURA_MINIMA_DA_CAMARA, Math.max(ALTURA_MINIMA_DA_CAMARA, alturaMaxima));
+        const desnivel = Math.max(0.5, altura - sitio.y);
+        const fica = desnivel / Math.tan(descida);
+
+        // Olhando para onde. Com o sítio mesmo por baixo, segue-se em frente.
+        const rumo0 = angulos.y;
+        let rumo1 = rumo0;
+        let ux = -Math.sin(rumo0 * math.DEG_TO_RAD);
+        let uz = -Math.cos(rumo0 * math.DEG_TO_RAD);
+        if (distancia > 0.001) {
+            ux = dx / distancia;
+            uz = dz / distancia;
+            const rumo = Math.atan2(-dx, -dz) * math.RAD_TO_DEG;
+            // Pelo lado mais curto da volta.
+            rumo1 = rumo0 + ((((rumo - rumo0) % 360) + 540) % 360 - 180);
+        }
+        const inclinacao1 = -Math.atan2(desnivel, Math.max(fica, 0.001)) * math.RAD_TO_DEG;
+
+        const para = new Vec3(sitio.x - ux * fica, altura, sitio.z - uz * fica);
+        const percurso = posicao.distance(para);
+        const viragem = Math.abs(rumo1 - rumo0) + Math.abs(inclinacao1 - inclinacao0);
+        if (percurso < 0.05 && viragem < 0.5) {
+            return;
+        }
+
+        // Quanto mais longe, mais tempo — mas a crescer muito menos do que
+        // a distância: é isso que faz andar mais depressa quando se aponta
+        // para longe.
+        const duracao = VIAGEM_DURACAO_MINIMA +
+            VIAGEM_DURACAO_EXTRA * Math.min(percurso / VIAGEM_DISTANCIA_LONGA, 1);
+
+        this._viagem = {
+            de: posicao.clone(),
+            para,
+            inclinacao0,
+            inclinacao1,
+            rumo0,
+            rumo1,
+            t: 0,
+            duracao
+        };
+    }
+
+    /**
+     * Um quadrado branco que se abre e se apaga onde se carregou, para se
+     * saber que o clique foi ouvido e para onde se vai.
+     *
+     * @param {number} x - Em pontos da janela.
+     * @param {number} y - Em pontos da janela.
+     * @private
+     */
+    _marcarOndeSeCarregou(x, y) {
+        if (typeof document === 'undefined') {
+            return;
+        }
+        const LADO = 26;
+        const marca = document.createElement('div');
+        marca.setAttribute('aria-hidden', 'true');
+        Object.assign(marca.style, {
+            position: 'fixed',
+            left: `${x - LADO / 2}px`,
+            top: `${y - LADO / 2}px`,
+            width: `${LADO}px`,
+            height: `${LADO}px`,
+            boxSizing: 'border-box',
+            border: '2.5px solid #ffffff',
+            boxShadow: '0 0 6px rgba(0, 0, 0, 0.5)',
+            pointerEvents: 'none',
+            zIndex: '50'
+        });
+        document.body.appendChild(marca);
+        if (typeof marca.animate !== 'function') {
+            setTimeout(() => marca.remove(), 500);
+            return;
+        }
+        const animacao = marca.animate([
+            { transform: 'scale(0.4)', opacity: 1 },
+            { transform: 'scale(1.3)', opacity: 0 }
+        ], { duration: 650, easing: 'cubic-bezier(0.22, 1, 0.36, 1)' });
+        animacao.onfinish = () => marca.remove();
     }
 
     /**
@@ -950,6 +1331,7 @@ class CameraControls extends Script {
      * @param {boolean} [resetZoom] - Whether to reset the zoom.
      */
     focus(focus, resetZoom = false) {
+        this._viagem = null;
         this._setMode('focus');
         const zoomDist = resetZoom ?
             this._startZoomDist : this._camera.entity.getPosition().distance(focus);
@@ -964,6 +1346,7 @@ class CameraControls extends Script {
      * @param {boolean} [resetZoom] - Whether to reset the zoom.
      */
     look(focus, resetZoom = false) {
+        this._viagem = null;
         this._setMode('focus');
         const position = resetZoom ?
             tmpV1.copy(this._camera.entity.getPosition())
@@ -979,6 +1362,7 @@ class CameraControls extends Script {
      * @param {Vec3} position - The start point.
      */
     reset(focus, position) {
+        this._viagem = null;
         this._setMode('focus');
         this._controller.attach(pose.look(position, focus));
     }
@@ -995,6 +1379,7 @@ class CameraControls extends Script {
      * @param {Vec3} focus - The point to look towards.
      */
     recenter(position, focus) {
+        this._viagem = null;
         this._boundsArmed = false;
         this._entryLimit = null;
         this._lastInsideValid = false;
@@ -1048,6 +1433,24 @@ class CameraControls extends Script {
         this._state.shift += key[keyCode.SHIFT];
         this._state.ctrl += key[keyCode.CTRL];
         this._state.touches += count[0];
+
+        // Quem pega nos comandos a meio de uma viagem fica com a câmara:
+        // uma tecla de andar, a roda, um arrasto com o rato ou com o dedo,
+        // uma pinça ou um stick do comando param a viagem onde ela vai.
+        if (this._viagem) {
+            const botaoEmBaixo = this._state.mouse.some(b => b > 0);
+            const pegou = this._state.axis.lengthSq() > 0 ||
+                this._setas.lengthSq() > 0 ||
+                wheel[0] !== 0 ||
+                pinch[0] !== 0 ||
+                (botaoEmBaixo && (mouse[0] !== 0 || mouse[1] !== 0)) ||
+                touch[0] !== 0 || touch[1] !== 0 ||
+                leftStick[0] !== 0 || leftStick[1] !== 0 ||
+                rightStick[0] !== 0 || rightStick[1] !== 0;
+            if (pegou) {
+                this._viagem = null;
+            }
+        }
 
         // FPS: Always Fly Mode
         this._setMode('fly');
@@ -1345,7 +1748,31 @@ class CameraControls extends Script {
             }
             // NO ATTACH HERE!
         }
-        
+
+        // --- Apontar e ir: a viagem até ao sítio do clique ---
+        // A cada imagem a câmara é posta no ponto da viagem que o relógio
+        // manda, pela curva que começa e acaba devagar; e o comando de voo
+        // fica a saber onde ela está, para, ao chegar, continuar dali sem
+        // dar um salto para trás.
+        if (this._viagem && this._mode === 'fly') {
+            const viagem = this._viagem;
+            viagem.t = Math.min(1, viagem.t + dt / viagem.duracao);
+            const k = entradaESaida(viagem.t);
+            this._pose.position.lerp(viagem.de, viagem.para, k);
+            this._pose.angles.set(
+                math.lerp(viagem.inclinacao0, viagem.inclinacao1, k),
+                math.lerp(viagem.rumo0, viagem.rumo1, k),
+                0
+            );
+            this._controller.attach(this._pose, false);
+            if (this._smoothMoveVelocity) {
+                this._smoothMoveVelocity.set(0, 0, 0);
+            }
+            if (viagem.t >= 1) {
+                this._viagem = null;
+            }
+        }
+
         // --- HARD CLAMP PITCH TO PREVENT FLIPPING ---
         let currentPitch = this._pose.angles.x;
         while (currentPitch > 180) currentPitch -= 360;
