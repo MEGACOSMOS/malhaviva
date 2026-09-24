@@ -1136,12 +1136,58 @@
            Um botão no canto de baixo à direita, vestido como o rodapé, e um
            menu por cima dele com as redes por onde se pode mandar o bairro
            a alguém. Nasce com o cabeçalho, quando o ecrã de espera sai. */
+        #map-scale {
+            position: fixed;
+            bottom: 20px;
+            right: 24px; /* O ícone de partilhar está à direita */
+            z-index: 100;
+            display: none;
+            align-items: flex-end;
+            justify-content: center;
+            height: 6px;
+            border: 2px solid rgba(255, 255, 255, 0.7);
+            border-top: none;
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+            pointer-events: none;
+            /* Faz com que a barra não se esmague se for muito pequena */
+            min-width: 10px;
+        }
+        #map-scale span {
+            position: relative;
+            bottom: 8px;
+        }
+
+        #compass-container {
+            position: fixed;
+            top: 80px;
+            right: 24px;
+            width: 36px;
+            height: 36px;
+            z-index: 90;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: transparent;
+            border: none;
+            pointer-events: none;
+        }
+
+        #compass-needle {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            transition: transform 0.1s ease-out;
+        }
+
         /* Só o ícone, sem caixa, como os do cabeçalho: branco, e com o
            mesmo quadrado escuro a nascer por trás com o rato em cima ou
            com o menu aberto. */
         #partilhar-btn {
             position: fixed;
-            bottom: 24px;
+            bottom: 50px;
             right: 24px;
             z-index: 100;
             width: 44px;
@@ -1175,7 +1221,7 @@
            dos outros menus. */
         #partilhar-menu {
             position: fixed;
-            bottom: 78px;
+            bottom: 104px;
             right: 24px;
             z-index: 101;
             width: max-content;
@@ -1806,6 +1852,10 @@
                             <span>Modo Edição de Trilha</span>
                         </label>
                         <label class="settings-radio">
+                            <input type="checkbox" id="dev-measure-mode">
+                            <span>Medição de Distâncias</span>
+                        </label>
+                        <label class="settings-radio">
                             <input type="checkbox" id="dev-filter">
                             <span>Painel Filtro Visual</span>
                         </label>
@@ -1949,11 +1999,10 @@
                 </div>
             </div>
 
-        <!-- Um quadrado rodado a 45 graus (losango) rodeado por quatro setas:
-             é o ícone dos controlos, harmonizado com as diagonais do site. -->
+        <!-- Quatro setas a apontar para fora: é o ícone dos controlos,
+             harmonizado com as diagonais do site. -->
         <a href="/controlos.html" id="help-btn" class="adaptavel" title="Controlos" data-i18n-title="cab.controlos">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter">
-                    <polygon points="12 8 16 12 12 16 8 12"></polygon>
                     <polyline points="9 5 12 2 15 5"></polyline>
                     <polyline points="9 19 12 22 15 19"></polyline>
                     <polyline points="5 9 2 12 5 15"></polyline>
@@ -2375,6 +2424,17 @@
         </svg>
     </button>
 
+    <div id="map-scale"><span></span></div>
+
+    <div id="compass-container">
+        <svg id="compass-needle" viewBox="0 0 24 24" fill="none">
+            <!-- Fundo branco apenas na metade Norte -->
+            <polygon points="12,2 16,12 8,12" fill="#ffffff" />
+            <!-- Contorno contínuo de toda a agulha (diamante) -->
+            <polygon points="12,2 16,12 12,22 8,12" fill="none" stroke="#ffffff" stroke-width="1.2" stroke-linejoin="miter" stroke-miterlimit="10" />
+        </svg>
+    </div>
+
     <!-- Partilhar: o botão do canto e o menu das redes. -->
     <button type="button" id="partilhar-btn" class="adaptavel" aria-label="Partilhar" title="Partilhar" data-i18n-aria="par.botao" data-i18n-title="par.botao" aria-haspopup="true" aria-expanded="false" aria-controls="partilhar-menu">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true">
@@ -2620,6 +2680,9 @@
         <pc-asset id="camera-coords-script" src="./coords.mjs?v=7" type="script"></pc-asset>
         <pc-asset id="annotations-script" src="./annotations.mjs?v=84" type="script"></pc-asset>
         <pc-asset id="trail-script" src="./trail.mjs?v=27" type="script"></pc-asset>
+        <pc-asset id="measure-script" src="./measure.mjs?v=1" type="script"></pc-asset>
+        <pc-asset id="escala-script" src="./escala.mjs?v=1" type="script"></pc-asset>
+        <pc-asset id="compass-script" src="./compass.mjs?v=2" type="script"></pc-asset>
 
         <!-- Scene -->
         <pc-scene>
@@ -2637,6 +2700,9 @@
                     <pc-script name="cameraCoordinates"></pc-script>
                     <pc-script name="annotationController"></pc-script>
                     <pc-script name="trailController"></pc-script>
+                    <pc-script name="measureController"></pc-script>
+                    <pc-script name="mapScale"></pc-script>
+                    <pc-script name="compassController"></pc-script>
                 </pc-scripts>
             </pc-entity>
 
@@ -3258,27 +3324,7 @@ void modifySplatColor(vec3 center, inout vec4 color) {
             });
         }
 
-        // Os menus abrem ao passar o rato pelo ícone — e fecham quando o
-        // rato sai do conjunto (ícone e menu). Num ecrã táctil não há
-        // rato a passar, e é o toque de sempre que abre. O clique
-        // continua a funcionar em qualquer lado.
-        [
-            [definicoesBtn, definicoesMenu],
-            [idiomaBtn, idiomaMenu],
-            [devBtn, devMenu]
-        ].forEach(([botao, menu]) => {
-            const conjunto = botao.closest('.settings');
-            if (!conjunto) return;
-            conjunto.addEventListener('pointerenter', (e) => {
-                if (e.pointerType !== 'mouse') return;
-                [definicoesMenu, idiomaMenu, devMenu].forEach((m) => { if (m !== menu) m.classList.remove('open'); });
-                menu.classList.add('open');
-            });
-            conjunto.addEventListener('pointerleave', (e) => {
-                if (e.pointerType !== 'mouse') return;
-                menu.classList.remove('open');
-            });
-        });
+
 
         // Dev Menu Toggles
         const devFilterToggle = document.getElementById('dev-filter');
