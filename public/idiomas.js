@@ -20,10 +20,10 @@
     // As línguas oferecidas, pela ordem em que aparecem no menu. O nome de
     // cada uma está escrito na própria língua, como é costume.
     var IDIOMAS = [
+        { codigo: 'kea', nome: 'Kriolu' },
         { codigo: 'pt', nome: 'Português' },
         { codigo: 'en', nome: 'English' },
-        { codigo: 'es', nome: 'Español' },
-        { codigo: 'kea', nome: 'Kriolu' }
+        { codigo: 'es', nome: 'Español' }
     ];
 
     var TEXTOS = {
@@ -41,7 +41,6 @@
             'def.alto': 'Alto (Detalhe Máximo)',
             'def.medio': 'Médio (Equilibrado)',
             'def.baixo': 'Baixo (Mais Performance)',
-            'def.anotacoes': 'Anotações',
             'def.testemunhos': 'Testemunhos',
             'def.rotas360': 'Rotas 360º',
             'def.interface': 'Interface',
@@ -229,7 +228,6 @@
             'def.alto': 'High (Maximum Detail)',
             'def.medio': 'Medium (Balanced)',
             'def.baixo': 'Low (Best Performance)',
-            'def.anotacoes': 'Markers',
             'def.testemunhos': 'Testimonies',
             'def.rotas360': '360º Routes',
             'def.interface': 'Interface',
@@ -417,7 +415,6 @@
             'def.alto': 'Alto (Detalle Máximo)',
             'def.medio': 'Medio (Equilibrado)',
             'def.baixo': 'Bajo (Más Rendimiento)',
-            'def.anotacoes': 'Marcadores',
             'def.testemunhos': 'Testimonios',
             'def.rotas360': 'Rutas 360º',
             'def.interface': 'Interfaz',
@@ -605,7 +602,6 @@
             'def.alto': 'Altu (Máximu detalhi)',
             'def.medio': 'Médiu (Ekilibradu)',
             'def.baixo': 'Baxu (Más rapidez)',
-            'def.anotacoes': 'Markadoris',
             'def.testemunhos': 'Tistimunhus',
             'def.rotas360': 'Rotas 360º',
             'def.interface': 'Interfasi',

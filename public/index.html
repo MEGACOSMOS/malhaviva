@@ -7,7 +7,7 @@
     <meta name="description" content="Exploração 3D interativa do Bairro de Penajóia através de Gaussian Splatting. Projeto Malha Viva.">
     <!-- As línguas do site. Fica antes de tudo o resto para o texto
          nascer já na língua certa, sem piscar em português primeiro. -->
-    <script src="/idiomas.js?v=29"></script>
+    <script src="/idiomas.js?v=30"></script>
 
     <!-- O quadrado de espera, o mesmo em todo o site. Fica antes de o
          ecrã de espera se desenhar, para nascer já com a sua roupa. -->
@@ -207,6 +207,13 @@
             font-weight: 700;
             letter-spacing: -0.02em;
             color: var(--color-accent);
+            white-space: nowrap;
+            transition: opacity 0.4s ease;
+        }
+
+        /* O nome a meio da troca (ver o guião do cabeçalho). */
+        .brand-name.a-trocar {
+            opacity: 0;
         }
 
         .brand-subtitle {
@@ -2064,6 +2071,34 @@
                 <span class="brand-name adaptavel">Malha Viva</span>
             </div>
         </div>
+        <script>
+        /**
+         * O nome do cabeçalho vai trocando, de cinco em cinco segundos,
+         * entre o do projecto e o do bairro: esbate-se, muda, e volta.
+         * São nomes próprios, e por isso não se traduzem. Quem pediu ao
+         * sistema menos movimento vê a troca sem o esbater.
+         */
+        (function () {
+            const nome = document.querySelector('#header .brand-name');
+            if (!nome) return;
+            const NOMES = ['Malha Viva', 'Bairro de Penajóia'];
+            const ESBATER_MS = 400;
+            const semMovimento = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+            let qual = 0;
+            setInterval(() => {
+                qual = (qual + 1) % NOMES.length;
+                if (semMovimento) {
+                    nome.textContent = NOMES[qual];
+                    return;
+                }
+                nome.classList.add('a-trocar');
+                setTimeout(() => {
+                    nome.textContent = NOMES[qual];
+                    nome.classList.remove('a-trocar');
+                }, ESBATER_MS);
+            }, 5000);
+        })();
+        </script>
 
         <div id="lado-direito" style="display: flex; align-items: center; gap: 8px; margin-left: auto;">
         <div id="acoes-do-cabecalho" style="display: flex; align-items: center; gap: 8px;">
@@ -2246,14 +2281,17 @@
                 </div>
             </div>
 
-        <!-- Quatro setas a apontar para fora: é o ícone dos controlos,
-             harmonizado com as diagonais do site. -->
+        <!-- Quatro setas a apontar para fora, ligadas por uma cruz ao
+             meio, como o cursor de mover do Windows: é o ícone dos
+             controlos, harmonizado com as diagonais do site. -->
         <a href="/controlos.html" id="help-btn" class="adaptavel" title="Controlos" data-i18n-title="cab.controlos">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter">
                     <polyline points="9 5 12 2 15 5"></polyline>
                     <polyline points="9 19 12 22 15 19"></polyline>
                     <polyline points="5 9 2 12 5 15"></polyline>
                     <polyline points="19 9 22 12 19 15"></polyline>
+                    <line x1="12" y1="2" x2="12" y2="22"></line>
+                    <line x1="2" y1="12" x2="22" y2="12"></line>
                 </svg>
             </a>
             
@@ -2274,6 +2312,10 @@
                 <div class="settings-title" data-i18n="idm.titulo">Idioma</div>
                 <div class="settings-options">
                     <label class="settings-radio">
+                        <input type="radio" name="idioma" value="kea" id="idioma-kea">
+                        <span>Kriolu</span>
+                    </label>
+                    <label class="settings-radio">
                         <input type="radio" name="idioma" value="pt" id="idioma-pt">
                         <span>Português</span>
                     </label>
@@ -2284,10 +2326,6 @@
                     <label class="settings-radio">
                         <input type="radio" name="idioma" value="es" id="idioma-es">
                         <span>Español</span>
-                    </label>
-                    <label class="settings-radio">
-                        <input type="radio" name="idioma" value="kea" id="idioma-kea">
-                        <span>Kriolu</span>
                     </label>
                 </div>
             </div>
@@ -2343,7 +2381,9 @@
                     </label>
                 </div>
 
-                <div class="settings-title" style="margin-top: 18px;" data-i18n="def.anotacoes">Anotações</div>
+                <!-- O que se vê no bairro e se pode dispensar: os
+                     marcadores de cada tipo e a paisagem. -->
+                <div class="settings-title" style="margin-top: 18px;" data-i18n="def.interface">Interface</div>
                 <div class="settings-options">
                     <label class="settings-radio">
                         <input type="checkbox" id="anot-testemunhos" checked>
@@ -2353,12 +2393,6 @@
                         <input type="checkbox" id="anot-360" checked>
                         <span data-i18n="def.rotas360">Rotas 360º</span>
                     </label>
-                </div>
-
-                <!-- O que se vê à volta do bairro e se pode dispensar: a
-                     paisagem. -->
-                <div class="settings-title" style="margin-top: 18px;" data-i18n="def.interface">Interface</div>
-                <div class="settings-options">
                     <label class="settings-radio">
                         <input type="checkbox" id="paisagem-ligada">
                         <span data-i18n="def.paisagem">Paisagem</span>
