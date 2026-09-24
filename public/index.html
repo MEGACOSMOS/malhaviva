@@ -7,7 +7,7 @@
     <meta name="description" content="Exploração 3D interativa do Bairro de Penajóia através de Gaussian Splatting. Projeto Malha Viva.">
     <!-- As línguas do site. Fica antes de tudo o resto para o texto
          nascer já na língua certa, sem piscar em português primeiro. -->
-    <script src="/idiomas.js?v=26"></script>
+    <script src="/idiomas.js?v=27"></script>
 
     <!-- O quadrado de espera, o mesmo em todo o site. Fica antes de o
          ecrã de espera se desenhar, para nascer já com a sua roupa. -->
@@ -1127,6 +1127,406 @@
             }
         }
 
+        /* ─── Instruções de navegação ───
+           Um cartão ao meio do ecrã, na primeira visita, vestido como os
+           menus: um passo de cada vez, cada um com um desenho animado,
+           um título e uma frase. Passa-se de um para o outro com as setas
+           de cada lado, como no ecrã dos vídeos; no último, a seta da
+           direita dá lugar a uma cruz. A cruz do canto fecha a qualquer
+           altura. O bairro continua a mexer-se à volta dele. */
+        #instrucoes {
+            --seta: 72px;
+            position: fixed;
+            inset: 0;
+            z-index: 400;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.35s ease;
+        }
+        #instrucoes[hidden] {
+            display: none;
+        }
+        #instrucoes.aberta {
+            opacity: 1;
+        }
+        body.em-cartao #instrucoes {
+            display: none !important;
+        }
+
+        .instrucoes-moldura {
+            position: relative;
+            pointer-events: auto;
+            transform: translateY(8px) scale(0.98);
+            transition: transform 0.35s ease;
+        }
+        #instrucoes.aberta .instrucoes-moldura {
+            transform: none;
+        }
+
+        .instrucoes-cartao {
+            position: relative;
+            width: min(360px, calc(100vw - 32px - 2 * var(--seta)));
+            padding: 16px 20px 18px;
+            background: linear-gradient(to bottom, rgba(255,255,255,0.05), transparent), #05050a;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+            color: var(--color-text);
+            outline: none;
+        }
+
+        /* O título do cartão, como o primeiro título de cada menu: com
+           espaço à direita para a cruz. */
+        .instrucoes-cartao > .settings-title {
+            padding-right: 28px;
+            margin-bottom: 14px;
+        }
+
+        .instrucoes-passo {
+            text-align: center;
+        }
+        .instrucoes-passo[hidden] {
+            display: none;
+        }
+        .instrucoes-passo.entra-da-direita {
+            animation: ins-passo-direita 0.35s ease both;
+        }
+        .instrucoes-passo.entra-da-esquerda {
+            animation: ins-passo-esquerda 0.35s ease both;
+        }
+        @keyframes ins-passo-direita {
+            from { opacity: 0; transform: translateX(18px); }
+            to { opacity: 1; transform: none; }
+        }
+        @keyframes ins-passo-esquerda {
+            from { opacity: 0; transform: translateX(-18px); }
+            to { opacity: 1; transform: none; }
+        }
+
+        .instrucoes-desenho {
+            aspect-ratio: 2 / 1;
+            margin-bottom: 16px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            overflow: hidden;
+        }
+        .instrucoes-desenho svg {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        .instrucoes-titulo {
+            margin: 0 0 6px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            letter-spacing: -0.01em;
+            color: var(--color-text);
+        }
+
+        .instrucoes-texto {
+            margin: 0;
+            min-height: 3em;
+            font-size: 0.82rem;
+            line-height: 1.5;
+            color: var(--color-text-muted);
+        }
+
+        /* Os passos, em quadradinhos: cheio o que se está a ver. */
+        .instrucoes-pontos {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            margin-top: 14px;
+        }
+        .instrucoes-pontos span {
+            width: 8px;
+            height: 8px;
+            border: 1.5px solid rgba(255, 255, 255, 0.45);
+            transition: background 0.2s ease, border-color 0.2s ease;
+        }
+        .instrucoes-pontos span.atual {
+            background: #ffffff;
+            border-color: #ffffff;
+        }
+
+        /* O que se anuncia a quem ouve a página, e não se vê. */
+        .instrucoes-anuncio {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            overflow: hidden;
+            clip: rect(0 0 0 0);
+            white-space: nowrap;
+        }
+
+        /* As setas, como as do ecrã dos vídeos: só o bico, sem caixa, de
+           cada lado do cartão. */
+        .instrucoes-seta {
+            position: absolute;
+            top: 50%;
+            width: var(--seta);
+            height: 100px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+            border: none;
+            background: transparent;
+            color: rgba(255, 255, 255, 0.55);
+            filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.6));
+            cursor: pointer;
+            transform: translateY(-50%);
+            transition: color 0.2s ease, transform 0.2s ease, opacity 0.2s ease;
+        }
+        .instrucoes-seta svg {
+            width: 56px;
+            height: 56px;
+        }
+        .instrucoes-seta.esquerda { right: 100%; }
+        .instrucoes-seta.direita { left: 100%; }
+        .instrucoes-seta:hover {
+            color: #ffffff;
+            transform: translateY(-50%) scale(1.18);
+        }
+        .instrucoes-seta:focus {
+            outline: none;
+        }
+        .instrucoes-seta:focus-visible {
+            outline: 2px solid rgba(255, 255, 255, 0.9);
+            outline-offset: -8px;
+        }
+        .instrucoes-seta.escondida {
+            visibility: hidden;
+        }
+        /* No último passo a seta da direita é a cruz de saída. */
+        .instrucoes-seta.a-sair {
+            color: #ffffff;
+            opacity: 0.55;
+        }
+        .instrucoes-seta.a-sair:hover {
+            opacity: 1;
+        }
+
+        @media (max-width: 640px) {
+            #instrucoes {
+                --seta: 44px;
+            }
+            .instrucoes-seta svg {
+                width: 40px;
+                height: 40px;
+            }
+            .instrucoes-cartao {
+                padding: 14px 14px 16px;
+            }
+        }
+
+        /* ── Os desenhos ──
+           Linhas brancas finas, quadrados e a cor dos marcadores: o mesmo
+           desenho do site. Cada um dá a volta em poucos segundos e
+           recomeça. */
+        #instrucoes .ins-branco {
+            fill: none;
+            stroke: #ffffff;
+            stroke-width: 2;
+            stroke-linecap: square;
+            stroke-linejoin: miter;
+        }
+        #instrucoes .ins-dedo {
+            fill: rgba(255, 255, 255, 0.85);
+            stroke: rgba(5, 5, 10, 0.6);
+            stroke-width: 1.5;
+        }
+
+        /* Só se desenha o rato a quem tem rato, e o dedo a quem tem dedo. */
+        #instrucoes .so-toque { display: none; }
+        #instrucoes.por-toque .so-rato { display: none; }
+        #instrucoes.por-toque .so-toque { display: inline; }
+
+        /* O quadrado que se abre onde se carrega, igual ao do bairro. */
+        #instrucoes .ins-anel {
+            fill: none;
+            stroke: #ffffff;
+            stroke-width: 2.5;
+            transform-box: fill-box;
+            transform-origin: center;
+            opacity: 0;
+        }
+
+        /* 1 · Ir até um sítio: o rato vai, carrega, e o bairro chega-se. */
+        #instrucoes .ins-ir-chao {
+            transform-origin: 176px 96px;
+            animation: ins-ir-chao 3.6s ease-in-out infinite;
+        }
+        @keyframes ins-ir-chao {
+            0%, 44% { transform: scale(1); opacity: 1; }
+            84% { transform: scale(2.1); opacity: 1; }
+            92% { transform: scale(2.1); opacity: 0; }
+            93% { transform: scale(1); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        #instrucoes .ins-ir-anel {
+            animation: ins-anel 3.6s ease-out infinite;
+        }
+        @keyframes ins-anel {
+            0%, 39% { opacity: 0; transform: scale(0.4); }
+            41% { opacity: 1; transform: scale(0.4); }
+            62%, 100% { opacity: 0; transform: scale(1.5); }
+        }
+        #instrucoes .ins-ir-cursor {
+            transform: translate(176px, 96px);
+            animation: ins-ir-cursor 3.6s ease-in-out infinite;
+        }
+        @keyframes ins-ir-cursor {
+            0% { transform: translate(72px, 34px); opacity: 0; }
+            8% { transform: translate(72px, 34px); opacity: 1; }
+            36% { transform: translate(176px, 96px); }
+            40% { transform: translate(176px, 96px) scale(0.82); }
+            44% { transform: translate(176px, 96px) scale(1); opacity: 1; }
+            66%, 100% { transform: translate(176px, 96px); opacity: 0; }
+        }
+
+        /* 2 · Olhar à volta: arrasta-se, e o horizonte vai atrás. */
+        #instrucoes .ins-olhar-vista {
+            animation: ins-olhar-vista 4s ease-in-out infinite;
+        }
+        @keyframes ins-olhar-vista {
+            0%, 12% { transform: translateX(0); }
+            50%, 62% { transform: translateX(-70px); }
+            100% { transform: translateX(0); }
+        }
+        #instrucoes .ins-olhar-mao {
+            transform: translate(170px, 96px);
+            animation: ins-olhar-mao 4s ease-in-out infinite;
+        }
+        @keyframes ins-olhar-mao {
+            0%, 12% { transform: translate(170px, 96px); }
+            50%, 62% { transform: translate(100px, 96px); }
+            100% { transform: translate(170px, 96px); }
+        }
+
+        /* 3 · Aproximar e afastar: a roda gira, ou os dedos abrem. */
+        #instrucoes .ins-zoom-vista {
+            transform-origin: 140px 92px;
+            animation: ins-zoom-vista 4s ease-in-out infinite;
+        }
+        @keyframes ins-zoom-vista {
+            0%, 12% { transform: scale(1); }
+            46%, 62% { transform: scale(1.7); }
+            96%, 100% { transform: scale(1); }
+        }
+        #instrucoes .ins-roda {
+            animation: ins-roda 0.5s linear infinite;
+        }
+        @keyframes ins-roda {
+            from { transform: translateY(0); opacity: 1; }
+            to { transform: translateY(5px); opacity: 0; }
+        }
+        #instrucoes .ins-dedo-a {
+            transform: translate(122px, 104px);
+            animation: ins-dedo-a 4s ease-in-out infinite;
+        }
+        @keyframes ins-dedo-a {
+            0%, 12% { transform: translate(122px, 104px); }
+            46%, 62% { transform: translate(96px, 124px); }
+            96%, 100% { transform: translate(122px, 104px); }
+        }
+        #instrucoes .ins-dedo-b {
+            transform: translate(158px, 80px);
+            animation: ins-dedo-b 4s ease-in-out infinite;
+        }
+        @keyframes ins-dedo-b {
+            0%, 12% { transform: translate(158px, 80px); }
+            46%, 62% { transform: translate(184px, 60px); }
+            96%, 100% { transform: translate(158px, 80px); }
+        }
+
+        /* 4 · Teclado: acendem-se o W, o A, o S e o D, um de cada vez. */
+        #instrucoes .ins-tecla rect {
+            fill: transparent;
+            stroke: rgba(255, 255, 255, 0.5);
+            stroke-width: 2.5;
+            animation: ins-tecla 3.6s ease infinite;
+        }
+        #instrucoes .ins-tecla text {
+            fill: #ffffff;
+            font-family: var(--font-main);
+            font-size: 14px;
+            font-weight: 700;
+            text-anchor: middle;
+            dominant-baseline: central;
+            animation: ins-letra 3.6s ease infinite;
+        }
+        #instrucoes .ins-tecla:nth-of-type(2) rect, #instrucoes .ins-tecla:nth-of-type(2) text { animation-delay: 0.9s; }
+        #instrucoes .ins-tecla:nth-of-type(3) rect, #instrucoes .ins-tecla:nth-of-type(3) text { animation-delay: 1.8s; }
+        #instrucoes .ins-tecla:nth-of-type(4) rect, #instrucoes .ins-tecla:nth-of-type(4) text { animation-delay: 2.7s; }
+        @keyframes ins-tecla {
+            0% { fill: transparent; stroke: rgba(255, 255, 255, 0.5); }
+            4%, 22% { fill: #ffffff; stroke: #ffffff; }
+            27%, 100% { fill: transparent; stroke: rgba(255, 255, 255, 0.5); }
+        }
+        @keyframes ins-letra {
+            0% { fill: #ffffff; }
+            4%, 22% { fill: #05050a; }
+            27%, 100% { fill: #ffffff; }
+        }
+
+        /* 5 · As histórias: carrega-se num marcador e abre-se a janela. */
+        #instrucoes .ins-marcador-a {
+            animation: ins-boia 1.8s ease-in-out infinite;
+        }
+        #instrucoes .ins-marcador-b {
+            animation: ins-boia 1.8s ease-in-out 0.9s infinite;
+        }
+        @keyframes ins-boia {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-3px); }
+        }
+        #instrucoes .ins-hist-cursor {
+            transform: translate(113px, 60px);
+            animation: ins-hist-cursor 4s ease-in-out infinite;
+        }
+        @keyframes ins-hist-cursor {
+            0% { transform: translate(40px, 120px); opacity: 0; }
+            8% { transform: translate(40px, 120px); opacity: 1; }
+            34% { transform: translate(113px, 60px); }
+            38% { transform: translate(113px, 60px) scale(0.82); }
+            42% { transform: translate(113px, 60px) scale(1); opacity: 1; }
+            52%, 100% { transform: translate(113px, 60px); opacity: 0; }
+        }
+        #instrucoes .ins-hist-anel {
+            animation: ins-hist-anel 4s ease-out infinite;
+        }
+        @keyframes ins-hist-anel {
+            0%, 37% { opacity: 0; transform: scale(0.6); }
+            39% { opacity: 1; transform: scale(0.6); }
+            56%, 100% { opacity: 0; transform: scale(1.6); }
+        }
+        #instrucoes .ins-janela {
+            transform-origin: 113px 52px;
+            opacity: 0;
+            animation: ins-janela 4s ease-out infinite;
+        }
+        @keyframes ins-janela {
+            0%, 44% { opacity: 0; transform: scale(0.2); }
+            58% { opacity: 1; transform: scale(1); }
+            88% { opacity: 1; transform: scale(1); }
+            96%, 100% { opacity: 0; transform: scale(1); }
+        }
+
+        /* Quem pediu ao sistema menos movimento vê cada desenho parado. */
+        @media (prefers-reduced-motion: reduce) {
+            #instrucoes svg *,
+            .instrucoes-passo {
+                animation: none !important;
+            }
+            #instrucoes .ins-janela {
+                opacity: 1;
+            }
+        }
+
         /* ─── Filter Panel ─── */
         #filter-panel {
             position: fixed;
@@ -1242,7 +1642,7 @@
            degradé que aqui houve — pousado sobre o fundo escuro do site. */
         .panel-glass, .btn-glass, .action-btn, .settings-panel, .filter-btn, 
         #coordinates-info, #camera-info, #loading-bar-container,
-        #definicoes-menu, #dev-menu, #idioma-menu, #camera-stuck-popup, #arranque-popup, #partilhar-menu, #legenda-mapa {
+        #definicoes-menu, #dev-menu, #idioma-menu, #camera-stuck-popup, #arranque-popup, #partilhar-menu, #legenda-mapa, .instrucoes-cartao {
             /* Sem rebordo nenhum, nem invisível: um rebordo invisível fica
                por fora do fio e deixa ver o fundo escuro por baixo dele,
                como um segundo fio, preto, a toda a volta. */
@@ -1253,7 +1653,7 @@
         }
         .panel-glass::after, .btn-glass::after, .action-btn::after, .settings-panel::after, .filter-btn::after,
         #coordinates-info::after, #camera-info::after, #loading-bar-container::after,
-        #definicoes-menu::after, #dev-menu::after, #idioma-menu::after, #camera-stuck-popup::after, #arranque-popup::after, #partilhar-menu::after, #legenda-mapa::after {
+        #definicoes-menu::after, #dev-menu::after, #idioma-menu::after, #camera-stuck-popup::after, #arranque-popup::after, #partilhar-menu::after, #legenda-mapa::after, .instrucoes-cartao::after {
             content: "";
             position: absolute;
             inset: 0;
@@ -2023,6 +2423,327 @@
             <polygon points="12,2 16,12 12,22 8,12" fill="none" stroke="#ffffff" stroke-width="1.2" stroke-linejoin="miter" stroke-miterlimit="10" />
         </svg>
     </div>
+
+    <!-- As instruções de navegação, para quem chega pela primeira vez. -->
+    <div id="instrucoes" role="dialog" aria-modal="false" aria-labelledby="instrucoes-cabeca" hidden>
+        <!-- Os pedaços de desenho que se repetem de passo para passo. As
+             cores vão escritas em cada um, e não na folha de estilos: o que
+             é repetido com <use> não apanha as regras da página. -->
+        <svg width="0" height="0" style="position: absolute" aria-hidden="true" focusable="false">
+            <defs>
+                <clipPath id="ins-recorte-chao"><rect x="0" y="44" width="280" height="96"></rect></clipPath>
+                <!-- O chão do bairro, em perspectiva, até ao horizonte. -->
+                <g id="ins-chao">
+                    <g clip-path="url(#ins-recorte-chao)">
+                        <path fill="none" stroke="rgba(255,255,255,0.22)" stroke-width="1.5" d="M-40 54H320M-40 68H320M-40 88H320M-40 116H320"></path>
+                        <path fill="none" stroke="rgba(255,255,255,0.22)" stroke-width="1.5" d="M140 30L-220 140M140 30L-100 140M140 30L20 140M140 30L140 140M140 30L260 140M140 30L380 140M140 30L500 140"></path>
+                    </g>
+                    <path fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="1.5" d="M0 44H280"></path>
+                </g>
+                <!-- Umas casas pousadas no chão. -->
+                <g id="ins-casas">
+                    <rect fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.45)" stroke-width="1.5" x="54" y="72" width="24" height="10"></rect>
+                    <rect fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.45)" stroke-width="1.5" x="196" y="68" width="28" height="11"></rect>
+                    <rect fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.45)" stroke-width="1.5" x="104" y="98" width="32" height="14"></rect>
+                    <rect fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.45)" stroke-width="1.5" x="22" y="108" width="36" height="16"></rect>
+                    <rect fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.45)" stroke-width="1.5" x="212" y="102" width="38" height="16"></rect>
+                    <rect fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.45)" stroke-width="1.5" x="150" y="60" width="18" height="8"></rect>
+                </g>
+                <!-- A seta do rato, com o bico no ponto (0, 0). -->
+                <g id="ins-seta-rato"><path fill="#ffffff" stroke="#05050a" stroke-width="1.2" stroke-linejoin="round" d="M0 0L0 17L4.6 12.8L8 20L11 18.6L7.7 11.6L13 11.6Z"></path></g>
+            </defs>
+        </svg>
+
+        <div class="instrucoes-moldura">
+            <div class="instrucoes-cartao" tabindex="-1">
+                <button type="button" class="menu-fechar" aria-label="Fechar as instruções" title="Fechar as instruções" data-i18n-aria="ins.fechar" data-i18n-title="ins.fechar">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true">
+                        <line x1="5" y1="5" x2="19" y2="19"></line>
+                        <line x1="19" y1="5" x2="5" y2="19"></line>
+                    </svg>
+                </button>
+                <div class="settings-title" id="instrucoes-cabeca" data-i18n="ins.titulo">Como navegar</div>
+
+                <!-- 1 · Ir até um sítio -->
+                <section class="instrucoes-passo" data-rato="ins.irRato" data-toque="ins.irToque">
+                    <div class="instrucoes-desenho" aria-hidden="true">
+                        <svg viewBox="0 0 280 140">
+                            <g class="ins-ir-chao"><use href="#ins-chao"></use><use href="#ins-casas"></use></g>
+                            <rect class="ins-anel ins-ir-anel" x="165" y="85" width="22" height="22"></rect>
+                            <g class="ins-cursor ins-ir-cursor">
+                                <use class="so-rato" href="#ins-seta-rato"></use>
+                                <circle class="so-toque ins-dedo" cx="0" cy="0" r="10"></circle>
+                            </g>
+                        </svg>
+                    </div>
+                    <h2 class="instrucoes-titulo" data-i18n="ins.irTitulo">Ir até um sítio</h2>
+                    <p class="instrucoes-texto">Clica num sítio do bairro e a câmara leva-te até lá.</p>
+                </section>
+
+                <!-- 2 · Olhar à volta -->
+                <section class="instrucoes-passo" data-rato="ins.olharRato" data-toque="ins.olharToque" hidden>
+                    <div class="instrucoes-desenho" aria-hidden="true">
+                        <svg viewBox="0 0 280 140">
+                            <use href="#ins-chao"></use>
+                            <g class="ins-olhar-vista">
+                                <path class="ins-branco" d="M-120 44V36H-96V26H-84V38H-50V22H-40V34H-6V30H30V40H62V24H74V14H84V30H118V38H150V24H176V34H206V18H216V30H246V36H286V26H312V40H350V30H380V44" style="stroke-width: 1.5"></path>
+                                <g transform="translate(-60 0)"><use href="#ins-casas"></use></g>
+                                <use href="#ins-casas"></use>
+                                <g transform="translate(240 0)"><use href="#ins-casas"></use></g>
+                            </g>
+                            <g class="ins-cursor ins-olhar-mao">
+                                <use class="so-rato" href="#ins-seta-rato"></use>
+                                <circle class="so-toque ins-dedo" cx="0" cy="0" r="10"></circle>
+                            </g>
+                        </svg>
+                    </div>
+                    <h2 class="instrucoes-titulo" data-i18n="ins.olharTitulo">Olhar à volta</h2>
+                    <p class="instrucoes-texto">Arrasta com o rato para rodar a vista.</p>
+                </section>
+
+                <!-- 3 · Aproximar e afastar -->
+                <section class="instrucoes-passo" data-rato="ins.zoomRato" data-toque="ins.zoomToque" hidden>
+                    <div class="instrucoes-desenho" aria-hidden="true">
+                        <svg viewBox="0 0 280 140">
+                            <g class="ins-zoom-vista"><use href="#ins-chao"></use><use href="#ins-casas"></use></g>
+                            <g class="so-rato" transform="translate(240 56)">
+                                <rect x="0" y="0" width="22" height="32" fill="#05050a" stroke="#ffffff" stroke-width="2"></rect>
+                                <line x1="0" y1="13" x2="22" y2="13" stroke="#ffffff" stroke-width="1.5"></line>
+                                <line class="ins-roda" x1="11" y1="3" x2="11" y2="8" stroke="#ffffff" stroke-width="2.5"></line>
+                            </g>
+                            <g class="so-toque">
+                                <g class="ins-dedo-a"><circle class="ins-dedo" cx="0" cy="0" r="10"></circle></g>
+                                <g class="ins-dedo-b"><circle class="ins-dedo" cx="0" cy="0" r="10"></circle></g>
+                            </g>
+                        </svg>
+                    </div>
+                    <h2 class="instrucoes-titulo" data-i18n="ins.zoomTitulo">Aproximar e afastar</h2>
+                    <p class="instrucoes-texto">Usa a roda do rato.</p>
+                </section>
+
+                <!-- 4 · Teclado (só para quem tem teclado) -->
+                <section class="instrucoes-passo" data-so="rato" data-rato="ins.teclado" hidden>
+                    <div class="instrucoes-desenho" aria-hidden="true">
+                        <svg viewBox="0 0 280 140">
+                            <g>
+                                <g class="ins-tecla"><rect x="124" y="30" width="32" height="32"></rect><text x="140" y="46">W</text></g>
+                                <g class="ins-tecla"><rect x="86" y="68" width="32" height="32"></rect><text x="102" y="84">A</text></g>
+                                <g class="ins-tecla"><rect x="124" y="68" width="32" height="32"></rect><text x="140" y="84">S</text></g>
+                                <g class="ins-tecla"><rect x="162" y="68" width="32" height="32"></rect><text x="178" y="84">D</text></g>
+                            </g>
+                        </svg>
+                    </div>
+                    <h2 class="instrucoes-titulo" data-i18n="ins.tecladoTitulo">Andar com o teclado</h2>
+                    <p class="instrucoes-texto">As teclas W A S D ou as setas levam-te pelo bairro.</p>
+                </section>
+
+                <!-- 5 · As histórias -->
+                <section class="instrucoes-passo" data-rato="ins.historias" data-toque="ins.historias" hidden>
+                    <div class="instrucoes-desenho" aria-hidden="true">
+                        <svg viewBox="0 0 280 140">
+                            <use href="#ins-chao"></use>
+                            <g class="ins-marcador-a">
+                                <rect x="98" y="37" width="30" height="30" fill="#10b981"></rect>
+                                <svg x="104" y="43" width="18" height="18" viewBox="0 0 24 24"><g class="ins-branco"><polygon points="3 4 21 4 21 16 12 16 7 21 7 16 3 16"></polygon><line x1="8" y1="8" x2="16" y2="8"></line><line x1="8" y1="12" x2="12" y2="12"></line></g></svg>
+                            </g>
+                            <g class="ins-marcador-b">
+                                <rect x="156" y="37" width="30" height="30" fill="#ff0000"></rect>
+                                <svg x="160" y="41" width="22" height="22" viewBox="0 0 24 24"><g class="ins-branco"><polyline points="4 10, 12 2, 19 9"></polyline><polyline points="14 9, 19 9, 19 4"></polyline><polyline points="20 14, 12 22, 5 15"></polyline><polyline points="10 15, 5 15, 5 20"></polyline></g></svg>
+                            </g>
+                            <rect class="ins-anel ins-hist-anel" x="98" y="37" width="30" height="30"></rect>
+                            <g class="ins-janela">
+                                <rect x="58" y="16" width="164" height="100" fill="#05050a" stroke="#505054" stroke-width="2.5"></rect>
+                                <polygon points="132 50 132 82 158 66" fill="#ffffff"></polygon>
+                                <line x1="70" y1="104" x2="210" y2="104" stroke="rgba(255,255,255,0.3)" stroke-width="2"></line>
+                                <line x1="70" y1="104" x2="120" y2="104" stroke="#ffffff" stroke-width="2"></line>
+                            </g>
+                            <g class="ins-cursor ins-hist-cursor">
+                                <use class="so-rato" href="#ins-seta-rato"></use>
+                                <circle class="so-toque ins-dedo" cx="0" cy="0" r="10"></circle>
+                            </g>
+                        </svg>
+                    </div>
+                    <h2 class="instrucoes-titulo" data-i18n="ins.historiasTitulo">Ver as histórias</h2>
+                    <p class="instrucoes-texto">Os marcadores abrem os testemunhos e as rotas 360º.</p>
+                </section>
+
+                <div class="instrucoes-pontos" aria-hidden="true"></div>
+                <p class="instrucoes-anuncio" aria-live="polite"></p>
+            </div>
+
+            <button type="button" class="instrucoes-seta esquerda" aria-label="Anterior" title="Anterior" data-i18n-aria="palco.anterior" data-i18n-title="palco.anterior">
+                <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true"><polyline points="15 18 9 12 15 6"></polyline></svg>
+            </button>
+            <button type="button" class="instrucoes-seta direita" aria-label="Seguinte" title="Seguinte" data-i18n-aria="palco.seguinte" data-i18n-title="palco.seguinte"></button>
+        </div>
+    </div>
+
+    <script>
+    /**
+     * As instruções de navegação.
+     *
+     * Aparecem uma vez, na primeira visita, pouco depois de o ecrã de
+     * espera sair; fechadas, fica escrito na memória do navegador e não
+     * voltam — a não ser que se abra a página com `?instrucoes` no
+     * endereço (é para lá que aponta "Rever as instruções", na página dos
+     * controlos).
+     *
+     * Quem tem dedo em vez de rato vê os desenhos e as frases dos dedos,
+     * e não vê o passo do teclado. As setas de cada lado passam de passo;
+     * no último, a da direita é uma cruz e fecha. Também se passa com as
+     * setas do teclado e se fecha com o Escape, enquanto o cartão tiver o
+     * foco.
+     */
+    (function () {
+        const caixa = document.getElementById('instrucoes');
+        const overlay = document.getElementById('loading-overlay');
+        if (!caixa || !overlay) return;
+
+        const CHAVE = 'instrucoes';
+        const t = (chave) => (window.Idiomas && window.Idiomas.t(chave)) || '';
+        const traduzir = (el) => { if (window.Idiomas) window.Idiomas.aplicar(el); };
+
+        const SETA_DIREITA = '<svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true"><polyline points="9 18 15 12 9 6"></polyline></svg>';
+        const CRUZ = '<svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true"><path d="M7 7L17 17M17 7L7 17"></path></svg>';
+
+        const porToque = !!(window.matchMedia && window.matchMedia('(hover: none) and (pointer: coarse)').matches);
+        caixa.classList.toggle('por-toque', porToque);
+
+        // Os passos que servem a este aparelho; os outros saem.
+        const passos = [];
+        caixa.querySelectorAll('.instrucoes-passo').forEach((passo) => {
+            if (porToque && passo.dataset.so === 'rato') {
+                passo.remove();
+                return;
+            }
+            const texto = passo.querySelector('.instrucoes-texto');
+            const chave = porToque ? passo.dataset.toque : passo.dataset.rato;
+            if (texto && chave) texto.setAttribute('data-i18n', chave);
+            passos.push(passo);
+        });
+
+        const cartao = caixa.querySelector('.instrucoes-cartao');
+        const pontos = caixa.querySelector('.instrucoes-pontos');
+        const anuncio = caixa.querySelector('.instrucoes-anuncio');
+        const esquerda = caixa.querySelector('.instrucoes-seta.esquerda');
+        const direita = caixa.querySelector('.instrucoes-seta.direita');
+        const fecharBotao = cartao.querySelector('.menu-fechar');
+
+        passos.forEach(() => pontos.appendChild(document.createElement('span')));
+        traduzir(caixa);
+
+        let atual = 0;
+        let aberta = false;
+
+        const anunciar = () => {
+            const passo = passos[atual];
+            const titulo = passo.querySelector('.instrucoes-titulo').textContent;
+            const texto = passo.querySelector('.instrucoes-texto').textContent;
+            anuncio.textContent = t('ins.passo').replace('{n}', atual + 1).replace('{total}', passos.length) +
+                '. ' + titulo + '. ' + texto;
+        };
+
+        const mostrar = (n, sentido) => {
+            atual = Math.max(0, Math.min(passos.length - 1, n));
+            passos.forEach((passo, i) => {
+                passo.hidden = i !== atual;
+                passo.classList.remove('entra-da-direita', 'entra-da-esquerda');
+            });
+            if (sentido) {
+                const passo = passos[atual];
+                void passo.offsetWidth;
+                passo.classList.add(sentido > 0 ? 'entra-da-direita' : 'entra-da-esquerda');
+            }
+            Array.from(pontos.children).forEach((ponto, i) => ponto.classList.toggle('atual', i === atual));
+
+            // No primeiro não há para onde voltar.
+            const primeiro = atual === 0;
+            esquerda.classList.toggle('escondida', primeiro);
+            esquerda.tabIndex = primeiro ? -1 : 0;
+
+            // No último, a seta da direita passa a ser a cruz de saída.
+            const ultimo = atual === passos.length - 1;
+            direita.classList.toggle('a-sair', ultimo);
+            direita.innerHTML = ultimo ? CRUZ : SETA_DIREITA;
+            const chave = ultimo ? 'ins.fechar' : 'palco.seguinte';
+            direita.setAttribute('data-i18n-aria', chave);
+            direita.setAttribute('data-i18n-title', chave);
+            traduzir(direita.parentNode);
+
+            anunciar();
+        };
+
+        const abrir = () => {
+            if (aberta) return;
+            aberta = true;
+            caixa.hidden = false;
+            mostrar(0, 0);
+            requestAnimationFrame(() => requestAnimationFrame(() => caixa.classList.add('aberta')));
+            try { cartao.focus({ preventScroll: true }); } catch (e) { cartao.focus(); }
+        };
+
+        const fechar = () => {
+            if (!aberta) return;
+            aberta = false;
+            try { localStorage.setItem(CHAVE, 'vistas'); } catch (e) { /* sem memória: fecha só desta vez */ }
+            if (caixa.contains(document.activeElement)) document.activeElement.blur();
+            caixa.classList.remove('aberta');
+            setTimeout(() => { if (!aberta) caixa.hidden = true; }, 350);
+        };
+
+        const seguinte = () => {
+            if (atual >= passos.length - 1) fechar();
+            else mostrar(atual + 1, 1);
+        };
+        const anterior = () => { if (atual > 0) mostrar(atual - 1, -1); };
+
+        direita.addEventListener('click', seguinte);
+        esquerda.addEventListener('click', anterior);
+        fecharBotao.addEventListener('click', fechar);
+
+        // As teclas ficam para o cartão enquanto o foco lá estiver: as
+        // setas não andam com o bairro por trás dele.
+        caixa.addEventListener('keydown', (e) => {
+            if (!aberta) return;
+            if (e.key === 'ArrowRight') { seguinte(); }
+            else if (e.key === 'ArrowLeft') { anterior(); }
+            else if (e.key === 'Escape') { fechar(); }
+            else return;
+            e.preventDefault();
+            e.stopPropagation();
+        });
+
+        window.addEventListener('idiomamudou', () => { if (aberta) anunciar(); });
+
+        // Na primeira visita — ou quando se pede — aparecem pouco depois
+        // de o bairro aparecer.
+        let vistas = false;
+        try { vistas = localStorage.getItem(CHAVE) === 'vistas'; } catch (e) { /* sem memória: aparecem */ }
+        const pedidas = /[?&]instrucoes(=|&|$)/.test(location.search);
+        // O pedido sai do endereço mal é lido: quem partilhar a página
+        // depois não manda as instruções a quem já as viu.
+        if (pedidas && window.history && history.replaceState) {
+            const limpo = location.search.replace(/([?&])instrucoes(=[^&]*)?(&|$)/, (m, antes, valor, depois) => (depois ? antes : ''));
+            history.replaceState(history.state, '', location.pathname + limpo + location.hash);
+        }
+        if (!vistas || pedidas) {
+            let marcado = false;
+            const quandoPronto = () => {
+                if (marcado || !overlay.classList.contains('hidden')) return;
+                marcado = true;
+                observador.disconnect();
+                setTimeout(() => {
+                    if (!document.body.classList.contains('em-cartao')) abrir();
+                }, 900);
+            };
+            const observador = new MutationObserver(quandoPronto);
+            observador.observe(overlay, { attributes: true, attributeFilter: ['class'] });
+            quandoPronto();
+        }
+
+        window.instrucoes = { abrir, fechar };
+    })();
+    </script>
 
     <!-- Partilhar: o botão do canto e o menu das redes. -->
     <button type="button" id="partilhar-btn" class="adaptavel" aria-label="Partilhar" title="Partilhar" data-i18n-aria="par.botao" data-i18n-title="par.botao" aria-haspopup="true" aria-expanded="false" aria-controls="partilhar-menu">

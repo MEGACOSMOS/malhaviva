@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Controlos do Mapa — Malha Viva</title>
     <meta name="description" content="Guia dos controlos do visualizador 3D Malha Viva. Navega como num mapa: arrasta com o rato, aproxima com o scroll, roda com Ctrl.">
-    <script src="/idiomas.js?v=26"></script>
+    <script src="/idiomas.js?v=27"></script>
     <script src="/comando-paginas.js?v=4" defer></script>
 
     <style>
@@ -238,7 +238,30 @@
         .page-subtitle {
             font-size: 1rem;
             color: var(--color-text-muted);
+            margin-bottom: 20px;
+        }
+
+        /* Volta ao mapa e mostra outra vez as instruções da primeira
+           visita. Vestido como uma tecla: só o traço e a letra. */
+        .rever-instrucoes {
+            display: inline-flex;
+            align-items: center;
             margin-bottom: 48px;
+            padding: 9px 18px;
+            border: 2.5px solid rgba(255, 255, 255, 0.25);
+            color: var(--color-text);
+            font-size: 0.72rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            text-decoration: none;
+            transition: background 0.15s ease, border-color 0.15s ease;
+        }
+        .rever-instrucoes:hover,
+        .rever-instrucoes:focus-visible {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.45);
+            outline: none;
         }
 
         /* ─── Sections ─── */
@@ -574,6 +597,7 @@
     <main class="content">
         <h1 class="page-title" data-i18n="ctl.titulo">Controlos do Mapa</h1>
         <p class="page-subtitle" data-i18n="ctl.sub">Guia completo para navegar pela reconstrução 3D do Bairro de Penajóia.</p>
+        <a href="/?instrucoes" class="rever-instrucoes" data-i18n="ins.rever">Rever as instruções</a>
 
         <!-- ─── Rato ─── -->
         <section class="section" id="rato">
