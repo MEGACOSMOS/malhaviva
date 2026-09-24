@@ -17,6 +17,7 @@ import {
     Picker,
     Pose,
     PROJECTION_PERSPECTIVE,
+    Quat,
     Script,
     StandardMaterial,
     Vec2,
@@ -36,6 +37,8 @@ import {
 
 const tmpV1 = new Vec3();
 const tmpV2 = new Vec3();
+const tmpQ1 = new Quat();
+const tmpQ2 = new Quat();
 
 /**
  * Se a tecla Alt está a ser carregada.
@@ -173,13 +176,14 @@ const screenToWorld = (camera, dx, dy, dz, out = new Vec3()) => {
 const GRAUS_POR_LARGURA_DE_ECRA = 180;
 
 // ─── Apontar e ir ───
-// Um clique (ou um toque) num sítio do bairro leva a câmara até lá: sem se
-// aproximar nem se virar, desliza pelo chão — à mesma altura e a olhar para
-// o mesmo lado — e inclina-se o que for preciso, até ter o sítio no meio
-// do ecrã. Com o rato, uma pirâmide verde de bico para baixo mostra, antes
-// do clique, o sítio aonde ele leva. A viagem demora mais ou menos o
-// mesmo, perto ou longe — e por isso, quanto mais longe o sítio, mais
-// depressa se anda. Começa devagar e acaba devagar.
+// Um clique (ou um toque) num sítio do bairro leva a câmara até lá: sem
+// descer nem se virar, desliza pelo chão na direcção dele — à mesma altura e
+// a olhar para o mesmo lado — e fica muito mais perto, inclinada para baixo
+// o que for preciso para o ter no meio do ecrã. Nunca recua. Com o rato,
+// uma pirâmide verde de bico para baixo mostra, antes do clique, o sítio
+// aonde ele leva. A viagem demora mais ou menos o mesmo, perto ou longe —
+// e por isso, quanto mais longe o sítio, mais depressa se anda. Começa
+// devagar e acaba devagar.
 
 // Quanto o rato ou o dedo podem mexer, entre carregar e largar, para ainda
 // contar como clique e não como arrasto (pontos de ecrã).
@@ -196,12 +200,16 @@ const VIAGEM_DURACAO_MINIMA = 0.9;
 const VIAGEM_DURACAO_EXTRA = 0.6;
 const VIAGEM_DISTANCIA_LONGA = 150;
 
-// A inclinação com que se chega ao sítio, em graus para baixo: a que a
-// câmara já tinha, mas nunca menos de VIAGEM_INCLINACAO_MINIMA (senão, com
-// a câmara quase ao alto, o sítio ficava a quilómetros) nem mais de
-// VIAGEM_INCLINACAO_MAXIMA (a olhar a pique perde-se o bairro).
+// Quanto se aproxima do sítio em cada clique: do que faltava andar pelo
+// chão até ele, fica a faltar só esta fracção.
+const VIAGEM_APROXIMACAO = 0.3;
+
+// A inclinação com que se chega, em graus para baixo: a que for preciso
+// para olhar para o sítio, mas nunca menos de VIAGEM_INCLINACAO_MINIMA nem
+// mais de VIAGEM_INCLINACAO_MAXIMA — a pique perde-se o bairro, e por isso
+// a câmara não chega mais perto do que o que esta inclinação deixa ver.
 const VIAGEM_INCLINACAO_MINIMA = 20;
-const VIAGEM_INCLINACAO_MAXIMA = 70;
+const VIAGEM_INCLINACAO_MAXIMA = 65;
 
 // A pirâmide que mostra o sítio: a altura com que se vê no ecrã, em pontos
 // (é do mesmo tamanho perto ou longe), e de quanto em quanto tempo se
@@ -209,6 +217,9 @@ const VIAGEM_INCLINACAO_MAXIMA = 70;
 // milissegundos.
 const PIRAMIDE_PONTOS = 26;
 const PIRAMIDE_LEITURA_MS = 80;
+// A que altura, em graus, a pirâmide parece estar a ser vista, por muito
+// que a câmara olhe para baixo (ver `_atualizarPiramide`).
+const PIRAMIDE_ELEVACAO = 25;
 // As cores das faces, do verde dos testemunhos: a de cima mais clara, as
 // dos lados alternadas, para se perceber que é uma pirâmide e não um
 // triângulo.
@@ -1272,12 +1283,13 @@ class CameraControls extends Script {
     /**
      * Põe a câmara a caminho de um sítio do bairro.
      *
-     * A câmara não se aproxima nem se vira: fica à mesma altura e a olhar
-     * para o mesmo lado, e desliza pelo chão — para a frente, para trás ou
-     * de lado — até ao ponto de onde vê o sítio no meio do ecrã com a
-     * inclinação que já tinha. Só se inclina se essa inclinação estiver
-     * fora de VIAGEM_INCLINACAO_MINIMA e _MAXIMA: quase ao alto, o sítio
-     * ficava a quilómetros; a pique, perdia-se o bairro.
+     * A câmara não desce nem se vira: fica à mesma altura e a olhar para
+     * o mesmo lado, e desliza pelo chão na direcção do sítio — de lado, o
+     * bastante para o ter à frente, e para a frente até só faltar
+     * VIAGEM_APROXIMACAO do caminho. Inclina-se para baixo para olhar para
+     * ele, e por isso chega com o sítio no meio do ecrã. Nunca recua: com
+     * o sítio já perto, só desliza de lado e se inclina. E não chega tão
+     * perto que tenha de olhar mais a pique do que VIAGEM_INCLINACAO_MAXIMA.
      *
      * @param {Vec3} sitio - Para onde ir.
      * @private
@@ -1290,18 +1302,26 @@ class CameraControls extends Script {
         while (inclinacao0 > 180) inclinacao0 -= 360;
         while (inclinacao0 < -180) inclinacao0 += 360;
 
-        // A inclinação com que se chega, e a distância pelo chão a que o
-        // sítio fica no meio do ecrã com ela, à altura a que se está.
-        const inclinacao1 = -math.clamp(-inclinacao0, VIAGEM_INCLINACAO_MINIMA, VIAGEM_INCLINACAO_MAXIMA);
-        const desnivel = Math.max(0.5, posicao.y - sitio.y);
-        const recuo = desnivel / Math.tan(-inclinacao1 * math.DEG_TO_RAD);
-
-        // Para onde se olha continua igual: o sítio fica à frente, nessa
-        // direcção, à distância do recuo.
+        // Para onde se olha continua igual; o que conta é quanto o sítio
+        // está à frente, nessa direcção, pelo chão.
         const rumo = angulos.y * math.DEG_TO_RAD;
         const frenteX = -Math.sin(rumo);
         const frenteZ = -Math.cos(rumo);
-        const para = new Vec3(sitio.x - frenteX * recuo, posicao.y, sitio.z - frenteZ * recuo);
+        const aFrente = (sitio.x - posicao.x) * frenteX + (sitio.z - posicao.z) * frenteZ;
+        const desnivel = Math.max(0.5, posicao.y - sitio.y);
+
+        // Fica a faltar só uma fracção do caminho — mas não mais perto do
+        // que o que se vê à inclinação máxima, e nunca para trás.
+        const pertoDeMais = desnivel / Math.tan(VIAGEM_INCLINACAO_MAXIMA * math.DEG_TO_RAD);
+        const fica = Math.max(0, Math.min(aFrente, Math.max(aFrente * VIAGEM_APROXIMACAO, pertoDeMais)));
+        const para = new Vec3(sitio.x - frenteX * fica, posicao.y, sitio.z - frenteZ * fica);
+
+        // Inclinada para o sítio.
+        const inclinacao1 = -math.clamp(
+            Math.atan2(desnivel, Math.max(fica, 0.001)) * math.RAD_TO_DEG,
+            VIAGEM_INCLINACAO_MINIMA,
+            VIAGEM_INCLINACAO_MAXIMA
+        );
 
         const percurso = posicao.distance(para);
         if (percurso < 0.05 && Math.abs(inclinacao1 - inclinacao0) < 0.5) {
@@ -1471,7 +1491,19 @@ class CameraControls extends Script {
         const balanco = tamanho * (0.2 + 0.12 * Math.sin(apontar.tempo * 4));
         entidade.setPosition(apontar.onde.x, apontar.onde.y + balanco, apontar.onde.z);
         entidade.setLocalScale(tamanho, tamanho, tamanho);
-        entidade.setEulerAngles(0, apontar.tempo * 45, 0);
+
+        // A rodar devagar sobre si. Com a câmara a olhar muito para baixo,
+        // a pirâmide deita-se um pouco para longe dela: vista de cima era só
+        // o quadrado do topo, e assim vê-se sempre como se estivesse a
+        // PIRAMIDE_ELEVACAO graus de altura — com o bico no sítio na mesma.
+        const descida = -this._pose.angles.x;
+        const deitar = Math.max(0, descida - PIRAMIDE_ELEVACAO);
+        tmpQ1.setFromAxisAngle(Vec3.UP, this._pose.angles.y);
+        tmpQ2.setFromAxisAngle(Vec3.RIGHT, -deitar);
+        tmpQ1.mul(tmpQ2);
+        tmpQ2.setFromAxisAngle(Vec3.UP, apontar.tempo * 45);
+        tmpQ1.mul(tmpQ2);
+        entidade.setRotation(tmpQ1);
     }
 
     /**
