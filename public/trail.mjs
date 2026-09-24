@@ -310,24 +310,10 @@ TrailController.prototype.rebuildTrail = function() {
         let totalLength = 0;
         const pathData = [];
 
-        // Generate smooth points using Catmull-Rom Spline
-        const smoothPoints = [];
-        for (let i = 0; i < pts.length - 1; i++) {
-            const p0 = i === 0 ? pts[0] : pts[i - 1];
-            const p1 = pts[i];
-            const p2 = pts[i + 1];
-            const p3 = i === pts.length - 2 ? pts[pts.length - 1] : pts[i + 2];
-            
-            const dist = p1.distance(p2);
-            // Dynamic steps based on distance: more steps for longer segments
-            const steps = Math.max(4, Math.floor(dist * 2.0));
-            
-            for (let j = 0; j < steps; j++) {
-                const t = j / steps;
-                smoothPoints.push(this.getCatmullRomPoint(t, p0, p1, p2, p3));
-            }
-        }
-        smoothPoints.push(pts[pts.length - 1].clone());
+        // A rota não é arredondada (removeu-se a lógica em que voa): 
+        // as curvas no ar passavam pelo vazio no eixo do Y.
+        // Segue directamente os pontos marcados no terreno.
+        const smoothPoints = pts.map(p => p.clone());
 
         for (let i = 0; i < smoothPoints.length - 1; i++) {
             const p1 = smoothPoints[i];
@@ -454,16 +440,7 @@ TrailController.prototype.buildTrailBounds = function(trail) {
     trail.boundsRadius = r;
 };
 
-TrailController.prototype.getCatmullRomPoint = function(t, p0, p1, p2, p3) {
-    const t2 = t * t;
-    const t3 = t2 * t;
-    
-    const x = 0.5 * ((2 * p1.x) + (-p0.x + p2.x) * t + (2 * p0.x - 5 * p1.x + 4 * p2.x - p3.x) * t2 + (-p0.x + 3 * p1.x - 3 * p2.x + p3.x) * t3);
-    const y = 0.5 * ((2 * p1.y) + (-p0.y + p2.y) * t + (2 * p0.y - 5 * p1.y + 4 * p2.y - p3.y) * t2 + (-p0.y + 3 * p1.y - 3 * p2.y + p3.y) * t3);
-    const z = 0.5 * ((2 * p1.z) + (-p0.z + p2.z) * t + (2 * p0.z - 5 * p1.z + 4 * p2.z - p3.z) * t2 + (-p0.z + 3 * p1.z - 3 * p2.z + p3.z) * t3);
-    
-    return new pc.Vec3(x, y, z);
-};
+
 
 TrailController.prototype.distRaySegment = function(rayOrigin, rayDir, p1, p2) {
     if (!this._tmpV) {
@@ -930,26 +907,26 @@ TrailController.prototype.setupEditModeUI = function() {
     this.editUI.style.background = 'linear-gradient(to bottom, rgba(255,255,255,0.05), transparent), #05050a';
     this.editUI.style.border = '1px solid rgba(255, 255, 255, 0.15)';
     this.editUI.style.borderRadius = '0px';
-    this.editUI.style.padding = '16px';
+    this.editUI.style.padding = '10px 14px';
     this.editUI.style.display = 'none';
     this.editUI.style.flexDirection = 'column';
     this.editUI.style.alignItems = 'flex-start';
-    this.editUI.style.gap = '12px';
+    this.editUI.style.gap = '8px';
     this.editUI.style.zIndex = '1000';
     this.editUI.style.boxShadow = '0 4px 15px rgba(0,0,0,0.4)';
     this.editUI.style.fontFamily = "'Liberation Mono', 'Courier New', monospace";
     
     this.editUI.innerHTML = `
-        <div style="color: #ffffff; font-weight: 600; font-size: 0.9rem; display: flex; align-items: center; gap: 8px;">
-            <div style="width: 8px; height: 8px; background: #ffffff; border-radius: 50%; animation: pulse-ring 1.5s infinite;"></div>
+        <div style="color: #ffffff; font-weight: 600; font-size: 0.8rem; display: flex; align-items: center; gap: 6px;">
+            <div style="width: 6px; height: 6px; background: #ffffff; border-radius: 50%; animation: pulse-ring 1.5s infinite;"></div>
             Modo de Edição de Trilha
         </div>
-        <div style="color: rgba(255,255,255,0.7); font-size: 0.8rem;">Clica no mapa para adicionar pontos.</div>
-        <textarea id="trail-code-output" readonly style="width: 100%; height: 80px; background: rgba(0,0,0,0.5); color: #fff; border: 1px solid rgba(255,255,255,0.15); padding: 8px; font-family: monospace; font-size: 0.75rem; resize: none;"></textarea>
-        <div style="display: flex; gap: 10px; width: 100%;">
-            <button id="trail-undo-btn" style="flex: 1; background: transparent; color: white; border: 1px solid rgba(255,255,255,0.15); padding: 8px; cursor: pointer; font-size: 0.8rem; transition: background 0.2s;">Desfazer</button>
-            <button id="trail-clear-btn" style="flex: 1; background: transparent; color: #ff4444; border: 1px solid rgba(255,0,0,0.3); padding: 8px; cursor: pointer; font-size: 0.8rem; transition: background 0.2s;">Limpar</button>
-            <button id="trail-copy-btn" style="flex: 1; background: #ffffff; color: #05050a; border: none; padding: 8px; cursor: pointer; font-size: 0.8rem; font-weight: 600; transition: opacity 0.2s;">Copiar</button>
+        <div style="color: rgba(255,255,255,0.7); font-size: 0.7rem;">Clica no mapa para adicionar pontos.</div>
+        <textarea id="trail-code-output" readonly style="width: 100%; height: 60px; background: rgba(0,0,0,0.5); color: #fff; border: 1px solid rgba(255,255,255,0.15); padding: 6px; font-family: monospace; font-size: 0.7rem; resize: none;"></textarea>
+        <div style="display: flex; gap: 8px; width: 100%;">
+            <button id="trail-undo-btn" style="flex: 1; background: transparent; color: white; border: 1px solid rgba(255,255,255,0.15); padding: 4px 8px; cursor: pointer; font-size: 0.75rem; transition: background 0.2s;">Desfazer</button>
+            <button id="trail-clear-btn" style="flex: 1; background: transparent; color: #ff4444; border: 1px solid rgba(255,0,0,0.3); padding: 4px 8px; cursor: pointer; font-size: 0.75rem; transition: background 0.2s;">Limpar</button>
+            <button id="trail-copy-btn" style="flex: 1; background: #ffffff; color: #05050a; border: none; padding: 4px 8px; cursor: pointer; font-size: 0.75rem; font-weight: 600; transition: opacity 0.2s;">Copiar</button>
         </div>
     `;
     document.body.appendChild(this.editUI);

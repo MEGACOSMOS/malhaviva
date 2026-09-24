@@ -47,15 +47,18 @@ CameraCoordinates.prototype.initialize = function() {
 
     const devCursorToggle = document.getElementById('dev-cursor-coord');
     const devTrailToggle = document.getElementById('dev-trail-edit');
+    const devMeasureToggle = document.getElementById('dev-measure-mode');
     const devCameraToggle = document.getElementById('dev-camera-coord');
 
     const refreshPicking = () => {
         const active = !!((devCursorToggle && devCursorToggle.checked) ||
-                          (devTrailToggle && devTrailToggle.checked));
+                          (devTrailToggle && devTrailToggle.checked) ||
+                          (devMeasureToggle && devMeasureToggle.checked));
         this.setPickingActive(active);
     };
     if (devCursorToggle) devCursorToggle.addEventListener('change', refreshPicking);
     if (devTrailToggle) devTrailToggle.addEventListener('change', refreshPicking);
+    if (devMeasureToggle) devMeasureToggle.addEventListener('change', refreshPicking);
     if (devCameraToggle) {
         this.cameraInfoActive = devCameraToggle.checked;
         devCameraToggle.addEventListener('change', () => {

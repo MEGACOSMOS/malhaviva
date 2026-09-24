@@ -1168,23 +1168,20 @@ AnnotationController.prototype.initialize = function() {
         const isViewed = this.viewedAnnotations.includes(annId);
 
         if (ann.is360) {
-            // As rotas mostram quatro setas, uma para cada lado, postas em
-            // cruz grega: é o antigo ícone dos controlos, para mostrar que ali
-            // se pode olhar e andar à volta. O nome vai por baixo. A
-            // fotografia do alto do bairro dispensa as duas coisas: fica só
-            // um olho, pousado no céu, sem legenda a tapar a paisagem.
+            // As rotas mostram duas setas em losango (o ícone universal
+            // de rotação 360º), para mostrar que ali se pode olhar e andar
+            // à volta. O nome vai por baixo. A fotografia do alto do bairro
+            // dispensa as duas coisas: fica só um olho, pousado no céu.
             const simbolo = ann.isImage
                 ? `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter">
                         <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"></path>
                         <circle cx="12" cy="12" r="3"></circle>
                    </svg>`
                 : `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter">
-                        <polyline points="8.5 5.5 12 2 15.5 5.5"></polyline>
-                        <polyline points="8.5 18.5 12 22 15.5 18.5"></polyline>
-                        <polyline points="5.5 8.5 2 12 5.5 15.5"></polyline>
-                        <polyline points="18.5 8.5 22 12 18.5 15.5"></polyline>
-                        <line x1="12" y1="3" x2="12" y2="21"></line>
-                        <line x1="3" y1="12" x2="21" y2="12"></line>
+                        <polyline points="4 10, 12 2, 19 9"></polyline>
+                        <polyline points="14 9, 19 9, 19 4"></polyline>
+                        <polyline points="20 14, 12 22, 5 15"></polyline>
+                        <polyline points="10 15, 5 15, 5 20"></polyline>
                    </svg>`;
             el.innerHTML = `
                 <div class="marker-dot is-360 ${ann.isImage ? 'is-foto' : ''} ${isViewed ? 'viewed' : ''}">
@@ -1196,10 +1193,9 @@ AnnotationController.prototype.initialize = function() {
             el.innerHTML = `
                 <div class="marker-dot ${isViewed ? 'viewed' : ''}">
                     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter">
-                        <line x1="6" y1="6" x2="6" y2="18"></line>
-                        <line x1="10" y1="9" x2="10" y2="15"></line>
-                        <line x1="14" y1="3" x2="14" y2="21"></line>
-                        <line x1="18" y1="5" x2="18" y2="19"></line>
+                        <polygon points="3 4 21 4 21 16 12 16 7 21 7 16 3 16"></polygon>
+                        <line x1="8" y1="8" x2="16" y2="8"></line>
+                        <line x1="8" y1="12" x2="12" y2="12"></line>
                     </svg>
                 </div>
                 <div class="marker-label">${ann.label}</div>
