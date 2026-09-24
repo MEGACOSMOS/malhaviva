@@ -7,7 +7,7 @@
     <meta name="description" content="Exploração 3D interativa do Bairro de Penajóia através de Gaussian Splatting. Projeto Malha Viva.">
     <!-- As línguas do site. Fica antes de tudo o resto para o texto
          nascer já na língua certa, sem piscar em português primeiro. -->
-    <script src="/idiomas.js?v=28"></script>
+    <script src="/idiomas.js?v=29"></script>
 
     <!-- O quadrado de espera, o mesmo em todo o site. Fica antes de o
          ecrã de espera se desenhar, para nascer já com a sua roupa. -->
@@ -1352,25 +1352,41 @@
         }
 
         /* 1 · Ir até um sítio: o rato vai, a pirâmide verde aparece no
-           sítio, carrega-se, e o bairro desliza até o sítio ficar ao meio —
-           sem se aproximar. */
-        #instrucoes .ins-ir-desliza {
-            animation: ins-ir-desliza 4s ease-in-out infinite;
+           sítio, carrega-se, e a câmara aproxima-se — o chão cresce e o
+           horizonte sobe para fora do desenho, que é o que se vê quando a
+           câmara anda para a frente e se inclina para baixo — até o sítio
+           ficar no meio.
+
+           A pirâmide nasce invisível e apaga-se antes de a volta
+           recomeçar: acesa no fim de uma volta e apagada no começo da
+           seguinte, piscava. */
+        #instrucoes .ins-ir-aproxima {
+            animation: ins-ir-aproxima 4s ease-in-out infinite;
         }
-        @keyframes ins-ir-desliza {
-            0%, 44% { transform: translate(0, 0); opacity: 1; }
-            80%, 88% { transform: translate(-60px, -12px); opacity: 1; }
-            94% { transform: translate(-60px, -12px); opacity: 0; }
-            95% { transform: translate(0, 0); opacity: 0; }
-            100% { transform: translate(0, 0); opacity: 1; }
+        @keyframes ins-ir-aproxima {
+            0%, 44% { transform: translate(0, 0) scale(1); opacity: 1; }
+            80%, 88% { transform: translate(-180px, -78px) scale(1.6); opacity: 1; }
+            94% { transform: translate(-180px, -78px) scale(1.6); opacity: 0; }
+            95% { transform: translate(0, 0) scale(1); opacity: 0; }
+            100% { transform: translate(0, 0) scale(1); opacity: 1; }
+        }
+        #instrucoes .ins-ir-sitio {
+            transform: translate(200px, 104px);
+            animation: ins-ir-sitio 4s ease-in-out infinite;
+        }
+        @keyframes ins-ir-sitio {
+            0%, 44% { transform: translate(200px, 104px); }
+            80%, 93% { transform: translate(140px, 88px); }
+            94%, 100% { transform: translate(200px, 104px); }
         }
         #instrucoes .ins-ir-piramide {
-            opacity: 1;
+            opacity: 0;
             animation: ins-ir-piramide 4s ease infinite;
         }
         @keyframes ins-ir-piramide {
             0%, 22% { opacity: 0; }
-            30%, 100% { opacity: 1; }
+            30%, 86% { opacity: 1; }
+            92%, 100% { opacity: 0; }
         }
         #instrucoes .ins-boia {
             animation: ins-boia 1.2s ease-in-out infinite;
@@ -1389,7 +1405,9 @@
             60%, 100% { transform: translate(200px, 104px); opacity: 0; }
         }
 
-        /* 2 · Olhar à volta: arrasta-se, e o horizonte vai atrás. */
+        /* 2 · Olhar à volta: arrasta-se, e o horizonte vai atrás. O rato,
+           desenhado ao canto com o botão da esquerda carregado, anda para o
+           lado com a seta. */
         #instrucoes .ins-olhar-vista {
             animation: ins-olhar-vista 4s ease-in-out infinite;
         }
@@ -1406,6 +1424,15 @@
             0%, 12% { transform: translate(170px, 96px); }
             50%, 62% { transform: translate(100px, 96px); }
             100% { transform: translate(170px, 96px); }
+        }
+        #instrucoes .ins-olhar-rato {
+            transform: translate(240px, 94px);
+            animation: ins-olhar-rato 4s ease-in-out infinite;
+        }
+        @keyframes ins-olhar-rato {
+            0%, 12% { transform: translate(240px, 94px); }
+            50%, 62% { transform: translate(206px, 94px); }
+            100% { transform: translate(240px, 94px); }
         }
 
         /* 3 · Aproximar e afastar: a roda gira, ou os dedos abrem. */
@@ -1523,7 +1550,8 @@
             .instrucoes-passo {
                 animation: none !important;
             }
-            #instrucoes .ins-janela {
+            #instrucoes .ins-janela,
+            #instrucoes .ins-ir-piramide {
                 opacity: 1;
             }
         }
@@ -2432,14 +2460,14 @@
              é repetido com <use> não apanha as regras da página. -->
         <svg width="0" height="0" style="position: absolute" aria-hidden="true" focusable="false">
             <defs>
-                <clipPath id="ins-recorte-chao"><rect x="0" y="44" width="280" height="96"></rect></clipPath>
+                <clipPath id="ins-recorte-chao"><rect x="-400" y="44" width="1100" height="120"></rect></clipPath>
                 <!-- O chão do bairro, em perspectiva, até ao horizonte. -->
                 <g id="ins-chao">
                     <g clip-path="url(#ins-recorte-chao)">
-                        <path fill="none" stroke="rgba(255,255,255,0.22)" stroke-width="1.5" d="M-40 54H320M-40 68H320M-40 88H320M-40 116H320"></path>
-                        <path fill="none" stroke="rgba(255,255,255,0.22)" stroke-width="1.5" d="M140 30L-220 140M140 30L-100 140M140 30L20 140M140 30L140 140M140 30L260 140M140 30L380 140M140 30L500 140"></path>
+                        <path fill="none" stroke="rgba(255,255,255,0.22)" stroke-width="1.5" d="M-400 54H700M-400 68H700M-400 88H700M-400 116H700M-400 150H700"></path>
+                        <path fill="none" stroke="rgba(255,255,255,0.22)" stroke-width="1.5" d="M140 30L-500 164M140 30L-340 164M140 30L-180 164M140 30L-40 164M140 30L50 164M140 30L140 164M140 30L230 164M140 30L320 164M140 30L460 164M140 30L620 164M140 30L780 164"></path>
                     </g>
-                    <path fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="1.5" d="M0 44H280"></path>
+                    <path fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="1.5" d="M-400 44H700"></path>
                 </g>
                 <!-- Umas casas pousadas no chão. -->
                 <g id="ins-casas">
@@ -2476,12 +2504,12 @@
                 <section class="instrucoes-passo" data-rato="ins.irRato" data-toque="ins.irToque">
                     <div class="instrucoes-desenho" aria-hidden="true">
                         <svg viewBox="0 0 280 140">
-                            <use href="#ins-chao"></use>
-                            <g class="ins-ir-desliza">
+                            <g class="ins-ir-aproxima">
+                                <use href="#ins-chao"></use>
                                 <use href="#ins-casas"></use>
                                 <g transform="translate(200 0)"><use href="#ins-casas"></use></g>
-                                <g transform="translate(200 104)"><g class="ins-ir-piramide"><g class="ins-boia"><use href="#ins-piramide"></use></g></g></g>
                             </g>
+                            <g class="ins-ir-sitio"><g class="ins-ir-piramide"><g class="ins-boia"><use href="#ins-piramide"></use></g></g></g>
                             <g class="ins-cursor ins-ir-cursor">
                                 <use class="so-rato" href="#ins-seta-rato"></use>
                                 <circle class="so-toque ins-dedo" cx="0" cy="0" r="10"></circle>
@@ -2502,6 +2530,14 @@
                                 <g transform="translate(-60 0)"><use href="#ins-casas"></use></g>
                                 <use href="#ins-casas"></use>
                                 <g transform="translate(240 0)"><use href="#ins-casas"></use></g>
+                            </g>
+                            <g class="so-rato">
+                                <g class="ins-olhar-rato">
+                                    <rect x="0" y="0" width="22" height="32" fill="#05050a" stroke="#ffffff" stroke-width="2"></rect>
+                                    <rect x="1" y="1" width="10" height="12" fill="#ffffff"></rect>
+                                    <line x1="0" y1="13" x2="22" y2="13" stroke="#ffffff" stroke-width="1.5"></line>
+                                    <line x1="11" y1="0" x2="11" y2="13" stroke="#ffffff" stroke-width="1.5"></line>
+                                </g>
                             </g>
                             <g class="ins-cursor ins-olhar-mao">
                                 <use class="so-rato" href="#ins-seta-rato"></use>
