@@ -1,17 +1,24 @@
 import {
     math,
+    BLEND_NORMAL,
+    Color,
+    CULLFACE_NONE,
     DualGestureSource,
+    Entity,
     FlyController,
     FocusController,
     GamepadSource,
     InputFrame,
     KeyboardMouseSource,
+    Mesh,
+    MeshInstance,
     MultiTouchSource,
     OrbitController,
     Picker,
     Pose,
     PROJECTION_PERSPECTIVE,
     Script,
+    StandardMaterial,
     Vec2,
     Vec3
 } from 'playcanvas';
@@ -166,10 +173,13 @@ const screenToWorld = (camera, dx, dy, dz, out = new Vec3()) => {
 const GRAUS_POR_LARGURA_DE_ECRA = 180;
 
 // ─── Apontar e ir ───
-// Um clique (ou um toque) num sítio do bairro leva a câmara até lá: vira-se
-// para ele e aproxima-se, até o ter no meio do ecrã e mais perto. A viagem
-// demora mais ou menos o mesmo, perto ou longe — e por isso, quanto mais
-// longe o sítio, mais depressa se anda. Começa devagar e acaba devagar.
+// Um clique (ou um toque) num sítio do bairro leva a câmara até lá: sem se
+// aproximar nem se virar, desliza pelo chão — à mesma altura e a olhar para
+// o mesmo lado — e inclina-se o que for preciso, até ter o sítio no meio
+// do ecrã. Com o rato, uma pirâmide verde de bico para baixo mostra, antes
+// do clique, o sítio aonde ele leva. A viagem demora mais ou menos o
+// mesmo, perto ou longe — e por isso, quanto mais longe o sítio, mais
+// depressa se anda. Começa devagar e acaba devagar.
 
 // Quanto o rato ou o dedo podem mexer, entre carregar e largar, para ainda
 // contar como clique e não como arrasto (pontos de ecrã).
@@ -193,15 +203,20 @@ const VIAGEM_DISTANCIA_LONGA = 150;
 const VIAGEM_INCLINACAO_MINIMA = 20;
 const VIAGEM_INCLINACAO_MAXIMA = 70;
 
-// Quanto se aproxima do sítio em cada clique: fica-se a esta fracção da
-// distância a que se estava, e nunca a menos de VIAGEM_DISTANCIA_MINIMA
-// metros dele.
-const VIAGEM_APROXIMACAO = 0.45;
-const VIAGEM_DISTANCIA_MINIMA = 25;
-
-// A altura mais baixa a que a câmara anda (a mesma de `update`, que não a
-// deixa furar o bairro).
-const ALTURA_MINIMA_DA_CAMARA = 15;
+// A pirâmide que mostra o sítio: a altura com que se vê no ecrã, em pontos
+// (é do mesmo tamanho perto ou longe), e de quanto em quanto tempo se
+// pergunta outra vez à placa gráfica que sítio está debaixo do rato, em
+// milissegundos.
+const PIRAMIDE_PONTOS = 26;
+const PIRAMIDE_LEITURA_MS = 80;
+// As cores das faces, do verde dos testemunhos: a de cima mais clara, as
+// dos lados alternadas, para se perceber que é uma pirâmide e não um
+// triângulo.
+const PIRAMIDE_CORES = {
+    topo: [110, 231, 183],
+    clara: [16, 185, 129],
+    escura: [4, 120, 87]
+};
 
 // A que altura fica o chão do bairro, para quando a placa gráfica não diz
 // onde se carregou (em metros, no sistema do mapa).
@@ -390,6 +405,41 @@ class CameraControls extends Script {
      * @private
      */
     _leitorDoSitio = null;
+
+    /**
+     * A pirâmide verde que mostra o sítio aonde o clique leva, e o que se
+     * sabe do rato para a pôr lá. Nasce na primeira vez que faz falta.
+     *
+     * @type {{entidade: Entity, material: StandardMaterial}|null}
+     * @private
+     */
+    _piramide = null;
+
+    /**
+     * @private
+     */
+    _apontar = {
+        // Onde está o rato, na tela, e se está em cima dela.
+        x: 0,
+        y: 0,
+        dentro: false,
+        // Com um botão em baixo o rato está a arrastar, não a apontar.
+        aArrastar: false,
+        // Mexeu-se desde a última pergunta à placa gráfica.
+        mexeu: false,
+        aLer: false,
+        ultimaLeitura: 0,
+        // O sítio debaixo do rato, ou nada (céu, fora do bairro).
+        sitio: null,
+        // Onde a pirâmide está desenhada, e quanto se vê (de zero a um).
+        onde: new Vec3(),
+        opacidade: 0,
+        tempo: 0,
+        // Onde a câmara estava na última pergunta: se ela andar, o sítio
+        // debaixo do rato muda, mesmo com o rato parado.
+        camara: new Vec3(),
+        angulos: new Vec3()
+    };
 
     _state = {
         axis: new Vec3(),
@@ -979,13 +1029,15 @@ class CameraControls extends Script {
     }
 
     /**
-     * Ouve os cliques e os toques no bairro, e distingue-os dos arrastos.
+     * Ouve o rato e os dedos em cima do bairro.
      *
-     * Conta como clique o que se larga depressa e quase no mesmo sítio em
-     * que se carregou, com o botão esquerdo, sem Ctrl, Shift nem Alt, e
-     * com um dedo só do princípio ao fim: dois dedos são pinça ou
+     * O rato a passar por cima diz onde pôr a pirâmide. Um clique leva a
+     * câmara: conta como clique o que se larga depressa e quase no mesmo
+     * sítio em que se carregou, com o botão esquerdo, sem Ctrl, Shift nem
+     * Alt, e com um dedo só do princípio ao fim — dois dedos são pinça ou
      * deslize, nunca um clique. Os marcadores e os menus estão por cima do
-     * bairro e ficam-lhe com os cliques; aqui só chegam os do bairro.
+     * bairro e ficam-lhe com o rato; aqui só chega o que é do bairro, e o
+     * rato que passa para cima deles sai do bairro (e a pirâmide some).
      *
      * @param {HTMLCanvasElement} tela - A tela onde o bairro é desenhado.
      * @private
@@ -994,6 +1046,20 @@ class CameraControls extends Script {
         /** @type {Map<number, {x: number, y: number, t: number}>} */
         const pousados = new Map();
         let variosDedos = false;
+        const apontar = this._apontar;
+
+        // Só o rato aponta: um dedo não passa por cima de nada sem tocar.
+        const aoMexer = (e) => {
+            if (e.pointerType !== 'mouse') {
+                return;
+            }
+            const caixa = tela.getBoundingClientRect();
+            apontar.x = e.clientX - caixa.left;
+            apontar.y = e.clientY - caixa.top;
+            apontar.dentro = true;
+            apontar.aArrastar = e.buttons !== 0;
+            apontar.mexeu = true;
+        };
 
         const aoPousar = (e) => {
             if (pousados.size === 0) {
@@ -1003,9 +1069,16 @@ class CameraControls extends Script {
             if (pousados.size > 1) {
                 variosDedos = true;
             }
+            if (e.pointerType === 'mouse') {
+                apontar.aArrastar = true;
+            }
         };
 
         const aoLargar = (e) => {
+            if (e.pointerType === 'mouse') {
+                aoMexer(e);
+                apontar.aArrastar = false;
+            }
             const inicio = pousados.get(e.pointerId);
             pousados.delete(e.pointerId);
             if (!inicio || variosDedos) {
@@ -1030,53 +1103,74 @@ class CameraControls extends Script {
         const aoDesistir = (e) => {
             pousados.delete(e.pointerId);
             variosDedos = true;
+            if (e.pointerType === 'mouse') {
+                apontar.aArrastar = false;
+            }
+        };
+
+        const aoSair = (e) => {
+            if (e.pointerType === 'mouse') {
+                apontar.dentro = false;
+            }
         };
 
         tela.addEventListener('pointerdown', aoPousar);
         tela.addEventListener('pointerup', aoLargar);
         tela.addEventListener('pointercancel', aoDesistir);
+        tela.addEventListener('pointermove', aoMexer);
+        tela.addEventListener('pointerleave', aoSair);
 
         this._largarCliques = () => {
             tela.removeEventListener('pointerdown', aoPousar);
             tela.removeEventListener('pointerup', aoLargar);
             tela.removeEventListener('pointercancel', aoDesistir);
+            tela.removeEventListener('pointermove', aoMexer);
+            tela.removeEventListener('pointerleave', aoSair);
         };
     }
 
     /**
-     * Carregou-se num ponto do bairro: descobre-se que sítio é, e vai-se lá.
+     * Se, neste momento, apontar para o bairro leva a algum lado.
      *
      * Não se vai a lado nenhum com os óculos postos, nem com as
      * ferramentas de medir ou de desenhar trilhos ligadas no menu de
      * desenvolvedor — aí o clique é delas.
+     *
+     * @returns {boolean} Se leva.
+     * @private
+     */
+    _podeApontar() {
+        if (!this.enabled || this.app.xr?.active) {
+            return false;
+        }
+        if (typeof document !== 'undefined') {
+            if (document.body.classList.contains('em-cartao')) {
+                return false;
+            }
+            const medir = document.getElementById('dev-measure-mode');
+            const trilhos = document.getElementById('dev-trail-edit');
+            if ((medir && medir.checked) || (trilhos && trilhos.checked)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Carregou-se num ponto do bairro: descobre-se que sítio é, e vai-se lá.
      *
      * @param {number} x - Onde se carregou, em pontos da janela.
      * @param {number} y - Onde se carregou, em pontos da janela.
      * @private
      */
     _cliqueNoBairro(x, y) {
-        if (!this.enabled || this.app.xr?.active) {
+        if (!this._podeApontar()) {
             return;
         }
-        if (typeof document !== 'undefined') {
-            if (document.body.classList.contains('em-cartao')) {
-                return;
-            }
-            const medir = document.getElementById('dev-measure-mode');
-            const trilhos = document.getElementById('dev-trail-edit');
-            if ((medir && medir.checked) || (trilhos && trilhos.checked)) {
-                return;
-            }
-        }
-
         const caixa = this.app.graphicsDevice.canvas.getBoundingClientRect();
-        const px = x - caixa.left;
-        const py = y - caixa.top;
-
-        this._sitioEm(px, py).then((sitio) => {
+        this._sitioEm(x - caixa.left, y - caixa.top).then((sitio) => {
             if (sitio) {
                 this._irAte(sitio);
-                this._marcarOndeSeCarregou(x, y);
             }
         });
     }
@@ -1087,8 +1181,9 @@ class CameraControls extends Script {
      *
      * Pergunta-se à placa gráfica a que distância está o que ela desenhou
      * nesse ponto — é a maneira de acertar no telhado, na rua ou na encosta
-     * que lá está de facto. Se ela não souber, vale o chão do bairro, um
-     * plano à altura de ALTURA_DO_CHAO.
+     * que lá está de facto. A pirâmide sai de cena enquanto se pergunta,
+     * para não ser ela a resposta. Se a placa não souber, vale o chão do
+     * bairro, um plano à altura de ALTURA_DO_CHAO.
      *
      * @param {number} px - Na tela, da esquerda.
      * @param {number} py - Na tela, de cima.
@@ -1103,6 +1198,8 @@ class CameraControls extends Script {
         const largura = Math.max(1, Math.floor(tela.clientWidth * ESCALA));
         const altura = Math.max(1, Math.floor(tela.clientHeight * ESCALA));
         const noChao = () => this._sitioValido(this._sitioNoChao(px, py));
+        const piramide = this._piramide && this._piramide.entidade;
+        const piramideAcesa = !!(piramide && piramide.enabled);
 
         try {
             if (!this._leitorDoSitio) {
@@ -1110,11 +1207,20 @@ class CameraControls extends Script {
             } else if (this._leitorDoSitio.width !== largura || this._leitorDoSitio.height !== altura) {
                 this._leitorDoSitio.resize(largura, altura);
             }
+            if (piramideAcesa) {
+                piramide.enabled = false;
+            }
             this._leitorDoSitio.prepare(this._camera, this.app.scene);
+            if (piramideAcesa) {
+                piramide.enabled = true;
+            }
             return this._leitorDoSitio.getWorldPointAsync(Math.floor(px * ESCALA), Math.floor(py * ESCALA))
             .then(ponto => (ponto ? this._sitioValido(ponto.clone()) : noChao()))
             .catch(() => noChao());
         } catch (e) {
+            if (piramideAcesa) {
+                piramide.enabled = true;
+            }
             return Promise.resolve(noChao());
         }
     }
@@ -1166,13 +1272,12 @@ class CameraControls extends Script {
     /**
      * Põe a câmara a caminho de um sítio do bairro.
      *
-     * A câmara vira-se para o sítio e aproxima-se dele: acaba a
-     * VIAGEM_APROXIMACAO da distância a que estava (nunca a menos de
-     * VIAGEM_DISTANCIA_MINIMA), a olhar para ele com a inclinação que já
-     * tinha (dentro de VIAGEM_INCLINACAO_MINIMA e _MAXIMA) — e por isso com
-     * o sítio no meio do ecrã. Desce ou sobe o que for preciso para isso,
-     * sem sair das alturas a que a câmara pode andar; se não puder descer
-     * mais, fica mais afastada, com o sítio na mesma ao meio.
+     * A câmara não se aproxima nem se vira: fica à mesma altura e a olhar
+     * para o mesmo lado, e desliza pelo chão — para a frente, para trás ou
+     * de lado — até ao ponto de onde vê o sítio no meio do ecrã com a
+     * inclinação que já tinha. Só se inclina se essa inclinação estiver
+     * fora de VIAGEM_INCLINACAO_MINIMA e _MAXIMA: quase ao alto, o sítio
+     * ficava a quilómetros; a pique, perdia-se o bairro.
      *
      * @param {Vec3} sitio - Para onde ir.
      * @private
@@ -1185,37 +1290,21 @@ class CameraControls extends Script {
         while (inclinacao0 > 180) inclinacao0 -= 360;
         while (inclinacao0 < -180) inclinacao0 += 360;
 
-        const dx = sitio.x - posicao.x;
-        const dz = sitio.z - posicao.z;
-        const distancia = Math.hypot(dx, dz);
+        // A inclinação com que se chega, e a distância pelo chão a que o
+        // sítio fica no meio do ecrã com ela, à altura a que se está.
+        const inclinacao1 = -math.clamp(-inclinacao0, VIAGEM_INCLINACAO_MINIMA, VIAGEM_INCLINACAO_MAXIMA);
+        const desnivel = Math.max(0.5, posicao.y - sitio.y);
+        const recuo = desnivel / Math.tan(-inclinacao1 * math.DEG_TO_RAD);
 
-        // A que distância do sítio se fica, e a que altura.
-        const descida = math.clamp(-inclinacao0, VIAGEM_INCLINACAO_MINIMA, VIAGEM_INCLINACAO_MAXIMA) * math.DEG_TO_RAD;
-        const longe = posicao.distance(sitio);
-        const perto = Math.min(longe, Math.max(longe * VIAGEM_APROXIMACAO, VIAGEM_DISTANCIA_MINIMA));
-        const alturaMaxima = this._initialY !== undefined ? this._initialY : posicao.y;
-        const altura = math.clamp(sitio.y + perto * Math.sin(descida), ALTURA_MINIMA_DA_CAMARA, Math.max(ALTURA_MINIMA_DA_CAMARA, alturaMaxima));
-        const desnivel = Math.max(0.5, altura - sitio.y);
-        const fica = desnivel / Math.tan(descida);
+        // Para onde se olha continua igual: o sítio fica à frente, nessa
+        // direcção, à distância do recuo.
+        const rumo = angulos.y * math.DEG_TO_RAD;
+        const frenteX = -Math.sin(rumo);
+        const frenteZ = -Math.cos(rumo);
+        const para = new Vec3(sitio.x - frenteX * recuo, posicao.y, sitio.z - frenteZ * recuo);
 
-        // Olhando para onde. Com o sítio mesmo por baixo, segue-se em frente.
-        const rumo0 = angulos.y;
-        let rumo1 = rumo0;
-        let ux = -Math.sin(rumo0 * math.DEG_TO_RAD);
-        let uz = -Math.cos(rumo0 * math.DEG_TO_RAD);
-        if (distancia > 0.001) {
-            ux = dx / distancia;
-            uz = dz / distancia;
-            const rumo = Math.atan2(-dx, -dz) * math.RAD_TO_DEG;
-            // Pelo lado mais curto da volta.
-            rumo1 = rumo0 + ((((rumo - rumo0) % 360) + 540) % 360 - 180);
-        }
-        const inclinacao1 = -Math.atan2(desnivel, Math.max(fica, 0.001)) * math.RAD_TO_DEG;
-
-        const para = new Vec3(sitio.x - ux * fica, altura, sitio.z - uz * fica);
         const percurso = posicao.distance(para);
-        const viragem = Math.abs(rumo1 - rumo0) + Math.abs(inclinacao1 - inclinacao0);
-        if (percurso < 0.05 && viragem < 0.5) {
+        if (percurso < 0.05 && Math.abs(inclinacao1 - inclinacao0) < 0.5) {
             return;
         }
 
@@ -1228,52 +1317,161 @@ class CameraControls extends Script {
         this._viagem = {
             de: posicao.clone(),
             para,
+            sitio: sitio.clone(),
             inclinacao0,
             inclinacao1,
-            rumo0,
-            rumo1,
+            rumo0: angulos.y,
+            rumo1: angulos.y,
             t: 0,
             duracao
         };
     }
 
     /**
-     * Um quadrado branco que se abre e se apaga onde se carregou, para se
-     * saber que o clique foi ouvido e para onde se vai.
+     * Faz a pirâmide: quatro faces de lado, que se juntam num bico em
+     * baixo, e o quadrado de cima. Tem um metro de alto e o bico no ponto
+     * (0, 0, 0) — é escalada e posta no sítio a cada imagem.
      *
-     * @param {number} x - Em pontos da janela.
-     * @param {number} y - Em pontos da janela.
+     * É desenhada por cima de tudo, na última camada que o motor desenha
+     * (a das coisas de ecrã): numa camada anterior, o bairro era pintado
+     * depois dela e tapava-a.
+     *
      * @private
      */
-    _marcarOndeSeCarregou(x, y) {
-        if (typeof document === 'undefined') {
-            return;
+    _fazerPiramide() {
+        const L = 0.42;
+        const cantos = [[-L, 1, -L], [L, 1, -L], [L, 1, L], [-L, 1, L]];
+        const posicoes = [];
+        const cores = [];
+        const indices = [];
+        const juntar = (ponto, cor) => {
+            posicoes.push(ponto[0], ponto[1], ponto[2]);
+            cores.push(cor[0], cor[1], cor[2], 255);
+            return posicoes.length / 3 - 1;
+        };
+        for (let i = 0; i < 4; i++) {
+            const cor = i % 2 ? PIRAMIDE_CORES.escura : PIRAMIDE_CORES.clara;
+            const a = juntar([0, 0, 0], cor);
+            const b = juntar(cantos[i], cor);
+            const c = juntar(cantos[(i + 1) % 4], cor);
+            indices.push(a, c, b);
         }
-        const LADO = 26;
-        const marca = document.createElement('div');
-        marca.setAttribute('aria-hidden', 'true');
-        Object.assign(marca.style, {
-            position: 'fixed',
-            left: `${x - LADO / 2}px`,
-            top: `${y - LADO / 2}px`,
-            width: `${LADO}px`,
-            height: `${LADO}px`,
-            boxSizing: 'border-box',
-            border: '2.5px solid #ffffff',
-            boxShadow: '0 0 6px rgba(0, 0, 0, 0.5)',
-            pointerEvents: 'none',
-            zIndex: '50'
+        const topo = cantos.map(canto => juntar(canto, PIRAMIDE_CORES.topo));
+        indices.push(topo[0], topo[1], topo[2], topo[0], topo[2], topo[3]);
+
+        const malha = new Mesh(this.app.graphicsDevice);
+        malha.setPositions(posicoes);
+        malha.setColors32(cores);
+        malha.setIndices(indices);
+        malha.update();
+
+        const material = new StandardMaterial();
+        material.useLighting = false;
+        material.diffuse = new Color(0, 0, 0);
+        material.emissive = new Color(1, 1, 1);
+        material.emissiveVertexColor = true;
+        material.cull = CULLFACE_NONE;
+        material.depthTest = false;
+        material.depthWrite = false;
+        material.blendType = BLEND_NORMAL;
+        material.opacity = 0;
+        material.update();
+
+        const entidade = new Entity('destino-do-clique');
+        const camada = this.app.scene.layers.getLayerByName('UI') ||
+            this.app.scene.layers.getLayerByName('World');
+        entidade.addComponent('render', {
+            meshInstances: [new MeshInstance(malha, material)],
+            layers: camada ? [camada.id] : undefined,
+            castShadows: false,
+            receiveShadows: false
         });
-        document.body.appendChild(marca);
-        if (typeof marca.animate !== 'function') {
-            setTimeout(() => marca.remove(), 500);
+        entidade.enabled = false;
+        this.app.root.addChild(entidade);
+        this._piramide = { entidade, material, opacidade: -1 };
+    }
+
+    /**
+     * A pirâmide a cada imagem: onde está, quanto se vê, e o balanço.
+     *
+     * Durante uma viagem fica pousada no sítio para onde se vai. Fora
+     * disso, segue o rato — quando ele está em cima do bairro, sem estar a
+     * arrastar — e desliza de um sítio para o outro em vez de saltar. De
+     * PIRAMIDE_LEITURA_MS em PIRAMIDE_LEITURA_MS pergunta-se à placa
+     * gráfica o que está debaixo do rato, se o rato ou a câmara se tiverem
+     * mexido. Aparece e some a esbater-se, e balança um nada no ar, a
+     * rodar devagar, para se ver que está viva.
+     *
+     * @param {number} dt - O tempo desde a imagem anterior.
+     * @private
+     */
+    _atualizarPiramide(dt) {
+        const apontar = this._apontar;
+        let alvo = null;
+
+        if (this._viagem && this._viagem.sitio) {
+            alvo = this._viagem.sitio;
+        } else if (apontar.dentro && !apontar.aArrastar && this._mode === 'fly' && this._podeApontar()) {
+            const camara = this._camera.entity;
+            const andou = camara.getPosition().distance(apontar.camara) > 0.01 ||
+                camara.getEulerAngles().distance(apontar.angulos) > 0.05;
+            const agora = performance.now();
+            if (!apontar.aLer && (apontar.mexeu || andou) && agora - apontar.ultimaLeitura > PIRAMIDE_LEITURA_MS) {
+                apontar.aLer = true;
+                apontar.mexeu = false;
+                apontar.ultimaLeitura = agora;
+                apontar.camara.copy(camara.getPosition());
+                apontar.angulos.copy(camara.getEulerAngles());
+                this._sitioEm(apontar.x, apontar.y).then((sitio) => {
+                    apontar.sitio = sitio;
+                    apontar.aLer = false;
+                });
+            }
+            alvo = apontar.sitio;
+        }
+
+        if (!this._piramide) {
+            if (!alvo) {
+                return;
+            }
+            this._fazerPiramide();
+        }
+        const { entidade, material } = this._piramide;
+
+        // Aparecer e sumir, a esbater.
+        apontar.opacidade = math.lerp(apontar.opacidade, alvo ? 1 : 0, Math.min(1, 12 * dt));
+        if (!alvo && apontar.opacidade < 0.02) {
+            apontar.opacidade = 0;
+            entidade.enabled = false;
             return;
         }
-        const animacao = marca.animate([
-            { transform: 'scale(0.4)', opacity: 1 },
-            { transform: 'scale(1.3)', opacity: 0 }
-        ], { duration: 650, easing: 'cubic-bezier(0.22, 1, 0.36, 1)' });
-        animacao.onfinish = () => marca.remove();
+        if (Math.abs(this._piramide.opacidade - apontar.opacidade) > 0.01) {
+            this._piramide.opacidade = apontar.opacidade;
+            material.opacity = apontar.opacidade;
+            material.update();
+        }
+
+        // Onde: a deslizar para o sítio novo; a nascer, já lá.
+        if (alvo) {
+            if (!entidade.enabled || apontar.opacidade < 0.1) {
+                apontar.onde.copy(alvo);
+            } else {
+                apontar.onde.lerp(apontar.onde, alvo, Math.min(1, 18 * dt));
+            }
+        }
+        entidade.enabled = true;
+
+        // Do mesmo tamanho no ecrã, perto ou longe.
+        const tela = this.app.graphicsDevice.canvas;
+        const distancia = this._camera.entity.getPosition().distance(apontar.onde);
+        const tamanho = distancia * 2 * Math.tan(this._camera.fov * 0.5 * math.DEG_TO_RAD) *
+            PIRAMIDE_PONTOS / Math.max(1, tela.clientHeight);
+
+        apontar.tempo += dt;
+        const balanco = tamanho * (0.2 + 0.12 * Math.sin(apontar.tempo * 4));
+        entidade.setPosition(apontar.onde.x, apontar.onde.y + balanco, apontar.onde.z);
+        entidade.setLocalScale(tamanho, tamanho, tamanho);
+        entidade.setEulerAngles(0, apontar.tempo * 45, 0);
     }
 
     /**
@@ -1981,6 +2179,8 @@ class CameraControls extends Script {
         
         this._lastValidPos.copy(this._pose.position);
         this._lastValidAngles.copy(this._pose.angles);
+
+        this._atualizarPiramide(dt);
     }
 }
 
