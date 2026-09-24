@@ -45,7 +45,6 @@
             'def.testemunhos': 'Testemunhos',
             'def.rotas360': 'Rotas 360º',
             'def.interface': 'Interface',
-            'def.slider': 'Slider vertical',
             'def.paisagem': 'Paisagem',
             'def.manipulo': 'Manípulo',
 
@@ -231,7 +230,6 @@
             'def.testemunhos': 'Testimonies',
             'def.rotas360': '360º Routes',
             'def.interface': 'Interface',
-            'def.slider': 'Vertical slider',
             'def.paisagem': 'Landscape',
             'def.manipulo': 'Joystick',
 
@@ -417,7 +415,6 @@
             'def.testemunhos': 'Testimonios',
             'def.rotas360': 'Rutas 360º',
             'def.interface': 'Interfaz',
-            'def.slider': 'Slider vertical',
             'def.paisagem': 'Paisaje',
             'def.manipulo': 'Mando',
 
@@ -603,7 +600,6 @@
             'def.testemunhos': 'Tistimunhus',
             'def.rotas360': 'Rotas 360º',
             'def.interface': 'Interfasi',
-            'def.slider': 'Slider vertikal',
             'def.paisagem': 'Paizajen',
             'def.manipulo': 'Manípulu',
 

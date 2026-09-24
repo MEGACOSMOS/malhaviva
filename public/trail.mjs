@@ -564,23 +564,6 @@ TrailController.prototype.onMouseMove = function(e) {
         this.cursorAnnotation.style.top = e.event.clientY + 'px';
     }
 
-    // O rato em cima de uma janela da coluna de videos (videos-ao-lado.mjs)
-    // e o mesmo que em cima do marcador dessa rota: acende o trilho dela,
-    // e nao se vai procurar um trilho debaixo do rato — o rato esta em
-    // cima da coluna, nao do bairro. (Os eventos do rato chegam aqui
-    // venham de onde vierem na pagina, e sem isto a procura apagava logo
-    // o que a coluna tinha acabado de acender.)
-    const janela = e.event && e.event.target && e.event.target.closest && e.event.target.closest('.video-ao-lado');
-    if (janela) {
-        const trailIndex = janela.dataset.trailIndex;
-        for (let i = 0; i < this.trailRenderData.length; i++) {
-            this.setTrailHoverState(this.trailRenderData[i], trailIndex !== undefined && i === parseInt(trailIndex));
-        }
-        if (this.cursorAnnotation) this.cursorAnnotation.style.display = 'none';
-        this._hoverPending = false;
-        return;
-    }
-
     if (e.event && e.event.target && e.event.target.closest && e.event.target.closest('.annotation-marker')) {
         const marker = e.event.target.closest('.annotation-marker');
         const isEsvarena = marker.classList.contains('esvarena-marker');

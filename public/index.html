@@ -2108,14 +2108,10 @@
                     </label>
                 </div>
 
-                <!-- O que se vê à volta do bairro e se pode dispensar: a
-                     coluna de vídeos ao lado, o manípulo e a paisagem. -->
+                <!-- O que se vê à volta do bairro e se pode dispensar: o
+                     manípulo e a paisagem. -->
                 <div class="settings-title" style="margin-top: 18px;" data-i18n="def.interface">Interface</div>
                 <div class="settings-options">
-                    <label class="settings-radio">
-                        <input type="checkbox" id="coluna-ligada" checked>
-                        <span data-i18n="def.slider">Slider vertical</span>
-                    </label>
                     <label class="settings-radio">
                         <input type="checkbox" id="manipulo-ligado">
                         <span data-i18n="def.manipulo">Manípulo</span>
@@ -2790,7 +2786,6 @@
         import { criarModoVR } from './vr.mjs?v=11';
         import { ligarCeu } from './ceu.mjs?v=15';
         import { ligarComando } from './comando.mjs?v=9';
-        import { ligarVideosAoLado } from './videos-ao-lado.mjs?v=16';
 
         // O código do site chegou e está a correr: o primeiro sinal de vida
         // para a rede de segurança do arranque (ver `arranque`).
@@ -3461,21 +3456,6 @@ void modifySplatColor(vec3 center, inout vec4 color) {
             });
         }
 
-        // A coluna de vídeos ao lado do bairro (o "slider vertical"). Vem
-        // ligada; quem não a quiser desliga-a nas definições, e a escolha
-        // fica guardada. A coluna própria lê a classe no corpo da página.
-        const caixaDaColuna = document.getElementById('coluna-ligada');
-        if (caixaDaColuna) {
-            const guardado = localStorage.getItem('colunaDeVideos');
-            caixaDaColuna.checked = guardado ? guardado === 'on' : true;
-            const aplicarColuna = () => document.body.classList.toggle('sem-coluna-de-videos', !caixaDaColuna.checked);
-            caixaDaColuna.addEventListener('change', () => {
-                localStorage.setItem('colunaDeVideos', caixaDaColuna.checked ? 'on' : 'off');
-                aplicarColuna();
-            });
-            aplicarColuna();
-        }
-
         // O manípulo do ecrã. Vem ligado em qualquer aparelho; quem não o
         // quiser desliga-o nas definições, e a escolha fica guardada.
         const caixaDoManipulo = document.getElementById('manipulo-ligado');
@@ -3703,11 +3683,6 @@ void modifySplatColor(vec3 center, inout vec4 color) {
             // também. Quem não tiver comando ligado não dá por isto.
             window.comando = ligarComando(app);
             espiarOComando(app);
-
-            // --- A coluna de vídeos à esquerda ---
-            // Com o ecrã deitado, os testemunhos ficam também numa coluna
-            // ao lado do bairro, para se abrirem sem os procurar no mapa.
-            ligarVideosAoLado(app);
 
             // A partir daqui é a cúpula do céu que diz à câmara até onde pode
             // andar: as paredes da taça são o fim do mundo visível, e passar
