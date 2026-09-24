@@ -46,6 +46,7 @@
             'def.rotas360': 'Rotas 360º',
             'def.interface': 'Interface',
             'def.paisagem': 'Paisagem',
+            'leg.titulo': 'Legenda do mapa',
 
             'idm.titulo': 'Idioma',
             'mapa.testemunhoDe': 'Testemunho de {nome}',
@@ -212,6 +213,7 @@
             'def.rotas360': '360º Routes',
             'def.interface': 'Interface',
             'def.paisagem': 'Landscape',
+            'leg.titulo': 'Map legend',
 
             'idm.titulo': 'Language',
             'mapa.testemunhoDe': 'Testimony from {nome}',
@@ -378,6 +380,7 @@
             'def.rotas360': 'Rutas 360º',
             'def.interface': 'Interfaz',
             'def.paisagem': 'Paisaje',
+            'leg.titulo': 'Leyenda del mapa',
 
             'idm.titulo': 'Idioma',
             'mapa.testemunhoDe': 'Testimonio de {nome}',
@@ -544,6 +547,7 @@
             'def.rotas360': 'Rotas 360º',
             'def.interface': 'Interfasi',
             'def.paisagem': 'Paizajen',
+            'leg.titulo': 'Legenda di mapa',
 
             'idm.titulo': 'Lingua',
             'mapa.testemunhoDe': 'Tistimunhu di {nome}',

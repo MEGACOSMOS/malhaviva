@@ -7,7 +7,7 @@
     <meta name="description" content="Exploração 3D interativa do Bairro de Penajóia através de Gaussian Splatting. Projeto Malha Viva.">
     <!-- As línguas do site. Fica antes de tudo o resto para o texto
          nascer já na língua certa, sem piscar em português primeiro. -->
-    <script src="/idiomas.js?v=24"></script>
+    <script src="/idiomas.js?v=25"></script>
 
     <!-- O quadrado de espera, o mesmo em todo o site. Fica antes de o
          ecrã de espera se desenhar, para nascer já com a sua roupa. -->
@@ -848,6 +848,7 @@
         body.em-cartao #annotations-container,
         body.em-cartao #partilhar-btn,
         body.em-cartao #partilhar-menu,
+        body.em-cartao #legenda-mapa,
         body.em-cartao #camera-stuck-popup {
             display: none !important;
         }
@@ -1054,6 +1055,78 @@
             }
         }
 
+        /* ─── Legenda do mapa ───
+           No canto de baixo à esquerda, vestida como os menus: cada tipo de
+           marcador — o mesmo quadrado, com o mesmo desenho — e ao lado o
+           que se encontra nele. Nasce com o cabeçalho, quando o ecrã de
+           espera sai. Um tipo desligado nas definições fica esbatido. */
+        #legenda-mapa {
+            position: fixed;
+            left: 24px;
+            bottom: 24px;
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin: 0;
+            padding: 12px 16px 12px 12px;
+            list-style: none;
+            background: linear-gradient(to bottom, rgba(255,255,255,0.05), transparent), #05050a;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+            font-size: 0.8rem;
+            color: var(--color-text);
+            opacity: 0;
+            transform: translateY(8px);
+            pointer-events: none;
+            transition: opacity 0.6s ease 0.3s, transform 0.6s ease 0.3s;
+        }
+
+        #legenda-mapa.visivel {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .legenda-linha {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            white-space: nowrap;
+            transition: opacity 0.2s ease;
+        }
+
+        .legenda-linha.desligada {
+            opacity: 0.35;
+        }
+
+        /* O marcador em ponto pequeno: o quadrado e o desenho dele. */
+        .legenda-marcador {
+            flex-shrink: 0;
+            width: 22px;
+            height: 22px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #ffffff;
+        }
+        .legenda-marcador.testemunho { background: #10b981; }
+        .legenda-marcador.rota { background: #ff0000; }
+
+        /* Em telemóveis e tablets ao alto não há lugar para ela: o bairro
+           precisa do ecrã todo. */
+        @media (orientation: portrait) and (hover: none) and (pointer: coarse),
+               (orientation: portrait) and (max-width: 900px) {
+            #legenda-mapa {
+                display: none;
+            }
+        }
+
+        @media (max-width: 640px) {
+            #legenda-mapa {
+                left: 16px;
+                bottom: 16px;
+            }
+        }
+
         /* ─── Filter Panel ─── */
         #filter-panel {
             position: fixed;
@@ -1169,7 +1242,7 @@
            degradé que aqui houve — pousado sobre o fundo escuro do site. */
         .panel-glass, .btn-glass, .action-btn, .settings-panel, .filter-btn, 
         #coordinates-info, #camera-info, #loading-bar-container,
-        #definicoes-menu, #dev-menu, #idioma-menu, #camera-stuck-popup, #arranque-popup, #partilhar-menu {
+        #definicoes-menu, #dev-menu, #idioma-menu, #camera-stuck-popup, #arranque-popup, #partilhar-menu, #legenda-mapa {
             /* Sem rebordo nenhum, nem invisível: um rebordo invisível fica
                por fora do fio e deixa ver o fundo escuro por baixo dele,
                como um segundo fio, preto, a toda a volta. */
@@ -1180,7 +1253,7 @@
         }
         .panel-glass::after, .btn-glass::after, .action-btn::after, .settings-panel::after, .filter-btn::after,
         #coordinates-info::after, #camera-info::after, #loading-bar-container::after,
-        #definicoes-menu::after, #dev-menu::after, #idioma-menu::after, #camera-stuck-popup::after, #arranque-popup::after, #partilhar-menu::after {
+        #definicoes-menu::after, #dev-menu::after, #idioma-menu::after, #camera-stuck-popup::after, #arranque-popup::after, #partilhar-menu::after, #legenda-mapa::after {
             content: "";
             position: absolute;
             inset: 0;
@@ -1887,6 +1960,60 @@
     </button>
 
     <div id="map-scale"><span></span></div>
+
+    <!-- A legenda do mapa: que marcador é que quer dizer o quê. -->
+    <ul id="legenda-mapa" aria-label="Legenda do mapa" data-i18n-aria="leg.titulo">
+        <li class="legenda-linha" data-tipo="testemunho">
+            <span class="legenda-marcador testemunho" aria-hidden="true">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="square" stroke-linejoin="miter">
+                    <polygon points="3 4 21 4 21 16 12 16 7 21 7 16 3 16"></polygon>
+                    <line x1="8" y1="8" x2="16" y2="8"></line>
+                    <line x1="8" y1="12" x2="12" y2="12"></line>
+                </svg>
+            </span>
+            <span data-i18n="def.testemunhos">Testemunhos</span>
+        </li>
+        <li class="legenda-linha" data-tipo="360">
+            <span class="legenda-marcador rota" aria-hidden="true">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="square" stroke-linejoin="miter">
+                    <polyline points="4 10, 12 2, 19 9"></polyline>
+                    <polyline points="14 9, 19 9, 19 4"></polyline>
+                    <polyline points="20 14, 12 22, 5 15"></polyline>
+                    <polyline points="10 15, 5 15, 5 20"></polyline>
+                </svg>
+            </span>
+            <span data-i18n="def.rotas360">Rotas 360º</span>
+        </li>
+    </ul>
+
+    <script>
+    /**
+     * A legenda do mapa: nasce com o cabeçalho, quando o ecrã de espera
+     * sai, e esconde-se se ele voltar. Um tipo de marcador desligado nas
+     * definições ("Anotações") fica esbatido na legenda.
+     */
+    (function () {
+        const legenda = document.getElementById('legenda-mapa');
+        const overlay = document.getElementById('loading-overlay');
+        if (!legenda || !overlay) return;
+
+        const seguir = () => legenda.classList.toggle('visivel', overlay.classList.contains('hidden'));
+        new MutationObserver(seguir).observe(overlay, { attributes: true, attributeFilter: ['class'] });
+        seguir();
+
+        [['anot-testemunhos', 'testemunho'], ['anot-360', '360']].forEach(([id, tipo]) => {
+            const caixa = document.getElementById(id);
+            const linha = legenda.querySelector('[data-tipo="' + tipo + '"]');
+            if (!caixa || !linha) return;
+            const aplicar = () => linha.classList.toggle('desligada', !caixa.checked);
+            caixa.addEventListener('change', aplicar);
+            // As caixas acertam-se pela memória do navegador mais tarde,
+            // no arranque; espera-se por isso antes de olhar para elas.
+            setTimeout(aplicar, 0);
+            window.addEventListener('load', aplicar);
+        });
+    })();
+    </script>
 
     <div id="compass-container">
         <svg id="compass-needle" viewBox="0 0 24 24" fill="none">
