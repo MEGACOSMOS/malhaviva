@@ -7,7 +7,7 @@
     <meta name="description" content="Exploração 3D interativa do Bairro de Penajóia através de Gaussian Splatting. Projeto Malha Viva.">
     <!-- As línguas do site. Fica antes de tudo o resto para o texto
          nascer já na língua certa, sem piscar em português primeiro. -->
-    <script src="/idiomas.js?v=30"></script>
+    <script src="/idiomas.js?v=31"></script>
 
     <!-- O quadrado de espera, o mesmo em todo o site. Fica antes de o
          ecrã de espera se desenhar, para nascer já com a sua roupa. -->
@@ -455,7 +455,7 @@
         }
         
         /* Sem caixa nenhuma até o rato lá chegar. */
-        #definicoes-btn, #dev-btn, #idioma-btn, #help-btn, #fullscreen-main-btn, #vr-btn, #partilhar-btn-gaveta {
+        #definicoes-btn, #dev-btn, #idioma-btn, #help-btn, #creditos-btn, #fullscreen-main-btn, #vr-btn, #partilhar-btn-gaveta {
             background: transparent;
             border: 0;
             width: 40px;
@@ -1194,11 +1194,18 @@
             margin-bottom: 14px;
         }
 
+        .instrucoes-passos {
+            display: grid;
+        }
         .instrucoes-passo {
+            grid-area: 1 / 1;
             text-align: center;
         }
+        /* Os escondidos continuam a ocupar lugar, invisíveis: é por eles
+           que o cartão tem sempre a altura do passo mais comprido. */
         .instrucoes-passo[hidden] {
-            display: none;
+            display: block;
+            visibility: hidden;
         }
         .instrucoes-passo.entra-da-direita {
             animation: ins-passo-direita 0.35s ease both;
@@ -1257,13 +1264,34 @@
             justify-content: center;
             gap: 8px;
         }
-        .instrucoes-pontos span {
+        .instrucoes-pontos button {
+            position: relative;
             width: 8px;
             height: 8px;
+            padding: 0;
+            background: transparent;
             border: 1.5px solid rgba(255, 255, 255, 0.45);
+            border-radius: 0;
+            cursor: pointer;
             transition: background 0.2s ease, border-color 0.2s ease;
         }
-        .instrucoes-pontos span.atual {
+        /* Uma área maior à volta, para o dedo e o rato acertarem. */
+        .instrucoes-pontos button::after {
+            content: "";
+            position: absolute;
+            inset: -8px -4px;
+        }
+        .instrucoes-pontos button:hover {
+            border-color: #ffffff;
+        }
+        .instrucoes-pontos button:focus {
+            outline: none;
+        }
+        .instrucoes-pontos button:focus-visible {
+            outline: 2px solid rgba(255, 255, 255, 0.9);
+            outline-offset: 3px;
+        }
+        .instrucoes-pontos button.atual {
             background: #ffffff;
             border-color: #ffffff;
         }
@@ -1358,7 +1386,7 @@
             opacity: 0;
         }
 
-        /* 1 · Ir até um sítio: o rato vai, a pirâmide verde aparece no
+        /* 1 · Ir até um sítio: o rato vai, a pirâmide branca aparece no
            sítio, pousada no seu quadrado, carrega-se, e a câmara
            aproxima-se sem se inclinar — o chão cresce a partir do
            horizonte, que fica onde está, e o sítio vem para o meio e para
@@ -2346,6 +2374,18 @@
             </button>
         </div>
 
+        <!-- Os créditos: uma claquete, com as riscas na diagonal do site.
+             Fica à esquerda das definições; quando há óculos de VR, passa
+             para a direita do ícone deles (ver arrumarOsOculos). -->
+        <a href="/creditos.html" id="creditos-btn" class="adaptavel" aria-label="Créditos" title="Créditos" data-i18n-aria="cab.creditos" data-i18n-title="cab.creditos">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true">
+                <rect x="3" y="9" width="18" height="12"></rect>
+                <path d="M3 9L20 4.5"></path>
+                <path d="M3 9L2.2 5.8L19.2 1.3L20 4.5"></path>
+                <path d="M7.5 7.8L9 3.3M13 6.3L14.5 1.8"></path>
+            </svg>
+        </a>
+
         <div class="settings">
             <button id="definicoes-btn" class="adaptavel" title="Definições" data-i18n-title="cab.definicoes">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter">
@@ -2515,9 +2555,9 @@
                 <!-- A pirâmide verde de bico para baixo, com o bico no ponto
                      (0, 0): a mesma que aparece no bairro debaixo do rato. -->
                 <g id="ins-piramide">
-                    <polygon points="-9,-17 0,-13 0,0" fill="#10b981"></polygon>
-                    <polygon points="0,-13 9,-17 0,0" fill="#047857"></polygon>
-                    <polygon points="-9,-17 0,-21 9,-17 0,-13" fill="#6ee7b7"></polygon>
+                    <polygon points="-9,-17 0,-13 0,0" fill="#e1e1e1"></polygon>
+                    <polygon points="0,-13 9,-17 0,0" fill="#a0a0a0"></polygon>
+                    <polygon points="-9,-17 0,-21 9,-17 0,-13" fill="#ffffff"></polygon>
                 </g>
                 <!-- O quadrado deitado no chão por baixo da pirâmide, visto
                      em perspectiva, com o meio logo abaixo do bico dela. -->
@@ -2539,6 +2579,9 @@
                 </button>
                 <div class="settings-title" id="instrucoes-cabeca" data-i18n="ins.titulo">Como navegar</div>
 
+                <!-- Os passos ficam uns por cima dos outros, na mesma casa:
+                     o cartão tem sempre o tamanho do maior, e não salta. -->
+                <div class="instrucoes-passos">
                 <!-- 1 · Ir até um sítio -->
                 <section class="instrucoes-passo" data-rato="ins.irRato" data-toque="ins.irToque">
                     <div class="instrucoes-desenho" aria-hidden="true">
@@ -2654,11 +2697,13 @@
                     <p class="instrucoes-texto">Os marcadores abrem os testemunhos e as rotas 360º.</p>
                 </section>
 
+                </div>
+
                 <div class="instrucoes-navegacao">
                     <button type="button" class="instrucoes-seta esquerda" aria-label="Anterior" title="Anterior" data-i18n-aria="palco.anterior" data-i18n-title="palco.anterior">
                         <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true"><polyline points="15 18 9 12 15 6"></polyline></svg>
                     </button>
-                    <div class="instrucoes-pontos" aria-hidden="true"></div>
+                    <div class="instrucoes-pontos"></div>
                     <button type="button" class="instrucoes-seta direita" aria-label="Seguinte" title="Seguinte" data-i18n-aria="palco.seguinte" data-i18n-title="palco.seguinte"></button>
                 </div>
                 <p class="instrucoes-anuncio" aria-live="polite"></p>
@@ -2717,7 +2762,21 @@
         const direita = caixa.querySelector('.instrucoes-seta.direita');
         const fecharBotao = cartao.querySelector('.menu-fechar');
 
-        passos.forEach(() => pontos.appendChild(document.createElement('span')));
+        // Um quadradinho por passo; carregar num leva a esse passo.
+        passos.forEach((passo, i) => {
+            const ponto = document.createElement('button');
+            ponto.type = 'button';
+            ponto.addEventListener('click', () => { if (i !== atual) mostrar(i, i > atual ? 1 : -1); });
+            pontos.appendChild(ponto);
+        });
+        const nomearPontos = () => {
+            Array.from(pontos.children).forEach((ponto, i) => {
+                const nome = t('ins.passo').replace('{n}', i + 1).replace('{total}', passos.length);
+                ponto.setAttribute('aria-label', nome);
+                ponto.title = nome;
+            });
+        };
+        nomearPontos();
         traduzir(caixa);
 
         let atual = 0;
@@ -2742,7 +2801,11 @@
                 void passo.offsetWidth;
                 passo.classList.add(sentido > 0 ? 'entra-da-direita' : 'entra-da-esquerda');
             }
-            Array.from(pontos.children).forEach((ponto, i) => ponto.classList.toggle('atual', i === atual));
+            Array.from(pontos.children).forEach((ponto, i) => {
+                ponto.classList.toggle('atual', i === atual);
+                if (i === atual) ponto.setAttribute('aria-current', 'step');
+                else ponto.removeAttribute('aria-current');
+            });
 
             // No primeiro não há para onde voltar.
             const primeiro = atual === 0;
@@ -2802,7 +2865,7 @@
             e.stopPropagation();
         });
 
-        window.addEventListener('idiomamudou', () => { if (aberta) anunciar(); });
+        window.addEventListener('idiomamudou', () => { nomearPontos(); if (aberta) anunciar(); });
 
         // Na primeira visita — ou quando se pede — aparecem pouco depois
         // de o bairro aparecer.
@@ -3075,7 +3138,7 @@
 
         <!-- Assets -->
         <pc-asset id="splat-scene" src="splat/lod-meta.json" type="gsplat"></pc-asset>
-        <pc-asset id="camera-controls-script" src="./camera-controls.mjs?v=38" type="script"></pc-asset>
+        <pc-asset id="camera-controls-script" src="./camera-controls.mjs?v=39" type="script"></pc-asset>
         <pc-asset id="camera-coords-script" src="./coords.mjs?v=7" type="script"></pc-asset>
         <pc-asset id="annotations-script" src="./annotations.mjs?v=85" type="script"></pc-asset>
         <pc-asset id="trail-script" src="./trail.mjs?v=28" type="script"></pc-asset>
@@ -3693,15 +3756,25 @@ void modifySplatColor(vec3 center, inout vec4 color) {
             const casaDasDefinicoes = definicoesBtn && definicoesBtn.closest('.settings');
             if (!oculos || !ladoDireito || !casaDasDefinicoes) return;
             const gavetaExiste = window.matchMedia('(max-width: 640px)');
+            const creditos = document.getElementById('creditos-btn');
             const arrumar = () => {
                 if (gavetaExiste.matches) {
                     if (oculos.parentNode !== gaveta) gaveta.insertBefore(oculos, casaDasDefinicoes);
                 } else if (oculos.parentNode === gaveta) {
                     ladoDireito.insertBefore(oculos, ecraInteiro);
                 }
+                // Os créditos: logo à direita dos óculos, quando os há; se
+                // não, à esquerda das definições.
+                if (creditos) {
+                    if (oculos.style.display !== 'none') oculos.after(creditos);
+                    else gaveta.insertBefore(creditos, casaDasDefinicoes);
+                }
             };
             arrumar();
             if (gavetaExiste.addEventListener) gavetaExiste.addEventListener('change', arrumar);
+            // O botão dos óculos só aparece mais tarde, quando se sabe que
+            // há óculos: nessa altura os créditos mudam de sítio.
+            new MutationObserver(arrumar).observe(oculos, { attributes: true, attributeFilter: ['style'] });
         })();
         const abrirGaveta = (aberta) => {
             headerEl.classList.toggle('gaveta-aberta', aberta);

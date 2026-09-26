@@ -28,6 +28,15 @@
 
     var TEXTOS = {
         pt: {
+            'cab.creditos': 'Créditos',
+            'cred.titulo': 'Créditos',
+            'cred.producao': 'Produzido e Realizado por',
+            'cred.orientacao': 'Orientação Científica',
+            'cred.fotografia': 'Direção de Fotografia',
+            'cred.entrevistas': 'Entrevistas',
+            'cred.geografia': 'Consultoria Geográfica',
+            'cred.tecnica': 'Assistência Técnica',
+            'cred.agradecimentos': 'Especiais Agradecimentos',
             'cab.controlos': 'Controlos',
             'cab.definicoes': 'Definições',
             'cab.idioma': 'Idioma',
@@ -215,6 +224,15 @@
         },
 
         en: {
+            'cab.creditos': 'Credits',
+            'cred.titulo': 'Credits',
+            'cred.producao': 'Produced and Directed by',
+            'cred.orientacao': 'Scientific Supervision',
+            'cred.fotografia': 'Director of Photography',
+            'cred.entrevistas': 'Interviews',
+            'cred.geografia': 'Geographic Consulting',
+            'cred.tecnica': 'Technical Assistance',
+            'cred.agradecimentos': 'Special Thanks',
             'cab.controlos': 'Controls',
             'cab.definicoes': 'Settings',
             'cab.idioma': 'Language',
@@ -402,6 +420,15 @@
         },
 
         es: {
+            'cab.creditos': 'Créditos',
+            'cred.titulo': 'Créditos',
+            'cred.producao': 'Producido y Dirigido por',
+            'cred.orientacao': 'Orientación Científica',
+            'cred.fotografia': 'Dirección de Fotografía',
+            'cred.entrevistas': 'Entrevistas',
+            'cred.geografia': 'Consultoría Geográfica',
+            'cred.tecnica': 'Asistencia Técnica',
+            'cred.agradecimentos': 'Agradecimientos Especiales',
             'cab.controlos': 'Controles',
             'cab.definicoes': 'Ajustes',
             'cab.idioma': 'Idioma',
@@ -589,6 +616,15 @@
         },
 
         kea: {
+            'cab.creditos': 'Kréditus',
+            'cred.titulo': 'Kréditus',
+            'cred.producao': 'Produzidu i Rializadu pa',
+            'cred.orientacao': 'Orientason Sientífiku',
+            'cred.fotografia': 'Direson di Fotografia',
+            'cred.entrevistas': 'Entrevistas',
+            'cred.geografia': 'Konsultoria Jiográfiku',
+            'cred.tecnica': 'Asisténsia Téknika',
+            'cred.agradecimentos': 'Agradesimentu Spesial',
             'cab.controlos': 'Kontrolus',
             'cab.definicoes': 'Definisons',
             'cab.idioma': 'Lingua',

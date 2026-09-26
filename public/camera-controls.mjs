@@ -179,7 +179,7 @@ const GRAUS_POR_LARGURA_DE_ECRA = 180;
 // Um clique (ou um toque) num sítio do bairro leva a câmara até lá: sem
 // descer, sem se virar e sem se inclinar, desliza pelo chão na direcção
 // dele — à mesma altura e a olhar como olhava — e fica muito mais perto.
-// Nunca recua. Com o rato, uma pirâmide verde de bico para baixo, pousada
+// Nunca recua. Com o rato, uma pirâmide branca de bico para baixo, pousada
 // sobre um quadrado deitado no chão, mostra antes do clique o sítio aonde
 // ele leva. A viagem demora mais ou menos o mesmo, perto ou longe — e por
 // isso, quanto mais longe o sítio, mais depressa se anda. Começa devagar e
@@ -222,9 +222,9 @@ const PIRAMIDE_ELEVACAO = 25;
 // dos lados alternadas, para se perceber que é uma pirâmide e não um
 // triângulo.
 const PIRAMIDE_CORES = {
-    topo: [110, 231, 183],
-    clara: [16, 185, 129],
-    escura: [4, 120, 87]
+    topo: [255, 255, 255],
+    clara: [225, 225, 225],
+    escura: [160, 160, 160]
 };
 // O quadrado deitado no chão por baixo da pirâmide: o lado, em relação à
 // altura da pirâmide, e a grossura do contorno, em relação ao lado.
@@ -427,7 +427,7 @@ class CameraControls extends Script {
     _leitorDoSitio = null;
 
     /**
-     * A pirâmide verde que mostra o sítio aonde o clique leva, e o que se
+     * A pirâmide branca que mostra o sítio aonde o clique leva, e o que se
      * sabe do rato para a pôr lá. Nasce na primeira vez que faz falta.
      *
      * @type {{entidade: Entity, material: StandardMaterial}|null}

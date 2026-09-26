@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Créditos — Malha Viva</title>
+    <meta name="description" content="Quem fez o Malha Viva, a reconstrução 3D do Bairro de Penajóia.">
+    <script src="/idiomas.js?v=31"></script>
+    <script src="/comando-paginas.js?v=4" defer></script>
+
+    <style>
+        /* A letra do site, como na página dos controlos. */
+        @font-face {
+            font-family: 'Liberation Mono';
+            src: url('/fonts/LiberationMono-Regular.ttf') format('truetype');
+            font-weight: 100 500;
+            font-style: normal;
+            font-display: swap;
+        }
+        @font-face {
+            font-family: 'Liberation Mono';
+            src: url('/fonts/LiberationMono-Bold.ttf') format('truetype');
+            font-weight: 600 900;
+            font-style: normal;
+            font-display: swap;
+        }
+
+        *, *::before, *::after {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --color-bg: #05050a;
+            --color-text: #ffffff;
+            --color-text-muted: rgba(255, 255, 255, 0.6);
+            --color-border: rgba(255, 255, 255, 0.15);
+            --font-main: 'Liberation Mono', 'Courier New', monospace;
+        }
+
+        body {
+            min-height: 100vh;
+            background: var(--color-bg);
+            font-family: var(--font-main);
+            color: var(--color-text);
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            line-height: 1.6;
+        }
+
+        .page-header {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 16px 24px;
+            background: var(--color-bg);
+            border-bottom: 1px solid var(--color-border);
+        }
+        .brand {
+            font-size: 1.2rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            color: #ffffff;
+            text-decoration: none;
+        }
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--color-text-muted);
+            text-decoration: none;
+            font-size: 0.85rem;
+            font-weight: 500;
+            padding: 8px 16px;
+            border: 1px solid var(--color-border);
+            transition: background 0.2s ease, color 0.2s ease;
+        }
+        .back-link:hover {
+            color: #ffffff;
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        /* O rolo: os nomes ao meio, com meia página de preto antes e
+           depois, como no fim de um filme. */
+        .rolo {
+            max-width: 640px;
+            margin: 0 auto;
+            padding: 30vh 24px 45vh;
+            text-align: center;
+        }
+        .rolo h1 {
+            font-size: clamp(1.6rem, 5vw, 2.4rem);
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            margin-bottom: 18vh;
+        }
+        .bloco {
+            margin-bottom: 11vh;
+            opacity: 0;
+            transform: translateY(24px);
+            transition: opacity 1.2s ease-in-out, transform 1.2s ease-in-out;
+        }
+        .bloco.visivel {
+            opacity: 1;
+            transform: none;
+        }
+        .funcao {
+            font-size: 0.78rem;
+            font-weight: 500;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: var(--color-text-muted);
+            margin-bottom: 14px;
+        }
+        .nomes {
+            list-style: none;
+            font-size: clamp(1.05rem, 3.4vw, 1.3rem);
+            font-weight: 600;
+            line-height: 1.9;
+        }
+        .fim {
+            margin-top: 20vh;
+            font-size: 1.2rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+        }
+
+        @media (max-width: 640px) {
+            .page-header { padding: 12px 16px; }
+            .rolo { padding-left: 16px; padding-right: 16px; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .bloco { opacity: 1; transform: none; transition: none; }
+        }
+    </style>
+</head>
+<body>
+    <header class="page-header">
+        <a href="/" class="brand">Malha Viva</a>
+        <a href="/" class="back-link">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true">
+                <line x1="19" y1="12" x2="5" y2="12"></line>
+                <polyline points="12 19 5 12 12 5"></polyline>
+            </svg>
+            <span data-i18n="ctl.voltar">Voltar ao Mapa</span>
+        </a>
+    </header>
+
+    <!-- Os nomes de pessoas não se traduzem; só o que cada uma fez. -->
+    <main class="rolo">
+        <h1 data-i18n="cred.titulo">Créditos</h1>
+
+        <section class="bloco">
+            <h2 class="funcao" data-i18n="cred.producao">Produzido e Realizado por</h2>
+            <ul class="nomes"><li>Filipe Malveiro</li></ul>
+        </section>
+
+        <section class="bloco">
+            <h2 class="funcao" data-i18n="cred.orientacao">Orientação Científica</h2>
+            <ul class="nomes"><li>Maria Madalena Miranda</li></ul>
+        </section>
+
+        <section class="bloco">
+            <h2 class="funcao" data-i18n="cred.fotografia">Direção de Fotografia</h2>
+            <ul class="nomes"><li>Filipe Malveiro</li></ul>
+        </section>
+
+        <section class="bloco">
+            <h2 class="funcao" data-i18n="cred.entrevistas">Entrevistas</h2>
+            <ul class="nomes">
+                <li>Esvarena de Sousa</li>
+                <li>Dulcelena Gomes</li>
+                <li>Amilton de Brito</li>
+                <li>Sónia Peris</li>
+                <li>Melanie Alvarenga</li>
+                <li>Micael Silva</li>
+                <li>José Tavares</li>
+            </ul>
+        </section>
+
+        <section class="bloco">
+            <h2 class="funcao" data-i18n="cred.geografia">Consultoria Geográfica</h2>
+            <ul class="nomes"><li>Anilda de Pina</li></ul>
+        </section>
+
+        <section class="bloco">
+            <h2 class="funcao" data-i18n="cred.tecnica">Assistência Técnica</h2>
+            <ul class="nomes"><li>João Costa</li></ul>
+        </section>
+
+        <section class="bloco">
+            <h2 class="funcao" data-i18n="cred.agradecimentos">Especiais Agradecimentos</h2>
+            <ul class="nomes">
+                <li>António Malveiro</li>
+                <li>Maria Manuela Carvalho</li>
+                <li>Esvarena de Sousa</li>
+                <li>Lino Gomes</li>
+                <li>Naidy Monteiro</li>
+            </ul>
+        </section>
+
+        <p class="fim bloco">Malha Viva</p>
+    </main>
+
+    <script>
+    /**
+     * O rolo dos créditos.
+     *
+     * Cada bloco aparece a esbater-se quando entra no ecrã. Pouco depois
+     * de a página abrir, os créditos sobem sozinhos até ao fim, a começar
+     * devagar e a acabar devagar. Basta mexer — roda do rato, dedo,
+     * teclado — para o rolo parar e a página ficar à mão de quem a lê.
+     * Quem pediu ao sistema menos movimento vê tudo parado.
+     */
+    (function () {
+        var semMovimento = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        var blocos = document.querySelectorAll('.bloco');
+
+        if (semMovimento || !('IntersectionObserver' in window)) {
+            blocos.forEach(function (b) { b.classList.add('visivel'); });
+            return;
+        }
+
+        var olhar = new IntersectionObserver(function (entradas) {
+            entradas.forEach(function (e) {
+                if (e.isIntersecting) e.target.classList.add('visivel');
+            });
+        }, { rootMargin: '0px 0px -12% 0px' });
+        blocos.forEach(function (b) { olhar.observe(b); });
+
+        // Devagar no começo e no fim, depressa a meio.
+        var suave = function (x) {
+            return x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
+        };
+
+        var parado = false;
+        var parar = function () { parado = true; };
+        ['wheel', 'touchstart', 'pointerdown', 'keydown'].forEach(function (evento) {
+            window.addEventListener(evento, parar, { passive: true });
+        });
+
+        setTimeout(function () {
+            if (parado) return;
+            var inicio = window.scrollY;
+            var fim = document.documentElement.scrollHeight - window.innerHeight;
+            var distancia = fim - inicio;
+            if (distancia <= 0) return;
+            // Cerca de 40 pontos por segundo, em média.
+            var duracao = Math.max(8000, distancia / 40 * 1000);
+            var comeco = null;
+            var passo = function (agora) {
+                if (parado) return;
+                if (comeco === null) comeco = agora;
+                var x = Math.min(1, (agora - comeco) / duracao);
+                window.scrollTo(0, inicio + distancia * suave(x));
+                if (x < 1) requestAnimationFrame(passo);
+            };
+            requestAnimationFrame(passo);
+        }, 1200);
+    })();
+    </script>
+</body>
+</html>
