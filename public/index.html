@@ -2825,6 +2825,18 @@
             anunciar();
         };
 
+        // Fechadas uma vez, não voltam. Fica escrito em dois sítios da
+        // memória do navegador — se um falhar ou for limpo, o outro
+        // lembra-se.
+        const guardarVistas = () => {
+            try { localStorage.setItem(CHAVE, 'vistas'); } catch (e) { /* segue para o outro */ }
+            try { document.cookie = CHAVE + '=vistas; max-age=31536000; path=/; SameSite=Lax'; } catch (e) { /* sem memória: fecha só desta vez */ }
+        };
+        const jaVistas = () => {
+            try { if (localStorage.getItem(CHAVE) === 'vistas') return true; } catch (e) { /* segue */ }
+            return new RegExp('(^|; )' + CHAVE + '=vistas(;|$)').test(document.cookie);
+        };
+
         const abrir = () => {
             if (aberta) return;
             aberta = true;
@@ -2837,7 +2849,7 @@
         const fechar = () => {
             if (!aberta) return;
             aberta = false;
-            try { localStorage.setItem(CHAVE, 'vistas'); } catch (e) { /* sem memória: fecha só desta vez */ }
+            guardarVistas();
             if (caixa.contains(document.activeElement)) document.activeElement.blur();
             caixa.classList.remove('aberta');
             setTimeout(() => { if (!aberta) caixa.hidden = true; }, 350);
@@ -2869,8 +2881,7 @@
 
         // Na primeira visita — ou quando se pede — aparecem pouco depois
         // de o bairro aparecer.
-        let vistas = false;
-        try { vistas = localStorage.getItem(CHAVE) === 'vistas'; } catch (e) { /* sem memória: aparecem */ }
+        const vistas = jaVistas();
         const pedidas = /[?&]instrucoes(=|&|$)/.test(location.search);
         // O pedido sai do endereço mal é lido: quem partilhar a página
         // depois não manda as instruções a quem já as viu.

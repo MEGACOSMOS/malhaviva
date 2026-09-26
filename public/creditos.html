@@ -217,6 +217,7 @@
      * de a página abrir, os créditos sobem sozinhos até ao fim, a começar
      * devagar e a acabar devagar. Basta mexer — roda do rato, dedo,
      * teclado — para o rolo parar e a página ficar à mão de quem a lê.
+     * Também a roda e as teclas deslizam com começo e fim suaves.
      * Quem pediu ao sistema menos movimento vê tudo parado.
      */
     (function () {
@@ -239,30 +240,77 @@
         var suave = function (x) {
             return x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
         };
+        var fundo = function () {
+            return Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
+        };
 
-        var parado = false;
-        var parar = function () { parado = true; };
-        ['wheel', 'touchstart', 'pointerdown', 'keydown'].forEach(function (evento) {
-            window.addEventListener(evento, parar, { passive: true });
+        // Um deslizar só: de onde a página está até ao destino, no tempo
+        // dado, sempre com a mesma curva. Um deslizar novo substitui o
+        // que estiver a meio, a partir do sítio onde ele ia.
+        var viagem = null;
+        var destino = window.scrollY;
+        var deslizar = function (para, duracao) {
+            destino = Math.max(0, Math.min(fundo(), para));
+            viagem = { de: window.scrollY, para: destino, duracao: duracao, comeco: null };
+            var esta = viagem;
+            var passo = function (agora) {
+                if (viagem !== esta) return;
+                if (esta.comeco === null) esta.comeco = agora;
+                var x = Math.min(1, (agora - esta.comeco) / esta.duracao);
+                window.scrollTo(0, esta.de + (esta.para - esta.de) * suave(x));
+                if (x < 1) requestAnimationFrame(passo);
+                else viagem = null;
+            };
+            requestAnimationFrame(passo);
+        };
+
+        // O rolo sozinho: sobe até ao fim, uns 40 pontos por segundo em
+        // média, e pára mal alguém mexa.
+        var automatico = true;
+        var PASSO_MS = 900;
+        var mexer = function (quanto) {
+            var partida = (automatico || !viagem) ? window.scrollY : destino;
+            automatico = false;
+            deslizar(partida + quanto, PASSO_MS);
+        };
+
+        // A roda do rato e o painel táctil: cada gesto vira um deslizar
+        // com começo e fim suaves, em vez do salto seco do navegador.
+        window.addEventListener('wheel', function (e) {
+            if (e.ctrlKey) return; // aproximar a página: fica com o navegador
+            e.preventDefault();
+            var linhas = e.deltaMode === 1 ? 40 : e.deltaMode === 2 ? window.innerHeight : 1;
+            mexer(e.deltaY * linhas * 1.6);
+        }, { passive: false });
+
+        // As teclas de andar pela página, com o mesmo deslizar.
+        window.addEventListener('keydown', function (e) {
+            if (e.altKey || e.ctrlKey || e.metaKey) return;
+            if (e.target.closest && e.target.closest('input, textarea, select')) return;
+            var pagina = window.innerHeight * 0.85;
+            var quanto = {
+                ArrowDown: 120, ArrowUp: -120,
+                PageDown: pagina, PageUp: -pagina,
+                ' ': e.shiftKey ? -pagina : pagina,
+                Home: -1e7, End: 1e7
+            }[e.key];
+            if (quanto === undefined) return;
+            e.preventDefault();
+            mexer(quanto);
+        });
+
+        // Com o dedo, o telemóvel já desliza por si; só se pára o rolo.
+        ['touchstart', 'pointerdown'].forEach(function (evento) {
+            window.addEventListener(evento, function () {
+                if (automatico) { automatico = false; viagem = null; }
+            }, { passive: true });
         });
 
         setTimeout(function () {
-            if (parado) return;
-            var inicio = window.scrollY;
-            var fim = document.documentElement.scrollHeight - window.innerHeight;
-            var distancia = fim - inicio;
+            if (!automatico) return;
+            var distancia = fundo() - window.scrollY;
             if (distancia <= 0) return;
-            // Cerca de 40 pontos por segundo, em média.
-            var duracao = Math.max(8000, distancia / 40 * 1000);
-            var comeco = null;
-            var passo = function (agora) {
-                if (parado) return;
-                if (comeco === null) comeco = agora;
-                var x = Math.min(1, (agora - comeco) / duracao);
-                window.scrollTo(0, inicio + distancia * suave(x));
-                if (x < 1) requestAnimationFrame(passo);
-            };
-            requestAnimationFrame(passo);
+            deslizar(fundo(), Math.max(8000, distancia / 40 * 1000));
         }, 1200);
     })();
     </script>
