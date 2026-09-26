@@ -34,7 +34,7 @@
         :root {
             --color-bg: #05050a;
             --color-text: #ffffff;
-            --color-text-muted: rgba(255, 255, 255, 0.6);
+            --color-text-muted: rgba(255, 255, 255, 0.7);
             --color-border: rgba(255, 255, 255, 0.15);
             --color-accent: #ffffff;
             --color-surface-hover: rgba(255, 255, 255, 0.05);
@@ -242,7 +242,7 @@
             font-weight: 500;
             letter-spacing: 0.12em;
             text-transform: uppercase;
-            color: var(--color-text-muted);
+            color: rgba(255, 255, 255, 0.6);
             margin-bottom: 14px;
         }
         .nomes {
@@ -283,7 +283,7 @@
         .back-link {
             position: relative;
         }
-        .back-link::after::after, #idioma-menu::after {
+        .back-link::after, #idioma-menu::after {
             content: "";
             position: absolute;
             inset: 0;
@@ -406,11 +406,9 @@
     /**
      * O rolo dos créditos.
      *
-     * Cada bloco aparece a esbater-se quando entra no ecrã. Pouco depois
-     * de a página abrir, os créditos sobem sozinhos até ao fim, a começar
-     * devagar e a acabar devagar. Basta mexer — roda do rato, dedo,
-     * teclado — para o rolo parar e a página ficar à mão de quem a lê.
-     * Também a roda e as teclas deslizam com começo e fim suaves.
+     * Cada bloco aparece a esbater-se quando entra no ecrã. A página só
+     * anda quando quem a lê a faz andar: a roda do rato e as teclas
+     * deslizam com começo e fim suaves.
      * Quem pediu ao sistema menos movimento vê tudo parado.
      */
     (function () {
@@ -457,13 +455,11 @@
             requestAnimationFrame(passo);
         };
 
-        // O rolo sozinho: sobe até ao fim, uns 40 pontos por segundo em
-        // média, e pára mal alguém mexa.
-        var automatico = true;
+        // Cada gesto soma-se ao destino do anterior, se ainda estiver a
+        // meio: rodar várias vezes seguidas vai mais longe, sem solavancos.
         var PASSO_MS = 900;
         var mexer = function (quanto) {
-            var partida = (automatico || !viagem) ? window.scrollY : destino;
-            automatico = false;
+            var partida = viagem ? destino : window.scrollY;
             deslizar(partida + quanto, PASSO_MS);
         };
 
@@ -492,19 +488,9 @@
             mexer(quanto);
         });
 
-        // Com o dedo, o telemóvel já desliza por si; só se pára o rolo.
-        ['touchstart', 'pointerdown'].forEach(function (evento) {
-            window.addEventListener(evento, function () {
-                if (automatico) { automatico = false; viagem = null; }
-            }, { passive: true });
-        });
-
-        setTimeout(function () {
-            if (!automatico) return;
-            var distancia = fundo() - window.scrollY;
-            if (distancia <= 0) return;
-            deslizar(fundo(), Math.max(8000, distancia / 40 * 1000));
-        }, 1200);
+        // Com o dedo, o telemóvel já desliza por si; um toque pára o
+        // deslizar que estiver a meio, para não lutar com o dedo.
+        window.addEventListener('touchstart', function () { viagem = null; }, { passive: true });
     })();
 
     /* O mesmo botão de língua da página do mapa, na medida desta: quem
