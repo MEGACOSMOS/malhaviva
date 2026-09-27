@@ -7,7 +7,7 @@
     <meta name="description" content="Exploração 3D interativa do Bairro de Penajóia através de Gaussian Splatting. Projeto Malha Viva.">
     <!-- As línguas do site. Fica antes de tudo o resto para o texto
          nascer já na língua certa, sem piscar em português primeiro. -->
-    <script src="/idiomas.js?v=31"></script>
+    <script src="/idiomas.js?v=32"></script>
 
     <!-- O quadrado de espera, o mesmo em todo o site. Fica antes de o
          ecrã de espera se desenhar, para nascer já com a sua roupa. -->
@@ -2408,6 +2408,10 @@
                         <span data-i18n="def.auto">Automático (Recomendado)</span>
                     </label>
                     <label class="settings-radio">
+                        <input type="radio" name="quality" value="max" id="radio-max">
+                        <span data-i18n="def.maximo">Máximo (Sem Limites)</span>
+                    </label>
+                    <label class="settings-radio">
                         <input type="radio" name="quality" value="high" id="radio-high">
                         <span data-i18n="def.alto">Alto (Detalhe Máximo)</span>
                     </label>
@@ -3149,7 +3153,7 @@
 
         <!-- Assets -->
         <pc-asset id="splat-scene" src="splat/lod-meta.json" type="gsplat"></pc-asset>
-        <pc-asset id="camera-controls-script" src="./camera-controls.mjs?v=39" type="script"></pc-asset>
+        <pc-asset id="camera-controls-script" src="./camera-controls.mjs?v=40" type="script"></pc-asset>
         <pc-asset id="camera-coords-script" src="./coords.mjs?v=7" type="script"></pc-asset>
         <pc-asset id="annotations-script" src="./annotations.mjs?v=85" type="script"></pc-asset>
         <pc-asset id="trail-script" src="./trail.mjs?v=28" type="script"></pc-asset>
@@ -3230,7 +3234,7 @@
                 if (motorVR) motorVR.setAttribute('backend', 'webgl2');
             }
 
-            if (nivel !== 'high') {
+            if (nivel !== 'high' && nivel !== 'max') {
                 var motor = document.getElementById('main-app');
                 if (motor) {
                     // Um ponto do modelo por cada ponto do ecrã. Num
@@ -3261,7 +3265,7 @@
         } from 'playcanvas';
         import { ligarLodNoCentroDaVista } from './lod-foco.mjs?v=6';
         import { criarModoVR } from './vr.mjs?v=11';
-        import { ligarCeu } from './ceu.mjs?v=15';
+        import { ligarCeu } from './ceu.mjs?v=16';
         import { ligarComando } from './comando.mjs?v=9';
 
         // O código do site chegou e está a correr: o primeiro sinal de vida
@@ -3555,12 +3559,16 @@ void modifySplatColor(vec3 center, inout vec4 color) {
         const actualQuality = window.actualQuality ||
             (savedQuality === 'auto' ? detectTier() : savedQuality);
         window.actualQuality = actualQuality;
-        const isHigh = actualQuality === 'high';
+        // O Máximo é o Alto sem travões: tudo o que vale para o Alto vale
+        // para ele, e por cima o detalhe fino vai muito mais longe.
+        const isMax = actualQuality === 'max';
+        const isHigh = actualQuality === 'high' || isMax;
         const isMed = actualQuality === 'med';
         const isLow = actualQuality === 'low';
         
         // Setup initial UI states
         document.getElementById('radio-auto').checked = (savedQuality === 'auto');
+        document.getElementById('radio-max').checked = (savedQuality === 'max');
         document.getElementById('radio-high').checked = (savedQuality === 'high');
         document.getElementById('radio-med').checked = (savedQuality === 'med');
         document.getElementById('radio-low').checked = (savedQuality === 'low');
@@ -3603,15 +3611,30 @@ void modifySplatColor(vec3 center, inout vec4 color) {
                     // meio ocupava o bairro quase todo e comia os pontos que
                     // fariam falta ao detalhe fino. Trocaram de papéis:
                     // detalhe fino bem mais longe, faixa do meio mais curta.
-                    if (isHigh) {
-                        splatEl.entity.gsplat.lodBaseDistance = 150; 
+                    //
+                    // No Máximo o detalhe fino chega quase ao horizonte: a
+                    // troca para o detalhe mais grosseiro só acontece muito
+                    // ao longe.
+                    if (isMax) {
+                        splatEl.entity.gsplat.lodBaseDistance = 600;
+                        splatEl.entity.gsplat.lodMultiplier = 3;
+                    } else if (isHigh) {
+                        splatEl.entity.gsplat.lodBaseDistance = 150;
                         splatEl.entity.gsplat.lodMultiplier = 2.5; 
                     } else if (isMed) {
                         splatEl.entity.gsplat.lodBaseDistance = 110; 
                         splatEl.entity.gsplat.lodMultiplier = 2.5; 
                     } else { // isLow
                         splatEl.entity.gsplat.lodBaseDistance = 70; 
-                        splatEl.entity.gsplat.lodMultiplier = 2; 
+                        splatEl.entity.gsplat.lodMultiplier = 2;
+                    }
+
+                    // A câmara reescreve esta distância a cada imagem (para
+                    // o zoom dar mais detalhe) e vai buscá-la aqui. No modo
+                    // Automático é o afinador de fluidez que a vai mexendo.
+                    window.distanciaDoDetalhe = splatEl.entity.gsplat.lodBaseDistance;
+                    if (savedQuality === 'auto' && !window.modoDePoupanca) {
+                        afinarDetalhePelaFluidez(app, window.distanciaDoDetalhe);
                     }
 
                     // A direcção do olhar já conta no detalhe — é o balão
@@ -3654,6 +3677,62 @@ void modifySplatColor(vec3 center, inout vec4 color) {
             } catch(e) {
                 console.warn("Performance setup error:", e);
             }
+        }
+
+        /**
+         * Afinador de fluidez do modo Automático.
+         *
+         * Conta as imagens por segundo e mexe na distância até onde vai o
+         * detalhe fino, para a fluidez rondar as 30 imagens por segundo:
+         * abaixo disso o detalhe encolhe, com folga a mais estica. Mexe aos
+         * poucos e espera um pouco depois de cada mudança, porque o bairro
+         * leva um instante a carregar o detalhe novo e essas primeiras
+         * imagens saem sempre mais lentas.
+         *
+         * @param {object} app - A aplicação 3D.
+         * @param {number} inicial - A distância de partida do nível detetado.
+         */
+        function afinarDetalhePelaFluidez(app, inicial) {
+            const ALVO = 30;
+            const MINIMO = Math.max(30, inicial * 0.5);
+            const MAXIMO = inicial * (isLow ? 1.6 : 2.6);
+            const ESPERA_DEPOIS_DE_MUDAR = 2;   // segundos sem mexer
+            const ARRANQUE = 3000;              // deixa o bairro assentar
+
+            let imagens = 0;
+            let inicio = 0;
+            let espera = 0;
+            let media = 0;
+
+            const contar = (agora) => {
+                requestAnimationFrame(contar);
+                // Separador escondido ou óculos de VR: não se mede nada.
+                if (document.hidden || (app.xr && app.xr.active)) { inicio = 0; return; }
+                if (!inicio) { inicio = agora; imagens = 0; return; }
+                imagens++;
+                if (agora - inicio < 1000) return;
+
+                const fps = imagens * 1000 / (agora - inicio);
+                inicio = agora;
+                imagens = 0;
+                media = media ? media * 0.6 + fps * 0.4 : fps;
+                if (espera > 0) { espera--; return; }
+
+                let fator = 1;
+                if (media < ALVO * 0.8) fator = 0.8;
+                else if (media < ALVO - 2) fator = 0.92;
+                else if (media > ALVO * 1.5) fator = 1.1;
+                else if (media > ALVO + 5) fator = 1.04;
+                if (fator === 1) return;
+
+                const antes = window.distanciaDoDetalhe;
+                const depois = Math.min(MAXIMO, Math.max(MINIMO, antes * fator));
+                if (Math.abs(depois - antes) < 1) return;
+                window.distanciaDoDetalhe = depois;
+                espera = ESPERA_DEPOIS_DE_MUDAR;
+            };
+
+            setTimeout(() => requestAnimationFrame(contar), ARRANQUE);
         }
 
         function setQuality(mode) {
@@ -4079,7 +4158,10 @@ void modifySplatColor(vec3 center, inout vec4 color) {
             // Fica aqui, e não depois de a página abrir, para o bairro nunca
             // chegar a pedir mais detalhe do que aquele que vai desenhar.
             if (app.scene && app.scene.gsplat) {
-                if (!isHigh) {
+                if (isMax) {
+                    // No Máximo não há tecto nenhum, dito de propósito.
+                    app.scene.gsplat.splatBudget = 0;
+                } else if (!isHigh) {
                     // No Baixo o tecto desceu de quinhentas para trezentas
                     // mil manchas: um telemóvel de gama média ficava sem
                     // memória gráfica a meio da visita e a placa desistia.
@@ -4515,7 +4597,8 @@ void modifySplatColor(vec3 center, inout vec4 color) {
             // ao dobro da distância para onde se olha, encolhe para os
             // lados e para trás das costas, e o que está fora do ecrã desce
             // um nível. Pinta as mesmas manchas no ecrã que antes, ou menos.
-            window.lodFoco = ligarLodNoCentroDaVista(app);
+            // No Máximo o balão não é encolhido para poupar manchas.
+            window.lodFoco = ligarLodNoCentroDaVista(app, { conterNoAntigo: !isMax });
 
             // O ecrã de espera só sai quando o bairro estiver mesmo lá.
             esperarPeloBairro(app).then(showUIOnce);

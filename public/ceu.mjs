@@ -43,6 +43,7 @@ const IMAGEM = '/ceu-olho-de-aguia.jpg';
 // faces, por isso o custo em memória é seis vezes o quadrado destes
 // números — daí a diferença entre níveis.
 const TAMANHO_DAS_FACES = {
+    max: 1024,
     high: 1024,
     med: 512,
     low: 256

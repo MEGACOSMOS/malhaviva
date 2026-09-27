@@ -47,6 +47,7 @@
 
             'def.qualidade': 'Qualidade Gráfica',
             'def.auto': 'Automático (Recomendado)',
+            'def.maximo': 'Máximo (Sem Limites)',
             'def.alto': 'Alto (Detalhe Máximo)',
             'def.medio': 'Médio (Equilibrado)',
             'def.baixo': 'Baixo (Mais Performance)',
@@ -243,6 +244,7 @@
 
             'def.qualidade': 'Graphics Quality',
             'def.auto': 'Automatic (Recommended)',
+            'def.maximo': 'Maximum (No Limits)',
             'def.alto': 'High (Maximum Detail)',
             'def.medio': 'Medium (Balanced)',
             'def.baixo': 'Low (Best Performance)',
@@ -439,6 +441,7 @@
 
             'def.qualidade': 'Calidad Gráfica',
             'def.auto': 'Automático (Recomendado)',
+            'def.maximo': 'Máximo (Sin Límites)',
             'def.alto': 'Alto (Detalle Máximo)',
             'def.medio': 'Medio (Equilibrado)',
             'def.baixo': 'Bajo (Más Rendimiento)',
@@ -635,6 +638,7 @@
 
             'def.qualidade': 'Kualidadi di imajen',
             'def.auto': 'Automátiku (Rekumendadu)',
+            'def.maximo': 'Máximu (Sen limiti)',
             'def.alto': 'Altu (Máximu detalhi)',
             'def.medio': 'Médiu (Ekilibradu)',
             'def.baixo': 'Baxu (Más rapidez)',
