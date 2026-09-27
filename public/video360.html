@@ -355,6 +355,40 @@
         #ajuda-fechar:hover {
             opacity: 0.85;
         }
+        /* Num leitor baixo — o do telemóvel é pequeno — a caixa encolhe as
+           folgas e a letra; e se mesmo assim não couber, desliza-se por
+           ela, em vez de ficar cortada em cima e em baixo sem se chegar ao
+           botão. A margem automática centra-a quando cabe e encosta-a em
+           cima quando não cabe. */
+        #ajuda-360 {
+            overflow-y: auto;
+        }
+        .ajuda-caixa {
+            margin: auto;
+        }
+        @media (max-height: 420px) {
+            #ajuda-360 {
+                padding: 10px;
+            }
+            .ajuda-caixa {
+                padding: 12px 16px;
+            }
+            .ajuda-titulo {
+                font-size: 0.95rem;
+                margin-bottom: 8px;
+            }
+            .ajuda-lista {
+                gap: 5px;
+                margin-bottom: 10px;
+            }
+            .ajuda-lista li {
+                font-size: 0.78rem;
+                line-height: 1.4;
+            }
+            #ajuda-fechar {
+                padding: 7px 16px;
+            }
+        }
 
         .player-btn {
             background: transparent;

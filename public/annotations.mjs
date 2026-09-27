@@ -601,7 +601,14 @@ AnnotationController.prototype.initialize = function() {
            meio: mudar uma destas linhas muda o palco todo. ---- */
         #video-modal,
         #modal-360 {
-            --janela-largura: min(62vw, 1000px);
+            /* A largura também tem de caber na altura do ecrã, com folga
+               em cima e em baixo: num portátil de ecrã baixo a janela
+               inteira enchia a altura toda. */
+            --janela-largura: min(
+                62vw,
+                1000px,
+                calc((100vh - var(--altura-barra-nome, 57px) - var(--altura-controlos, 118px) - 64px) * 16 / 9)
+            );
             /* O intervalo entre janelas tem de dar para a seta caber lá
                dentro com folga. */
             --janela-espaco: 110px;
@@ -970,11 +977,20 @@ AnnotationController.prototype.initialize = function() {
         }
 
         /* Num ecrã estreito não sobra nada para espreitar: as janelas dos
-           lados encolhem para uma seta pousada na borda da imagem. */
+           lados dão lugar a uma seta de cada lado do leitor. */
         @media (max-width: 900px) {
+            /* O leitor não vai de borda a borda: fica uma margem de cada
+               lado, onde vivem as setas, e o leitor encolhe com o ecrã. A
+               largura também tem de caber na altura do ecrã, para a janela
+               inteira — nome, imagem e comandos — ficar à vista com o
+               telemóvel deitado. */
             #video-modal,
             #modal-360 {
-                --janela-largura: 100vw;
+                --janela-margem: clamp(40px, 8vw, 72px);
+                --janela-largura: min(
+                    calc(100vw - 2 * var(--janela-margem)),
+                    calc((100vh - var(--altura-barra-nome, 57px) - var(--altura-controlos, 100px) - 32px) * 16 / 9)
+                );
                 --janela-espaco: 0px;
             }
             .janela-do-palco {
@@ -984,45 +1000,30 @@ AnnotationController.prototype.initialize = function() {
             }
             /* O meio da imagem não é o meio da janela: há uma barra com o
                nome em cima e outra com os comandos em baixo, e não têm a
-               mesma altura. Esta conta desce as setas e as janelas dos
-               lados até ao meio da imagem, seja qual for a altura das
-               barras. */
-            .previa,
+               mesma altura. Esta conta desce as setas até ao meio da
+               imagem, seja qual for a altura das barras. */
             .seta-do-palco {
                 margin-top: calc((var(--altura-barra-nome, 0px) - var(--altura-controlos, 0px)) / 2);
             }
+            /* Sem janelas dos lados: só as setas, que recebem o toque. */
             .previa {
-                position: absolute;
-                top: 50%;
-                width: 50px;
-                height: 70px;
-                transform: translateY(-50%);
-                opacity: 1;
-                border: none;
-                background: transparent;
-                z-index: 2100;
+                display: none;
             }
-            .previa.esquerda { left: 0; border-top-left-radius: 0; border-bottom-left-radius: 0; }
-            .previa.direita { right: 0; border-top-right-radius: 0; border-bottom-right-radius: 0; }
-            .previa-barra,
-            .previa-rodape,
-            .previa-janela { display: none; }
-            .carrossel.a-deslizar .previa.entra,
             .carrossel.a-deslizar .janela-do-player {
                 transform: none;
                 opacity: 1;
             }
 
             .seta-do-palco {
-                width: 50px;
+                width: var(--janela-margem);
                 height: 70px;
                 transform: translateY(-50%);
             }
             .seta-do-palco:hover {
                 transform: translateY(-50%) scale(1.18);
             }
-            .seta-do-palco.esquerda { left: 0; right: auto; }
-            .seta-do-palco.direita { right: 0; left: auto; }
+            .seta-do-palco.esquerda { left: calc(50% - var(--janela-largura) / 2 - var(--janela-margem)); right: auto; }
+            .seta-do-palco.direita { right: calc(50% - var(--janela-largura) / 2 - var(--janela-margem)); left: auto; }
 
             .video-controls {
                 padding: 12px 12px 14px;
