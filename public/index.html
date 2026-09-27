@@ -2532,10 +2532,7 @@
         <li class="legenda-linha" data-tipo="360">
             <span class="legenda-marcador rota" aria-hidden="true">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="square" stroke-linejoin="miter">
-                    <polyline points="4 10, 12 2, 19 9"></polyline>
-                    <polyline points="14 9, 19 9, 19 4"></polyline>
-                    <polyline points="20 14, 12 22, 5 15"></polyline>
-                    <polyline points="10 15, 5 15, 5 20"></polyline>
+                    <polygon points="3 5, 12 7.4, 21 5, 21 19, 12 16.6, 3 19"></polygon>
                 </svg>
             </span>
             <span data-i18n="def.rotas360">Rotas 360º</span>
@@ -2731,7 +2728,7 @@
                             </g>
                             <g class="ins-marcador-b">
                                 <rect x="156" y="37" width="30" height="30" fill="#ff0000"></rect>
-                                <svg x="160" y="41" width="22" height="22" viewBox="0 0 24 24"><g class="ins-branco"><polyline points="4 10, 12 2, 19 9"></polyline><polyline points="14 9, 19 9, 19 4"></polyline><polyline points="20 14, 12 22, 5 15"></polyline><polyline points="10 15, 5 15, 5 20"></polyline></g></svg>
+                                <svg x="160" y="41" width="22" height="22" viewBox="0 0 24 24"><g class="ins-branco"><polygon points="3 5, 12 7.4, 21 5, 21 19, 12 16.6, 3 19"></polygon></g></svg>
                             </g>
                             <rect class="ins-anel ins-hist-anel" x="98" y="37" width="30" height="30"></rect>
                             <g class="ins-janela">
@@ -3204,7 +3201,7 @@
         <pc-asset id="splat-scene" src="splat/lod-meta.json" type="gsplat"></pc-asset>
         <pc-asset id="camera-controls-script" src="./camera-controls.mjs?v=40" type="script"></pc-asset>
         <pc-asset id="camera-coords-script" src="./coords.mjs?v=7" type="script"></pc-asset>
-        <pc-asset id="annotations-script" src="./annotations.mjs?v=94" type="script"></pc-asset>
+        <pc-asset id="annotations-script" src="./annotations.mjs?v=95" type="script"></pc-asset>
         <pc-asset id="trail-script" src="./trail.mjs?v=31" type="script"></pc-asset>
         <pc-asset id="measure-script" src="./measure.mjs?v=1" type="script"></pc-asset>
         <pc-asset id="escala-script" src="./escala.mjs?v=2" type="script"></pc-asset>
@@ -3313,7 +3310,7 @@
             PIXELFORMAT_RGBA8, FILTER_LINEAR, ADDRESS_CLAMP_TO_EDGE
         } from 'playcanvas';
         import { ligarLodNoCentroDaVista } from './lod-foco.mjs?v=6';
-        import { criarModoVR } from './vr.mjs?v=11';
+        import { criarModoVR } from './vr.mjs?v=12';
         import { ligarCeu } from './ceu.mjs?v=16';
         import { ligarComando } from './comando.mjs?v=9';
 

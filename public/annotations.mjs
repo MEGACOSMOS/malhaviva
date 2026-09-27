@@ -1237,9 +1237,11 @@ AnnotationController.prototype.initialize = function() {
         const isViewed = this.viewedAnnotations.includes(annId);
 
         if (ann.is360) {
-            // As rotas mostram duas setas em losango (o ícone universal
-            // de rotação 360º), para mostrar que ali se pode olhar e andar
-            // à volta. O nome vai por baixo. A fotografia do alto do bairro
+            // As rotas mostram uma moldura panorâmica: a imagem com a borda
+            // de cima e a de baixo a dobrar para o meio, como quem a vê de
+            // dentro enquanto ela dá a volta. Só linhas direitas, de cantos
+            // vivos, e a dobra com a inclinação das riscas da claquete dos
+            // créditos. O nome vai por baixo. A fotografia do alto do bairro
             // dispensa as duas coisas: fica só um olho, pousado no céu.
             const simbolo = ann.isImage
                 ? `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter">
@@ -1247,10 +1249,7 @@ AnnotationController.prototype.initialize = function() {
                         <circle cx="12" cy="12" r="3"></circle>
                    </svg>`
                 : `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter">
-                        <polyline points="4 10, 12 2, 19 9"></polyline>
-                        <polyline points="14 9, 19 9, 19 4"></polyline>
-                        <polyline points="20 14, 12 22, 5 15"></polyline>
-                        <polyline points="10 15, 5 15, 5 20"></polyline>
+                        <polygon points="3 5, 12 7.4, 21 5, 21 19, 12 16.6, 3 19"></polygon>
                    </svg>`;
             el.innerHTML = `
                 <div class="marker-dot is-360 ${ann.isImage ? 'is-foto' : ''} ${isViewed ? 'viewed' : ''}">

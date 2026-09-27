@@ -10,8 +10,8 @@ import {
  * pousados por cima da imagem — e dentro dos óculos o HTML não existe:
  * ficava-se a andar pelo bairro sem um único sinal de onde há o que ver.
  * Aqui cada marcador passa a ser uma placa no próprio bairro: o mesmo
- * quadrado com o mesmo desenho (as barras de um testemunho, a cruz de
- * setas de uma rota, o olho da fotografia) e o nome por baixo, desenhados
+ * quadrado com o mesmo desenho (as barras de um testemunho, a moldura
+ * panorâmica de uma rota, o olho da fotografia) e o nome por baixo, desenhados
  * numa tela e postos numa placa que vira sempre a cara para quem olha.
  * Vistos, ficam cinzentos, como no mapa.
  *
@@ -84,13 +84,10 @@ function desenharPlaca(ann, nome, visto) {
         c.moveTo(X(15), Y(12));
         c.arc(X(12), Y(12), 3 * u, 0, Math.PI * 2);
     } else {
-        // A cruz de setas da rota.
-        c.moveTo(X(8.5), Y(5.5)); c.lineTo(X(12), Y(2)); c.lineTo(X(15.5), Y(5.5));
-        c.moveTo(X(8.5), Y(18.5)); c.lineTo(X(12), Y(22)); c.lineTo(X(15.5), Y(18.5));
-        c.moveTo(X(5.5), Y(8.5)); c.lineTo(X(2), Y(12)); c.lineTo(X(5.5), Y(15.5));
-        c.moveTo(X(18.5), Y(8.5)); c.lineTo(X(22), Y(12)); c.lineTo(X(18.5), Y(15.5));
-        c.moveTo(X(12), Y(3)); c.lineTo(X(12), Y(21));
-        c.moveTo(X(3), Y(12)); c.lineTo(X(21), Y(12));
+        // A moldura panorâmica da rota, a mesma do mapa.
+        c.moveTo(X(3), Y(5)); c.lineTo(X(12), Y(7.4)); c.lineTo(X(21), Y(5));
+        c.lineTo(X(21), Y(19)); c.lineTo(X(12), Y(16.6)); c.lineTo(X(3), Y(19));
+        c.closePath();
     }
     c.stroke();
 
