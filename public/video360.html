@@ -1949,19 +1949,53 @@
         const ANGULO_LARGO = ABERTURA_INICIAL;   // como se chega à rota
         const ANGULO_APERTADO = 22; // o mais perto que se pode ir
         const PASSO_DO_ZOOM = 1.15; // em proporção: sente-se igual em qualquer ponto
-        let angulo = ANGULO_LARGO;
+        // Quanto demora o ângulo a chegar perto de onde se pediu, em
+        // segundos: pouco o bastante para responder logo, e o bastante para
+        // não saltar de uma vez.
+        const SUAVIDADE_DO_ZOOM = 0.12;
+        let angulo = ANGULO_LARGO;      // o ângulo que se vê agora
+        let anguloPedido = ANGULO_LARGO; // para onde está a ir
+
+        // O ângulo não salta para o pedido: vai lá a deslizar, imagem a
+        // imagem, cada vez mais devagar à medida que chega — e um pedido
+        // novo a meio só muda o destino, sem recomeçar nada.
+        let aDeslizarOZoom = false;
+        let instanteAnterior = 0;
+        const deslizarOZoom = (agora) => {
+            const dt = instanteAnterior ? Math.min(0.1, (agora - instanteAnterior) / 1000) : 1 / 60;
+            instanteAnterior = agora;
+            const falta = anguloPedido - angulo;
+            if (Math.abs(falta) < 0.02) {
+                angulo = anguloPedido;
+                aDeslizarOZoom = false;
+            } else {
+                angulo += falta * (1 - Math.exp(-dt / SUAVIDADE_DO_ZOOM));
+            }
+            cameraEl.setAttribute('camera', 'fov', angulo);
+            if (aDeslizarOZoom) requestAnimationFrame(deslizarOZoom);
+        };
 
         const aplicarZoom = (novo) => {
             // Numa entrevista vista em ecrã plano não há para onde chegar.
             if (ecraPlano) return;
-            angulo = Math.min(ANGULO_LARGO, Math.max(ANGULO_APERTADO, novo));
-            cameraEl.setAttribute('camera', 'fov', angulo);
+            anguloPedido = Math.min(ANGULO_LARGO, Math.max(ANGULO_APERTADO, novo));
+            if (!aDeslizarOZoom) {
+                aDeslizarOZoom = true;
+                instanteAnterior = 0;
+                requestAnimationFrame(deslizarOZoom);
+            }
         };
 
+        // A roda conta quanto rodou, e não só para que lado: um rato de
+        // roda aos saltos dá o mesmo passo de sempre por cada estalido, e
+        // um tapete táctil, que manda muitos toques pequenos, aproxima aos
+        // poucos em vez de aos pulos.
         palco.addEventListener('wheel', (e) => {
             if (ecraPlano) return;
             e.preventDefault();
-            aplicarZoom(e.deltaY > 0 ? angulo * PASSO_DO_ZOOM : angulo / PASSO_DO_ZOOM);
+            const porLinha = e.deltaMode === 1 ? 33 : (e.deltaMode === 2 ? 400 : 1);
+            const rodou = Math.max(-300, Math.min(300, e.deltaY * porLinha));
+            aplicarZoom(anguloPedido * Math.pow(PASSO_DO_ZOOM, rodou / 100));
         }, { passive: false });
 
         // Nos telemóveis, os dois dedos a abrir e a fechar.
@@ -1975,7 +2009,7 @@
         palco.addEventListener('touchstart', (e) => {
             if (e.touches.length === 2) {
                 distanciaInicial = distanciaEntreDedos(e.touches);
-                anguloInicial = angulo;
+                anguloInicial = anguloPedido;
             }
         }, { passive: true });
         palco.addEventListener('touchmove', (e) => {
@@ -2113,9 +2147,9 @@
             } else if (tecla === 'r') {
                 endireitar();
             } else if (e.key === '+' || e.key === '=') {
-                aplicarZoom(angulo / PASSO_DO_ZOOM);
+                aplicarZoom(anguloPedido / PASSO_DO_ZOOM);
             } else if (e.key === '-' || e.key === '_') {
-                aplicarZoom(angulo * PASSO_DO_ZOOM);
+                aplicarZoom(anguloPedido * PASSO_DO_ZOOM);
             } else if (/^[0-9]$/.test(e.key)) {
                 e.preventDefault();
                 irA(parseInt(e.key, 10) / 10);
