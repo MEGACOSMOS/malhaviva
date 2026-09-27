@@ -138,10 +138,11 @@ TrailController.prototype.initialize = function() {
     ];
     this.editPoints = [];
     
-    this.dashColor = new pc.Color().fromString('#ff0000'); // RED
-    // Cor da rota quando o cursor passa por cima: branco puro, para se
-    // ler tanto sobre um telhado escuro como sobre a terra clara.
-    this.dashHoverColor = new pc.Color().fromString('#ffffff');
+    // As rotas são sempre brancas e desenham-se sempre por cima do bairro:
+    // o branco lê-se tanto sobre um telhado escuro como sobre a terra
+    // clara. Não mudam com o rato — ao passar por cima aparece só a
+    // etiqueta "Rota 360º" (ver updateGlobalCursor).
+    this.dashColor = new pc.Color().fromString('#ffffff');
     this.dashLength = 2.0;
     this.dashGap = 1.5;
     this.dashWidth = 0.8;
@@ -155,8 +156,8 @@ TrailController.prototype.initialize = function() {
     this.trailRoot = new pc.Entity('trail-root');
     this.app.root.addChild(this.trailRoot);
 
-    // A camada onde a rota acesa é desenhada, depois do bairro.
-    this.camadaAcesa = this.criarCamadaAcesa();
+    // A camada onde as rotas são desenhadas, depois do bairro.
+    this.camadaPorCima = this.criarCamadaPorCima();
 
     this.trailRenderData = [];
 
@@ -179,27 +180,27 @@ TrailController.prototype.initialize = function() {
 };
 
 /**
- * Cria a camada onde a rota acesa é desenhada.
+ * Cria a camada onde as rotas são desenhadas.
  *
  * O bairro é uma nuvem de pontos que se mistura com o que está por trás
- * dela: é desenhado por fim, e por isso passava por cima da rota acesa
- * mesmo quando esta estava mais perto. Empurrá-la na direcção da câmara
+ * dela: é desenhado por fim, e por isso passava por cima das rotas mesmo
+ * quando estas estavam mais perto. Empurrá-las na direcção da câmara
  * ajudava, mas não chegava — bastava uma casa pelo meio para a rota
  * desaparecer outra vez.
  *
- * A solução é dar-lhe uma camada só dela, colocada a seguir à do bairro.
+ * A solução é dar-lhes uma camada só delas, colocada a seguir à do bairro.
  * O que ali se desenha vem depois de tudo o resto e não é medido contra
- * nada, e portanto a rota acesa sobressai sempre, siga por onde seguir.
+ * nada, e portanto as rotas sobressaem sempre, sigam por onde seguirem.
  *
  * @returns {object|null} A camada, ou nada se o motor não a deixar criar.
  */
-TrailController.prototype.criarCamadaAcesa = function() {
+TrailController.prototype.criarCamadaPorCima = function() {
     const composicao = this.app.scene && this.app.scene.layers;
     if (!composicao) return null;
 
-    let camada = composicao.getLayerByName('rotas-acesas');
+    let camada = composicao.getLayerByName('rotas-por-cima');
     if (!camada) {
-        camada = new pc.Layer({ name: 'rotas-acesas' });
+        camada = new pc.Layer({ name: 'rotas-por-cima' });
         const mundo = composicao.getLayerByName('World');
         // Logo a seguir ao bairro, e antes dos painéis e dos botões.
         const depoisDoMundo = mundo
@@ -218,16 +219,9 @@ TrailController.prototype.criarCamadaAcesa = function() {
 };
 
 TrailController.prototype.rebuildTrail = function() {
-    if (this.trailRenderData) {
-        for (const trail of this.trailRenderData) {
-            for (const el of trail.glowElements) {
-                if (el.parentNode) el.parentNode.removeChild(el);
-            }
-        }
-    }
     const children = this.trailRoot.children.slice();
     children.forEach(c => c.destroy());
-    
+
     this.trailRenderData = [];
 
     const allPaths = [...this.routes];
@@ -236,25 +230,14 @@ TrailController.prototype.rebuildTrail = function() {
     }
 
     // Agrupa todos os tracinhos num punhado de desenhos em vez de centenas.
-    // O grupo é criado uma única vez e reutilizado em reconstruções.
+    // O grupo é criado uma única vez e reutilizado em reconstruções, e vive
+    // na camada que é desenhada depois do bairro.
     let batchGroupId = this._batchGroupId ?? null;
     if (batchGroupId === null && this.app.batcher) {
         try {
-            batchGroupId = this.app.batcher.addGroup('trails', false, 100).id;
+            const camadas = this.camadaPorCima ? [this.camadaPorCima.id] : undefined;
+            batchGroupId = this.app.batcher.addGroup('trails', false, 100, undefined, camadas).id;
             this._batchGroupId = batchGroupId;
-        } catch (e) {
-            console.warn('[Trail] Batching indisponível:', e);
-        }
-    }
-
-    // Os tracinhos acesos são agrupados à parte, porque vivem na camada
-    // que é desenhada depois do bairro.
-    let grupoAceso = this._batchGroupIdAceso ?? null;
-    if (grupoAceso === null && this.app.batcher && this.camadaAcesa) {
-        try {
-            grupoAceso = this.app.batcher
-                .addGroup('trails-acesos', false, 100, undefined, [this.camadaAcesa.id]).id;
-            this._batchGroupIdAceso = grupoAceso;
         } catch (e) {
             console.warn('[Trail] Batching indisponível:', e);
         }
@@ -262,43 +245,23 @@ TrailController.prototype.rebuildTrail = function() {
 
     const tmpLook = new pc.Vec3();
 
-    // Cada rota é feita duas vezes: uma apagada e outra acesa, no mesmo
-    // sítio. Só uma delas está visível de cada vez.
-    //
-    // Parece esbanjamento e não é. Os tracinhos são agrupados pelo motor
-    // num punhado de desenhos, e mexer no material depois desse agrupamento
-    // faz o grupo inteiro deixar de aparecer — era essa a razão de a rota
-    // desaparecer quando o cursor lhe passava por cima. Acender e apagar
-    // conjuntos já feitos não mexe em material nenhum, e por isso funciona
-    // sempre. O conjunto escondido não custa nada a desenhar.
-    const fazerMaterial = (cor, intensidade, porCima) => {
-        const material = new pc.StandardMaterial();
-        material.diffuse = cor;
-        material.emissive = cor;
-        material.emissiveIntensity = intensidade;
-        material.blendType = pc.BLEND_NONE;
-        material.opacity = 1.0;
-        // A rota acesa não é medida contra o que tem à frente: na camada
-        // dela, que vem depois do bairro, desenha-se sempre por cima.
-        material.depthTest = !porCima;
-        material.depthWrite = !porCima;
-        material.update();
-        return material;
-    };
+    // O mesmo material para todas as rotas: branco, com brilho próprio
+    // para se ler por cima da fotografia do bairro, que é clara. Na camada
+    // das rotas, que vem depois do bairro, não é medido contra o que tem à
+    // frente: desenha-se sempre por cima.
+    const porCima = !!this.camadaPorCima;
+    const material = new pc.StandardMaterial();
+    material.diffuse = this.dashColor;
+    material.emissive = this.dashColor;
+    material.emissiveIntensity = 2.5;
+    material.blendType = pc.BLEND_NONE;
+    material.opacity = 1.0;
+    material.depthTest = !porCima;
+    material.depthWrite = !porCima;
+    material.update();
 
     for (const pts of allPaths) {
-        const material = fazerMaterial(this.dashColor, 1.0, false);
-        // Mais brilho do que o apagado: por cima da fotografia do bairro,
-        // que é clara, o vermelho de todos os dias passava despercebido.
-        const materialAceso = fazerMaterial(this.dashHoverColor, 2.5, !!this.camadaAcesa);
-
         const trail = {
-            material: material,
-            materialAceso: materialAceso,
-            pivotsAcesos: [],
-            glowElements: [],
-            dashCenters: [],
-            pivots: [],
             segments: [],
             chunks: [],          // esferas envolventes para descartar zonas sem as testar
             boundsCenter: new pc.Vec3(),
@@ -350,6 +313,7 @@ TrailController.prototype.rebuildTrail = function() {
                 castShadows: false,
                 receiveShadows: false
             });
+            if (this.camadaPorCima) dash.render.layers = [this.camadaPorCima.id];
             this.trailRoot.addChild(dash);
             dash.setPosition(centerPos);
             dash.lookAt(tmpLook.copy(centerPos).add(seg.dir));
@@ -359,49 +323,15 @@ TrailController.prototype.rebuildTrail = function() {
             if (batchGroupId !== null) {
                 dash.render.batchGroupId = batchGroupId;
             }
-
-            trail.pivots.push(dash);
-            trail.dashCenters.push(centerPos.clone());
-
-            // O mesmo tracinho, na cor de aceso, à espera da sua vez.
-            const aceso = new pc.Entity('dash-aceso');
-            aceso.addComponent('render', {
-                type: 'box',
-                material: materialAceso,
-                castShadows: false,
-                receiveShadows: false
-            });
-            if (this.camadaAcesa) aceso.render.layers = [this.camadaAcesa.id];
-            this.trailRoot.addChild(aceso);
-            aceso.setPosition(centerPos);
-            aceso.lookAt(tmpLook.copy(centerPos).add(seg.dir));
-            aceso.rotateLocal(90, 0, 0);
-            // Do mesmo tamanho do apagado: o que muda ao acender é a cor e
-            // o facto de a rota passar à frente do bairro, não o corpo do
-            // traço. Engordá-lo dava um risco grosso que não se parecia
-            // nada com o caminho que estava ali um instante antes.
-            aceso.setLocalScale(this.dashWidth, this.dashLength, this.dashThickness);
-            if (grupoAceso !== null) {
-                aceso.render.batchGroupId = grupoAceso;
-            } else if (batchGroupId !== null) {
-                aceso.render.batchGroupId = batchGroupId;
-            }
-            trail.pivotsAcesos.push(aceso);
         }
 
         this.buildTrailBounds(trail);
         this.trailRenderData.push(trail);
     }
 
-    if (this.app.batcher) {
-        if (batchGroupId !== null) this.app.batcher.markGroupDirty(batchGroupId);
-        if (grupoAceso !== null) this.app.batcher.markGroupDirty(grupoAceso);
+    if (this.app.batcher && batchGroupId !== null) {
+        this.app.batcher.markGroupDirty(batchGroupId);
     }
-
-    // Os desenhos agrupados só existem depois de o motor os juntar, na
-    // imagem seguinte. Fica o recado para então se apagarem os conjuntos
-    // acesos, que nascem todos visíveis.
-    this._porArrumar = true;
 };
 
 /**
@@ -549,13 +479,11 @@ TrailController.prototype.onTouchStart = function(e) {
 TrailController.prototype.onMouseMove = function(e) {
     if (this.editMode) return;
 
-    // Com um vídeo aberto, o mapa está tapado: nada de trilhos a acender
-    // nem de etiqueta a seguir o rato por baixo do player.
+    // Com um vídeo aberto, o mapa está tapado: nada de etiqueta a seguir o
+    // rato por baixo do player.
     if (this.playerAberto()) {
         if (this.cursorAnnotation) this.cursorAnnotation.style.display = 'none';
-        this.trailRenderData.forEach(t => this.setTrailHoverState(t, false));
-        this.updateGlobalCursor(false, []);
-        this._hoverPending = false;
+        this.esquecerORato();
         return;
     }
 
@@ -564,22 +492,22 @@ TrailController.prototype.onMouseMove = function(e) {
         this.cursorAnnotation.style.top = e.event.clientY + 'px';
     }
 
+    // Em cima de um marcador, a etiqueta da rota não aparece: o marcador
+    // já tem a sua.
     if (e.event && e.event.target && e.event.target.closest && e.event.target.closest('.annotation-marker')) {
-        const marker = e.event.target.closest('.annotation-marker');
-        const isEsvarena = marker.classList.contains('esvarena-marker');
-        const trailIndex = marker.dataset.trailIndex;
-        for (let i = 0; i < this.trailRenderData.length; i++) {
-            let shouldHover = false;
-            if (isEsvarena) {
-                shouldHover = trailIndex !== undefined ? (i === parseInt(trailIndex)) : true;
-            }
-            this.setTrailHoverState(this.trailRenderData[i], shouldHover);
-        }
-        this.updateGlobalCursor(false, []);
-        this._hoverPending = false;
+        this.esquecerORato();
         return;
     }
     this.queueHoverCheck(e.x, e.y);
+};
+
+/**
+ * Dá o rato como fora de todas as rotas, e esconde a etiqueta.
+ */
+TrailController.prototype.esquecerORato = function() {
+    this.trailRenderData.forEach(t => this.setTrailHoverState(t, false));
+    this.updateGlobalCursor(false);
+    this._hoverPending = false;
 };
 
 /**
@@ -595,9 +523,7 @@ TrailController.prototype.queueHoverCheck = function(x, y) {
 TrailController.prototype.onTouchMove = function(e) {
     if (this.editMode) return;
     if (e.event && e.event.target && e.event.target.closest && e.event.target.closest('.annotation-marker')) {
-        const isEsvarena = e.event.target.closest('.esvarena-marker') !== null;
-        for (const trail of this.trailRenderData) this.setTrailHoverState(trail, isEsvarena);
-        this.updateGlobalCursor(false);
+        this.esquecerORato();
         return;
     }
     if (e.touches.length > 0) {
@@ -668,24 +594,14 @@ TrailController.prototype.setTrailsVisible = function(visivel) {
 
     const batcher = this.app.batcher;
     if (batcher && this._batchGroupId !== undefined && this._batchGroupId !== null) {
-        const grupos = [this._batchGroupId, this._batchGroupIdAceso];
         for (const batch of batcher._batchList) {
-            if (grupos.indexOf(batch.batchGroupId) !== -1 && batch.meshInstance) {
+            if (batch.batchGroupId === this._batchGroupId && batch.meshInstance) {
                 batch.meshInstance.visible = visivel;
             }
         }
-        // Cada rota tem dois conjuntos, e só um deve aparecer: o aceso se o
-        // cursor lá estiver, o apagado nos outros casos.
-        for (const trail of this.trailRenderData) {
-            this.mostrarConjunto(trail.materialAceso, visivel && trail.isHovered);
-            this.mostrarConjunto(trail.material, visivel && !trail.isHovered);
-        }
     }
 
-    if (!visivel) {
-        for (const trail of this.trailRenderData) this.setTrailHoverState(trail, false);
-        this.updateGlobalCursor(false, []);
-    }
+    if (!visivel) this.esquecerORato();
 };
 
 TrailController.prototype.checkHover = function(x, y) {
@@ -698,79 +614,37 @@ TrailController.prototype.checkHover = function(x, y) {
 
     const camPos = this.entity.getPosition();
     let anyHovered = false;
-    const hoveredTrailIndices = [];
 
-    for (let i = 0; i < this.trailRenderData.length; i++) {
-        const trail = this.trailRenderData[i];
+    for (const trail of this.trailRenderData) {
         const isHovered = this.rayHitsTrail(trail, camPos);
-
-        if (isHovered) {
-            anyHovered = true;
-            hoveredTrailIndices.push(i);
-        }
+        if (isHovered) anyHovered = true;
         this.setTrailHoverState(trail, isHovered);
     }
 
-    this.updateGlobalCursor(anyHovered, hoveredTrailIndices);
+    this.updateGlobalCursor(anyHovered);
 };
 
 /**
- * Acende ou apaga o conjunto de tracinhos feito com um dado material.
+ * Guarda se o rato está em cima de uma rota. A rota não muda por isso —
+ * serve só para saber quando mostrar e esconder a etiqueta.
  *
- * Os tracinhos são agrupados pelo motor num punhado de desenhos, um por
- * material. É sobre esses desenhos que se manda — e mandar neles é só
- * dizer se aparecem, sem lhes tocar no material.
- *
- * @param {object} material - O material do conjunto.
- * @param {boolean} visivel - Se deve aparecer.
+ * @param {object} trail - A rota.
+ * @param {boolean} isHovered - Se o rato está em cima dela.
  */
-TrailController.prototype.mostrarConjunto = function(material, visivel) {
-    const agrupador = this.app.batcher;
-    if (!agrupador || !agrupador._batchList) return;
-    for (const lote of agrupador._batchList) {
-        if (lote.meshInstance && lote.meshInstance.material === material) {
-            lote.meshInstance.visible = visivel;
-        }
-    }
-};
-
 TrailController.prototype.setTrailHoverState = function(trail, isHovered) {
-    if (isHovered !== trail.isHovered) {
-        trail.isHovered = isHovered;
-
-        // Troca-se de conjunto: acende-se um, apaga-se o outro.
-        this.mostrarConjunto(trail.materialAceso, trail.isHovered);
-        this.mostrarConjunto(trail.material, !trail.isHovered);
-        
-        for (const el of trail.glowElements) {
-            el.style.opacity = trail.isHovered ? '1' : '0';
-        }
-    }
+    trail.isHovered = isHovered;
 };
 
-TrailController.prototype.updateGlobalCursor = function(anyHovered, hoveredTrailIndices = []) {
-    // A rota já não se abre com um clique — só a anotação é que abre. Por
-    // isso o cursor mantém-se como está: uma mãozinha sobre algo que não
-    // responde seria uma promessa por cumprir.
+/**
+ * Com o rato em cima de uma rota aparece a etiqueta "Rota 360º" junto
+ * dele, e é só isso: a rota não muda de cor nem de aspecto, os marcadores
+ * não se destacam, e o cursor fica como está — a rota não se abre com um
+ * clique, só o marcador dela é que abre.
+ *
+ * @param {boolean} anyHovered - Se o rato está em cima de alguma rota.
+ */
+TrailController.prototype.updateGlobalCursor = function(anyHovered) {
     document.body.style.cursor = 'default';
-
-    const esvarenaMarkers = document.querySelectorAll('.esvarena-marker');
-    esvarenaMarkers.forEach(marker => {
-        const trailIndex = marker.dataset.trailIndex;
-        if (trailIndex !== undefined) {
-            if (hoveredTrailIndices.includes(parseInt(trailIndex))) {
-                marker.classList.add('force-hover');
-            } else {
-                marker.classList.remove('force-hover');
-            }
-        } else {
-            if (anyHovered) {
-                marker.classList.add('force-hover');
-            } else {
-                marker.classList.remove('force-hover');
-            }
-        }
-    });
 
     if (this.cursorAnnotation) {
         if (anyHovered) {
@@ -791,17 +665,6 @@ TrailController.prototype.updateGlobalCursor = function(anyHovered, hoveredTrail
 };
 
 TrailController.prototype.postUpdate = function(dt) {
-    // Assim que os desenhos agrupados existirem, deixa-se visível só o
-    // conjunto certo de cada rota.
-    if (this._porArrumar && this.app.batcher && this.app.batcher._batchList &&
-        this.app.batcher._batchList.length > 0) {
-        for (const trail of this.trailRenderData) {
-            this.mostrarConjunto(trail.materialAceso, trail.isHovered);
-            this.mostrarConjunto(trail.material, !trail.isHovered);
-        }
-        this._porArrumar = false;
-    }
-
     if (!this._hoverPending) return;
     this._hoverPending = false;
     this.checkHover(this._hoverX, this._hoverY);
@@ -827,11 +690,9 @@ TrailController.prototype.handleInteraction = function(x, y) {
         return;
     }
 
-    // Fora do modo de edição, a rota não responde ao clique. Continua a
-    // acender quando o cursor lhe passa por cima, e continua a mostrar a
-    // etiqueta, mas quem abre o vídeo é a anotação — o ponto vermelho no
-    // início da rota. Assim não há maneira de abrir um vídeo sem querer ao
-    // arrastar o bairro.
+    // Fora do modo de edição, a rota não responde ao clique: quem abre o
+    // vídeo é o marcador no início dela. Assim não há maneira de abrir um
+    // vídeo sem querer ao arrastar o bairro.
 };
 
 
@@ -848,10 +709,12 @@ TrailController.prototype.setupCursorAnnotation = function() {
     this.cursorAnnotation.style.transition = 'transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s ease';
     this.cursorAnnotation.style.opacity = '0';
     
+    // A etiqueta diz-se na língua de quem vê, e troca se se trocar.
     this.cursorAnnotation.innerHTML = `
-        <div class="marker-label" style="margin-top: 0;">Rota 360º</div>
+        <div class="marker-label" style="margin-top: 0;" data-i18n="rota.titulo">Rota 360º</div>
     `;
-    
+    if (window.Idiomas) window.Idiomas.aplicar(this.cursorAnnotation);
+
     document.body.appendChild(this.cursorAnnotation);
 };
 
