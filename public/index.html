@@ -379,7 +379,7 @@
                 left: 16px;
                 flex-direction: column;
                 align-items: flex-start;
-                gap: 6px !important;
+                gap: 20px !important;
                 opacity: 0;
                 visibility: hidden;
                 pointer-events: none;
@@ -470,6 +470,33 @@
             text-decoration: none;
         }
 
+        /* O nome de cada ícone, pequeno, sempre à vista por baixo dele.
+           Fica fora do quadrado do botão, para o quadrado do rato em cima
+           continuar do mesmo tamanho; e os ícones afastam-se um pouco uns
+           dos outros para os nomes não se tocarem. */
+        .rotulo-icone {
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            margin-top: 3px;
+            font-size: 10px;
+            line-height: 1;
+            letter-spacing: 0.02em;
+            white-space: nowrap;
+            color: rgba(255, 255, 255, 0.8);
+            text-shadow: 0 0 4px rgba(0, 0, 0, 0.9), 0 1px 2px rgba(0, 0, 0, 0.9);
+            pointer-events: none;
+        }
+        #lado-direito {
+            gap: 22px !important;
+        }
+        @media (min-width: 641px) {
+            #acoes-do-cabecalho {
+                gap: 22px !important;
+            }
+        }
+
         /* Os ícones que abrem um menu levam um bico de seta pequeno à
            direita, a apontar para baixo — vira para cima com o menu
            aberto. O botão alarga o bastante para o bico caber. */
@@ -497,7 +524,7 @@
             left: 0;
             right: 0;
             top: 100%;
-            height: 14px;
+            height: 26px;
         }
 
         .ceu-afinacao {
@@ -632,7 +659,8 @@
         
         #definicoes-menu, #dev-menu, #idioma-menu {
             position: absolute;
-            top: 50px;
+            /* Abaixo do nome do ícone, para não o tapar. */
+            top: 62px;
             right: 0;
             background: linear-gradient(to bottom, rgba(255,255,255,0.05), transparent), #05050a;
             border: 1px solid rgba(255, 255, 255, 0.15);
@@ -2321,6 +2349,7 @@
                     <line x1="12" y1="2" x2="12" y2="22"></line>
                     <line x1="2" y1="12" x2="22" y2="12"></line>
                 </svg>
+                <span class="rotulo-icone" aria-hidden="true" data-i18n="cab.controlos">Controlos</span>
             </a>
             
         <div class="settings">
@@ -2329,6 +2358,7 @@
                     <path d="M12.87 15.07l-2.54-2.51.03-.03c1.74-1.94 2.98-4.17 3.71-6.53H17V4h-7V2H8v2H1v1.99h11.17C11.5 7.92 10.44 9.75 9 11.35 8.07 10.32 7.3 9.19 6.69 8h-2c.73 1.63 1.73 3.17 2.98 4.56l-5.09 5.02L4 19l5-5 3.11 3.11.76-2.04zM18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2l-4.5-12zm-2.62 7l1.62-4.33L19.12 17h-3.24z"></path>
                 </svg>
                 <svg class="seta-menu" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true"><polyline points="5 9 12 16 19 9"></polyline></svg>
+                <span class="rotulo-icone" aria-hidden="true" data-i18n="cab.idioma">Idioma</span>
             </button>
             <div id="idioma-menu" class="hidden">
                 <button type="button" class="menu-fechar" aria-label="Fechar" title="Fechar">
@@ -2371,6 +2401,7 @@
                     <line x1="9" y1="13.5" x2="15" y2="17.5"></line>
                 </svg>
                 <svg class="seta-menu" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true"><polyline points="5 9 12 16 19 9"></polyline></svg>
+                <span class="rotulo-icone" aria-hidden="true" data-i18n="par.botao">Partilhar</span>
             </button>
         </div>
 
@@ -2384,6 +2415,7 @@
                 <path d="M3 9L2.2 5.8L19.2 1.3L20 4.5"></path>
                 <path d="M7.5 7.8L9 3.3M13 6.3L14.5 1.8"></path>
             </svg>
+            <span class="rotulo-icone" aria-hidden="true" data-i18n="cab.creditos">Créditos</span>
         </a>
 
         <div class="settings">
@@ -2393,6 +2425,7 @@
                     <path d="M10.08 4.85L10.07 1.58L13.93 1.58L13.92 4.85A7.4 7.4 0 0 1 17.23 6.77L20.06 5.12L21.99 8.46L19.15 10.08A7.4 7.4 0 0 1 19.15 13.92L21.99 15.54L20.06 18.88L17.23 17.23A7.4 7.4 0 0 1 13.92 19.15L13.93 22.42L10.07 22.42L10.08 19.15A7.4 7.4 0 0 1 6.77 17.23L3.94 18.88L2.01 15.54L4.85 13.92A7.4 7.4 0 0 1 4.85 10.08L2.01 8.46L3.94 5.12L6.77 6.77A7.4 7.4 0 0 1 10.08 4.85Z"></path>
                 </svg>
                 <svg class="seta-menu" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true"><polyline points="5 9 12 16 19 9"></polyline></svg>
+                <span class="rotulo-icone" aria-hidden="true" data-i18n="cab.definicoes">Definições</span>
             </button>
             <div id="definicoes-menu" class="hidden">
                 <button type="button" class="menu-fechar" aria-label="Fechar" title="Fechar">
@@ -2450,10 +2483,12 @@
             <!-- Fora da gaveta: ficam no cabeçalho em qualquer ecrã. -->
             <button id="vr-btn" class="adaptavel" title="Modo VR" data-i18n-title="cab.vr" style="display: none;">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter"><path d="M2 5h20v14h-6l-2-4h-4l-2 4H2z"></path><rect x="5" y="9" width="4" height="4"></rect><rect x="15" y="9" width="4" height="4"></rect></svg>
+                <span class="rotulo-icone" aria-hidden="true" data-i18n="cab.vr">Modo VR</span>
             </button>
 
             <button id="fullscreen-main-btn" class="adaptavel" title="Ecrã Inteiro" data-i18n-title="cab.ecra">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="square" stroke-linejoin="miter"><path d="M8 3H3v5m18 0V3h-5m0 18h5v-5M3 16v5h5"></path></svg>
+                <span class="rotulo-icone" aria-hidden="true" data-i18n="cab.ecra">Ecrã Inteiro</span>
             </button>
         </div>
     </div>
@@ -3755,9 +3790,9 @@ void modifySplatColor(vec3 center, inout vec4 color) {
 
             document.addEventListener('fullscreenchange', () => {
                 if (document.fullscreenElement) {
-                    fullscreenMainBtn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="square" stroke-linejoin="miter"><path d="M3 9h6V3 M21 9h-6V3 M21 15h-6v6 M3 15h6v6"></path></svg>';
+                    fullscreenMainBtn.querySelector('svg').outerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="square" stroke-linejoin="miter"><path d="M3 9h6V3 M21 9h-6V3 M21 15h-6v6 M3 15h6v6"></path></svg>';
                 } else {
-                    fullscreenMainBtn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="square" stroke-linejoin="miter"><path d="M8 3H3v5m18 0V3h-5m0 18h5v-5M3 16v5h5"></path></svg>';
+                    fullscreenMainBtn.querySelector('svg').outerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="square" stroke-linejoin="miter"><path d="M8 3H3v5m18 0V3h-5m0 18h5v-5M3 16v5h5"></path></svg>';
                 }
             });
         }
