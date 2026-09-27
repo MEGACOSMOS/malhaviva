@@ -833,12 +833,24 @@ AnnotationController.prototype.initialize = function() {
            lados não há outros leitores, só uma imagem de cada vídeo, sem
            barras, à altura da imagem do leitor. Carregar numa delas, ou na
            seta, troca o vídeo dentro do mesmo leitor. */
+        #video-modal .previa {
+            transition: transform var(--passagem), opacity var(--passagem), translate var(--passagem);
+        }
         #video-modal .previa:hover {
             opacity: 0.8;
         }
+        /* Ao trocar, as imagens dos lados deslizam no mesmo sentido do
+           vídeo: saem para lá a apagar-se e as novas chegam de cá. */
         #video-modal .previa.a-trocar {
             opacity: 0;
+            translate: calc(var(--sentido-da-troca, 1) * -80px) 0;
             transition-duration: 0.2s;
+            transition-timing-function: ease-in;
+        }
+        #video-modal .previa.a-chegar {
+            opacity: 0;
+            translate: calc(var(--sentido-da-troca, 1) * 80px) 0;
+            transition: none;
         }
         @media (min-width: 901px) {
             #video-modal .previa {
@@ -861,8 +873,9 @@ AnnotationController.prototype.initialize = function() {
             }
         }
 
-        /* A última imagem do vídeo que se deixou, por cima do leitor, a
-           esbater-se para o vídeo novo — para a troca não piscar a preto. */
+        /* ---- A troca de testemunho dentro do leitor, como um carrossel
+           de diapositivos: a última imagem do vídeo que se deixa sai por um
+           lado, e o vídeo novo entra pelo outro. O leitor fica parado. ---- */
         .imagem-de-antes {
             position: absolute;
             inset: 0;
@@ -872,17 +885,20 @@ AnnotationController.prototype.initialize = function() {
             background: #000;
             pointer-events: none;
             z-index: 3;
-            opacity: 0;
             visibility: hidden;
         }
         .imagem-de-antes.a-ver {
-            opacity: 1;
             visibility: visible;
         }
-        .imagem-de-antes.a-esbater {
-            opacity: 0;
-            visibility: visible;
-            transition: opacity 0.45s ease;
+        .custom-video-container.pronto-a-deslizar video {
+            transform: translateX(calc(var(--sentido-da-troca, 1) * 100%));
+        }
+        .custom-video-container.a-deslizar video,
+        .custom-video-container.a-deslizar .imagem-de-antes {
+            transition: transform var(--passagem);
+        }
+        .custom-video-container.a-deslizar .imagem-de-antes {
+            transform: translateX(calc(var(--sentido-da-troca, 1) * -100%));
         }
 
 
@@ -3193,25 +3209,26 @@ AnnotationController.prototype.openVideoModal = function(nome, title, sentido) {
 /**
  * Troca o testemunho dentro do leitor que já está aberto.
  *
- * O leitor não se mexe. A última imagem do vídeo que se deixa fica por
- * cima dele e esbate-se para o novo, e as imagens dos lados esbatem-se e
- * voltam já com os vizinhos novos.
+ * O leitor não se mexe: é a imagem lá dentro que desliza, como num
+ * carrossel de diapositivos. A última imagem do vídeo que se deixa sai por
+ * um lado e o novo entra pelo outro, e as imagens dos lados deslizam no
+ * mesmo sentido e voltam já com os vizinhos novos.
  *
  * @param {string} nome - O vídeo a abrir.
  * @param {string} title - O nome a mostrar na barra de cima.
  * @param {number} sentido - -1 para o anterior, 1 para o seguinte.
  */
 AnnotationController.prototype.trocarNoLeitor = function(nome, title, sentido) {
+    this.arrumarImagemDeAntes();
     this.aTrocarDeTestemunho = true;
-    clearTimeout(this.esperaDaTroca);
-    this.esperaDaTroca = setTimeout(() => { this.aTrocarDeTestemunho = false; }, 450);
+    this.modal.style.setProperty('--sentido-da-troca', sentido);
 
-    // A última imagem do vídeo que se deixa, num tamanho que chegue para
-    // tapar o leitor e para a imagem do lado de onde se veio.
+    // A última imagem do vídeo que se deixa, a encher o leitor; e uma cópia
+    // mais pequena para a imagem do lado de onde se veio, que é leve de
+    // fazer e não atrasa o deslize.
     const antes = this.imagemDeAntes;
     const filme = this.videoPlayer;
     let imagemDeOndeSeVinha = null;
-    this.arrumarImagemDeAntes();
     if (filme.readyState >= 2 && filme.videoWidth) {
         const largura = Math.min(1280, filme.videoWidth);
         antes.width = largura;
@@ -3219,46 +3236,49 @@ AnnotationController.prototype.trocarNoLeitor = function(nome, title, sentido) {
         antes.getContext('2d').drawImage(filme, 0, 0, antes.width, antes.height);
         antes.classList.add('a-ver');
         try {
-            imagemDeOndeSeVinha = antes.toDataURL('image/jpeg', 0.85);
+            const pequena = document.createElement('canvas');
+            pequena.width = Math.min(640, antes.width);
+            pequena.height = Math.round(pequena.width * antes.height / antes.width);
+            pequena.getContext('2d').drawImage(antes, 0, 0, pequena.width, pequena.height);
+            imagemDeOndeSeVinha = pequena.toDataURL('image/jpeg', 0.85);
         } catch (e) { /* vídeo de outra casa: fica sem imagem do lado */ }
     }
 
+    // O vídeo novo fica à espera do lado de onde vem, fora da vista.
+    const moldura = this.videoWrapper;
+    moldura.classList.add('pronto-a-deslizar');
+
     this.abrirTestemunho(nome, title, sentido, imagemDeOndeSeVinha);
 
-    // A imagem de antes esbate-se quando o novo já tem o que mostrar: a
-    // imagem do lado, se a havia, ou a primeira do próprio vídeo.
-    if (!antes.classList.contains('a-ver')) {
-        return;
-    }
-    const esbater = () => {
-        this.arrumarImagemDeAntes(true);
-        antes.classList.add('a-esbater');
-        this.esperaDaImagemNova = setTimeout(() => this.arrumarImagemDeAntes(), 500);
+    // E desliza: o de antes sai, o novo entra. Acaba quando o deslize
+    // acaba de facto — o arranque do vídeo novo pode atrasar-lhe o começo.
+    void moldura.offsetWidth;
+    moldura.classList.remove('pronto-a-deslizar');
+    moldura.classList.add('a-deslizar');
+    this.aoAcabarDeDeslizar = (e) => {
+        if (e && (e.target !== filme || e.propertyName !== 'transform')) return;
+        this.arrumarImagemDeAntes();
     };
-    this.aoTerImagemNova = esbater;
-    if (filme.getAttribute('poster')) {
-        this.esperaDaImagemNova = setTimeout(esbater, 50);
-    } else {
-        filme.addEventListener('loadeddata', esbater, { once: true });
-        this.esperaDaImagemNova = setTimeout(esbater, 1500);
-    }
+    filme.addEventListener('transitionend', this.aoAcabarDeDeslizar);
+    this.esperaDoDeslize = setTimeout(this.aoAcabarDeDeslizar, 1500);
 };
 
 /**
- * Tira de cima do leitor a imagem do testemunho de antes, e esquece o
- * que estava à espera de a esbater.
- *
- * @param {boolean} [ficaAVer] - Deixa a imagem onde está (é para esbater
- *     a seguir), e arruma só as esperas.
+ * Acaba o deslize dentro do leitor e tira de lá a imagem do testemunho
+ * de antes.
  */
-AnnotationController.prototype.arrumarImagemDeAntes = function(ficaAVer) {
-    clearTimeout(this.esperaDaImagemNova);
-    if (this.aoTerImagemNova) {
-        this.videoPlayer.removeEventListener('loadeddata', this.aoTerImagemNova);
-        this.aoTerImagemNova = null;
+AnnotationController.prototype.arrumarImagemDeAntes = function() {
+    clearTimeout(this.esperaDoDeslize);
+    if (this.aoAcabarDeDeslizar) {
+        this.videoPlayer.removeEventListener('transitionend', this.aoAcabarDeDeslizar);
+        this.aoAcabarDeDeslizar = null;
     }
-    if (!ficaAVer && this.imagemDeAntes) {
-        this.imagemDeAntes.classList.remove('a-ver', 'a-esbater');
+    this.aTrocarDeTestemunho = false;
+    if (this.videoWrapper) {
+        this.videoWrapper.classList.remove('pronto-a-deslizar', 'a-deslizar');
+    }
+    if (this.imagemDeAntes) {
+        this.imagemDeAntes.classList.remove('a-ver');
     }
 };
 
@@ -3357,19 +3377,27 @@ AnnotationController.prototype.abrirTestemunho = function(nome, title, sentido, 
 
     this.desenharMenuDeQualidade(fontes);
 
-    // Ao trocar dentro do leitor, as imagens dos lados esbatem-se primeiro
-    // e só depois mudam para os vizinhos novos, voltando a acender.
+    // Ao trocar dentro do leitor, as imagens dos lados deslizam para lá a
+    // apagar-se, mudam para os vizinhos novos, e chegam de cá a acender.
     clearTimeout(this.esperaDosLados);
-    const lados = [this.previaEsquerda, this.previaDireita];
+    const lados = [this.previaEsquerda, this.previaDireita].filter(Boolean);
     if (sentido) {
-        lados.forEach(lado => lado && lado.classList.add('a-trocar'));
+        lados.forEach(lado => {
+            lado.classList.remove('a-chegar');
+            lado.classList.add('a-trocar');
+        });
         this.esperaDosLados = setTimeout(() => {
             this.atualizarPalco(nome, sentido, oldCenterFrame);
-            lados.forEach(lado => lado && lado.classList.remove('a-trocar'));
+            lados.forEach(lado => {
+                lado.classList.remove('a-trocar');
+                lado.classList.add('a-chegar');
+            });
+            void this.modal.offsetWidth;
+            lados.forEach(lado => lado.classList.remove('a-chegar'));
         }, 200);
     } else {
         this.arrumarImagemDeAntes();
-        lados.forEach(lado => lado && lado.classList.remove('a-trocar'));
+        lados.forEach(lado => lado.classList.remove('a-trocar', 'a-chegar'));
         this.atualizarPalco(nome, sentido, oldCenterFrame);
     }
 
