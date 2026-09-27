@@ -828,6 +828,63 @@ AnnotationController.prototype.initialize = function() {
             background: linear-gradient(to top, rgba(255,255,255,0.05), transparent);
         }
 
+        /* ---- Os lados dos testemunhos: só a imagem ----
+           Nos testemunhos o leitor é um só e fica sempre no meio. Dos
+           lados não há outros leitores, só uma imagem de cada vídeo, sem
+           barras, à altura da imagem do leitor. Carregar numa delas, ou na
+           seta, troca o vídeo dentro do mesmo leitor. */
+        #video-modal .previa:hover {
+            opacity: 0.8;
+        }
+        #video-modal .previa.a-trocar {
+            opacity: 0;
+            transition-duration: 0.2s;
+        }
+        @media (min-width: 901px) {
+            #video-modal .previa {
+                height: auto;
+                aspect-ratio: 16 / 9;
+            }
+            #video-modal .previa-barra,
+            #video-modal .previa-rodape {
+                display: none;
+            }
+            /* A imagem do leitor não está ao meio da janela: a barra do
+               nome em cima e a dos comandos em baixo não têm a mesma
+               altura. Esta conta põe as imagens dos lados e as setas à
+               altura do meio da imagem, e não do meio da janela. */
+            #video-modal .previa {
+                top: calc((var(--altura-barra-nome, 0px) - var(--altura-controlos, 0px)) / 2);
+            }
+            #video-modal .seta-do-palco {
+                margin-top: calc((var(--altura-barra-nome, 0px) - var(--altura-controlos, 0px)) / 2);
+            }
+        }
+
+        /* A última imagem do vídeo que se deixou, por cima do leitor, a
+           esbater-se para o vídeo novo — para a troca não piscar a preto. */
+        .imagem-de-antes {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            background: #000;
+            pointer-events: none;
+            z-index: 3;
+            opacity: 0;
+            visibility: hidden;
+        }
+        .imagem-de-antes.a-ver {
+            opacity: 1;
+            visibility: visible;
+        }
+        .imagem-de-antes.a-esbater {
+            opacity: 0;
+            visibility: visible;
+            transition: opacity 0.45s ease;
+        }
+
 
         /* ---- A passagem de uma janela para a outra: a tira desliza um
            lugar, a que vinha de lado cresce e acende, a do meio encolhe e
@@ -2261,6 +2318,14 @@ AnnotationController.prototype.setupModal = function() {
     videoWrapper.appendChild(sinalDireita);
 
     videoWrapper.appendChild(this.videoPlayer);
+
+    // Ao trocar de testemunho, a última imagem do que se deixou fica aqui
+    // por cima e esbate-se para o novo (ver trocarNoLeitor).
+    this.imagemDeAntes = document.createElement('canvas');
+    this.imagemDeAntes.className = 'imagem-de-antes';
+    this.imagemDeAntes.setAttribute('aria-hidden', 'true');
+    videoWrapper.appendChild(this.imagemDeAntes);
+
     videoWrapper.appendChild(bigPlayBtn);
 
     const fsCloseBtn = document.createElement('button');
@@ -2314,9 +2379,11 @@ AnnotationController.prototype.setupModal = function() {
 
 
 
+        // Carregar na imagem é o mesmo que carregar na seta desse lado:
+        // o percurso anda um passo, e o vídeo troca dentro do leitor.
         previa.addEventListener('click', () => {
-            const escolhido = previa.dataset.video;
-            const ann = this.annotations.find(a => a.video === escolhido);
+            if (this.aTrocarDeTestemunho) return;
+            const ann = this.testemunhoAoLado(sentido);
             if (ann) this.openVideoModal(ann.video, ann.label, sentido);
         });
         return previa;
@@ -2341,6 +2408,7 @@ AnnotationController.prototype.setupModal = function() {
                 if (this.fecharModal) this.fecharModal();
                 return;
             }
+            if (this.aTrocarDeTestemunho) return;
             const ann = this.testemunhoAoLado(sentido);
             if (ann) this.openVideoModal(ann.video, ann.label, sentido);
         });
@@ -2352,9 +2420,9 @@ AnnotationController.prototype.setupModal = function() {
     content.appendChild(header);
     content.appendChild(moldura);
 
-    // As três janelas vivem numa tira, e é a tira que desliza quando se
-    // muda de testemunho. Ela é mais larga do que o ecrã de propósito: as
-    // dos lados ficam cortadas pela borda, a espreitar.
+    // O leitor e as duas imagens dos lados vivem numa tira mais larga do
+    // que o ecrã, de propósito: as dos lados ficam cortadas pela borda, a
+    // espreitar. A tira não desliza — é o vídeo que troca no leitor.
     const carrossel = document.createElement('div');
     carrossel.className = 'carrossel';
     carrossel.appendChild(this.previaEsquerda);
@@ -2805,6 +2873,9 @@ AnnotationController.prototype.encherPrevia = function(previa, ann, posterDataUr
     // Nome de pessoa: fica como está em qualquer língua.
     previa.querySelector('.previa-nome').textContent = ann.label;
     previa.title = ann.label;
+    // A imagem do lado não tem o nome escrito à vista: quem não vê o ecrã
+    // ouve de quem é o testemunho que ela abre.
+    previa.setAttribute('aria-label', this.nomeAcessivel(ann));
 
     const fontes = fontesDeVideo(ann.video);
     const leve = fontes['480p'] || fontes['720p'] || Object.values(fontes)[0];
@@ -3103,39 +3174,99 @@ AnnotationController.prototype.proximoPorVer = function(nomeAtual) {
 /**
  * Abre um testemunho na janela grande.
  *
- * Com a janela já aberta e um sentido dado, a troca faz-se com o
- * diapositivo a ser empurrado: as três janelas saem por um lado e as novas
- * entram pelo outro.
+ * Com a janela já aberta e um sentido dado, o leitor fica onde está e é
+ * só o vídeo lá dentro que troca (ver {@link trocarNoLeitor}).
  *
  * @param {string} nome - O vídeo a abrir.
  * @param {string} title - O nome a mostrar na barra de cima.
  * @param {number} [sentido] - -1 para o anterior, 1 para o seguinte.
  */
 AnnotationController.prototype.openVideoModal = function(nome, title, sentido) {
-    const palco = this.palcoDosTestemunhos;
     const jaAberta = this.modal.style.display !== 'none';
-    if (jaAberta && sentido && !palco.aDeslizar) {
-        let oldCenterFrame = null;
-        if (this.videoPlayer.readyState >= 2 && this.videoPlayer.videoWidth) {
-            try {
-                const canvas = document.createElement('canvas');
-                canvas.width = this.videoPlayer.videoWidth;
-                canvas.height = this.videoPlayer.videoHeight;
-                const ctx = canvas.getContext('2d');
-                ctx.drawImage(this.videoPlayer, 0, 0, canvas.width, canvas.height);
-                oldCenterFrame = canvas.toDataURL();
-            } catch(e) {}
-        }
-        this.deslizarPalco(palco, sentido, () => this.abrirTestemunho(nome, title, sentido, oldCenterFrame));
+    if (jaAberta && sentido) {
+        this.trocarNoLeitor(nome, title, sentido);
         return;
     }
     this.abrirTestemunho(nome, title);
 };
 
 /**
+ * Troca o testemunho dentro do leitor que já está aberto.
+ *
+ * O leitor não se mexe. A última imagem do vídeo que se deixa fica por
+ * cima dele e esbate-se para o novo, e as imagens dos lados esbatem-se e
+ * voltam já com os vizinhos novos.
+ *
+ * @param {string} nome - O vídeo a abrir.
+ * @param {string} title - O nome a mostrar na barra de cima.
+ * @param {number} sentido - -1 para o anterior, 1 para o seguinte.
+ */
+AnnotationController.prototype.trocarNoLeitor = function(nome, title, sentido) {
+    this.aTrocarDeTestemunho = true;
+    clearTimeout(this.esperaDaTroca);
+    this.esperaDaTroca = setTimeout(() => { this.aTrocarDeTestemunho = false; }, 450);
+
+    // A última imagem do vídeo que se deixa, num tamanho que chegue para
+    // tapar o leitor e para a imagem do lado de onde se veio.
+    const antes = this.imagemDeAntes;
+    const filme = this.videoPlayer;
+    let imagemDeOndeSeVinha = null;
+    this.arrumarImagemDeAntes();
+    if (filme.readyState >= 2 && filme.videoWidth) {
+        const largura = Math.min(1280, filme.videoWidth);
+        antes.width = largura;
+        antes.height = Math.round(largura * filme.videoHeight / filme.videoWidth);
+        antes.getContext('2d').drawImage(filme, 0, 0, antes.width, antes.height);
+        antes.classList.add('a-ver');
+        try {
+            imagemDeOndeSeVinha = antes.toDataURL('image/jpeg', 0.85);
+        } catch (e) { /* vídeo de outra casa: fica sem imagem do lado */ }
+    }
+
+    this.abrirTestemunho(nome, title, sentido, imagemDeOndeSeVinha);
+
+    // A imagem de antes esbate-se quando o novo já tem o que mostrar: a
+    // imagem do lado, se a havia, ou a primeira do próprio vídeo.
+    if (!antes.classList.contains('a-ver')) {
+        return;
+    }
+    const esbater = () => {
+        this.arrumarImagemDeAntes(true);
+        antes.classList.add('a-esbater');
+        this.esperaDaImagemNova = setTimeout(() => this.arrumarImagemDeAntes(), 500);
+    };
+    this.aoTerImagemNova = esbater;
+    if (filme.getAttribute('poster')) {
+        this.esperaDaImagemNova = setTimeout(esbater, 50);
+    } else {
+        filme.addEventListener('loadeddata', esbater, { once: true });
+        this.esperaDaImagemNova = setTimeout(esbater, 1500);
+    }
+};
+
+/**
+ * Tira de cima do leitor a imagem do testemunho de antes, e esquece o
+ * que estava à espera de a esbater.
+ *
+ * @param {boolean} [ficaAVer] - Deixa a imagem onde está (é para esbater
+ *     a seguir), e arruma só as esperas.
+ */
+AnnotationController.prototype.arrumarImagemDeAntes = function(ficaAVer) {
+    clearTimeout(this.esperaDaImagemNova);
+    if (this.aoTerImagemNova) {
+        this.videoPlayer.removeEventListener('loadeddata', this.aoTerImagemNova);
+        this.aoTerImagemNova = null;
+    }
+    if (!ficaAVer && this.imagemDeAntes) {
+        this.imagemDeAntes.classList.remove('a-ver', 'a-esbater');
+    }
+};
+
+/**
  * A passagem de uma janela para a outra, como um diapositivo empurrado.
  *
- * Serve os dois palcos: o dos testemunhos e o das paragens 360º.
+ * É a passagem das paragens 360º; os testemunhos trocam dentro do leitor
+ * (ver {@link trocarNoLeitor}).
  *
  * @param {object} palco - A tira, a janela do meio e as dos lados.
  * @param {number} sentido - -1 para a esquerda, 1 para a direita.
@@ -3225,7 +3356,22 @@ AnnotationController.prototype.abrirTestemunho = function(nome, title, sentido, 
     });
 
     this.desenharMenuDeQualidade(fontes);
-    this.atualizarPalco(nome, sentido, oldCenterFrame);
+
+    // Ao trocar dentro do leitor, as imagens dos lados esbatem-se primeiro
+    // e só depois mudam para os vizinhos novos, voltando a acender.
+    clearTimeout(this.esperaDosLados);
+    const lados = [this.previaEsquerda, this.previaDireita];
+    if (sentido) {
+        lados.forEach(lado => lado && lado.classList.add('a-trocar'));
+        this.esperaDosLados = setTimeout(() => {
+            this.atualizarPalco(nome, sentido, oldCenterFrame);
+            lados.forEach(lado => lado && lado.classList.remove('a-trocar'));
+        }, 200);
+    } else {
+        this.arrumarImagemDeAntes();
+        lados.forEach(lado => lado && lado.classList.remove('a-trocar'));
+        this.atualizarPalco(nome, sentido, oldCenterFrame);
+    }
 
     abrirDeRepente(this.modal);
     this.medirPalco(this.palcoDosTestemunhos);
@@ -3244,8 +3390,9 @@ AnnotationController.prototype.abrirTestemunho = function(nome, title, sentido, 
     void this.modal.offsetWidth;
     this.modalContent.classList.add('aberta');
     // O que está nas duas barras surge a esbater: ao abrir, depois de a
-    // janela assentar; ao passar de um testemunho para o outro, logo.
-    fazerSurgir({ demora: sentido ? '0s' : '0.45s', soBotoes: !!sentido }, this.barraDoNome, this.barraDosComandos);
+    // janela assentar; ao trocar de testemunho no leitor, logo — o nome
+    // também, que é o mesmo sítio com outra pessoa.
+    fazerSurgir({ demora: sentido ? '0s' : '0.45s' }, this.barraDoNome, this.barraDosComandos);
 
     apagarOBairroPorTras(this.app);
 };
