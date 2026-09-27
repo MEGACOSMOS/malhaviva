@@ -1239,17 +1239,23 @@ AnnotationController.prototype.initialize = function() {
         if (ann.is360) {
             // As rotas mostram uma moldura panorâmica: a imagem com a borda
             // de cima e a de baixo a dobrar para o meio, como quem a vê de
-            // dentro enquanto ela dá a volta. Só linhas direitas, de cantos
-            // vivos, e a dobra com a inclinação das riscas da claquete dos
-            // créditos. O nome vai por baixo. A fotografia do alto do bairro
-            // dispensa as duas coisas: fica só um olho, pousado no céu.
+            // dentro enquanto ela dá a volta. Lá dentro, uma paisagem: duas
+            // montanhas, a pequena à frente da grande, e o sol. Só linhas
+            // direitas, de cantos vivos, e a dobra com a inclinação das
+            // riscas da claquete dos créditos. O mesmo desenho está na
+            // legenda, nas instruções e nas placas dos óculos. O nome vai
+            // por baixo. A fotografia do alto do bairro dispensa as duas
+            // coisas: fica só um olho, pousado no céu.
             const simbolo = ann.isImage
                 ? `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter">
                         <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"></path>
                         <circle cx="12" cy="12" r="3"></circle>
                    </svg>`
                 : `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter">
-                        <polygon points="3 5, 12 7.4, 21 5, 21 19, 12 16.6, 3 19"></polygon>
+                        <polygon points="2 4, 12 6.67, 22 4, 22 20, 12 17.33, 2 20"></polygon>
+                        <polyline points="5.4 18.7, 8.8 12.6, 11.3 17"></polyline>
+                        <polyline points="11.3 15.6, 14.2 10.4, 18.9 18.8"></polyline>
+                        <circle cx="6" cy="8.8" r="1"></circle>
                    </svg>`;
             el.innerHTML = `
                 <div class="marker-dot is-360 ${ann.isImage ? 'is-foto' : ''} ${isViewed ? 'viewed' : ''}">

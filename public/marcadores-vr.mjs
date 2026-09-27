@@ -84,12 +84,21 @@ function desenharPlaca(ann, nome, visto) {
         c.moveTo(X(15), Y(12));
         c.arc(X(12), Y(12), 3 * u, 0, Math.PI * 2);
     } else {
-        // A moldura panorâmica da rota, a mesma do mapa.
-        c.moveTo(X(3), Y(5)); c.lineTo(X(12), Y(7.4)); c.lineTo(X(21), Y(5));
-        c.lineTo(X(21), Y(19)); c.lineTo(X(12), Y(16.6)); c.lineTo(X(3), Y(19));
+        // A moldura panorâmica da rota, com as duas montanhas lá dentro —
+        // a mesma do mapa. O sol vem a seguir, cheio.
+        c.moveTo(X(2), Y(4)); c.lineTo(X(12), Y(6.67)); c.lineTo(X(22), Y(4));
+        c.lineTo(X(22), Y(20)); c.lineTo(X(12), Y(17.33)); c.lineTo(X(2), Y(20));
         c.closePath();
+        c.moveTo(X(5.4), Y(18.7)); c.lineTo(X(8.8), Y(12.6)); c.lineTo(X(11.3), Y(17));
+        c.moveTo(X(11.3), Y(15.6)); c.lineTo(X(14.2), Y(10.4)); c.lineTo(X(18.9), Y(18.8));
     }
     c.stroke();
+    if (ann.is360 && !ann.isImage) {
+        c.fillStyle = '#ffffff';
+        c.beginPath();
+        c.arc(X(6), Y(8.8), 2 * u, 0, Math.PI * 2);
+        c.fill();
+    }
 
     // O nome por baixo, numa caixa escura, como a etiqueta do mapa.
     if (nome && !ann.isImage) {
