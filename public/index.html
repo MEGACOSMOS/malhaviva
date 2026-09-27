@@ -7,7 +7,7 @@
     <meta name="description" content="Exploração 3D interativa do Bairro de Penajóia através de Gaussian Splatting. Projeto Malha Viva.">
     <!-- As línguas do site. Fica antes de tudo o resto para o texto
          nascer já na língua certa, sem piscar em português primeiro. -->
-    <script src="/idiomas.js?v=34"></script>
+    <script src="/idiomas.js?v=35"></script>
 
     <!-- O quadrado de espera, o mesmo em todo o site. Fica antes de o
          ecrã de espera se desenhar, para nascer já com a sua roupa. -->
@@ -2130,28 +2130,34 @@
         /**
          * O nome do cabeçalho vai trocando, de cinco em cinco segundos,
          * entre o do projecto e o do bairro: esbate-se, muda, e volta.
-         * São nomes próprios, e por isso não se traduzem. Quem pediu ao
-         * sistema menos movimento vê a troca sem o esbater.
+         * O do projecto é nome próprio e fica como está; o do bairro diz-se
+         * na língua de quem lê ("Bairro de Penajóia", "Penajóia
+         * neighbourhood"), e muda logo se se trocar de língua. Quem pediu
+         * ao sistema menos movimento vê a troca sem o esbater.
          */
         (function () {
             const nome = document.querySelector('#header .brand-name');
             if (!nome) return;
-            const NOMES = ['Malha Viva', 'Bairro de Penajóia'];
+            const NOMES = [
+                () => 'Malha Viva',
+                () => (window.Idiomas && window.Idiomas.t('cab.bairro')) || 'Bairro de Penajóia'
+            ];
             const ESBATER_MS = 400;
             const semMovimento = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
             let qual = 0;
             setInterval(() => {
                 qual = (qual + 1) % NOMES.length;
                 if (semMovimento) {
-                    nome.textContent = NOMES[qual];
+                    nome.textContent = NOMES[qual]();
                     return;
                 }
                 nome.classList.add('a-trocar');
                 setTimeout(() => {
-                    nome.textContent = NOMES[qual];
+                    nome.textContent = NOMES[qual]();
                     nome.classList.remove('a-trocar');
                 }, ESBATER_MS);
             }, 5000);
+            window.addEventListener('idiomamudou', () => { nome.textContent = NOMES[qual](); });
         })();
         </script>
 
