@@ -40,6 +40,7 @@
             'cred.agradecimentos': 'Especiais Agradecimentos',
             'cab.controlos': 'Controlos',
             'cab.bairro': 'Bairro de Penajóia',
+            'site.nome': 'Malha Viva',
             'cab.definicoes': 'Definições',
             'cab.idioma': 'Idioma',
             'cab.vr': 'Modo VR',
@@ -230,6 +231,7 @@
             'cred.agradecimentos': 'Special Thanks',
             'cab.controlos': 'Controls',
             'cab.bairro': 'Penajóia neighbourhood',
+            'site.nome': 'Living Mesh',
             'cab.definicoes': 'Settings',
             'cab.idioma': 'Language',
             'cab.vr': 'VR Mode',
@@ -288,7 +290,7 @@
 
             'par.botao': 'Share',
             'par.titulo': 'Share',
-            'par.texto': 'Explore the Penajóia neighbourhood in 3D — Malha Viva',
+            'par.texto': 'Explore the Penajóia neighbourhood in 3D — Living Mesh',
             'par.email': 'E-mail',
             'par.copiar': 'Copy link',
             'par.copiado': 'Link copied',
@@ -420,6 +422,7 @@
             'cred.agradecimentos': 'Agradecimientos Especiales',
             'cab.controlos': 'Controles',
             'cab.bairro': 'Barrio de Penajóia',
+            'site.nome': 'Malla Viva',
             'cab.definicoes': 'Ajustes',
             'cab.idioma': 'Idioma',
             'cab.vr': 'Modo RV',
@@ -478,7 +481,7 @@
 
             'par.botao': 'Compartir',
             'par.titulo': 'Compartir',
-            'par.texto': 'Explora el barrio de Penajóia en 3D — Malha Viva',
+            'par.texto': 'Explora el barrio de Penajóia en 3D — Malla Viva',
             'par.email': 'Correo',
             'par.copiar': 'Copiar enlace',
             'par.copiado': 'Enlace copiado',
@@ -610,6 +613,7 @@
             'cred.agradecimentos': 'Agradesimentu Spesial',
             'cab.controlos': 'Kontrolus',
             'cab.bairro': 'Bairu di Penajóia',
+            'site.nome': 'Malha Bibu',
             'cab.definicoes': 'Definisons',
             'cab.idioma': 'Lingua',
             'cab.vr': 'Modu VR',
@@ -668,7 +672,7 @@
 
             'par.botao': 'Partilha',
             'par.titulo': 'Partilha',
-            'par.texto': 'Splora Bairu di Penajóia na 3D — Malha Viva',
+            'par.texto': 'Splora Bairu di Penajóia na 3D — Malha Bibu',
             'par.email': 'E-mail',
             'par.copiar': 'Kopia link',
             'par.copiado': 'Link kopiadu',
@@ -856,6 +860,11 @@
 
         if (onde === document) {
             document.documentElement.setAttribute('lang', atual === 'kea' ? 'kea' : atual);
+            // O título do separador: o nome da página e o do site, os dois
+            // na língua de quem lê ("Créditos — Malha Viva").
+            var titulo = document.querySelector('title[data-i18n-titulo]');
+            var pagina = titulo && t(titulo.getAttribute('data-i18n-titulo'));
+            if (pagina) document.title = pagina + ' — ' + t('site.nome');
         }
     }
 

@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bairro de Penajóia — Malha Viva</title>
+    <title data-i18n-titulo="cab.bairro">Bairro de Penajóia — Malha Viva</title>
     <meta name="description" content="Exploração 3D interativa do Bairro de Penajóia através de Gaussian Splatting. Projeto Malha Viva.">
     <!-- As línguas do site. Fica antes de tudo o resto para o texto
          nascer já na língua certa, sem piscar em português primeiro. -->
-    <script src="/idiomas.js?v=36"></script>
+    <script src="/idiomas.js?v=37"></script>
 
     <!-- O quadrado de espera, o mesmo em todo o site. Fica antes de o
          ecrã de espera se desenhar, para nascer já com a sua roupa. -->
@@ -1810,7 +1810,7 @@
     <div id="loading-overlay">
         <div class="loading-content">
             <div class="loading-brand">
-                <div class="loading-logo">Malha Viva</div>
+                <div class="loading-logo" data-i18n="site.nome">Malha Viva</div>
                 <div class="loading-square" id="loading-square" aria-hidden="true"></div>
             </div>
             <div class="loading-text" data-i18n="carga.modelo">A carregar modelo 3D…</div>
@@ -2130,18 +2130,20 @@
         /**
          * O nome do cabeçalho vai trocando, de cinco em cinco segundos,
          * entre o do projecto e o do bairro: esbate-se, muda, e volta.
-         * O do projecto é nome próprio e fica como está; o do bairro diz-se
-         * na língua de quem lê ("Bairro de Penajóia", "Penajóia
-         * neighbourhood"), e muda logo se se trocar de língua. Quem pediu
-         * ao sistema menos movimento vê a troca sem o esbater.
+         * Os dois dizem-se na língua de quem lê ("Malha Viva", "Living
+         * Mesh"; "Bairro de Penajóia", "Penajóia neighbourhood"), e mudam
+         * logo se se trocar de língua. Quem pediu ao sistema menos
+         * movimento vê a troca sem o esbater.
          */
         (function () {
             const nome = document.querySelector('#header .brand-name');
             if (!nome) return;
+            const diz = (chave, alternativa) => (window.Idiomas && window.Idiomas.t(chave)) || alternativa;
             const NOMES = [
-                () => 'Malha Viva',
-                () => (window.Idiomas && window.Idiomas.t('cab.bairro')) || 'Bairro de Penajóia'
+                () => diz('site.nome', 'Malha Viva'),
+                () => diz('cab.bairro', 'Bairro de Penajóia')
             ];
+            nome.textContent = NOMES[0]();
             const ESBATER_MS = 400;
             const semMovimento = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
             let qual = 0;
