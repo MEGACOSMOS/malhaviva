@@ -2077,7 +2077,6 @@ AnnotationController.prototype.fecharPalco360 = function() {
     const overlay = avisarQueOBairroVolta();
     if (this.paragem360) {
         this.marcarComoUltima(this.idDaAnotacao(this.paragem360));
-        this.enquadrarAoFechar(this.paragem360);
     }
     // Uma página da rota que ainda estivesse para nascer já não nasce.
     clearTimeout(this.esperaDaJanela360);
@@ -2726,7 +2725,6 @@ AnnotationController.prototype.setupModal = function() {
 
         if (this.videoNome) {
             this.marcarComoUltima('video-' + this.videoNome);
-            this.enquadrarAoFechar(this.annotations.find(a => a.video === this.videoNome));
         }
 
         this.modal.style.opacity = '0';
@@ -2942,74 +2940,6 @@ AnnotationController.prototype.encherPrevia = function(previa, ann, posterDataUr
  */
 AnnotationController.prototype.idDaAnotacao = function(ann) {
     return ann.is360 ? `360-${ann.trailIndex}` : `video-${ann.video}`;
-};
-
-/**
- * Ao fechar um vídeo, põe a câmara a olhar para o bairro com o marcador
- * que se fechou num dos dois pontos de baixo da regra dos terços — à
- * esquerda ou à direita, à sorte — e a câmara a direito, sem inclinação.
- *
- * A conta é feita ao contrário: escolhe-se onde o marcador tem de cair
- * no ecrã (um terço para o lado, um terço para baixo do meio) e a que
- * distância fica, e daí sai onde a câmara tem de estar. Com a câmara a
- * direito, o marcador só cai no terço de baixo se estiver abaixo da
- * linha do horizonte dela: a câmara fica acima dele o tanto que a
- * abertura vertical pede. O lado de onde se olha é o de onde já se
- * estava a olhar, para o bairro não dar a volta.
- *
- * @param {object} ann - A anotação que se fechou.
- */
-AnnotationController.prototype.enquadrarAoFechar = function(ann) {
-    const comandos = this.entity.script && this.entity.script.cameraControls;
-    const camara = this.entity.camera;
-    if (!ann || !ann.position || !comandos || !camara) {
-        return;
-    }
-    const P = ann.position;
-
-    // De que lado se está a olhar, na horizontal.
-    const posAtual = this.entity.getPosition();
-    let fx = P.x - posAtual.x;
-    let fz = P.z - posAtual.z;
-    const comprimento = Math.hypot(fx, fz);
-    if (comprimento < 0.001) { fx = 0; fz = -1; } else { fx /= comprimento; fz /= comprimento; }
-    const frente = new pc.Vec3(fx, 0, fz);
-    const direita = new pc.Vec3(-fz, 0, fx);
-
-    // A abertura da câmara, na vertical e na horizontal.
-    const aspecto = camara.aspectRatio || (window.innerWidth / Math.max(1, window.innerHeight));
-    let tanV = Math.tan((camara.fov || 60) * 0.5 * Math.PI / 180);
-    if (camara.horizontalFov) tanV /= aspecto;
-    const tanH = tanV * aspecto;
-
-    // Onde o marcador cai no ecrã: um terço para o lado, um terço para
-    // baixo do meio — e a que distância. A câmara não desce abaixo do
-    // chão da cúpula do céu; se o marcador está tão em baixo que a
-    // altura pedida não chega, fica-se no chão e afasta-se o que for
-    // preciso para o marcador cair no mesmo sítio do ecrã.
-    let dist = 60 + Math.random() * 30;
-    const chao = typeof comandos._alturaMinima === 'function' ? comandos._alturaMinima() : 1;
-    let alturaDaCamara = P.y + tanV * dist / 3;
-    if (alturaDaCamara < chao) {
-        alturaDaCamara = chao;
-        dist = (chao - P.y) * 3 / tanV;
-    }
-    const lado = Math.random() < 0.5 ? -1 : 1;
-    const paraOLado = lado * tanH * dist / 3;
-
-    // A câmara: atrás do marcador, acima dele, e deslocada para o lado
-    // contrário àquele em que ele fica no ecrã.
-    const posicao = new pc.Vec3()
-        .copy(P)
-        .sub(frente.clone().mulScalar(dist))
-        .sub(direita.clone().mulScalar(paraOLado));
-    posicao.y = alturaDaCamara;
-
-    // A direito: o ponto para onde olha está à altura da câmara, em
-    // frente, à distância do marcador.
-    const foco = new pc.Vec3().copy(posicao).add(frente.clone().mulScalar(dist));
-
-    comandos.recenter(posicao, foco);
 };
 
 /**
