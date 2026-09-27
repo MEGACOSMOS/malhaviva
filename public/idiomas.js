@@ -29,6 +29,7 @@
     var TEXTOS = {
         pt: {
             'cab.creditos': 'Créditos',
+            'cab.github': 'Código no GitHub',
             'cred.titulo': 'Créditos',
             'cred.producao': 'Produzido e Realizado por',
             'cred.orientacao': 'Orientação Científica',
@@ -226,6 +227,7 @@
 
         en: {
             'cab.creditos': 'Credits',
+            'cab.github': 'Code on GitHub',
             'cred.titulo': 'Credits',
             'cred.producao': 'Produced and Directed by',
             'cred.orientacao': 'Scientific Supervision',
@@ -423,6 +425,7 @@
 
         es: {
             'cab.creditos': 'Créditos',
+            'cab.github': 'Código en GitHub',
             'cred.titulo': 'Créditos',
             'cred.producao': 'Producido y Dirigido por',
             'cred.orientacao': 'Orientación Científica',
@@ -620,6 +623,7 @@
 
         kea: {
             'cab.creditos': 'Kréditus',
+            'cab.github': 'Kódigu na GitHub',
             'cred.titulo': 'Kréditus',
             'cred.producao': 'Produzidu i Rializadu pa',
             'cred.orientacao': 'Orientason Sientífiku',
