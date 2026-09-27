@@ -166,3 +166,4 @@ dist
 !.env.example
 .wrangler/
 __pycache__/
+.claude/settings.local.json
