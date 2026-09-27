@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>360 Video Player</title>
-    <script src="/idiomas.js?v=22"></script>
+    <script src="/idiomas.js?v=33"></script>
     <script src="/quadrado-de-espera.js?v=4"></script>
     <!-- O aviso de "está a demorar" e a tecla de tentar de novo, os
          mesmos em todo o site. -->
@@ -285,108 +285,534 @@
             100% { opacity: 0; transform: translateY(-50%) scale(1.05); }
         }
 
-        /* ---- O aviso do vídeo 360º ---- */
-        #ajuda-360 {
+        /* ─── Instruções do vídeo 360º ───
+           O mesmo cartão das instruções do bairro (ver index.html): um
+           passo de cada vez, cada um com um desenho animado, um título e
+           uma frase; os quadradinhos dos passos em baixo, com uma seta de
+           cada lado; no último, a seta da direita dá lugar a uma cruz. A
+           cruz do canto fecha a qualquer altura. O vídeo espera parado
+           enquanto se lê, e a imagem à volta continua a poder rodar. */
+        #instrucoes {
             position: fixed;
             inset: 0;
-            /* Por cima da barra de controlos: enquanto o aviso está no ecrã
-               é ele que manda, e a barra não fica meia acesa por trás. */
+            /* Por cima da barra de controlos. */
             z-index: 1100;
-            display: none;
-            align-items: center;
-            justify-content: center;
-            padding: 24px;
-            background: rgba(5, 5, 10, 0.72);
+            display: flex;
+            padding: 16px;
+            pointer-events: none;
             opacity: 0;
             transition: opacity 0.35s ease;
-        }
-        #ajuda-360.visivel {
-            display: flex;
-            opacity: 1;
-        }
-        .ajuda-caixa {
-            max-width: 420px;
-            width: 100%;
-            background: #05050a;
-            border: 2.5px solid rgba(255, 255, 255, 0.15);
-            padding: 22px 24px;
-        }
-        .ajuda-titulo {
-            font-size: 1.05rem;
-            font-weight: 600;
-            color: #fff;
-            margin-bottom: 14px;
-        }
-        .ajuda-lista {
-            list-style: none;
-            margin: 0 0 18px;
-            padding: 0;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
-        .ajuda-lista li {
-            font-size: 0.88rem;
-            line-height: 1.5;
-            color: rgba(255, 255, 255, 0.75);
-            padding-left: 16px;
-            position: relative;
-        }
-        .ajuda-lista li::before {
-            content: '';
-            position: absolute;
-            left: 0;
-            top: 0.55em;
-            width: 6px;
-            height: 1px;
-            background: rgba(255, 255, 255, 0.45);
-        }
-        #ajuda-fechar {
-            font-family: inherit;
-            font-size: 0.85rem;
-            font-weight: 600;
-            padding: 9px 20px;
-            background: #ffffff;
-            color: #05050a;
-            border: none;
-            cursor: pointer;
-            transition: opacity 0.15s ease;
-        }
-        #ajuda-fechar:hover {
-            opacity: 0.85;
-        }
-        /* Num leitor baixo — o do telemóvel é pequeno — a caixa encolhe as
-           folgas e a letra; e se mesmo assim não couber, desliza-se por
-           ela, em vez de ficar cortada em cima e em baixo sem se chegar ao
-           botão. A margem automática centra-a quando cabe e encosta-a em
-           cima quando não cabe. */
-        #ajuda-360 {
+            /* Num leitor baixo, se mesmo encolhido não couber, desliza-se
+               por ele em vez de ficar cortado sem se chegar às setas. */
             overflow-y: auto;
         }
-        .ajuda-caixa {
-            margin: auto;
+        #instrucoes[hidden] {
+            display: none;
         }
+        #instrucoes.aberta {
+            opacity: 1;
+        }
+        .instrucoes-moldura {
+            position: relative;
+            /* Ao meio quando cabe; encostado em cima quando não cabe. */
+            margin: auto;
+            pointer-events: auto;
+            transform: translateY(8px) scale(0.98);
+            transition: transform 0.35s ease;
+        }
+        #instrucoes.aberta .instrucoes-moldura {
+            transform: none;
+        }
+        .instrucoes-cartao {
+            position: relative;
+            width: min(360px, calc(100vw - 32px));
+            box-sizing: border-box;
+            padding: 16px 20px 10px;
+            background: linear-gradient(to bottom, rgba(255,255,255,0.05), transparent), #05050a;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+            color: #ffffff;
+            outline: none;
+        }
+        /* O fio de dois pontos e meio a toda a volta, como os menus. */
+        .instrucoes-cartao::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            border: 2.5px solid #505054;
+            pointer-events: none;
+            z-index: 10;
+        }
+        .instrucoes-cabeca {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: rgba(255, 255, 255, 0.7);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            padding-right: 28px;
+            margin-bottom: 14px;
+        }
+        .instrucoes-fechar {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: 26px;
+            height: 26px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: transparent;
+            border: none;
+            color: rgba(255, 255, 255, 0.55);
+            cursor: pointer;
+            padding: 0;
+            z-index: 11;
+            transition: color 0.15s ease, background 0.15s ease;
+        }
+        .instrucoes-fechar:hover {
+            color: #ffffff;
+            background: rgba(255, 255, 255, 0.08);
+        }
+        .instrucoes-passos {
+            display: grid;
+        }
+        .instrucoes-passo {
+            grid-area: 1 / 1;
+            text-align: center;
+        }
+        /* Os escondidos continuam a ocupar lugar, invisíveis: é por eles
+           que o cartão tem sempre a altura do passo mais comprido. */
+        .instrucoes-passo[hidden] {
+            display: block;
+            visibility: hidden;
+        }
+        /* Os passos que não servem a este aparelho — o teclado a quem tem
+           dedo, os óculos a quem não os tem — nem sequer ocupam lugar. */
+        .instrucoes-passo.fora,
+        .instrucoes-passo.fora[hidden] {
+            display: none;
+        }
+        .instrucoes-passo.entra-da-direita {
+            animation: ins-passo-direita 0.35s ease both;
+        }
+        .instrucoes-passo.entra-da-esquerda {
+            animation: ins-passo-esquerda 0.35s ease both;
+        }
+        @keyframes ins-passo-direita {
+            from { opacity: 0; transform: translateX(18px); }
+            to { opacity: 1; transform: none; }
+        }
+        @keyframes ins-passo-esquerda {
+            from { opacity: 0; transform: translateX(-18px); }
+            to { opacity: 1; transform: none; }
+        }
+        .instrucoes-desenho {
+            aspect-ratio: 2 / 1;
+            margin: 0 auto 16px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            overflow: hidden;
+        }
+        .instrucoes-desenho svg {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+        .instrucoes-titulo {
+            margin: 0 0 6px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            letter-spacing: -0.01em;
+            color: #ffffff;
+        }
+        .instrucoes-texto {
+            margin: 0;
+            min-height: 3em;
+            font-size: 0.82rem;
+            line-height: 1.5;
+            color: rgba(255, 255, 255, 0.7);
+        }
+        .instrucoes-navegacao {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin: 8px -8px 0;
+        }
+        .instrucoes-pontos {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+        }
+        .instrucoes-pontos button {
+            position: relative;
+            width: 8px;
+            height: 8px;
+            padding: 0;
+            background: transparent;
+            border: 1.5px solid rgba(255, 255, 255, 0.45);
+            border-radius: 0;
+            cursor: pointer;
+            transition: background 0.2s ease, border-color 0.2s ease;
+        }
+        .instrucoes-pontos button::after {
+            content: "";
+            position: absolute;
+            inset: -8px -4px;
+        }
+        .instrucoes-pontos button:hover {
+            border-color: #ffffff;
+        }
+        .instrucoes-pontos button:focus {
+            outline: none;
+        }
+        .instrucoes-pontos button:focus-visible {
+            outline: 2px solid rgba(255, 255, 255, 0.9);
+            outline-offset: 3px;
+        }
+        .instrucoes-pontos button.atual {
+            background: #ffffff;
+            border-color: #ffffff;
+        }
+        /* O que se anuncia a quem ouve a página, e não se vê. Presa ao
+           canto do cartão: solta, ficava por baixo dele e fazia o leitor
+           pequeno do telemóvel deslizar um nada. */
+        .instrucoes-anuncio {
+            position: absolute;
+            top: 0;
+            left: 0;
+            margin: 0;
+            width: 1px;
+            height: 1px;
+            overflow: hidden;
+            clip: rect(0 0 0 0);
+            white-space: nowrap;
+        }
+        .instrucoes-seta {
+            width: 44px;
+            height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+            border: none;
+            background: transparent;
+            color: rgba(255, 255, 255, 0.55);
+            cursor: pointer;
+            transition: color 0.2s ease, transform 0.2s ease, opacity 0.2s ease;
+        }
+        .instrucoes-seta svg {
+            width: 32px;
+            height: 32px;
+        }
+        .instrucoes-seta:hover {
+            color: #ffffff;
+            transform: scale(1.18);
+        }
+        .instrucoes-seta:focus {
+            outline: none;
+        }
+        .instrucoes-seta:focus-visible {
+            outline: 2px solid rgba(255, 255, 255, 0.9);
+            outline-offset: -4px;
+        }
+        .instrucoes-seta.escondida {
+            visibility: hidden;
+        }
+        .instrucoes-seta.a-sair {
+            color: #ffffff;
+            opacity: 0.55;
+        }
+        .instrucoes-seta.a-sair:hover {
+            opacity: 1;
+        }
+        @media (max-width: 640px) {
+            .instrucoes-cartao {
+                padding: 14px 14px 8px;
+            }
+        }
+        /* Num leitor baixo — o do telemóvel é pequeno — o cartão encolhe
+           as folgas, o desenho e a letra, para caber inteiro. */
         @media (max-height: 420px) {
-            #ajuda-360 {
-                padding: 10px;
+            #instrucoes {
+                padding: 4px 8px;
             }
-            .ajuda-caixa {
-                padding: 12px 16px;
+            .instrucoes-cartao {
+                padding: 10px 14px 4px;
             }
-            .ajuda-titulo {
-                font-size: 0.95rem;
+            .instrucoes-cabeca {
+                font-size: 0.72rem;
                 margin-bottom: 8px;
             }
-            .ajuda-lista {
-                gap: 5px;
-                margin-bottom: 10px;
+            .instrucoes-fechar {
+                top: 5px;
+                right: 6px;
             }
-            .ajuda-lista li {
-                font-size: 0.78rem;
+            .instrucoes-desenho {
+                width: min(100%, 180px);
+                margin-bottom: 8px;
+            }
+            .instrucoes-titulo {
+                font-size: 0.85rem;
+                margin-bottom: 3px;
+            }
+            .instrucoes-texto {
+                min-height: 0;
+                font-size: 0.74rem;
                 line-height: 1.4;
             }
-            #ajuda-fechar {
-                padding: 7px 16px;
+            .instrucoes-navegacao {
+                margin-top: 2px;
+            }
+            .instrucoes-seta {
+                width: 36px;
+                height: 36px;
+            }
+            .instrucoes-seta svg {
+                width: 26px;
+                height: 26px;
+            }
+        }
+
+        /* ── Os desenhos ──
+           Linhas brancas finas e quadrados: o mesmo desenho das instruções
+           do bairro. Cada um dá a volta em poucos segundos e recomeça. */
+        #instrucoes .ins-branco {
+            fill: none;
+            stroke: #ffffff;
+            stroke-width: 2;
+            stroke-linecap: square;
+            stroke-linejoin: miter;
+        }
+        #instrucoes .ins-dedo {
+            fill: rgba(255, 255, 255, 0.85);
+            stroke: rgba(5, 5, 10, 0.6);
+            stroke-width: 1.5;
+        }
+        /* Só se desenha o rato a quem tem rato, e o dedo a quem tem dedo. */
+        #instrucoes .so-toque { display: none; }
+        #instrucoes.por-toque .so-rato { display: none; }
+        #instrucoes.por-toque .so-toque { display: inline; }
+
+        /* 1 · Olhar à volta: arrasta-se, e a imagem vai atrás — para o
+           lado e depois para cima, porque dá a volta toda. */
+        #instrucoes .ins-olhar-vista {
+            animation: ins-olhar-vista 5s ease-in-out infinite;
+        }
+        @keyframes ins-olhar-vista {
+            0%, 10% { transform: translate(0, 0); }
+            38%, 46% { transform: translate(-70px, 0); }
+            70%, 78% { transform: translate(-70px, 22px); }
+            100% { transform: translate(0, 0); }
+        }
+        #instrucoes .ins-olhar-mao {
+            transform: translate(170px, 90px);
+            animation: ins-olhar-mao 5s ease-in-out infinite;
+        }
+        @keyframes ins-olhar-mao {
+            0%, 10% { transform: translate(170px, 90px); }
+            38%, 46% { transform: translate(100px, 90px); }
+            70%, 78% { transform: translate(100px, 112px); }
+            100% { transform: translate(170px, 90px); }
+        }
+        #instrucoes .ins-olhar-rato {
+            transform: translate(240px, 56px);
+            animation: ins-olhar-rato 5s ease-in-out infinite;
+        }
+        @keyframes ins-olhar-rato {
+            0%, 10% { transform: translate(240px, 56px); }
+            38%, 46% { transform: translate(222px, 56px); }
+            70%, 78% { transform: translate(222px, 64px); }
+            100% { transform: translate(240px, 56px); }
+        }
+
+        /* 2 · Aproximar e afastar: a roda gira, ou os dedos abrem. */
+        #instrucoes .ins-zoom-vista {
+            transform-origin: 140px 92px;
+            animation: ins-zoom-vista 4s ease-in-out infinite;
+        }
+        @keyframes ins-zoom-vista {
+            0%, 12% { transform: scale(1); }
+            46%, 62% { transform: scale(1.7); }
+            96%, 100% { transform: scale(1); }
+        }
+        #instrucoes .ins-roda {
+            animation: ins-roda 0.5s linear infinite;
+        }
+        @keyframes ins-roda {
+            from { transform: translateY(0); opacity: 1; }
+            to { transform: translateY(5px); opacity: 0; }
+        }
+        #instrucoes .ins-dedo-a {
+            transform: translate(122px, 104px);
+            animation: ins-dedo-a 4s ease-in-out infinite;
+        }
+        @keyframes ins-dedo-a {
+            0%, 12% { transform: translate(122px, 104px); }
+            46%, 62% { transform: translate(96px, 124px); }
+            96%, 100% { transform: translate(122px, 104px); }
+        }
+        #instrucoes .ins-dedo-b {
+            transform: translate(158px, 80px);
+            animation: ins-dedo-b 4s ease-in-out infinite;
+        }
+        @keyframes ins-dedo-b {
+            0%, 12% { transform: translate(158px, 80px); }
+            46%, 62% { transform: translate(184px, 60px); }
+            96%, 100% { transform: translate(158px, 80px); }
+        }
+
+        /* 3 · Pausar e continuar: carrega-se na imagem, o sinal de pausa
+           aparece e a barra do tempo pára; outra vez, e segue. */
+        #instrucoes .ins-pausa-barra {
+            transform-box: fill-box;
+            transform-origin: left center;
+            animation: ins-pausa-barra 5s linear infinite;
+        }
+        @keyframes ins-pausa-barra {
+            0% { transform: scaleX(0.15); }
+            28%, 64% { transform: scaleX(0.34); }
+            92% { transform: scaleX(0.52); }
+            96%, 100% { transform: scaleX(0.15); }
+        }
+        #instrucoes .ins-pausa-sinal {
+            opacity: 0;
+            animation: ins-pausa-sinal 5s ease infinite;
+        }
+        @keyframes ins-pausa-sinal {
+            0%, 28% { opacity: 0; }
+            32%, 60% { opacity: 1; }
+            64%, 100% { opacity: 0; }
+        }
+        #instrucoes .ins-tocar-sinal {
+            opacity: 0;
+            animation: ins-tocar-sinal 5s ease infinite;
+        }
+        @keyframes ins-tocar-sinal {
+            0%, 63% { opacity: 0; }
+            66% { opacity: 1; }
+            80%, 100% { opacity: 0; }
+        }
+        #instrucoes .ins-pausa-cursor {
+            transform: translate(140px, 56px);
+            animation: ins-pausa-cursor 5s ease-in-out infinite;
+        }
+        @keyframes ins-pausa-cursor {
+            0% { transform: translate(200px, 128px); opacity: 0; }
+            6% { transform: translate(200px, 128px); opacity: 1; }
+            24% { transform: translate(140px, 56px); }
+            27% { transform: translate(140px, 56px) scale(0.82); }
+            30% { transform: translate(140px, 56px) scale(1); }
+            61% { transform: translate(140px, 56px) scale(1); }
+            63% { transform: translate(140px, 56px) scale(0.82); }
+            66% { transform: translate(140px, 56px) scale(1); opacity: 1; }
+            78%, 100% { transform: translate(140px, 56px); opacity: 0; }
+        }
+
+        /* 4 · Endireitar a vista: a imagem está torta e fora do sítio;
+           carrega-se no botão, e volta a direito. */
+        #instrucoes .ins-torta {
+            transform-origin: 140px 52px;
+            animation: ins-torta 5s ease-in-out infinite;
+        }
+        @keyframes ins-torta {
+            0%, 36% { transform: translate(-46px, 16px) rotate(-12deg); opacity: 1; }
+            52%, 88% { transform: none; opacity: 1; }
+            94% { transform: none; opacity: 0; }
+            95% { transform: translate(-46px, 16px) rotate(-12deg); opacity: 0; }
+            100% { transform: translate(-46px, 16px) rotate(-12deg); opacity: 1; }
+        }
+        #instrucoes .ins-endireitar-botao {
+            fill: #05050a;
+            animation: ins-endireitar-botao 5s ease infinite;
+        }
+        @keyframes ins-endireitar-botao {
+            0%, 33% { fill: #05050a; }
+            36%, 44% { fill: rgba(255, 255, 255, 0.35); }
+            50%, 100% { fill: #05050a; }
+        }
+        #instrucoes .ins-endireitar-cursor {
+            transform: translate(221px, 107px);
+            animation: ins-endireitar-cursor 5s ease-in-out infinite;
+        }
+        @keyframes ins-endireitar-cursor {
+            0% { transform: translate(120px, 44px); opacity: 0; }
+            6% { transform: translate(120px, 44px); opacity: 1; }
+            30% { transform: translate(221px, 107px); }
+            34% { transform: translate(221px, 107px) scale(0.82); }
+            38% { transform: translate(221px, 107px) scale(1); opacity: 1; }
+            46% { transform: translate(221px, 107px); opacity: 1; }
+            56%, 100% { transform: translate(221px, 107px); opacity: 0; }
+        }
+
+        /* 5 · Teclado: acendem-se o W, o A, o S e o D, um de cada vez, e
+           depois o Espaço. */
+        #instrucoes .ins-tecla rect {
+            fill: transparent;
+            stroke: rgba(255, 255, 255, 0.5);
+            stroke-width: 2.5;
+            animation: ins-tecla 4.5s ease infinite;
+        }
+        #instrucoes .ins-tecla text {
+            fill: #ffffff;
+            font-family: 'Liberation Mono', 'Courier New', monospace;
+            font-size: 14px;
+            font-weight: 700;
+            text-anchor: middle;
+            dominant-baseline: central;
+            animation: ins-letra 4.5s ease infinite;
+        }
+        #instrucoes .ins-tecla path {
+            fill: none;
+            stroke: #ffffff;
+            stroke-width: 2;
+            animation: ins-simbolo 4.5s ease infinite;
+        }
+        #instrucoes .ins-tecla:nth-of-type(2) > * { animation-delay: 0.9s; }
+        #instrucoes .ins-tecla:nth-of-type(3) > * { animation-delay: 1.8s; }
+        #instrucoes .ins-tecla:nth-of-type(4) > * { animation-delay: 2.7s; }
+        #instrucoes .ins-tecla:nth-of-type(5) > * { animation-delay: 3.6s; }
+        @keyframes ins-tecla {
+            0% { fill: transparent; stroke: rgba(255, 255, 255, 0.5); }
+            3%, 17% { fill: #ffffff; stroke: #ffffff; }
+            21%, 100% { fill: transparent; stroke: rgba(255, 255, 255, 0.5); }
+        }
+        @keyframes ins-letra {
+            0% { fill: #ffffff; }
+            3%, 17% { fill: #05050a; }
+            21%, 100% { fill: #ffffff; }
+        }
+        @keyframes ins-simbolo {
+            0% { stroke: #ffffff; }
+            3%, 17% { stroke: #05050a; }
+            21%, 100% { stroke: #ffffff; }
+        }
+
+        /* 6 · Com óculos: a cabeça vira, e a imagem vai com ela. */
+        #instrucoes .ins-oculos-vista {
+            animation: ins-oculos-vista 5s ease-in-out infinite;
+        }
+        @keyframes ins-oculos-vista {
+            0%, 8% { transform: translateX(0); }
+            38%, 50% { transform: translateX(-56px); }
+            80%, 88% { transform: translateX(40px); }
+            100% { transform: translateX(0); }
+        }
+        #instrucoes .ins-oculos {
+            transform-origin: 140px 70px;
+            animation: ins-oculos 5s ease-in-out infinite;
+        }
+        @keyframes ins-oculos {
+            0%, 8% { transform: rotate(0deg); }
+            38%, 50% { transform: translateX(6px) rotate(5deg); }
+            80%, 88% { transform: translateX(-5px) rotate(-4deg); }
+            100% { transform: rotate(0deg); }
+        }
+
+        /* Quem pediu menos movimento no aparelho vê os desenhos parados. */
+        @media (prefers-reduced-motion: reduce) {
+            #instrucoes *,
+            #instrucoes *::after {
+                animation: none !important;
+                transition: none !important;
             }
         }
 
@@ -743,17 +1169,224 @@
         </div>
     </div>
 
-    <!-- O aviso que explica, na primeira vez que o vídeo arranca, que
-         isto não é um vídeo normal: dá a volta toda a quem o vê. -->
-    <div id="ajuda-360">
-        <div class="ajuda-caixa">
-            <div class="ajuda-titulo" data-i18n="v360.ajudaTitulo">Isto é um vídeo 360º</div>
-            <ul class="ajuda-lista">
-                <li id="ajuda-olhar" data-i18n="v360.ajudaOlhar">Arraste com o rato para olhar em volta — a imagem dá a volta toda.</li>
-                <li id="ajuda-pausa" data-i18n="v360.ajudaPausa">Clique na imagem para pausar, ou use a barra em baixo.</li>
-                <li id="ajuda-oculos" data-i18n="v360.ajudaOculos" style="display: none;">Com óculos ligados, o botão dos óculos põe-no lá dentro.</li>
-            </ul>
-            <button type="button" id="ajuda-fechar" data-i18n="v360.ajudaEntendi">Entendi</button>
+    <!-- As instruções de como se vê um vídeo 360º, na primeira rota que se
+         abrir: o mesmo cartão das instruções do bairro. -->
+    <div id="instrucoes" role="dialog" aria-modal="false" aria-labelledby="instrucoes-cabeca" hidden>
+        <!-- Os pedaços de desenho que se repetem de passo para passo, os
+             mesmos das instruções do bairro. As cores vão escritas em cada
+             um, e não na folha de estilos: o que é repetido com <use> não
+             apanha as regras da página. -->
+        <svg width="0" height="0" style="position: absolute" aria-hidden="true" focusable="false">
+            <defs>
+                <clipPath id="ins-recorte-chao"><rect x="-400" y="44" width="1100" height="120"></rect></clipPath>
+                <!-- A janela de um vídeo, para os passos que a desenham. -->
+                <clipPath id="ins-recorte-janela"><rect x="40" y="12" width="200" height="104"></rect></clipPath>
+                <!-- O chão do bairro, em perspectiva, até ao horizonte. -->
+                <g id="ins-chao">
+                    <g clip-path="url(#ins-recorte-chao)">
+                        <path fill="none" stroke="rgba(255,255,255,0.22)" stroke-width="1.5" d="M-400 54H700M-400 68H700M-400 88H700M-400 116H700M-400 150H700"></path>
+                        <path fill="none" stroke="rgba(255,255,255,0.22)" stroke-width="1.5" d="M140 30L-500 164M140 30L-340 164M140 30L-180 164M140 30L-40 164M140 30L50 164M140 30L140 164M140 30L230 164M140 30L320 164M140 30L460 164M140 30L620 164M140 30L780 164"></path>
+                    </g>
+                    <path fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="1.5" d="M-400 44H700"></path>
+                </g>
+                <!-- Umas casas pousadas no chão. -->
+                <g id="ins-casas">
+                    <rect fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.45)" stroke-width="1.5" x="54" y="72" width="24" height="10"></rect>
+                    <rect fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.45)" stroke-width="1.5" x="196" y="68" width="28" height="11"></rect>
+                    <rect fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.45)" stroke-width="1.5" x="104" y="98" width="32" height="14"></rect>
+                    <rect fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.45)" stroke-width="1.5" x="22" y="108" width="36" height="16"></rect>
+                    <rect fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.45)" stroke-width="1.5" x="212" y="102" width="38" height="16"></rect>
+                    <rect fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.45)" stroke-width="1.5" x="150" y="60" width="18" height="8"></rect>
+                </g>
+                <!-- Os telhados ao longe, no horizonte, de ponta a ponta. -->
+                <g id="ins-horizonte">
+                    <path fill="none" stroke="#ffffff" stroke-width="1.5" stroke-linecap="square" stroke-linejoin="miter" d="M-120 44V36H-96V26H-84V38H-50V22H-40V34H-6V30H30V40H62V24H74V14H84V30H118V38H150V24H176V34H206V18H216V30H246V36H286V26H312V40H350V30H380V44"></path>
+                </g>
+                <!-- O bairro todo, visto por dentro da janela de um vídeo. -->
+                <g id="ins-vista-na-janela">
+                    <g transform="translate(40 12) scale(0.714)">
+                        <use href="#ins-chao"></use>
+                        <use href="#ins-horizonte"></use>
+                        <use href="#ins-casas"></use>
+                    </g>
+                </g>
+                <!-- A seta do rato, com o bico no ponto (0, 0). -->
+                <g id="ins-seta-rato"><path fill="#ffffff" stroke="#05050a" stroke-width="1.2" stroke-linejoin="round" d="M0 0L0 17L4.6 12.8L8 20L11 18.6L7.7 11.6L13 11.6Z"></path></g>
+            </defs>
+        </svg>
+
+        <div class="instrucoes-moldura">
+            <div class="instrucoes-cartao" tabindex="-1">
+                <button type="button" class="instrucoes-fechar" aria-label="Fechar as instruções" title="Fechar as instruções" data-i18n-aria="ins.fechar" data-i18n-title="ins.fechar">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true">
+                        <line x1="5" y1="5" x2="19" y2="19"></line>
+                        <line x1="19" y1="5" x2="5" y2="19"></line>
+                    </svg>
+                </button>
+                <div class="instrucoes-cabeca" id="instrucoes-cabeca" data-i18n="v360.insTitulo">Como ver um vídeo 360º</div>
+
+                <!-- Os passos ficam uns por cima dos outros, na mesma casa:
+                     o cartão tem sempre o tamanho do maior, e não salta. -->
+                <div class="instrucoes-passos">
+                <!-- 1 · Olhar à volta -->
+                <section class="instrucoes-passo" data-rato="v360.olharRato" data-toque="v360.olharToque">
+                    <div class="instrucoes-desenho" aria-hidden="true">
+                        <svg viewBox="0 0 280 140">
+                            <g class="ins-olhar-vista">
+                                <use href="#ins-chao"></use>
+                                <use href="#ins-horizonte"></use>
+                                <g transform="translate(-60 0)"><use href="#ins-casas"></use></g>
+                                <use href="#ins-casas"></use>
+                                <g transform="translate(240 0)"><use href="#ins-casas"></use></g>
+                            </g>
+                            <g class="so-rato">
+                                <g class="ins-olhar-rato">
+                                    <rect x="0" y="0" width="22" height="32" fill="#05050a" stroke="#ffffff" stroke-width="2"></rect>
+                                    <rect x="1" y="1" width="10" height="12" fill="#ffffff"></rect>
+                                    <line x1="0" y1="13" x2="22" y2="13" stroke="#ffffff" stroke-width="1.5"></line>
+                                    <line x1="11" y1="0" x2="11" y2="13" stroke="#ffffff" stroke-width="1.5"></line>
+                                </g>
+                            </g>
+                            <g class="ins-cursor ins-olhar-mao">
+                                <use class="so-rato" href="#ins-seta-rato"></use>
+                                <circle class="so-toque ins-dedo" cx="0" cy="0" r="10"></circle>
+                            </g>
+                        </svg>
+                    </div>
+                    <h2 class="instrucoes-titulo" data-i18n="ins.olharTitulo">Olhar à volta</h2>
+                    <p class="instrucoes-texto">Arrasta com o rato para olhar à volta.</p>
+                </section>
+
+                <!-- 2 · Aproximar e afastar -->
+                <section class="instrucoes-passo" data-rato="v360.zoomRato" data-toque="v360.zoomToque" hidden>
+                    <div class="instrucoes-desenho" aria-hidden="true">
+                        <svg viewBox="0 0 280 140">
+                            <g class="ins-zoom-vista"><use href="#ins-chao"></use><use href="#ins-horizonte"></use><use href="#ins-casas"></use></g>
+                            <g class="so-rato" transform="translate(240 56)">
+                                <rect x="0" y="0" width="22" height="32" fill="#05050a" stroke="#ffffff" stroke-width="2"></rect>
+                                <line x1="0" y1="13" x2="22" y2="13" stroke="#ffffff" stroke-width="1.5"></line>
+                                <line class="ins-roda" x1="11" y1="3" x2="11" y2="8" stroke="#ffffff" stroke-width="2.5"></line>
+                            </g>
+                            <g class="so-toque">
+                                <g class="ins-dedo-a"><circle class="ins-dedo" cx="0" cy="0" r="10"></circle></g>
+                                <g class="ins-dedo-b"><circle class="ins-dedo" cx="0" cy="0" r="10"></circle></g>
+                            </g>
+                        </svg>
+                    </div>
+                    <h2 class="instrucoes-titulo" data-i18n="ins.zoomTitulo">Aproximar e afastar</h2>
+                    <p class="instrucoes-texto">Usa a roda do rato.</p>
+                </section>
+
+                <!-- 3 · Pausar e continuar -->
+                <section class="instrucoes-passo" data-rato="v360.pausaRato" data-toque="v360.pausaToque" hidden>
+                    <div class="instrucoes-desenho" aria-hidden="true">
+                        <svg viewBox="0 0 280 140">
+                            <g clip-path="url(#ins-recorte-janela)"><use href="#ins-vista-na-janela"></use></g>
+                            <rect x="40" y="98" width="200" height="18" fill="#05050a"></rect>
+                            <line x1="40" y1="98" x2="240" y2="98" stroke="rgba(255,255,255,0.15)" stroke-width="1"></line>
+                            <line x1="50" y1="107" x2="230" y2="107" stroke="rgba(255,255,255,0.3)" stroke-width="2"></line>
+                            <line class="ins-pausa-barra" x1="50" y1="107" x2="230" y2="107" stroke="#ffffff" stroke-width="2"></line>
+                            <rect x="40" y="12" width="200" height="104" fill="none" stroke="#505054" stroke-width="2.5"></rect>
+                            <g class="ins-pausa-sinal">
+                                <circle cx="140" cy="54" r="16" fill="rgba(0,0,0,0.6)"></circle>
+                                <rect x="133" y="46" width="4" height="16" fill="#ffffff"></rect>
+                                <rect x="143" y="46" width="4" height="16" fill="#ffffff"></rect>
+                            </g>
+                            <g class="ins-tocar-sinal">
+                                <circle cx="140" cy="54" r="16" fill="rgba(0,0,0,0.6)"></circle>
+                                <polygon points="135 45 135 63 150 54" fill="#ffffff"></polygon>
+                            </g>
+                            <g class="ins-cursor ins-pausa-cursor">
+                                <use class="so-rato" href="#ins-seta-rato"></use>
+                                <circle class="so-toque ins-dedo" cx="0" cy="0" r="10"></circle>
+                            </g>
+                        </svg>
+                    </div>
+                    <h2 class="instrucoes-titulo" data-i18n="v360.pausaTitulo">Pausar e continuar</h2>
+                    <p class="instrucoes-texto">Clica na imagem para pausar.</p>
+                </section>
+
+                <!-- 4 · Endireitar a vista -->
+                <section class="instrucoes-passo" data-rato="v360.endireitar" data-toque="v360.endireitar" hidden>
+                    <div class="instrucoes-desenho" aria-hidden="true">
+                        <svg viewBox="0 0 280 140">
+                            <g clip-path="url(#ins-recorte-janela)"><g class="ins-torta"><use href="#ins-vista-na-janela"></use></g></g>
+                            <rect x="40" y="98" width="200" height="18" fill="#05050a"></rect>
+                            <line x1="40" y1="98" x2="240" y2="98" stroke="rgba(255,255,255,0.15)" stroke-width="1"></line>
+                            <line x1="50" y1="107" x2="204" y2="107" stroke="rgba(255,255,255,0.3)" stroke-width="2"></line>
+                            <line x1="50" y1="107" x2="104" y2="107" stroke="#ffffff" stroke-width="2"></line>
+                            <!-- O botão de endireitar, o mesmo da barra do vídeo. -->
+                            <rect class="ins-endireitar-botao" x="213" y="100" width="16" height="14" stroke="rgba(255,255,255,0.5)" stroke-width="1.25"></rect>
+                            <svg x="215" y="101" width="12" height="12" viewBox="0 0 24 24">
+                                <g fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linecap="square" stroke-linejoin="miter">
+                                    <line x1="12" y1="2" x2="12" y2="22"></line>
+                                    <line x1="2" y1="12" x2="22" y2="12"></line>
+                                    <polyline points="3 8 3 3 8 3"></polyline>
+                                    <polyline points="16 3 21 3 21 8"></polyline>
+                                    <polyline points="3 16 3 21 8 21"></polyline>
+                                    <polyline points="16 21 21 21 21 16"></polyline>
+                                </g>
+                            </svg>
+                            <rect x="40" y="12" width="200" height="104" fill="none" stroke="#505054" stroke-width="2.5"></rect>
+                            <g class="ins-cursor ins-endireitar-cursor">
+                                <use class="so-rato" href="#ins-seta-rato"></use>
+                                <circle class="so-toque ins-dedo" cx="0" cy="0" r="10"></circle>
+                            </g>
+                        </svg>
+                    </div>
+                    <h2 class="instrucoes-titulo" data-i18n="v360.recentrar">Endireitar a vista</h2>
+                    <p class="instrucoes-texto">Se te perderes, o botão de endireitar põe a vista como estava ao começar.</p>
+                </section>
+
+                <!-- 5 · Teclado (só para quem tem teclado) -->
+                <section class="instrucoes-passo" data-so="rato" data-rato="v360.teclado" hidden>
+                    <div class="instrucoes-desenho" aria-hidden="true">
+                        <svg viewBox="0 0 280 140">
+                            <g>
+                                <g class="ins-tecla"><rect x="124" y="14" width="32" height="32"></rect><text x="140" y="30">W</text></g>
+                                <g class="ins-tecla"><rect x="86" y="52" width="32" height="32"></rect><text x="102" y="68">A</text></g>
+                                <g class="ins-tecla"><rect x="124" y="52" width="32" height="32"></rect><text x="140" y="68">S</text></g>
+                                <g class="ins-tecla"><rect x="162" y="52" width="32" height="32"></rect><text x="178" y="68">D</text></g>
+                                <g class="ins-tecla"><rect x="86" y="92" width="108" height="30"></rect><path d="M128 103V111H152V103"></path></g>
+                            </g>
+                        </svg>
+                    </div>
+                    <h2 class="instrucoes-titulo" data-i18n="v360.tecladoTitulo">Usar o teclado</h2>
+                    <p class="instrucoes-texto">As teclas W A S D olham à volta, e o Espaço pausa e continua.</p>
+                </section>
+
+                <!-- 6 · Com óculos (só se os houver) -->
+                <section class="instrucoes-passo" data-so="oculos" data-rato="v360.oculos" data-toque="v360.oculos" hidden>
+                    <div class="instrucoes-desenho" aria-hidden="true">
+                        <svg viewBox="0 0 280 140">
+                            <g class="ins-oculos-vista">
+                                <use href="#ins-chao"></use>
+                                <use href="#ins-horizonte"></use>
+                                <g transform="translate(-60 0)"><use href="#ins-casas"></use></g>
+                                <use href="#ins-casas"></use>
+                                <g transform="translate(240 0)"><use href="#ins-casas"></use></g>
+                            </g>
+                            <!-- Os óculos, o mesmo desenho do botão: o que se vê
+                                 é pelas duas lentes. -->
+                            <g class="ins-oculos">
+                                <path transform="translate(80 5) scale(5)" fill="rgba(5,5,10,0.78)" fill-rule="evenodd" stroke="#ffffff" stroke-width="0.45" stroke-linejoin="miter" d="M2 5h20v14h-6l-2-4h-4l-2 4H2z M4 8h6v5H4z M14 8h6v5h-6z"></path>
+                            </g>
+                        </svg>
+                    </div>
+                    <h2 class="instrucoes-titulo" data-i18n="video.oculos">Ver com óculos</h2>
+                    <p class="instrucoes-texto">Com óculos ligados, o botão dos óculos leva-te para dentro do vídeo.</p>
+                </section>
+                </div>
+
+                <div class="instrucoes-navegacao">
+                    <button type="button" class="instrucoes-seta esquerda" aria-label="Anterior" title="Anterior" data-i18n-aria="palco.anterior" data-i18n-title="palco.anterior">
+                        <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                    </button>
+                    <div class="instrucoes-pontos"></div>
+                    <button type="button" class="instrucoes-seta direita" aria-label="Seguinte" title="Seguinte" data-i18n-aria="palco.seguinte" data-i18n-title="palco.seguinte"></button>
+                </div>
+                <p class="instrucoes-anuncio" aria-live="polite"></p>
+            </div>
         </div>
     </div>
 
@@ -998,6 +1631,9 @@
             if (window.parent !== window) {
                 window.parent.postMessage({ malhaViva: 'filme360aAndar', nome }, window.location.origin);
             }
+            // E cá dentro também, para as instruções saberem que já podem
+            // aparecer (ver mais abaixo).
+            document.dispatchEvent(new Event('filme360aAndar'));
         };
 
         // Quantas imagens do filme o navegador já descodificou. É o sinal
@@ -1646,63 +2282,206 @@
             }
         });
 
-        // ---- O aviso de como se vê um vídeo 360º ----
-        // Aparece uma vez só, na primeira rota que se abrir. Quem já
-        // percebeu como isto funciona não precisa de ouvir a explicação
-        // outra vez a cada rota — por isso fica escrito no navegador que
-        // já foi dado, e não apenas nesta visita.
-        const CHAVE_DA_AJUDA = 'ajuda360Dada';
-        const ajudaJaDada = () => {
-            try {
-                return localStorage.getItem(CHAVE_DA_AJUDA) === '1';
-            } catch (e) {
-                return false;
-            }
-        };
-        const guardarAjudaDada = () => {
-            try {
-                localStorage.setItem(CHAVE_DA_AJUDA, '1');
-            } catch (e) { /* sem memória no navegador: aparece outra vez */ }
-        };
+        // ---- As instruções de como se vê um vídeo 360º ----
+        //
+        // O mesmo cartão das instruções do bairro, e com a mesma lógica: um
+        // passo de cada vez, com um desenho animado, e os quadradinhos dos
+        // passos entre duas setas; no último, a seta da direita é a cruz
+        // que fecha. Quem tem dedo vê os desenhos e as frases dos dedos, e
+        // não vê o passo do teclado; quem não tem óculos não vê o dos
+        // óculos. Também se passa com as setas do teclado e se fecha com o
+        // Escape, enquanto o cartão tiver o foco — e essas teclas ficam
+        // cá, sem irem mudar de paragem no mapa lá fora.
+        //
+        // Aparecem uma vez só, na primeira rota que se abrir, pouco depois
+        // de o filme começar a andar. O filme espera parado enquanto se lê,
+        // e segue ao fechar. Fechadas, fica escrito no navegador e não
+        // voltam.
+        const instrucoes = (() => {
+            const caixa = document.getElementById('instrucoes');
+            const CHAVE = 'instrucoes360';
+            const t = (chave) => (window.Idiomas && window.Idiomas.t(chave)) || '';
+            const traduzir = (el) => { if (window.Idiomas) window.Idiomas.aplicar(el); };
 
-        const ajuda = document.getElementById('ajuda-360');
-        const ajudaFechar = document.getElementById('ajuda-fechar');
-        let ajudaMostrada = false;
-        let ajudaSozinha = null;
+            const SETA_DIREITA = '<svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true"><polyline points="9 18 15 12 9 6"></polyline></svg>';
+            const CRUZ = '<svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true"><path d="M7 7L17 17M17 7L7 17"></path></svg>';
 
-        const esconderAjuda = () => {
-            clearTimeout(ajudaSozinha);
-            ajuda.classList.remove('visivel');
-        };
+            const porToque = !!(window.matchMedia && window.matchMedia('(hover: none) and (pointer: coarse)').matches);
+            caixa.classList.toggle('por-toque', porToque);
 
-        const mostrarAjuda = () => {
-            // Só nas rotas: uma entrevista em ecrã plano não tem volta a dar.
-            // E não dentro dos óculos, onde este aviso não se vê.
-            if (ajudaMostrada || ajudaJaDada() || ecraPlano || pedidoDeVR || scene.is('vr-mode')) return;
-            ajudaMostrada = true;
-            guardarAjudaDada();
+            const cartao = caixa.querySelector('.instrucoes-cartao');
+            const pontos = caixa.querySelector('.instrucoes-pontos');
+            const anuncio = caixa.querySelector('.instrucoes-anuncio');
+            const esquerda = caixa.querySelector('.instrucoes-seta.esquerda');
+            const direita = caixa.querySelector('.instrucoes-seta.direita');
+            const fecharBotao = caixa.querySelector('.instrucoes-fechar');
 
-            // Num ecrã de toque as palavras são outras.
-            const toque = window.matchMedia('(pointer: coarse)').matches;
-            if (toque && window.Idiomas) {
-                document.getElementById('ajuda-olhar').textContent = window.Idiomas.t('v360.ajudaOlharToque');
-                document.getElementById('ajuda-pausa').textContent = window.Idiomas.t('v360.ajudaPausaToque');
-            }
-            if (vrBtn.style.display !== 'none') {
-                document.getElementById('ajuda-oculos').style.display = '';
-            }
+            let passos = [];
+            let atual = 0;
+            let aberta = false;
+            // Se foram elas a parar o filme, são elas que o põem a andar.
+            let pararamOFilme = false;
 
-            ajuda.classList.add('visivel');
-            ajudaSozinha = setTimeout(esconderAjuda, 9000);
-        };
+            const nomearPontos = () => {
+                Array.from(pontos.children).forEach((ponto, i) => {
+                    const nome = t('ins.passo').replace('{n}', i + 1).replace('{total}', passos.length);
+                    ponto.setAttribute('aria-label', nome);
+                    ponto.title = nome;
+                });
+            };
 
-        ajudaFechar.addEventListener('click', (e) => { e.stopPropagation(); esconderAjuda(); });
-        ajuda.addEventListener('click', esconderAjuda);
-        video.addEventListener('play', mostrarAjuda, { once: true });
+            // Os passos que servem a este aparelho. Escolhidos ao abrir, e
+            // não antes: o botão dos óculos só aparece um pouco depois de a
+            // página abrir, quando se sabe se os há.
+            const escolherPassos = () => {
+                const temOculos = vrBtn.style.display !== 'none';
+                passos = [];
+                caixa.querySelectorAll('.instrucoes-passo').forEach((passo) => {
+                    const fora = (porToque && passo.dataset.so === 'rato') ||
+                        (!temOculos && passo.dataset.so === 'oculos');
+                    passo.classList.toggle('fora', fora);
+                    if (fora) return;
+                    const texto = passo.querySelector('.instrucoes-texto');
+                    const chave = porToque ? passo.dataset.toque : passo.dataset.rato;
+                    if (texto && chave) texto.setAttribute('data-i18n', chave);
+                    passos.push(passo);
+                });
+                // Um quadradinho por passo; carregar num leva a esse passo.
+                pontos.innerHTML = '';
+                passos.forEach((passo, i) => {
+                    const ponto = document.createElement('button');
+                    ponto.type = 'button';
+                    ponto.addEventListener('click', () => { if (i !== atual) mostrar(i, i > atual ? 1 : -1); });
+                    pontos.appendChild(ponto);
+                });
+                nomearPontos();
+                traduzir(caixa);
+            };
+
+            const anunciar = () => {
+                const passo = passos[atual];
+                const titulo = passo.querySelector('.instrucoes-titulo').textContent;
+                const texto = passo.querySelector('.instrucoes-texto').textContent;
+                anuncio.textContent = t('ins.passo').replace('{n}', atual + 1).replace('{total}', passos.length) +
+                    '. ' + titulo + '. ' + texto;
+            };
+
+            const mostrar = (n, sentido) => {
+                atual = Math.max(0, Math.min(passos.length - 1, n));
+                passos.forEach((passo, i) => {
+                    passo.hidden = i !== atual;
+                    passo.classList.remove('entra-da-direita', 'entra-da-esquerda');
+                });
+                if (sentido) {
+                    const passo = passos[atual];
+                    void passo.offsetWidth;
+                    passo.classList.add(sentido > 0 ? 'entra-da-direita' : 'entra-da-esquerda');
+                }
+                Array.from(pontos.children).forEach((ponto, i) => {
+                    ponto.classList.toggle('atual', i === atual);
+                    if (i === atual) ponto.setAttribute('aria-current', 'step');
+                    else ponto.removeAttribute('aria-current');
+                });
+
+                // No primeiro não há para onde voltar.
+                const primeiro = atual === 0;
+                esquerda.classList.toggle('escondida', primeiro);
+                esquerda.tabIndex = primeiro ? -1 : 0;
+
+                // No último, a seta da direita passa a ser a cruz de saída.
+                const ultimo = atual === passos.length - 1;
+                direita.classList.toggle('a-sair', ultimo);
+                direita.innerHTML = ultimo ? CRUZ : SETA_DIREITA;
+                const chave = ultimo ? 'ins.fechar' : 'palco.seguinte';
+                direita.setAttribute('data-i18n-aria', chave);
+                direita.setAttribute('data-i18n-title', chave);
+                // A tradução procura dentro do que se lhe dá: vai-se ao pai.
+                traduzir(direita.parentNode);
+
+                anunciar();
+            };
+
+            const jaVistas = () => {
+                try { return localStorage.getItem(CHAVE) === 'vistas'; } catch (e) { return false; }
+            };
+            const guardarVistas = () => {
+                try { localStorage.setItem(CHAVE, 'vistas'); } catch (e) { /* sem memória: voltam da próxima vez */ }
+            };
+
+            const abrir = () => {
+                if (aberta) return;
+                aberta = true;
+                escolherPassos();
+                caixa.hidden = false;
+                mostrar(0, 0);
+                requestAnimationFrame(() => requestAnimationFrame(() => caixa.classList.add('aberta')));
+                try { cartao.focus({ preventScroll: true }); } catch (e) { cartao.focus(); }
+                // O filme espera por quem está a ler.
+                if (!video.paused) {
+                    pararamOFilme = true;
+                    video.pause();
+                }
+            };
+
+            const fechar = () => {
+                if (!aberta) return;
+                aberta = false;
+                guardarVistas();
+                if (caixa.contains(document.activeElement)) document.activeElement.blur();
+                caixa.classList.remove('aberta');
+                setTimeout(() => { if (!aberta) caixa.hidden = true; }, 350);
+                if (pararamOFilme && video.paused) video.play().catch(() => {});
+                pararamOFilme = false;
+            };
+
+            const seguinte = () => {
+                if (atual >= passos.length - 1) fechar();
+                else mostrar(atual + 1, 1);
+            };
+            const anterior = () => { if (atual > 0) mostrar(atual - 1, -1); };
+
+            direita.addEventListener('click', seguinte);
+            esquerda.addEventListener('click', anterior);
+            fecharBotao.addEventListener('click', fechar);
+
+            // As teclas ficam para o cartão enquanto o foco lá estiver: as
+            // setas não saltam no filme nem mudam de paragem lá fora, e o
+            // Escape não fecha a janela da rota. O Espaço e o Enter num
+            // botão do cartão carregam nesse botão, e não pausam o filme.
+            caixa.addEventListener('keydown', (e) => {
+                if (!aberta) return;
+                if (e.key === 'ArrowRight') { seguinte(); }
+                else if (e.key === 'ArrowLeft') { anterior(); }
+                else if (e.key === 'Escape') { fechar(); }
+                else {
+                    if ((e.key === ' ' || e.key === 'Enter') && e.target.closest('button')) e.stopPropagation();
+                    return;
+                }
+                e.preventDefault();
+                e.stopPropagation();
+            });
+
+            window.addEventListener('idiomamudou', () => { nomearPontos(); if (aberta) anunciar(); });
+
+            // Só nas rotas: uma entrevista em ecrã plano não tem volta a
+            // dar. E não dentro dos óculos, onde o cartão não se vê.
+            const podem = () => !jaVistas() && !ecraPlano && !pedidoDeVR && !scene.is('vr-mode');
+
+            // Pouco depois de o filme começar a andar — com a imagem já no
+            // ecrã, e não por cima do quadrado de espera.
+            const quandoOFilmeAnda = () => {
+                if (!podem()) return;
+                setTimeout(() => { if (podem()) abrir(); }, 700);
+            };
+            if (cortinaAberta) quandoOFilmeAnda();
+            else document.addEventListener('filme360aAndar', quandoOFilmeAnda, { once: true });
+
+            return { abrir, fechar };
+        })();
 
         // ---- Dentro dos óculos, o sensor de movimento volta a mandar ----
         scene.addEventListener('enter-vr', () => {
-            esconderAjuda();
+            instrucoes.fechar();
             cameraEl.setAttribute('look-controls', 'magicWindowTrackingEnabled', true);
         });
         scene.addEventListener('exit-vr', () => {
