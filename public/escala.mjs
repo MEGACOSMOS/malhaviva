@@ -10,21 +10,6 @@ MapScale.prototype.initialize = function() {
     this.timer = 0;
 };
 
-MapScale.prototype.raycastToPlane = function(x, y) {
-    const camera = this.entity.camera;
-    const rayOrigin = camera.screenToWorld(x, y, camera.nearClip);
-    const rayDir = camera.screenToWorld(x, y, camera.farClip).sub(rayOrigin).normalize();
-    
-    // Intersectar com o plano y=0 (nível aproximado do terreno para efeitos de escala)
-    if (rayDir.y !== 0) {
-        const t = -rayOrigin.y / rayDir.y;
-        if (t > 0) {
-            return new pc.Vec3().copy(rayDir).mulScalar(t).add(rayOrigin);
-        }
-    }
-    return null;
-}
-
 MapScale.prototype.update = function(dt) {
     if (!this.scaleElement) return;
 

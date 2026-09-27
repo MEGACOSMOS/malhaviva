@@ -109,7 +109,6 @@
             'video.resolucao': 'Resolução',
             'video.oculos': 'Ver com óculos',
 
-            'foto.titulo': 'Fotografia 360º',
             'foto.carregar': 'A carregar fotografia 360º…',
             'foto.erro': 'Não foi possível carregar a fotografia 360º.',
             'visor.erro': 'Não foi possível abrir o visor 360º.',
@@ -156,17 +155,9 @@
             'ctl.arrastarBairro': 'Arrastar o bairro',
             'ctl.rodar': 'Rodar e inclinar',
             'ctl.zoom': 'Aproximar / afastar',
-            'ctl.zoomPonto': 'Aproximar num sítio',
             'ctl.esquerdo': 'Esquerdo',
-            'ctl.direito': 'Direito',
             'ctl.maisArrastar': '+ arrastar',
             'ctl.ou': 'ou',
-            'ctl.scrollNota': 'sobre o ponto que quiseres',
-            'ctl.duploClique': 'Duplo clique',
-            'ctl.deslocarBairro': 'Deslocar o bairro',
-            'ctl.maisSetas': '+ setas',
-            'ctl.maisDepressa': 'Deslocar mais depressa',
-            'ctl.teclaMovimento': '+ tecla de movimento',
             'ctl.umDedo': '1 dedo',
             'ctl.doisDedos': '2 dedos',
             'ctl.arrastarGesto': 'arrastar',
@@ -224,7 +215,6 @@
             'ctl.dicaPerf': 'Se o visualizador estiver lento num computador antigo, muda a qualidade gráfica para Baixa no ícone ⚙ do cabeçalho. Em mobile, a qualidade é ajustada automaticamente.',
             'ctl.dicaPerdidoTitulo': 'Perdido?',
             'ctl.dicaPerdido': 'Se a câmara atingir o limite da simulação, aparecerá um botão para recentrar automaticamente.',
-            'ctl.descricao': 'Guia completo dos controlos do visualizador 3D Malha Viva. Aprende a navegar com rato, teclado, toque e comando.'
         },
 
         en: {
@@ -309,7 +299,6 @@
             'video.resolucao': 'Resolution',
             'video.oculos': 'View with headset',
 
-            'foto.titulo': '360º Photo',
             'foto.carregar': 'Loading 360º photo…',
             'foto.erro': 'The 360º photo could not be loaded.',
             'visor.erro': 'The 360º viewer could not be opened.',
@@ -356,17 +345,9 @@
             'ctl.arrastarBairro': 'Drag the neighbourhood',
             'ctl.rodar': 'Turn and tilt',
             'ctl.zoom': 'Zoom in / out',
-            'ctl.zoomPonto': 'Zoom in on a spot',
             'ctl.esquerdo': 'Left',
-            'ctl.direito': 'Right',
             'ctl.maisArrastar': '+ drag',
             'ctl.ou': 'or',
-            'ctl.scrollNota': 'over whatever you want',
-            'ctl.duploClique': 'Double click',
-            'ctl.deslocarBairro': 'Move the neighbourhood',
-            'ctl.maisSetas': '+ arrow keys',
-            'ctl.maisDepressa': 'Move faster',
-            'ctl.teclaMovimento': '+ movement key',
             'ctl.umDedo': '1 finger',
             'ctl.doisDedos': '2 fingers',
             'ctl.arrastarGesto': 'drag',
@@ -424,7 +405,6 @@
             'ctl.dicaPerf': 'If the viewer runs slowly on an older computer, switch the graphics quality to Low using the ⚙ icon in the header. On mobile, the quality is set automatically.',
             'ctl.dicaPerdidoTitulo': 'Lost?',
             'ctl.dicaPerdido': 'If the camera reaches the edge of the simulation, a button appears to recentre it automatically.',
-            'ctl.descricao': 'Complete guide to the controls of the Malha Viva 3D viewer. Learn to navigate with mouse, keyboard, touch and gamepad.'
         },
 
         es: {
@@ -509,7 +489,6 @@
             'video.resolucao': 'Resolución',
             'video.oculos': 'Ver con gafas',
 
-            'foto.titulo': 'Fotografía 360º',
             'foto.carregar': 'Cargando fotografía 360º…',
             'foto.erro': 'No se ha podido cargar la fotografía 360º.',
             'visor.erro': 'No se ha podido abrir el visor 360º.',
@@ -556,17 +535,9 @@
             'ctl.arrastarBairro': 'Arrastrar el barrio',
             'ctl.rodar': 'Girar e inclinar',
             'ctl.zoom': 'Acercar / alejar',
-            'ctl.zoomPonto': 'Acercar a un punto',
             'ctl.esquerdo': 'Izquierdo',
-            'ctl.direito': 'Derecho',
             'ctl.maisArrastar': '+ arrastrar',
             'ctl.ou': 'o',
-            'ctl.scrollNota': 'sobre el punto que quieras',
-            'ctl.duploClique': 'Doble clic',
-            'ctl.deslocarBairro': 'Desplazar el barrio',
-            'ctl.maisSetas': '+ flechas',
-            'ctl.maisDepressa': 'Desplazar más rápido',
-            'ctl.teclaMovimento': '+ tecla de movimiento',
             'ctl.umDedo': '1 dedo',
             'ctl.doisDedos': '2 dedos',
             'ctl.arrastarGesto': 'arrastrar',
@@ -624,7 +595,6 @@
             'ctl.dicaPerf': 'Si el visor va lento en un ordenador antiguo, cambia la calidad gráfica a Baja en el icono ⚙ de la cabecera. En el móvil, la calidad se ajusta automáticamente.',
             'ctl.dicaPerdidoTitulo': '¿Perdido?',
             'ctl.dicaPerdido': 'Si la cámara llega al límite de la simulación, aparecerá un botón para recentrarla automáticamente.',
-            'ctl.descricao': 'Guía completa de los controles del visor 3D Malha Viva. Aprende a navegar con ratón, teclado, tacto y mando.'
         },
 
         kea: {
@@ -709,7 +679,6 @@
             'video.resolucao': 'Ruzoluson',
             'video.oculos': 'Odja ku óklus',
 
-            'foto.titulo': 'Fotografia 360º',
             'foto.carregar': 'Ta karega fotografia 360º…',
             'foto.erro': 'Ka konsigi karega fotografia 360º.',
             'visor.erro': 'Ka konsigi abri vizor 360º.',
@@ -756,17 +725,9 @@
             'ctl.arrastarBairro': 'Rasta bairu',
             'ctl.rodar': 'Roda i inklina',
             'ctl.zoom': 'Xiga pertu / lonji',
-            'ctl.zoomPonto': 'Xiga pertu di un lugar',
             'ctl.esquerdo': 'Skerdu',
-            'ctl.direito': 'Direitu',
             'ctl.maisArrastar': '+ rasta',
             'ctl.ou': 'ô',
-            'ctl.scrollNota': 'riba di pontu ki bu kre',
-            'ctl.duploClique': 'Duplu kliki',
-            'ctl.deslocarBairro': 'Move bairu',
-            'ctl.maisSetas': '+ setas',
-            'ctl.maisDepressa': 'Move más rápidu',
-            'ctl.teclaMovimento': '+ tekla di movimentu',
             'ctl.umDedo': '1 dedu',
             'ctl.doisDedos': '2 dedu',
             'ctl.arrastarGesto': 'rasta',
@@ -824,7 +785,6 @@
             'ctl.dicaPerf': 'Si vizualizador sta lentu na un komputador bedju, muda kualidadi di imajen pa Baxu na íkoni ⚙ na kabesa di pájina. Na telemóvel, kualidadi ta ajusta si própi.',
             'ctl.dicaPerdidoTitulo': 'Bu perde?',
             'ctl.dicaPerdido': 'Si kámara txiga na limiti di simulason, un buton ta parse pa rekoloka-l otomatikamenti.',
-            'ctl.descricao': 'Gia kompletu di kontrolus di vizualizador 3D Malha Viva. Prende navega ku ratu, tekladu, toki i komandu.'
         }
     };
 

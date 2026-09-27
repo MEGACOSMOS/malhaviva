@@ -1,26 +1,14 @@
 /**
- * Welcome to Cloudflare Workers! This is your first worker.
+ * O servidor do Malha Viva.
  *
- * - Run `npm run dev` in your terminal to start a development server
- * - Open a browser tab at http://localhost:8787/ to see your worker in action
- * - Run `npm run deploy` to publish your worker
- *
- * Bind resources to your worker in `wrangler.jsonc`. After adding bindings, a type definition for the
- * `Env` object can be regenerated with `npm run cf-typegen`.
- *
- * Learn more at https://developers.cloudflare.com/workers/
+ * Tudo o que o site tem — páginas, bairro, vídeos — está na pasta `public`
+ * e é servido directamente pela Cloudflare, antes de chegar aqui (ver
+ * `assets` em `wrangler.jsonc`). Só chega a este código um endereço que
+ * não corresponda a nenhum ficheiro, e a resposta é sempre que não existe.
  */
 
 export default {
-	async fetch(request, env, ctx): Promise<Response> {
-		const url = new URL(request.url);
-		switch (url.pathname) {
-			case '/message':
-				return new Response('Hello, World!');
-			case '/random':
-				return new Response(crypto.randomUUID());
-			default:
-				return new Response('Not Found', { status: 404 });
-		}
+	async fetch(): Promise<Response> {
+		return new Response('Not Found', { status: 404 });
 	},
 } satisfies ExportedHandler<Env>;

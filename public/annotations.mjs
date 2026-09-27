@@ -381,10 +381,10 @@ AnnotationController.prototype.initialize = function() {
         .moldura-do-player:fullscreen .video-controls.a-surgir > * {
             animation: none;
         }
-        /* Ao passar de um vídeo para o outro o nome não se esbate: vem do
-           cinzento da janela do lado para o branco do meio, e esbater do
-           escuro por cima estragava essa passagem. Só os botões surgem. */
-        .barra-do-nome.a-surgir.so-botoes > .nome-do-video,
+        /* Ao passar de uma paragem 360º para a outra o nome não se esbate:
+           vem do cinzento da janela do lado para o branco do meio, e
+           esbater do escuro por cima estragava essa passagem. Só os botões
+           surgem. */
         .barra-do-nome-360.a-surgir.so-botoes > .nome-do-video {
             animation: none;
         }
@@ -863,10 +863,6 @@ AnnotationController.prototype.initialize = function() {
             #video-modal .previa {
                 height: auto;
                 aspect-ratio: 16 / 9;
-            }
-            #video-modal .previa-barra,
-            #video-modal .previa-rodape {
-                display: none;
             }
             /* A imagem do leitor não está ao meio da janela: a barra do
                nome em cima e a dos comandos em baixo não têm a mesma
@@ -2365,19 +2361,12 @@ AnnotationController.prototype.setupModal = function() {
     moldura.appendChild(controls);
     this.barraDosComandos = controls;
 
-    // O palco: o testemunho a dar ao meio, e uma janela do anterior e do
-    // seguinte de cada lado, para se ver quem vem a caminho.
+    // O palco: o testemunho a dar ao meio, e de cada lado só a imagem do
+    // anterior e do seguinte, para se ver quem vem a caminho.
     const criarPrevia = (lado, sentido) => {
         const previa = document.createElement('button');
         previa.type = 'button';
         previa.className = 'janela-do-palco previa ' + lado;
-
-        const barra = document.createElement('div');
-        barra.className = 'previa-barra';
-        const nome = document.createElement('span');
-        nome.className = 'previa-nome';
-        barra.appendChild(nome);
-        previa.appendChild(barra);
 
         const janela = document.createElement('div');
         janela.className = 'previa-janela';
@@ -2388,12 +2377,6 @@ AnnotationController.prototype.setupModal = function() {
         filme.crossOrigin = 'anonymous';
         janela.appendChild(filme);
         previa.appendChild(janela);
-
-        const rodape = document.createElement('div');
-        rodape.className = 'previa-rodape';
-        previa.appendChild(rodape);
-
-
 
         // Carregar na imagem é o mesmo que carregar na seta desse lado:
         // o percurso anda um passo, e o vídeo troca dentro do leitor.
@@ -2886,7 +2869,6 @@ AnnotationController.prototype.encherPrevia = function(previa, ann, posterDataUr
     }
     previa.dataset.video = ann.video;
     // Nome de pessoa: fica como está em qualquer língua.
-    previa.querySelector('.previa-nome').textContent = ann.label;
     previa.title = ann.label;
     // A imagem do lado não tem o nome escrito à vista: quem não vê o ecrã
     // ouve de quem é o testemunho que ela abre.
@@ -3100,22 +3082,6 @@ AnnotationController.prototype.ladosDoPercurso = function(percurso, lista) {
         return { cruz, ann: cruz ? null : lista[this.lugarNoPercurso(percurso, total, percurso.passo - 1)] };
     };
     return { esquerda: lado(-1), direita: lado(1) };
-};
-
-/**
- * O testemunho seguinte que ainda ninguém viu.
- *
- * As rotas 360º ficam de fora: abrem noutra janela, com outro tocador, e
- * não se encadeiam com as entrevistas.
- *
- * @param {string} nomeAtual - O que está a dar agora, para não se repetir.
- * @returns {object|null} A anotação seguinte, ou nada se já foram todas.
- */
-AnnotationController.prototype.proximoPorVer = function(nomeAtual) {
-    return this.annotations.find(ann =>
-        !ann.is360 && ann.video && ann.video !== nomeAtual &&
-        !this.viewedAnnotations.includes(this.idDaAnotacao(ann))
-    ) || null;
 };
 
 /**

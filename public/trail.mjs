@@ -718,30 +718,6 @@ TrailController.prototype.setupCursorAnnotation = function() {
     document.body.appendChild(this.cursorAnnotation);
 };
 
-/**
- * Abre uma rota 360º no palco das paragens.
- *
- * A janela é a mesma dos testemunhos, e quem a monta é o guarda das
- * anotações: assim há um palco só, e passa-se de uma paragem 360º para a
- * do lado sem voltar ao mapa.
- *
- * @param {number} trailIndex - Qual das três rotas.
- */
-TrailController.prototype.showPopup360 = function(trailIndex) {
-    // A rota apaga-se e a etiqueta sai da frente: com a janela aberta por
-    // cima, ficariam as duas esquecidas por baixo até se mexer o rato.
-    this.trailRenderData.forEach(t => this.setTrailHoverState(t, false));
-    this.updateGlobalCursor(false, []);
-
-    const anotacoes = this.entity.script && this.entity.script.annotationController;
-    if (!anotacoes) {
-        return;
-    }
-    const numero = Number(trailIndex);
-    const paragem = anotacoes.paragens360().find(ann => ann.trailIndex === numero);
-    if (paragem) anotacoes.abrirParagem360(paragem);
-};
-
 TrailController.prototype.setupEditModeUI = function() {
     // Container for edit mode controls
     this.editUI = document.createElement('div');
