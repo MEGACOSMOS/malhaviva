@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>360 Video Player</title>
-    <script src="/idiomas.js?v=33"></script>
+    <script src="/idiomas.js?v=34"></script>
     <script src="/quadrado-de-espera.js?v=4"></script>
     <!-- O aviso de "está a demorar" e a tecla de tentar de novo, os
          mesmos em todo o site. -->
@@ -660,90 +660,7 @@
             96%, 100% { transform: translate(158px, 80px); }
         }
 
-        /* 3 · Pausar e continuar: carrega-se na imagem, o sinal de pausa
-           aparece e a barra do tempo pára; outra vez, e segue. */
-        #instrucoes .ins-pausa-barra {
-            transform-box: fill-box;
-            transform-origin: left center;
-            animation: ins-pausa-barra 5s linear infinite;
-        }
-        @keyframes ins-pausa-barra {
-            0% { transform: scaleX(0.15); }
-            28%, 64% { transform: scaleX(0.34); }
-            92% { transform: scaleX(0.52); }
-            96%, 100% { transform: scaleX(0.15); }
-        }
-        #instrucoes .ins-pausa-sinal {
-            opacity: 0;
-            animation: ins-pausa-sinal 5s ease infinite;
-        }
-        @keyframes ins-pausa-sinal {
-            0%, 28% { opacity: 0; }
-            32%, 60% { opacity: 1; }
-            64%, 100% { opacity: 0; }
-        }
-        #instrucoes .ins-tocar-sinal {
-            opacity: 0;
-            animation: ins-tocar-sinal 5s ease infinite;
-        }
-        @keyframes ins-tocar-sinal {
-            0%, 63% { opacity: 0; }
-            66% { opacity: 1; }
-            80%, 100% { opacity: 0; }
-        }
-        #instrucoes .ins-pausa-cursor {
-            transform: translate(140px, 56px);
-            animation: ins-pausa-cursor 5s ease-in-out infinite;
-        }
-        @keyframes ins-pausa-cursor {
-            0% { transform: translate(200px, 128px); opacity: 0; }
-            6% { transform: translate(200px, 128px); opacity: 1; }
-            24% { transform: translate(140px, 56px); }
-            27% { transform: translate(140px, 56px) scale(0.82); }
-            30% { transform: translate(140px, 56px) scale(1); }
-            61% { transform: translate(140px, 56px) scale(1); }
-            63% { transform: translate(140px, 56px) scale(0.82); }
-            66% { transform: translate(140px, 56px) scale(1); opacity: 1; }
-            78%, 100% { transform: translate(140px, 56px); opacity: 0; }
-        }
-
-        /* 4 · Endireitar a vista: a imagem está torta e fora do sítio;
-           carrega-se no botão, e volta a direito. */
-        #instrucoes .ins-torta {
-            transform-origin: 140px 52px;
-            animation: ins-torta 5s ease-in-out infinite;
-        }
-        @keyframes ins-torta {
-            0%, 36% { transform: translate(-46px, 16px) rotate(-12deg); opacity: 1; }
-            52%, 88% { transform: none; opacity: 1; }
-            94% { transform: none; opacity: 0; }
-            95% { transform: translate(-46px, 16px) rotate(-12deg); opacity: 0; }
-            100% { transform: translate(-46px, 16px) rotate(-12deg); opacity: 1; }
-        }
-        #instrucoes .ins-endireitar-botao {
-            fill: #05050a;
-            animation: ins-endireitar-botao 5s ease infinite;
-        }
-        @keyframes ins-endireitar-botao {
-            0%, 33% { fill: #05050a; }
-            36%, 44% { fill: rgba(255, 255, 255, 0.35); }
-            50%, 100% { fill: #05050a; }
-        }
-        #instrucoes .ins-endireitar-cursor {
-            transform: translate(221px, 107px);
-            animation: ins-endireitar-cursor 5s ease-in-out infinite;
-        }
-        @keyframes ins-endireitar-cursor {
-            0% { transform: translate(120px, 44px); opacity: 0; }
-            6% { transform: translate(120px, 44px); opacity: 1; }
-            30% { transform: translate(221px, 107px); }
-            34% { transform: translate(221px, 107px) scale(0.82); }
-            38% { transform: translate(221px, 107px) scale(1); opacity: 1; }
-            46% { transform: translate(221px, 107px); opacity: 1; }
-            56%, 100% { transform: translate(221px, 107px); opacity: 0; }
-        }
-
-        /* 5 · Teclado: acendem-se o W, o A, o S e o D, um de cada vez, e
+        /* 3 · Teclado: acendem-se o W, o A, o S e o D, um de cada vez, e
            depois o Espaço. */
         #instrucoes .ins-tecla rect {
             fill: transparent;
@@ -786,7 +703,7 @@
             21%, 100% { stroke: #ffffff; }
         }
 
-        /* 6 · Com óculos: a cabeça vira, e a imagem vai com ela. */
+        /* 4 · Com óculos: a cabeça vira, e a imagem vai com ela. */
         #instrucoes .ins-oculos-vista {
             animation: ins-oculos-vista 5s ease-in-out infinite;
         }
@@ -1179,8 +1096,6 @@
         <svg width="0" height="0" style="position: absolute" aria-hidden="true" focusable="false">
             <defs>
                 <clipPath id="ins-recorte-chao"><rect x="-400" y="44" width="1100" height="120"></rect></clipPath>
-                <!-- A janela de um vídeo, para os passos que a desenham. -->
-                <clipPath id="ins-recorte-janela"><rect x="40" y="12" width="200" height="104"></rect></clipPath>
                 <!-- O chão do bairro, em perspectiva, até ao horizonte. -->
                 <g id="ins-chao">
                     <g clip-path="url(#ins-recorte-chao)">
@@ -1201,14 +1116,6 @@
                 <!-- Os telhados ao longe, no horizonte, de ponta a ponta. -->
                 <g id="ins-horizonte">
                     <path fill="none" stroke="#ffffff" stroke-width="1.5" stroke-linecap="square" stroke-linejoin="miter" d="M-120 44V36H-96V26H-84V38H-50V22H-40V34H-6V30H30V40H62V24H74V14H84V30H118V38H150V24H176V34H206V18H216V30H246V36H286V26H312V40H350V30H380V44"></path>
-                </g>
-                <!-- O bairro todo, visto por dentro da janela de um vídeo. -->
-                <g id="ins-vista-na-janela">
-                    <g transform="translate(40 12) scale(0.714)">
-                        <use href="#ins-chao"></use>
-                        <use href="#ins-horizonte"></use>
-                        <use href="#ins-casas"></use>
-                    </g>
                 </g>
                 <!-- A seta do rato, com o bico no ponto (0, 0). -->
                 <g id="ins-seta-rato"><path fill="#ffffff" stroke="#05050a" stroke-width="1.2" stroke-linejoin="round" d="M0 0L0 17L4.6 12.8L8 20L11 18.6L7.7 11.6L13 11.6Z"></path></g>
@@ -1277,68 +1184,7 @@
                     <p class="instrucoes-texto">Usa a roda do rato.</p>
                 </section>
 
-                <!-- 3 · Pausar e continuar -->
-                <section class="instrucoes-passo" data-rato="v360.pausaRato" data-toque="v360.pausaToque" hidden>
-                    <div class="instrucoes-desenho" aria-hidden="true">
-                        <svg viewBox="0 0 280 140">
-                            <g clip-path="url(#ins-recorte-janela)"><use href="#ins-vista-na-janela"></use></g>
-                            <rect x="40" y="98" width="200" height="18" fill="#05050a"></rect>
-                            <line x1="40" y1="98" x2="240" y2="98" stroke="rgba(255,255,255,0.15)" stroke-width="1"></line>
-                            <line x1="50" y1="107" x2="230" y2="107" stroke="rgba(255,255,255,0.3)" stroke-width="2"></line>
-                            <line class="ins-pausa-barra" x1="50" y1="107" x2="230" y2="107" stroke="#ffffff" stroke-width="2"></line>
-                            <rect x="40" y="12" width="200" height="104" fill="none" stroke="#505054" stroke-width="2.5"></rect>
-                            <g class="ins-pausa-sinal">
-                                <circle cx="140" cy="54" r="16" fill="rgba(0,0,0,0.6)"></circle>
-                                <rect x="133" y="46" width="4" height="16" fill="#ffffff"></rect>
-                                <rect x="143" y="46" width="4" height="16" fill="#ffffff"></rect>
-                            </g>
-                            <g class="ins-tocar-sinal">
-                                <circle cx="140" cy="54" r="16" fill="rgba(0,0,0,0.6)"></circle>
-                                <polygon points="135 45 135 63 150 54" fill="#ffffff"></polygon>
-                            </g>
-                            <g class="ins-cursor ins-pausa-cursor">
-                                <use class="so-rato" href="#ins-seta-rato"></use>
-                                <circle class="so-toque ins-dedo" cx="0" cy="0" r="10"></circle>
-                            </g>
-                        </svg>
-                    </div>
-                    <h2 class="instrucoes-titulo" data-i18n="v360.pausaTitulo">Pausar e continuar</h2>
-                    <p class="instrucoes-texto">Clica na imagem para pausar.</p>
-                </section>
-
-                <!-- 4 · Endireitar a vista -->
-                <section class="instrucoes-passo" data-rato="v360.endireitar" data-toque="v360.endireitar" hidden>
-                    <div class="instrucoes-desenho" aria-hidden="true">
-                        <svg viewBox="0 0 280 140">
-                            <g clip-path="url(#ins-recorte-janela)"><g class="ins-torta"><use href="#ins-vista-na-janela"></use></g></g>
-                            <rect x="40" y="98" width="200" height="18" fill="#05050a"></rect>
-                            <line x1="40" y1="98" x2="240" y2="98" stroke="rgba(255,255,255,0.15)" stroke-width="1"></line>
-                            <line x1="50" y1="107" x2="204" y2="107" stroke="rgba(255,255,255,0.3)" stroke-width="2"></line>
-                            <line x1="50" y1="107" x2="104" y2="107" stroke="#ffffff" stroke-width="2"></line>
-                            <!-- O botão de endireitar, o mesmo da barra do vídeo. -->
-                            <rect class="ins-endireitar-botao" x="213" y="100" width="16" height="14" stroke="rgba(255,255,255,0.5)" stroke-width="1.25"></rect>
-                            <svg x="215" y="101" width="12" height="12" viewBox="0 0 24 24">
-                                <g fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linecap="square" stroke-linejoin="miter">
-                                    <line x1="12" y1="2" x2="12" y2="22"></line>
-                                    <line x1="2" y1="12" x2="22" y2="12"></line>
-                                    <polyline points="3 8 3 3 8 3"></polyline>
-                                    <polyline points="16 3 21 3 21 8"></polyline>
-                                    <polyline points="3 16 3 21 8 21"></polyline>
-                                    <polyline points="16 21 21 21 21 16"></polyline>
-                                </g>
-                            </svg>
-                            <rect x="40" y="12" width="200" height="104" fill="none" stroke="#505054" stroke-width="2.5"></rect>
-                            <g class="ins-cursor ins-endireitar-cursor">
-                                <use class="so-rato" href="#ins-seta-rato"></use>
-                                <circle class="so-toque ins-dedo" cx="0" cy="0" r="10"></circle>
-                            </g>
-                        </svg>
-                    </div>
-                    <h2 class="instrucoes-titulo" data-i18n="v360.recentrar">Endireitar a vista</h2>
-                    <p class="instrucoes-texto">Se te perderes, o botão de endireitar põe a vista como estava ao começar.</p>
-                </section>
-
-                <!-- 5 · Teclado (só para quem tem teclado) -->
+                <!-- 3 · Teclado (só para quem tem teclado) -->
                 <section class="instrucoes-passo" data-so="rato" data-rato="v360.teclado" hidden>
                     <div class="instrucoes-desenho" aria-hidden="true">
                         <svg viewBox="0 0 280 140">
@@ -1355,7 +1201,7 @@
                     <p class="instrucoes-texto">As teclas W A S D olham à volta, e o Espaço pausa e continua.</p>
                 </section>
 
-                <!-- 6 · Com óculos (só se os houver) -->
+                <!-- 4 · Com óculos (só se os houver) -->
                 <section class="instrucoes-passo" data-so="oculos" data-rato="v360.oculos" data-toque="v360.oculos" hidden>
                     <div class="instrucoes-desenho" aria-hidden="true">
                         <svg viewBox="0 0 280 140">
