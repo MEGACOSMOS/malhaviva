@@ -259,11 +259,12 @@
         }
         /* Os dois logótipos na mesma linha, ao centro e alinhados pelo
            meio; num ecrã muito estreito, o segundo passa para baixo.
-           Os dois têm a mesma altura: o quadrado do "N" e o quadrado das
-           setas ficam do mesmo tamanho (as imagens não têm margem à
-           volta, para a altura ser a do desenho). */
+           Ficam na proporção em que as letras dos dois têm a mesma altura
+           e caem na mesma linha: "NOVAFCSH" ocupa 36% da altura do seu
+           logótipo e "PLAYCANVAS" 44%, e por isso o do PlayCanvas é um
+           pouco mais baixo (as imagens não têm margem à volta, para a
+           altura ser a do desenho). Assim os dois pesam o mesmo à vista. */
         .fim {
-            --altura-dos-logos: 58px;
             display: flex;
             flex-wrap: wrap;
             justify-content: center;
@@ -272,11 +273,12 @@
         }
         .fim img {
             display: block;
-            height: var(--altura-dos-logos);
             width: auto;
             max-width: 100%;
             object-fit: contain;
         }
+        .fim .logo-fcsh { height: 64px; }
+        .fim .logo-playcanvas { height: 52px; }
 
         @media (max-width: 640px) {
             .page-header { padding: 12px 16px; }
@@ -423,9 +425,9 @@
         <!-- No fim, a faculdade onde o projecto foi feito e o motor que
              desenha o bairro, lado a lado e ao centro. -->
         <p class="fim bloco">
-            <img class="logo-fcsh" src="/logos/nova-fcsh.png" width="198" height="58"
+            <img class="logo-fcsh" src="/logos/nova-fcsh.png" width="219" height="64"
                  alt="NOVA FCSH — Faculdade de Ciências Sociais e Humanas, Universidade Nova de Lisboa">
-            <img class="logo-playcanvas" src="/logos/playcanvas.svg" width="308" height="58"
+            <img class="logo-playcanvas" src="/logos/playcanvas.svg" width="276" height="52"
                  alt="PlayCanvas">
         </p>
     </main>
