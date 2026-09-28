@@ -1339,6 +1339,32 @@ AnnotationController.prototype.janelaAberta = function() {
 // as distingue, tanto no nome do ficheiro como na barra de cima.
 const LETRAS_DAS_ROTAS = ['A', 'B', 'C'];
 
+/**
+ * Se o interruptor "Auto" (o que acaba passa sozinho ao seguinte) está
+ * ligado. Com os cookies do site bloqueados no navegador, ler a memória dá
+ * erro: aí fica desligado, como vem de origem.
+ *
+ * @returns {boolean} Se está ligado.
+ */
+function autoLigado() {
+    try {
+        return localStorage.getItem('autoplay-videos') === 'true';
+    } catch (e) {
+        return false;
+    }
+}
+
+/**
+ * Guarda o interruptor "Auto" para a próxima visita, se houver memória.
+ *
+ * @param {boolean} ligado - Se fica ligado.
+ */
+function guardarAuto(ligado) {
+    try {
+        localStorage.setItem('autoplay-videos', ligado ? 'true' : 'false');
+    } catch (e) { /* sem memória: vale só para esta visita */ }
+}
+
 // Os bicos das setas do palco, e a cruz que toma o lugar da seta da
 // direita quando já não há nada de novo para o lado de lá.
 const BICO_ESQUERDA = '15 18 9 12 15 6';
@@ -1491,7 +1517,7 @@ AnnotationController.prototype.seguirDepoisDaRota360 = function() {
         return;
     }
     this.marcarComoVisto(this.idDaAnotacao(ann));
-    if (localStorage.getItem('autoplay-videos') !== 'true') {
+    if (!autoLigado()) {
         return;
     }
     const lista = this.paragens360();
@@ -1558,7 +1584,7 @@ AnnotationController.prototype.criarBotoesDeTopo = function(fecharCallback) {
     switchEl.appendChild(pointer);
 
     // Por definição, a reprodução automática deve estar desativada
-    let isAutoPlay = localStorage.getItem('autoplay-videos') === 'true';
+    let isAutoPlay = autoLigado();
 
     const updateSwitchVisuals = () => {
         if (isAutoPlay) {
@@ -1574,7 +1600,7 @@ AnnotationController.prototype.criarBotoesDeTopo = function(fecharCallback) {
     autoPlayContainer.addEventListener('click', (e) => {
         e.preventDefault();
         isAutoPlay = !isAutoPlay;
-        localStorage.setItem('autoplay-videos', isAutoPlay ? 'true' : 'false');
+        guardarAuto(isAutoPlay);
         updateSwitchVisuals();
     });
 
@@ -2863,8 +2889,7 @@ AnnotationController.prototype.setupModal = function() {
         const lista = this.annotations.filter(ann => !ann.is360 && ann.video);
         const onde = lista.findIndex(ann => ann.video === this.videoNome);
         if (onde >= 0) {
-            const isAutoPlay = localStorage.getItem('autoplay-videos') === 'true';
-            if (isAutoPlay) {
+            if (autoLigado()) {
                 // Segue para a frente no percurso — para o lado por onde
                 // se andou, ou para a direita se ainda não se andou. No
                 // fim dele, fecha.

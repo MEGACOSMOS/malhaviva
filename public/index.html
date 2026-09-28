@@ -5,6 +5,72 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title data-i18n-titulo="cab.bairro">Bairro de Penajóia — Malha Viva</title>
     <meta name="description" content="Exploração 3D interativa do Bairro de Penajóia através de Gaussian Splatting. Projeto Malha Viva.">
+
+    <script>
+    /**
+     * O guarda do arranque: repara sozinho o que antes se reparava à mão.
+     *
+     * Às vezes o Chrome deixava de abrir o site e ficava numa tela branca,
+     * e só voltava depois de se apagarem os dados do site nas definições
+     * do navegador. Branca, e não escura, quer dizer que a página nem
+     * chegou a desenhar-se: ficou presa ainda aqui em cima, à espera dos
+     * ficheiros do princípio — o que acontece quando a cache do navegador
+     * para este site se encrava. É a cache e a memória do site que o
+     * apagar dos dados limpa, e é isso que este guarda faz sozinho.
+     *
+     * Corre antes de tudo o resto, e sem pedir nada à rede, para correr
+     * mesmo quando o resto não chega. Deixa uma marca a dizer em que fase
+     * o arranque vai; a página tira-a quando o bairro aparece (ver
+     * `arranque`, no princípio do corpo da página). Se ao voltar a abrir a
+     * marca ainda lá está, o arranque anterior não acabou:
+     *
+     *  - `pagina`: nem o código do site chegou a correr — a tela branca.
+     *    Vai-se a /limpar, que apaga a cache e a memória deste site (e só
+     *    deste) e volta para aqui, já com a língua que se tinha escolhido.
+     *  - `bairro`: o código correu, mas o bairro nunca chegou ao ecrã. Pode
+     *    ser a placa gráfica a não aguentar a qualidade escolhida à mão,
+     *    por isso a qualidade volta ao Automático.
+     *
+     * Uma visita que se fecha a meio do arranque deixa a marca também; por
+     * isso só conta se for recente, e a limpeza faz-se uma vez só.
+     */
+    (function () {
+        var CHAVE = 'arranque-pendente';
+        var agora = Date.now();
+        var ler = function (k) { try { return localStorage.getItem(k); } catch (e) { return null; } };
+        var escrever = function (k, v) { try { localStorage.setItem(k, v); } catch (e) { /* sem memória: sem guarda */ } };
+        var apagar = function (k) { try { localStorage.removeItem(k); } catch (e) { /* idem */ } };
+
+        var anterior = null;
+        try { anterior = JSON.parse(ler(CHAVE) || 'null'); } catch (e) { anterior = null; }
+        var idade = anterior && typeof anterior.quando === 'number' ? agora - anterior.quando : Infinity;
+        var acabadoDeReparar = /[?&]reparado=1(&|$)/.test(window.location.search);
+
+        if (anterior && !acabadoDeReparar) {
+            if (anterior.fase === 'pagina' && idade < 30 * 60 * 1000) {
+                window.location.replace('/limpar?idioma=' + encodeURIComponent(ler('idioma') || ''));
+                return;
+            }
+            if (anterior.fase === 'bairro' && idade < 5 * 60 * 1000) {
+                apagar('quality');
+            }
+        }
+        if (acabadoDeReparar && window.history.replaceState) {
+            // Tira a marca do endereço, para quem o copiar não levar isto.
+            var limpo = window.location.pathname + window.location.search
+                .replace(/([?&])reparado=1(&|$)/, '$1').replace(/[?&]$/, '') + window.location.hash;
+            window.history.replaceState(null, '', limpo);
+        }
+
+        var marcar = function (fase) { escrever(CHAVE, JSON.stringify({ quando: agora, fase: fase })); };
+        marcar('pagina');
+        window.guardaDoArranque = {
+            codigoCorreu: function () { marcar('bairro'); },
+            bairroChegou: function () { apagar(CHAVE); }
+        };
+    })();
+    </script>
+
     <!-- As línguas do site. Fica antes de tudo o resto para o texto
          nascer já na língua certa, sem piscar em português primeiro. -->
     <script src="/idiomas.js?v=37"></script>
@@ -2065,6 +2131,13 @@
             marcar: function (marco) {
                 if (!(marco in marcos) || marcos[marco]) return;
                 marcos[marco] = true;
+                // O guarda do topo da página fica a saber em que fase o
+                // arranque já vai (ver `guardaDoArranque`).
+                var guarda = window.guardaDoArranque;
+                if (guarda) {
+                    if (marco === 'modulo') guarda.codigoCorreu();
+                    else if (marco === 'bairro') guarda.bairroChegou();
+                }
                 // Um sinal de vida tira o aviso da frente: o que estava a
                 // demorar acabou de chegar. Com o bairro à vista, acabou.
                 calar();
@@ -3218,7 +3291,7 @@
         <pc-asset id="splat-scene" src="splat/lod-meta.json" type="gsplat"></pc-asset>
         <pc-asset id="camera-controls-script" src="./camera-controls.mjs?v=40" type="script"></pc-asset>
         <pc-asset id="camera-coords-script" src="./coords.mjs?v=7" type="script"></pc-asset>
-        <pc-asset id="annotations-script" src="./annotations.mjs?v=97" type="script"></pc-asset>
+        <pc-asset id="annotations-script" src="./annotations.mjs?v=98" type="script"></pc-asset>
         <pc-asset id="trail-script" src="./trail.mjs?v=31" type="script"></pc-asset>
         <pc-asset id="measure-script" src="./measure.mjs?v=1" type="script"></pc-asset>
         <pc-asset id="escala-script" src="./escala.mjs?v=2" type="script"></pc-asset>
@@ -3615,7 +3688,20 @@ void modifySplatColor(vec3 center, inout vec4 color) {
             return 'high';
         }
 
-        let savedQuality = localStorage.getItem('quality') || 'auto';
+        // A memória do navegador. Com os cookies deste site bloqueados nas
+        // definições do navegador, lê-la dá erro em vez de dar nada — e um
+        // erro no arranque parava o bairro todo. Sem memória, vale o que
+        // vem de origem, e o que se escolhe fica só para esta visita.
+        const memoria = {
+            ler(chave) {
+                try { return localStorage.getItem(chave); } catch (e) { return null; }
+            },
+            guardar(chave, valor) {
+                try { localStorage.setItem(chave, valor); } catch (e) { /* sem memória */ }
+            }
+        };
+
+        let savedQuality = memoria.ler('quality') || 'auto';
 
         // O nível já foi decidido antes de o motor arrancar (ver o pequeno
         // script a seguir à cena); aqui é só lido.
@@ -3800,7 +3886,7 @@ void modifySplatColor(vec3 center, inout vec4 color) {
 
         function setQuality(mode) {
             if (mode === savedQuality) return;
-            localStorage.setItem('quality', mode);
+            memoria.guardar('quality', mode);
             // Reload the page to recreate the WebGL context with new antialias settings
             window.location.reload();
         }
@@ -3867,15 +3953,15 @@ void modifySplatColor(vec3 center, inout vec4 color) {
             const PALAVRAS = ['filipeprogramador', 'filipedesenvolvedor'];
             const MAIOR = Math.max(...PALAVRAS.map((p) => p.length));
             let escrito = '';
-            const aplicar = () => document.body.classList.toggle('programador', localStorage.getItem('programador') === 'on');
+            const aplicar = () => document.body.classList.toggle('programador', memoria.ler('programador') === 'on');
             aplicar();
             document.addEventListener('keydown', (e) => {
                 if (e.key.length !== 1) return;
                 escrito = (escrito + e.key.toLowerCase()).slice(-MAIOR);
                 if (!PALAVRAS.some((p) => escrito.endsWith(p))) return;
                 escrito = '';
-                const ligado = localStorage.getItem('programador') !== 'on';
-                localStorage.setItem('programador', ligado ? 'on' : 'off');
+                const ligado = memoria.ler('programador') !== 'on';
+                memoria.guardar('programador', ligado ? 'on' : 'off');
                 aplicar();
                 if (!ligado) {
                     const menu = document.getElementById('dev-menu');
@@ -4088,9 +4174,9 @@ void modifySplatColor(vec3 center, inout vec4 color) {
         tiposDeAnotacao.forEach(({ id, chave }) => {
             const caixa = document.getElementById(id);
             if (!caixa) return;
-            caixa.checked = localStorage.getItem(chave) !== 'off';
+            caixa.checked = memoria.ler(chave) !== 'off';
             caixa.addEventListener('change', () => {
-                localStorage.setItem(chave, caixa.checked ? 'on' : 'off');
+                memoria.guardar(chave, caixa.checked ? 'on' : 'off');
                 aplicarVisibilidadeAnotacoes();
             });
         });

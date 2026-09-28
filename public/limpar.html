@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex">
+    <title>Malha Viva</title>
+    <!--
+        A reparação do site: o mesmo que apagar os dados do site nas
+        definições do navegador, mas com um clique (ou sozinho, pelo guarda
+        do arranque na página do bairro).
+
+        Quem apaga não é esta página: é o servidor, que a manda com a ordem
+        "Clear-Site-Data" (ver `_headers`). O navegador apaga a cache e a
+        memória deste site — e só deste — antes de a mostrar. Aqui só se
+        devolve a língua que se tinha escolhido, que vem no endereço, e se
+        volta ao bairro.
+    -->
+    <style>
+        html, body {
+            margin: 0;
+            height: 100%;
+            background: #05050a;
+            color: rgba(255, 255, 255, 0.8);
+            font-family: 'Liberation Mono', 'Courier New', monospace;
+            font-size: 0.9rem;
+        }
+        body {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 0 16px;
+            box-sizing: border-box;
+        }
+        a { color: #ffffff; }
+    </style>
+</head>
+<body>
+    <p id="texto">A reparar o site…</p>
+    <script>
+        (function () {
+            var TEXTOS = {
+                pt: ['A reparar o site…', 'Voltar ao bairro'],
+                en: ['Repairing the site…', 'Back to the neighbourhood'],
+                es: ['Reparando el sitio…', 'Volver al barrio'],
+                kea: ['Ta konserta situ…', 'Volta pa bairu']
+            };
+            var pedido = new URLSearchParams(window.location.search);
+            var idioma = pedido.get('idioma');
+            if (TEXTOS[idioma]) {
+                try { localStorage.setItem('idioma', idioma); } catch (e) { /* sem memória */ }
+            }
+            var t = TEXTOS[idioma] || TEXTOS.pt;
+            document.documentElement.lang = TEXTOS[idioma] ? idioma : 'pt';
+            var texto = document.getElementById('texto');
+            texto.textContent = t[0];
+
+            // Se por alguma razão a volta não acontecer, fica um caminho à mão.
+            setTimeout(function () {
+                var ligacao = document.createElement('a');
+                ligacao.href = '/?reparado=1';
+                ligacao.textContent = t[1];
+                texto.appendChild(document.createElement('br'));
+                texto.appendChild(document.createElement('br'));
+                texto.appendChild(ligacao);
+            }, 3000);
+
+            window.location.replace('/?reparado=1');
+        })();
+    </script>
+</body>
+</html>
