@@ -971,6 +971,10 @@ AnnotationController.prototype.initialize = function() {
         #modal-360.inteira .barra-do-nome-360 button {
             pointer-events: auto;
         }
+        /* A fotografia não anda nem acaba: o "Auto" não mandava em nada. */
+        #modal-360.inteira .interruptor-auto {
+            display: none !important;
+        }
 
         /* Num ecrã estreito não sobra nada para espreitar: as janelas dos
            lados dão lugar a uma seta de cada lado do leitor. */
@@ -1499,37 +1503,60 @@ AnnotationController.prototype.enderecoDaParagem360 = function(ann) {
         // para pôr os comandos a pairar sobre a imagem.
         return '/image360.html?src=' + encodeURIComponent(ann.imagePath) + '&inteira=1';
     }
-    return '/video360.html?nome=' + encodeURIComponent(this.videoDaRota360(ann));
+    // "sequencia": a rota não recomeça ao chegar ao fim, avisa cá fora
+    // (ver seguirDepoisDaRota360), como os testemunhos.
+    return '/video360.html?nome=' + encodeURIComponent(this.videoDaRota360(ann)) + '&sequencia=1';
+};
+
+/**
+ * Uma rota que chega ao fim conta como vista e, com o "Auto" ligado, a
+ * seguinte entra sozinha — para o lado por onde se andou, ou para a
+ * direita se ainda não se andou. No fim do percurso não há mais nada a
+ * mostrar: o palco fecha-se e devolve o bairro. Com o "Auto" desligado a
+ * rota fica parada no fim, à espera. É o mesmo que os testemunhos fazem.
+ */
+AnnotationController.prototype.seguirDepoisDaRota360 = function() {
+    const palco = this.palco360;
+    const ann = this.paragem360;
+    if (!palco || !ann || palco.modal.style.display === 'none') {
+        return;
+    }
+    this.marcarComoVisto(this.idDaAnotacao(ann));
+    if (localStorage.getItem('autoplay-videos') !== 'true') {
+        return;
+    }
+    const lista = this.paragens360();
+    if (lista.indexOf(ann) < 0 || lista.length < 2) {
+        this.fecharPalco360();
+        return;
+    }
+    const p = this.percurso360;
+    const sentido = p && p.sentido ? p.sentido : 1;
+    const onde = this.andarNoPercurso(p, lista.length, sentido);
+    if (onde === null) {
+        this.fecharPalco360();
+        return;
+    }
+    this.abrirParagem360(lista[onde], sentido);
 };
 
 /**
  * Cria o grupo de botões do cabeçalho: o interruptor da reprodução
  * automática e o botão de fechar.
  *
+ * O interruptor é o mesmo nos testemunhos e nas rotas 360º, e lembra-se
+ * de um para o outro: ligado, o que acaba passa sozinho ao seguinte.
+ *
  * @param {Function} fecharCallback - O que fazer ao carregar na cruz.
- * @param {boolean} [comAutomatico] - Se o interruptor "Auto" faz falta.
- *   No palco das paragens 360º não faz: as rotas arrancam sempre
- *   sozinhas e a fotografia do alto do bairro não anda, por isso o
- *   interruptor não mandava em nada.
  */
-AnnotationController.prototype.criarBotoesDeTopo = function(fecharCallback, comAutomatico = true) {
+AnnotationController.prototype.criarBotoesDeTopo = function(fecharCallback) {
     const rightGroup = document.createElement('div');
     rightGroup.style.display = 'flex';
     rightGroup.style.alignItems = 'center';
     rightGroup.style.gap = '16px';
 
-    if (!comAutomatico) {
-        const soFechar = document.createElement('button');
-        soFechar.className = 'fechar-palco-btn';
-        soFechar.innerHTML = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>';
-        soFechar.setAttribute('aria-label', 'Fechar');
-        soFechar.title = 'Fechar';
-        soFechar.addEventListener('click', fecharCallback);
-        rightGroup.appendChild(soFechar);
-        return rightGroup;
-    }
-
     const autoPlayContainer = document.createElement('label');
+    autoPlayContainer.className = 'interruptor-auto';
     autoPlayContainer.style.display = 'flex';
     autoPlayContainer.style.alignItems = 'center';
     autoPlayContainer.style.gap = '8px';
@@ -1641,7 +1668,7 @@ AnnotationController.prototype.setupPalco360 = function() {
     titulo.style.fontWeight = '600';
     titulo.style.fontSize = '1.1rem';
     header.appendChild(titulo);
-    header.appendChild(this.criarBotoesDeTopo(() => this.fecharPalco360(), false));
+    header.appendChild(this.criarBotoesDeTopo(() => this.fecharPalco360()));
 
     const moldura = document.createElement('div');
     moldura.className = 'moldura-360';
@@ -1741,6 +1768,15 @@ AnnotationController.prototype.setupPalco360 = function() {
     // mesmo feitio.
     window.addEventListener('resize', () => {
         if (modal.style.display !== 'none') this.medirComandos360();
+    });
+
+    // A página da rota avisa quando o filme chega ao fim. Só conta o aviso
+    // da janela do meio: uma que esteja a sair não manda nada.
+    window.addEventListener('message', (e) => {
+        if (!e.data || e.data.malhaViva !== 'filme360Acabou') return;
+        const janela = moldura.querySelector('iframe');
+        if (!janela || e.source !== janela.contentWindow || this.palco360.aDeslizar) return;
+        this.seguirDepoisDaRota360();
     });
 };
 

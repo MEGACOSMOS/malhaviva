@@ -1286,9 +1286,19 @@
         video.crossOrigin = 'anonymous';
         video.playsInline = true;
         video.webkitPlaysinline = true;
-        video.loop = true;
+        // Aberta no palco das rotas, a rota não recomeça ao chegar ao fim:
+        // pára, e o mapa decide — com o "Auto" ligado passa à seguinte,
+        // como os testemunhos. Dentro dos óculos continua a dar a volta
+        // (ver enter-vr mais abaixo): trocar de página lá fora tirava-os.
+        const emSequencia = urlParams.get('sequencia') === '1';
+        video.loop = !emSequencia;
         video.preload = 'auto';
         assets.appendChild(video);
+        video.addEventListener('ended', () => {
+            if (emSequencia && window.parent !== window) {
+                window.parent.postMessage({ malhaViva: 'filme360Acabou', nome }, window.location.origin);
+            }
+        });
 
         // Se o vídeo não vier — a ligação caiu, o ficheiro não está lá —
         // a rede de segurança diz-o em vez de deixar o quadrado a rodar.
@@ -2363,9 +2373,11 @@
         scene.addEventListener('enter-vr', () => {
             instrucoes.fechar();
             cameraEl.setAttribute('look-controls', 'magicWindowTrackingEnabled', true);
+            video.loop = true;
         });
         scene.addEventListener('exit-vr', () => {
             cameraEl.setAttribute('look-controls', 'magicWindowTrackingEnabled', false);
+            video.loop = !emSequencia;
         });
 
         // Click on 360 video canvas to toggle Play/Pause (avoid triggering on drag)
