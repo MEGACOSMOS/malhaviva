@@ -263,26 +263,59 @@
 
         const ANGULO_LARGO = 80;   // como se chega à fotografia
         const ANGULO_APERTADO = 22; // o mais perto que se pode ir
-        let angulo = ANGULO_LARGO;
+        // A mesma suavidade das rotas 360º (ver video360.html): quanto
+        // demora o ângulo a chegar perto de onde se pediu, em segundos.
+        const SUAVIDADE_DO_ZOOM = 0.12;
+        let angulo = ANGULO_LARGO;      // o ângulo que se vê agora
+        let anguloPedido = ANGULO_LARGO; // para onde está a ir
+
+        // O ângulo não salta para o pedido: vai lá a deslizar, imagem a
+        // imagem, cada vez mais devagar à medida que chega — e um pedido
+        // novo a meio só muda o destino, sem recomeçar nada.
+        let aDeslizarOZoom = false;
+        let instanteAnterior = 0;
+        const deslizarOZoom = (agora) => {
+            const dt = instanteAnterior ? Math.min(0.1, (agora - instanteAnterior) / 1000) : 1 / 60;
+            instanteAnterior = agora;
+            const falta = anguloPedido - angulo;
+            if (Math.abs(falta) < 0.02) {
+                angulo = anguloPedido;
+                aDeslizarOZoom = false;
+            } else {
+                angulo += falta * (1 - Math.exp(-dt / SUAVIDADE_DO_ZOOM));
+            }
+            camara.setAttribute('camera', 'fov', angulo);
+            if (aDeslizarOZoom) requestAnimationFrame(deslizarOZoom);
+        };
 
         const aplicarZoom = (novo) => {
-            angulo = Math.min(ANGULO_LARGO, Math.max(ANGULO_APERTADO, novo));
-            camara.setAttribute('camera', 'fov', angulo);
-            botaoAproximar.disabled = angulo <= ANGULO_APERTADO;
-            botaoAfastar.disabled = angulo >= ANGULO_LARGO;
+            anguloPedido = Math.min(ANGULO_LARGO, Math.max(ANGULO_APERTADO, novo));
+            botaoAproximar.disabled = anguloPedido <= ANGULO_APERTADO;
+            botaoAfastar.disabled = anguloPedido >= ANGULO_LARGO;
             botaoAproximar.style.opacity = botaoAproximar.disabled ? '0.35' : '1';
             botaoAfastar.style.opacity = botaoAfastar.disabled ? '0.35' : '1';
+            if (!aDeslizarOZoom) {
+                aDeslizarOZoom = true;
+                instanteAnterior = 0;
+                requestAnimationFrame(deslizarOZoom);
+            }
         };
 
         // Passo em proporção: perto anda devagar, longe anda depressa, e
         // assim o zoom sente-se igual em qualquer ponto.
         const PASSO = 1.15;
-        botaoAproximar.addEventListener('click', () => aplicarZoom(angulo / PASSO));
-        botaoAfastar.addEventListener('click', () => aplicarZoom(angulo * PASSO));
+        botaoAproximar.addEventListener('click', () => aplicarZoom(anguloPedido / PASSO));
+        botaoAfastar.addEventListener('click', () => aplicarZoom(anguloPedido * PASSO));
 
+        // A roda conta quanto rodou, e não só para que lado: um rato de
+        // roda aos saltos dá o mesmo passo de sempre por cada estalido, e
+        // um tapete táctil, que manda muitos toques pequenos, aproxima aos
+        // poucos em vez de aos pulos.
         palco.addEventListener('wheel', (e) => {
             e.preventDefault();
-            aplicarZoom(e.deltaY > 0 ? angulo * PASSO : angulo / PASSO);
+            const porLinha = e.deltaMode === 1 ? 33 : (e.deltaMode === 2 ? 400 : 1);
+            const rodou = Math.max(-300, Math.min(300, e.deltaY * porLinha));
+            aplicarZoom(anguloPedido * Math.pow(PASSO, rodou / 100));
         }, { passive: false });
 
         // Nos telemóveis, os dois dedos a abrir e a fechar.
@@ -296,7 +329,7 @@
         palco.addEventListener('touchstart', (e) => {
             if (e.touches.length === 2) {
                 distanciaInicial = distanciaEntreDedos(e.touches);
-                anguloInicial = angulo;
+                anguloInicial = anguloPedido;
             }
         }, { passive: true });
         palco.addEventListener('touchmove', (e) => {
@@ -325,8 +358,8 @@
         // cabeça é no W, A, S e D, e disso trata o ficheiro do comando.
         window.addEventListener('keydown', (e) => {
             if (e.altKey || e.ctrlKey || e.metaKey) return;
-            if (e.key === '+' || e.key === '=') aplicarZoom(angulo / PASSO);
-            else if (e.key === '-' || e.key === '_') aplicarZoom(angulo * PASSO);
+            if (e.key === '+' || e.key === '=') aplicarZoom(anguloPedido / PASSO);
+            else if (e.key === '-' || e.key === '_') aplicarZoom(anguloPedido * PASSO);
             else if (e.key === '0') aplicarZoom(ANGULO_LARGO);
             else if (e.key.toLowerCase() === 'r') endireitar();
         });
