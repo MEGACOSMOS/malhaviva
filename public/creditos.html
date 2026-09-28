@@ -257,12 +257,21 @@
             font-weight: 700;
             letter-spacing: -0.02em;
         }
+        /* Os dois logótipos na mesma linha, ao centro e alinhados pelo
+           meio; num ecrã muito estreito, o segundo passa para baixo. */
+        .fim {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: center;
+            gap: 36px 64px;
+        }
         .fim img {
             display: block;
-            margin: 0 auto;
-            width: 160px;
             height: auto;
         }
+        .fim .logo-fcsh { width: 240px; max-width: 100%; }
+        .fim .logo-playcanvas { width: 216px; max-width: 100%; }
 
         @media (max-width: 640px) {
             .page-header { padding: 12px 16px; }
@@ -406,10 +415,13 @@
             </ul>
         </section>
 
-        <!-- No fim, a faculdade onde o projecto foi feito. -->
+        <!-- No fim, a faculdade onde o projecto foi feito e o motor que
+             desenha o bairro, lado a lado e ao centro. -->
         <p class="fim bloco">
-            <img src="/logos/nova-fcsh.png" width="160" height="52"
+            <img class="logo-fcsh" src="/logos/nova-fcsh.png" width="240" height="77"
                  alt="NOVA FCSH — Faculdade de Ciências Sociais e Humanas, Universidade Nova de Lisboa">
+            <img class="logo-playcanvas" src="/logos/playcanvas.svg" width="216" height="41"
+                 alt="PlayCanvas">
         </p>
     </main>
 
