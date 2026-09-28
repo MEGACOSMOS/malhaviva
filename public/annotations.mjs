@@ -1246,9 +1246,13 @@ AnnotationController.prototype.initialize = function() {
             // legenda, nas instruções e nas placas dos óculos. O nome vai
             // por baixo. A fotografia do alto do bairro dispensa as duas
             // coisas: fica só um olho, pousado no céu.
+            //
+            // Os três desenhos (testemunho, rota e olho) têm as mesmas
+            // medidas: 24 pontos no quadrado de 32, com 20 de largura lá
+            // dentro e o mesmo traço — nenhum parece maior nem mais grosso.
             const simbolo = ann.isImage
-                ? `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter">
-                        <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"></path>
+                ? `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter">
+                        <path d="M2 12s3.64-6.36 10-6.36 10 6.36 10 6.36-3.64 6.36-10 6.36-10-6.36-10-6.36Z"></path>
                         <circle cx="12" cy="12" r="3"></circle>
                    </svg>`
                 : `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter">
@@ -1266,10 +1270,10 @@ AnnotationController.prototype.initialize = function() {
         } else {
             el.innerHTML = `
                 <div class="marker-dot ${isViewed ? 'viewed' : ''}">
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter">
-                        <polygon points="3 4 21 4 21 16 12 16 7 21 7 16 3 16"></polygon>
-                        <line x1="8" y1="8" x2="16" y2="8"></line>
-                        <line x1="8" y1="12" x2="12" y2="12"></line>
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter">
+                        <polygon points="2 4 22 4 22 16 12 16 7 21 7 16 2 16"></polygon>
+                        <line x1="7" y1="8" x2="17" y2="8"></line>
+                        <line x1="7" y1="12" x2="12" y2="12"></line>
                     </svg>
                 </div>
                 <div class="marker-label">${ann.label}</div>

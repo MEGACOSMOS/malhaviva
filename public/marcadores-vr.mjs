@@ -61,26 +61,34 @@ function desenharPlaca(ann, nome, visto) {
         c.strokeRect(qx + 1.5, qy + 1.5, lado - 3, lado - 3);
     }
 
-    // O desenho lá dentro, com traço de cantos direitos como no mapa.
+    // O desenho lá dentro, com traço de cantos direitos como no mapa, e
+    // nas mesmas medidas: no mapa o desenho de 24 pontos ocupa 24 dos 32
+    // do quadrado, com um traço de 2.
     c.strokeStyle = '#ffffff';
-    c.lineCap = 'butt';
+    c.lineCap = 'square';
     c.lineJoin = 'miter';
-    c.lineWidth = 8;
-    const u = lado / 24;           // a unidade dos desenhos de 24 pontos
-    const X = (v) => qx + v * u;
-    const Y = (v) => qy + v * u;
+    const u = lado / 32;           // a unidade dos desenhos de 24 pontos
+    const margem = 4 * u;          // o que sobra à volta, como no mapa
+    c.lineWidth = 2 * u;
+    const X = (v) => qx + margem + v * u;
+    const Y = (v) => qy + margem + v * u;
     c.beginPath();
     if (!ann.is360) {
-        // As barras do testemunho.
-        c.moveTo(X(6), Y(6)); c.lineTo(X(6), Y(18));
-        c.moveTo(X(10), Y(9)); c.lineTo(X(10), Y(15));
-        c.moveTo(X(14), Y(3)); c.lineTo(X(14), Y(21));
-        c.moveTo(X(18), Y(5)); c.lineTo(X(18), Y(19));
+        // O balão de fala do testemunho, com as duas linhas de texto.
+        c.moveTo(X(2), Y(4)); c.lineTo(X(22), Y(4)); c.lineTo(X(22), Y(16));
+        c.lineTo(X(12), Y(16)); c.lineTo(X(7), Y(21)); c.lineTo(X(7), Y(16));
+        c.lineTo(X(2), Y(16));
+        c.closePath();
+        c.moveTo(X(7), Y(8)); c.lineTo(X(17), Y(8));
+        c.moveTo(X(7), Y(12)); c.lineTo(X(12), Y(12));
     } else if (ann.isImage) {
         // O olho da fotografia.
-        c.moveTo(X(1), Y(12));
-        c.bezierCurveTo(X(5), Y(5), X(19), Y(5), X(23), Y(12));
-        c.bezierCurveTo(X(19), Y(19), X(5), Y(19), X(1), Y(12));
+        c.moveTo(X(2), Y(12));
+        c.bezierCurveTo(X(2), Y(12), X(5.64), Y(5.64), X(12), Y(5.64));
+        c.bezierCurveTo(X(18.36), Y(5.64), X(22), Y(12), X(22), Y(12));
+        c.bezierCurveTo(X(22), Y(12), X(18.36), Y(18.36), X(12), Y(18.36));
+        c.bezierCurveTo(X(5.64), Y(18.36), X(2), Y(12), X(2), Y(12));
+        c.closePath();
         c.moveTo(X(15), Y(12));
         c.arc(X(12), Y(12), 3 * u, 0, Math.PI * 2);
     } else {
