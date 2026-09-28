@@ -2355,15 +2355,18 @@
 
         <!-- Quatro setas a apontar para fora, ligadas por uma cruz ao
              meio, como o cursor de mover do Windows: é o ícone dos
-             controlos, harmonizado com as diagonais do site. -->
+             controlos. As pontas são cheias, para se verem bem mesmo em
+             pequeno. -->
         <a href="/controlos.html" id="help-btn" class="adaptavel" title="Controlos" data-i18n-title="cab.controlos">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter">
-                    <polyline points="9 5 12 2 15 5"></polyline>
-                    <polyline points="9 19 12 22 15 19"></polyline>
-                    <polyline points="5 9 2 12 5 15"></polyline>
-                    <polyline points="19 9 22 12 19 15"></polyline>
-                    <line x1="12" y1="2" x2="12" y2="22"></line>
-                    <line x1="2" y1="12" x2="22" y2="12"></line>
+                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                    <g fill="currentColor" stroke="none">
+                        <polygon points="12 1, 16 5.5, 8 5.5"></polygon>
+                        <polygon points="12 23, 16 18.5, 8 18.5"></polygon>
+                        <polygon points="1 12, 5.5 8, 5.5 16"></polygon>
+                        <polygon points="23 12, 18.5 8, 18.5 16"></polygon>
+                    </g>
                 </svg>
                 <span class="rotulo-icone" aria-hidden="true" data-i18n="cab.controlos">Controlos</span>
             </a>
@@ -2421,15 +2424,24 @@
             </button>
         </div>
 
-        <!-- Os créditos: uma claquete, com as riscas na diagonal do site.
+        <!-- Os créditos: uma claquete aberta, com o braço na inclinação
+             das diagonais do site. As riscas são cheias, no braço e no
+             topo da claquete, para se lerem mesmo em pequeno.
              Fica à esquerda das definições; quando há óculos de VR, passa
              para a direita do ícone deles (ver arrumarOsOculos). -->
         <a href="/creditos.html" id="creditos-btn" class="adaptavel" aria-label="Créditos" title="Créditos" data-i18n-aria="cab.creditos" data-i18n-title="cab.creditos">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true">
-                <rect x="3" y="9" width="18" height="12"></rect>
-                <path d="M3 9L20 4.5"></path>
-                <path d="M3 9L2.2 5.8L19.2 1.3L20 4.5"></path>
-                <path d="M7.5 7.8L9 3.3M13 6.3L14.5 1.8"></path>
+                <polygon points="3 10.5, 20.39 5.86, 19.28 1.7, 1.89 6.35"></polygon>
+                <rect x="3" y="10.5" width="18" height="10.5"></rect>
+                <line x1="3" y1="14.5" x2="21" y2="14.5"></line>
+                <g fill="currentColor" stroke="none">
+                    <polygon points="7.35 9.34, 10.25 8.57, 7.59 4.82, 4.69 5.6"></polygon>
+                    <polygon points="13.14 7.79, 16.04 7.02, 13.39 3.28, 10.49 4.05"></polygon>
+                    <polygon points="18.94 6.24, 20.39 5.86, 17.74 2.11, 16.29 2.5"></polygon>
+                    <polygon points="7 10.5, 10 10.5, 8.5 14.5, 5.5 14.5"></polygon>
+                    <polygon points="13 10.5, 16 10.5, 14.5 14.5, 11.5 14.5"></polygon>
+                    <polygon points="19 10.5, 21 10.5, 21 13.17, 20.5 14.5, 17.5 14.5"></polygon>
+                </g>
             </svg>
             <span class="rotulo-icone" aria-hidden="true" data-i18n="cab.creditos">Créditos</span>
         </a>
