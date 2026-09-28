@@ -1200,11 +1200,16 @@
             opacity: 0.35;
         }
 
-        /* O marcador em ponto pequeno: o quadrado e o desenho dele. */
+        /* O marcador em ponto pequeno: o quadrado e o desenho dele.
+           24 e não 22: com o Windows a 125% ou 175%, um quadrado de 22 caía
+           em meio ponto do ecrã, e o desenho arredondava para um lado —
+           no vermelho, com os dois traços direitos da moldura, via-se logo
+           fora do centro. Com 24, e o desenho de 16 a 4 de cada lado, tudo
+           cai em pontos inteiros a qualquer escala. */
         .legenda-marcador {
             flex-shrink: 0;
-            width: 22px;
-            height: 22px;
+            width: 24px;
+            height: 24px;
             display: flex;
             align-items: center;
             justify-content: center;
