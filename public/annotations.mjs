@@ -626,8 +626,6 @@ AnnotationController.prototype.initialize = function() {
             display: flex;
             align-items: center;
             gap: var(--janela-espaco);
-            transition: transform var(--passagem);
-            will-change: transform;
         }
 
         /* A cruz, na ponta do ecrã. */
@@ -715,32 +713,6 @@ AnnotationController.prototype.initialize = function() {
             transition: transform var(--passagem), opacity var(--passagem);
         }
 
-        /* A barra de cima, igual à da janela grande, para onde o nome se
-           mudou. Com o rato em cima sobe os últimos passos e acende. */
-        .previa-barra {
-            padding: 16px 24px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-            background: linear-gradient(to bottom, rgba(255,255,255,0.05), transparent);
-            /* A mesma altura exacta da barra do nome da janela do meio (ver
-               --altura-barra-do-nome): a do meio tem o botão de fechar,
-               mais alto do que o nome, e passava dela por um ponto — e na
-               passagem de uma janela para a outra via-se a barra a crescer. */
-            height: var(--altura-barra-do-nome);
-            box-sizing: border-box;
-            display: flex;
-            align-items: center;
-        }
-        .previa-nome {
-            display: block;
-            font-size: 1.1rem;
-            font-weight: 600;
-            color: rgba(255, 255, 255, 0.7);
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            opacity: 0.8;
-        }
-
         .previa-janela {
             position: relative;
             flex: 1 1 auto;
@@ -824,43 +796,37 @@ AnnotationController.prototype.initialize = function() {
             animation: botoes-a-surgir 0.25s ease-out both;
         }
 
-        /* O rodapé, vazio: é o lugar que a barra dos comandos ocupa na
-           janela do meio. Sem ele, a janela que desliza para o centro
-           assentava mais alta do que a que estava lá. A altura vem medida
-           da barra verdadeira, e não escrita à mão. */
-        .previa-rodape {
-            flex: 0 0 auto;
-            height: var(--altura-controlos, 0px);
-            border-top: 1px solid rgba(255, 255, 255, 0.05);
-            background: linear-gradient(to top, rgba(255,255,255,0.05), transparent);
-        }
-
-        /* ---- Os lados dos testemunhos: só a imagem ----
-           Nos testemunhos o leitor é um só e fica sempre no meio. Dos
-           lados não há outros leitores, só uma imagem de cada vídeo, sem
-           barras, à altura da imagem do leitor. Carregar numa delas, ou na
-           seta, troca o vídeo dentro do mesmo leitor. */
-        #video-modal .previa {
+        /* ---- Os lados: só a imagem ----
+           Nos testemunhos e nas rotas 360º o leitor é um só e fica sempre
+           no meio. Dos lados não há outros leitores, só uma imagem de cada
+           vídeo, sem barras, à altura da imagem do leitor. Carregar numa
+           delas, ou na seta, troca o vídeo dentro do mesmo leitor. */
+        #video-modal .previa,
+        #modal-360 .previa {
             transition: transform var(--passagem), opacity var(--passagem), translate var(--passagem);
         }
-        #video-modal .previa:hover {
+        #video-modal .previa:hover,
+        #modal-360 .previa:hover {
             opacity: 0.8;
         }
         /* Ao trocar, as imagens dos lados deslizam no mesmo sentido do
            vídeo: saem para lá a apagar-se e as novas chegam de cá. */
-        #video-modal .previa.a-trocar {
+        #video-modal .previa.a-trocar,
+        #modal-360 .previa.a-trocar {
             opacity: 0;
             translate: calc(var(--sentido-da-troca, 1) * -80px) 0;
             transition-duration: 0.2s;
             transition-timing-function: ease-in;
         }
-        #video-modal .previa.a-chegar {
+        #video-modal .previa.a-chegar,
+        #modal-360 .previa.a-chegar {
             opacity: 0;
             translate: calc(var(--sentido-da-troca, 1) * 80px) 0;
             transition: none;
         }
         @media (min-width: 901px) {
-            #video-modal .previa {
+            #video-modal .previa,
+            #modal-360 .previa {
                 height: auto;
                 aspect-ratio: 16 / 9;
             }
@@ -868,10 +834,12 @@ AnnotationController.prototype.initialize = function() {
                nome em cima e a dos comandos em baixo não têm a mesma
                altura. Esta conta põe as imagens dos lados e as setas à
                altura do meio da imagem, e não do meio da janela. */
-            #video-modal .previa {
+            #video-modal .previa,
+            #modal-360 .previa {
                 top: calc((var(--altura-barra-nome, 0px) - var(--altura-controlos, 0px)) / 2);
             }
-            #video-modal .seta-do-palco {
+            #video-modal .seta-do-palco,
+            #modal-360 .seta-do-palco {
                 margin-top: calc((var(--altura-barra-nome, 0px) - var(--altura-controlos, 0px)) / 2);
             }
         }
@@ -904,23 +872,28 @@ AnnotationController.prototype.initialize = function() {
             transform: translateX(calc(var(--sentido-da-troca, 1) * -100%));
         }
 
+        /* ---- A troca de rota dentro da janela, como nos testemunhos: a
+           rota que se deixa sai por um lado, calada, e a imagem do primeiro
+           instante da nova entra pelo outro. A janela fica parada. Da que
+           sai só vai a imagem: a barra dos comandos dela é cortada logo, e
+           fica a de reserva, no sítio, até chegar a da nova. ---- */
+        .moldura-360 {
+            overflow: hidden;
+        }
+        .moldura-360 .a-sair {
+            transition: transform var(--passagem);
+            transform: translateX(calc(var(--sentido-da-troca, 1) * -100%));
+        }
+        .moldura-360 iframe.a-sair {
+            clip-path: inset(0 0 var(--altura-controlos, 0px) 0);
+        }
+        .moldura-360 .previa-do-meio.pronta-a-entrar {
+            transform: translateX(calc(var(--sentido-da-troca, 1) * 100%));
+        }
+        .moldura-360 .previa-do-meio.a-entrar {
+            transition: transform var(--passagem);
+        }
 
-        /* ---- A passagem de uma janela para a outra: a tira desliza um
-           lugar, a que vinha de lado cresce e acende, a do meio encolhe e
-           apaga-se. ---- */
-        .carrossel.sem-passagem,
-        .carrossel.sem-passagem .previa,
-        .carrossel.sem-passagem .janela-do-player {
-            transition: none;
-        }
-        .carrossel.a-deslizar .previa.entra {
-            transform: scale(1);
-            opacity: 1;
-        }
-        .carrossel.a-deslizar .janela-do-player {
-            transform: scale(var(--previa-escala));
-            opacity: var(--previa-opacidade);
-        }
         /* A janela do meio nasce um pouco encolhida e assenta ao abrir. */
         .janela-do-player {
             transform: scale(0.95);
@@ -1008,10 +981,6 @@ AnnotationController.prototype.initialize = function() {
             /* Sem janelas dos lados: só as setas, que recebem o toque. */
             .previa {
                 display: none;
-            }
-            .carrossel.a-deslizar .janela-do-player {
-                transform: none;
-                opacity: 1;
             }
 
             .seta-do-palco {
@@ -1676,23 +1645,16 @@ AnnotationController.prototype.setupPalco360 = function() {
     content.appendChild(header);
     content.appendChild(moldura);
 
-    // As janelas dos lados. Numa paragem há duas coisas possíveis a
-    // espreitar: a fotografia do alto, que é um ficheiro de imagem, ou o
-    // primeiro instante de uma rota, que é uma fotografia a dar a volta
-    // toda, vista pela mesma câmara com que a rota começa (ver
-    // previa-360.mjs). Cabem as duas na janela, e mostra-se a que for
-    // da vez.
+    // Dos lados, como nos testemunhos, só a imagem — sem barras. Numa
+    // paragem há duas coisas possíveis a espreitar: a fotografia do alto,
+    // que é um ficheiro de imagem, ou o primeiro instante de uma rota, que
+    // é uma fotografia a dar a volta toda, vista pela mesma câmara com que
+    // a rota começa (ver previa-360.mjs). Cabem as duas na janela, e
+    // mostra-se a que for da vez.
     const criarPrevia = (lado, sentido) => {
         const previa = document.createElement('button');
         previa.type = 'button';
         previa.className = 'janela-do-palco previa ' + lado;
-
-        const barra = document.createElement('div');
-        barra.className = 'previa-barra';
-        const nome = document.createElement('span');
-        nome.className = 'previa-nome';
-        barra.appendChild(nome);
-        previa.appendChild(barra);
 
         const janela = document.createElement('div');
         janela.className = 'previa-janela';
@@ -1703,10 +1665,6 @@ AnnotationController.prototype.setupPalco360 = function() {
         janela.appendChild(tela);
         janela.appendChild(foto);
         previa.appendChild(janela);
-
-        const rodape = document.createElement('div');
-        rodape.className = 'previa-rodape';
-        previa.appendChild(rodape);
 
         previa.addEventListener('click', () => this.saltarParagem360(sentido));
         return previa;
@@ -1753,7 +1711,6 @@ AnnotationController.prototype.setupPalco360 = function() {
 
     this.palco360 = {
         modal,
-        tira: carrossel,
         meio: content,
         esquerda,
         direita,
@@ -1774,8 +1731,8 @@ AnnotationController.prototype.setupPalco360 = function() {
     // da janela do meio: uma que esteja a sair não manda nada.
     window.addEventListener('message', (e) => {
         if (!e.data || e.data.malhaViva !== 'filme360Acabou') return;
-        const janela = moldura.querySelector('iframe');
-        if (!janela || e.source !== janela.contentWindow || this.palco360.aDeslizar) return;
+        const janela = this.janelaDoMeio360();
+        if (!janela || e.source !== janela.contentWindow || this.palco360.aTrocar) return;
         this.seguirDepoisDaRota360();
     });
 };
@@ -1783,8 +1740,9 @@ AnnotationController.prototype.setupPalco360 = function() {
 /**
  * Abre uma paragem 360º no palco.
  *
- * Com o palco já aberto e um sentido dado, a troca faz-se com a tira a
- * deslizar um lugar, como nos testemunhos.
+ * Com o palco já aberto e um sentido dado, a janela fica onde está e é só
+ * a rota lá dentro que troca (ver {@link trocarNaJanela360}), como nos
+ * testemunhos.
  *
  * @param {object} ann - A paragem a abrir.
  * @param {number} [sentido] - -1 para a anterior, 1 para a seguinte.
@@ -1798,11 +1756,80 @@ AnnotationController.prototype.abrirParagem360 = function(ann, sentido) {
     }
     const palco = this.palco360;
     const jaAberto = palco.modal.style.display !== 'none';
-    if (jaAberto && sentido && !palco.aDeslizar) {
-        this.deslizarPalco(palco, sentido, () => this.mostrarParagem360(ann));
+    if (jaAberto && sentido) {
+        this.trocarNaJanela360(ann, sentido);
         return;
     }
+    this.arrumarTrocaNaJanela360();
     this.mostrarParagem360(ann);
+};
+
+/**
+ * A janela da página da paragem que está a dar — e não a de uma que esteja
+ * a sair a deslizar.
+ *
+ * @returns {HTMLIFrameElement|null} A janela, se já existir.
+ */
+AnnotationController.prototype.janelaDoMeio360 = function() {
+    return this.palco360 ? this.palco360.moldura.querySelector('iframe:not(.a-sair)') : null;
+};
+
+/**
+ * Troca a rota dentro da janela que já está aberta.
+ *
+ * A janela não se mexe: é a imagem lá dentro que desliza, como num
+ * carrossel de diapositivos. A rota que se deixa cala-se e sai por um
+ * lado, a imagem do primeiro instante da nova entra pelo outro — e a
+ * página dela nasce por baixo, como ao abrir. As imagens dos lados
+ * deslizam no mesmo sentido e voltam já com as vizinhas novas.
+ *
+ * @param {object} ann - A paragem a abrir.
+ * @param {number} sentido - -1 para a anterior, 1 para a seguinte.
+ */
+AnnotationController.prototype.trocarNaJanela360 = function(ann, sentido) {
+    const palco = this.palco360;
+    this.arrumarTrocaNaJanela360();
+    palco.aTrocar = true;
+    palco.modal.style.setProperty('--sentido-da-troca', sentido);
+
+    // O que está na janela sai: a página da rota, calada já, e a imagem
+    // parada que ainda a tapasse.
+    palco.moldura.querySelectorAll('iframe, .previa-do-meio').forEach((el) => {
+        if (el.tagName === 'IFRAME') {
+            try {
+                const filme = el.contentDocument && el.contentDocument.getElementById('video360');
+                if (filme) filme.pause();
+            } catch (e) { /* outra origem: sai a tocar, mas sai já */ }
+        }
+        el.classList.add('a-sair');
+    });
+
+    this.mostrarParagem360(ann, sentido);
+
+    // A imagem da nova fica à espera do lado de onde vem, e desliza.
+    const entra = palco.moldura.querySelector('.previa-do-meio:not(.a-sair)');
+    if (entra) {
+        entra.classList.add('pronta-a-entrar');
+        void entra.offsetWidth;
+        entra.classList.remove('pronta-a-entrar');
+        entra.classList.add('a-entrar');
+    }
+    const demora = (parseFloat(getComputedStyle(palco.modal).getPropertyValue('--passagem')) || 0.45) * 1000;
+    palco.esperaDaTroca = setTimeout(() => this.arrumarTrocaNaJanela360(), demora + 50);
+};
+
+/**
+ * Acaba a troca dentro da janela: tira de lá o que estava a sair.
+ */
+AnnotationController.prototype.arrumarTrocaNaJanela360 = function() {
+    const palco = this.palco360;
+    if (!palco) {
+        return;
+    }
+    clearTimeout(palco.esperaDaTroca);
+    palco.moldura.querySelectorAll('.a-sair').forEach(el => el.remove());
+    palco.moldura.querySelectorAll('.a-entrar').forEach(el => el.classList.remove('a-entrar'));
+    palco.aTrocar = false;
 };
 
 /**
@@ -1827,17 +1854,21 @@ AnnotationController.prototype.saltarParagem360 = function(sentido) {
  * Põe uma paragem na janela do meio e as vizinhas nas dos lados.
  *
  * @param {object} ann - A paragem a mostrar.
+ * @param {number} [sentido] - Ao trocar dentro da janela aberta, o lado
+ *     para onde se passou (ver {@link trocarNaJanela360}).
  */
-AnnotationController.prototype.mostrarParagem360 = function(ann) {
+AnnotationController.prototype.mostrarParagem360 = function(ann, sentido) {
     const palco = this.palco360;
     this.paragem360 = ann;
     this.marcarComoVisto(this.idDaAnotacao(ann));
 
     // O que está na barra do nome surge a esbater: ao abrir, depois de a
-    // janela assentar; ao passar de uma paragem para a outra, logo.
+    // janela assentar; ao trocar de rota na janela, logo — o nome também,
+    // que é o mesmo sítio com outra rota.
     const aAbrir = palco.modal.style.display === 'none';
+    const aTrocar = !aAbrir && !!sentido;
     palco.titulo.textContent = this.nomeDaParagem360(ann);
-    fazerSurgir({ demora: aAbrir ? '0.45s' : '0s', soBotoes: !aAbrir }, palco.barraDoNome);
+    fazerSurgir({ demora: aAbrir ? '0.45s' : '0s' }, palco.barraDoNome);
     // A altura da barra dos comandos da página de lá só se mede quando
     // ela carrega; até lá vale a última medida do mesmo tipo de paragem
     // (lembrada de visita para visita), para a janela nascer já do
@@ -1847,16 +1878,22 @@ AnnotationController.prototype.mostrarParagem360 = function(ann) {
     if (alturaLembrada) {
         palco.modal.style.setProperty('--altura-controlos', alturaLembrada + 'px');
     }
-    palco.moldura.innerHTML = '';
+    // Ao trocar, o que lá estava fica a sair a deslizar; ao abrir, a
+    // janela começa vazia.
+    if (!aTrocar) {
+        palco.moldura.innerHTML = '';
+    }
     // O rodapé de reserva e a imagem parada, que surgem com a barra do
     // nome. A página da rota só é criada meio segundo depois: montar a
     // cena dela ocupa o navegador, e criada logo travava estas animações
     // a meio — as barras ficavam escuras enquanto o quadrado de espera
     // rodava.
-    const rodape = document.createElement('div');
-    rodape.className = 'rodape-do-meio';
-    rodape.setAttribute('aria-hidden', 'true');
-    palco.moldura.appendChild(rodape);
+    if (!palco.moldura.querySelector('.rodape-do-meio')) {
+        const rodape = document.createElement('div');
+        rodape.className = 'rodape-do-meio';
+        rodape.setAttribute('aria-hidden', 'true');
+        palco.moldura.appendChild(rodape);
+    }
     this.tapar360EnquantoChega(ann);
 
     clearTimeout(this.esperaDaJanela360);
@@ -1874,12 +1911,12 @@ AnnotationController.prototype.mostrarParagem360 = function(ann) {
             // voltar cá fora. Sem isto o foco ficava no marcador, atrás
             // da janela, e o espaço voltava a abrir a paragem que já
             // estava aberta. Sem deslocar nada: a dar o foco, o navegador
-            // puxa a janela para a vista, e com a tira a meio de um
+            // puxa a janela para a vista, e com uma imagem a meio de um
             // deslize arrastava o palco todo para o lado — e deixava-o lá.
             janela.focus({ preventScroll: true });
         });
         // Por cima do rodapé de reserva, por baixo da imagem parada.
-        palco.moldura.insertBefore(janela, palco.moldura.querySelector('.previa-do-meio'));
+        palco.moldura.insertBefore(janela, palco.moldura.querySelector('.previa-do-meio:not(.a-sair)'));
     }, 500);
 
     const lista = this.paragens360();
@@ -1898,12 +1935,37 @@ AnnotationController.prototype.mostrarParagem360 = function(ann) {
     if (aAbrir || !this.percurso360) {
         this.percurso360 = this.comecarPercurso(onde);
     }
-    if (!avulso && lista.length > 1) {
+    const arrumarLados = () => {
+        if (avulso || lista.length < 2) return;
         const lados = this.ladosDoPercurso(this.percurso360, lista);
         this.arrumarLado(palco.setaEsquerda, palco.esquerda, BICO_ESQUERDA, lados.esquerda.cruz);
         this.arrumarLado(palco.setaDireita, palco.direita, BICO_DIREITA, lados.direita.cruz);
         if (lados.esquerda.ann) this.encherPrevia360(palco.esquerda, lados.esquerda.ann);
         if (lados.direita.ann) this.encherPrevia360(palco.direita, lados.direita.ann);
+    };
+
+    // Ao trocar dentro da janela, as imagens dos lados deslizam para lá a
+    // apagar-se, mudam para as vizinhas novas, e chegam de cá a acender —
+    // como nos testemunhos.
+    clearTimeout(this.esperaDosLados360);
+    const imagensDosLados = [palco.esquerda, palco.direita];
+    if (aTrocar) {
+        imagensDosLados.forEach(lado => {
+            lado.classList.remove('a-chegar');
+            lado.classList.add('a-trocar');
+        });
+        this.esperaDosLados360 = setTimeout(() => {
+            arrumarLados();
+            imagensDosLados.forEach(lado => {
+                lado.classList.remove('a-trocar');
+                lado.classList.add('a-chegar');
+            });
+            void palco.modal.offsetWidth;
+            imagensDosLados.forEach(lado => lado.classList.remove('a-chegar'));
+        }, 200);
+    } else {
+        imagensDosLados.forEach(lado => lado.classList.remove('a-trocar', 'a-chegar'));
+        arrumarLados();
     }
 
     abrirDeRepente(palco.modal);
@@ -1973,7 +2035,7 @@ AnnotationController.prototype.tapar360EnquantoChega = function(ann) {
     // mostra por baixo — e assim nunca se ouve o filme com a imagem
     // parada por cima, nem se vê o preto de a cena ainda estar a nascer.
     const aoAviso = (e) => {
-        const janela = palco.moldura.querySelector('iframe');
+        const janela = this.janelaDoMeio360();
         if (!janela || e.source !== janela.contentWindow || !e.data) return;
         if (e.data.malhaViva === 'filme360aAndar' || e.data.malhaViva === 'botao360aEspera' ||
             e.data.malhaViva === 'aviso360') {
@@ -2001,8 +2063,10 @@ AnnotationController.prototype.encherPrevia360 = function(previa, ann) {
         return;
     }
     const nome = this.nomeDaParagem360(ann);
-    previa.querySelector('.previa-nome').textContent = nome;
     previa.title = nome;
+    // A imagem do lado não tem o nome escrito à vista: quem não vê o ecrã
+    // ouve qual é a paragem que ela abre.
+    previa.setAttribute('aria-label', this.nomeAcessivel(ann));
 
     const tela = previa.querySelector('.previa-janela canvas');
     const foto = previa.querySelector('.previa-janela img');
@@ -2045,7 +2109,7 @@ AnnotationController.prototype.medirComandos360 = function() {
     if (!palco) {
         return;
     }
-    const janela = palco.moldura.querySelector('iframe');
+    const janela = this.janelaDoMeio360();
     let barra = null;
     try {
         barra = janela && janela.contentDocument &&
@@ -2119,8 +2183,11 @@ AnnotationController.prototype.fecharPalco360 = function() {
     if (this.paragem360) {
         this.marcarComoUltima(this.idDaAnotacao(this.paragem360));
     }
-    // Uma página da rota que ainda estivesse para nascer já não nasce.
+    // Uma página da rota que ainda estivesse para nascer já não nasce, e
+    // uma troca que estivesse a meio acaba já.
     clearTimeout(this.esperaDaJanela360);
+    clearTimeout(this.esperaDosLados360);
+    this.arrumarTrocaNaJanela360();
 
     palco.modal.style.opacity = '0';
     palco.meio.classList.remove('aberta');
@@ -2473,10 +2540,9 @@ AnnotationController.prototype.setupModal = function() {
     carrossel.appendChild(content);
     carrossel.appendChild(this.previaDireita);
     // O palco dos testemunhos, arrumado como o das paragens 360º: é o
-    // mesmo desenho, e por isso as passagens são feitas pelo mesmo sítio.
+    // mesmo desenho, e por isso é medido pelo mesmo sítio.
     this.palcoDosTestemunhos = {
         modal: this.modal,
-        tira: carrossel,
         meio: content,
         esquerda: this.previaEsquerda,
         direita: this.previaDireita,
@@ -3222,54 +3288,6 @@ AnnotationController.prototype.arrumarImagemDeAntes = function() {
     if (this.imagemDeAntes) {
         this.imagemDeAntes.classList.remove('a-ver');
     }
-};
-
-/**
- * A passagem de uma janela para a outra, como um diapositivo empurrado.
- *
- * É a passagem das paragens 360º; os testemunhos trocam dentro do leitor
- * (ver {@link trocarNoLeitor}).
- *
- * @param {object} palco - A tira, a janela do meio e as dos lados.
- * @param {number} sentido - -1 para a esquerda, 1 para a direita.
- * @param {Function} trocar - O que fazer no instante em que se troca.
- */
-AnnotationController.prototype.deslizarPalco = function(palco, sentido, trocar) {
-    const tira = palco.tira;
-    const entra = sentido > 0 ? palco.direita : palco.esquerda;
-    if (!tira || !entra) {
-        trocar();
-        return;
-    }
-
-    palco.aDeslizar = true;
-
-    // O passo é medido no próprio palco, e não escrito à mão: assim
-    // acompanha o tamanho do ecrã sem ninguém lhe tocar.
-    const largura = palco.meio.offsetWidth;
-    const espaco = parseFloat(getComputedStyle(tira).gap) || 0;
-    const passo = largura + espaco;
-
-    entra.classList.add('entra');
-    tira.classList.add('a-deslizar');
-    tira.style.transform = 'translateX(' + (-sentido * passo) + 'px)';
-
-    const demora = (parseFloat(getComputedStyle(tira).transitionDuration) || 0.45) * 1000;
-
-    setTimeout(() => {
-        // Chegada: troca-se o que está nas janelas e põe-se a tira no
-        // sítio outra vez, tudo no mesmo instante e sem animação, para a
-        // volta ao lugar não se ver.
-        tira.classList.add('sem-passagem');
-        tira.classList.remove('a-deslizar');
-        entra.classList.remove('entra');
-        tira.style.transform = 'none';
-        trocar();
-
-        void tira.offsetWidth;
-        tira.classList.remove('sem-passagem');
-        palco.aDeslizar = false;
-    }, demora);
 };
 
 AnnotationController.prototype.abrirTestemunho = function(nome, title, sentido, oldCenterFrame) {
