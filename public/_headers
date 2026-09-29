@@ -4,17 +4,23 @@
 # "sim" sem ficheiro nenhum. É o que impede alguém de abrir uma versão
 # antiga da página misturada com pedaços novos — e ficar a olhar para um
 # ecrã preto sem perceber porquê.
+#
+# E nem se guardam: "no-store". São ficheiros pequenos, e o Chrome às vezes
+# encravava numa entrada da cache deles — a página ficava branca, presa
+# antes de se desenhar, até se apagarem os dados do site. Sem entrada na
+# cache, não há nada que encrave. (O motor e o bairro, que são pesados,
+# continuam guardados; ver mais abaixo.)
 /
-  Cache-Control: no-cache
+  Cache-Control: no-store
 
 /*.html
-  Cache-Control: no-cache
+  Cache-Control: no-store
 
 /*.js
-  Cache-Control: no-cache
+  Cache-Control: no-store
 
 /*.mjs
-  Cache-Control: no-cache
+  Cache-Control: no-store
 
 # O motor 3D tem a versão no nome do ficheiro: um ficheiro com aquele nome
 # nunca muda, por isso pode ficar guardado um ano sem voltar a perguntar.

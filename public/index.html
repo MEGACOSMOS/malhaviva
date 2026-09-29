@@ -64,9 +64,28 @@
 
         var marcar = function (fase) { escrever(CHAVE, JSON.stringify({ quando: agora, fase: fase })); };
         marcar('pagina');
+
+        // O vigia: não espera que alguém carregue em F5. Enquanto a página
+        // está presa à espera de um ficheiro, o navegador continua a
+        // contar o tempo, e este relógio corre na mesma. Se ao fim dele a
+        // página ainda nem chegou ao corpo (a tela branca), ou o código do
+        // site ainda não correu, vai-se reparar — uma vez por sessão, para
+        // nunca andar às voltas.
+        var jaReparou = acabadoDeReparar;
+        try { jaReparou = jaReparou || sessionStorage.getItem('reparado') === '1'; } catch (e) { /* segue */ }
+        if (acabadoDeReparar) {
+            try { sessionStorage.setItem('reparado', '1'); } catch (e) { /* segue */ }
+        }
+        var reparar = function () {
+            if (jaReparou || !window.guardaDoArranque || window.guardaDoArranque.fase !== 'pagina') return;
+            window.location.replace('/limpar?idioma=' + encodeURIComponent(ler('idioma') || ''));
+        };
+        setTimeout(function () { if (!document.body) reparar(); }, 8000);
+        setTimeout(reparar, 30000);
         window.guardaDoArranque = {
-            codigoCorreu: function () { marcar('bairro'); },
-            bairroChegou: function () { apagar(CHAVE); }
+            fase: 'pagina',
+            codigoCorreu: function () { this.fase = 'bairro'; marcar('bairro'); },
+            bairroChegou: function () { this.fase = 'pronto'; apagar(CHAVE); }
         };
     })();
     </script>
