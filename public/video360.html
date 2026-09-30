@@ -199,7 +199,12 @@
            isso fica recolhida: a rota vê-se toda, sem uma tarja preta a
            tapar-lhe o rodapé, mesmo enquanto se arrasta a vista para os
            lados. Só volta a espreitar quando o rato desce ao fundo da
-           imagem, que é onde ela mora. */
+           imagem, que é onde ela mora.
+
+           Aberta no palco do mapa ("inteira"), a rota enche o ecrã da
+           mesma maneira, e a barra faz o mesmo — e sobe também quando o
+           palco o pede, com as outras peças que ele tem por cima dela. */
+        body.inteira .video-controls,
         body:fullscreen .video-controls {
             position: absolute;
             bottom: 0;
@@ -210,6 +215,7 @@
             transform: translateY(100%);
             z-index: 1000;
         }
+        body.inteira.barra-a-espreitar .video-controls,
         body:fullscreen.barra-a-espreitar .video-controls {
             transform: translateY(0);
         }
@@ -917,6 +923,14 @@
     </style>
 </head>
 <body class="a-carregar">
+    <script>
+        // No palco do mapa a rota enche o ecrã e a barra fica recolhida
+        // por cima dela. Dito já aqui, antes de a página se desenhar, para
+        // a barra nunca aparecer por baixo da imagem e saltar depois.
+        if (new URLSearchParams(window.location.search).get('inteira') === '1') {
+            document.body.classList.add('inteira');
+        }
+    </script>
     <!-- A imagem em cima, os comandos em baixo. A cena é "embedded"
          para caber neste sítio em vez de tomar a página toda. -->
     <div id="palco-360">
@@ -1690,17 +1704,45 @@
             porOSom();
         });
 
+        // ---- No palco do mapa ----
+        //
+        // Aberta no palco das paragens, a rota enche a janela do navegador
+        // e o palco tem peças por cima dela — o nome, as setas e as
+        // imagens dos lados — que aparecem quando o rato mexe e se somem
+        // quando ele pára. O rato, aqui dentro, só esta página o vê: por
+        // isso diz-se lá para fora quando mexe, e quando começa a arrastar
+        // a vista, que é quando as peças saem da frente. O palco, por sua
+        // vez, diz cá para dentro quando as peças estão à vista — a barra
+        // dos comandos vai com elas — e quando está em ecrã inteiro.
+        const noPalco = document.body.classList.contains('inteira') && window.parent !== window;
+        let comandosDoPalco = false;
+        const avisarOPalco = (gesto) => {
+            if (!noPalco) return;
+            window.parent.postMessage({ malhaViva: 'rato360', gesto, nome }, window.location.origin);
+        };
+
+        const ICONE_ECRA_INTEIRO = fullscreenBtn.innerHTML;
+        const ICONE_SAIR_DO_ECRA = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="square" stroke-linejoin="miter"><path d="M3 9h6V3 M21 9h-6V3 M21 15h-6v6 M3 15h6v6"></path></svg>';
+        const pintarBotaoDoEcra = (dentro) => {
+            fullscreenBtn.innerHTML = dentro ? ICONE_SAIR_DO_ECRA : ICONE_ECRA_INTEIRO;
+        };
+
+        // No palco, quem vai a ecrã inteiro é o palco todo, com as setas dos
+        // lados e a cruz de fechar. O pedido é feito daqui mesmo, no
+        // instante do clique, e não por recado: o navegador só deixa ir a
+        // ecrã inteiro enquanto dura o toque, e um recado chega depois.
+        // Aberta sozinha, vai esta página.
         fullscreenBtn.addEventListener('click', () => {
-            const alvo = document.documentElement;
+            const palco = noPalco && window.frameElement && window.frameElement.closest('#modal-360');
+            const alvo = palco || document.documentElement;
+            const doc = alvo.ownerDocument;
             const entrar = alvo.requestFullscreen || alvo.webkitRequestFullscreen;
-            const sair = document.exitFullscreen || document.webkitExitFullscreen;
+            const sair = doc.exitFullscreen || doc.webkitExitFullscreen;
             try {
-                if (!document.fullscreenElement) {
-                    const pedido = entrar.call(alvo);
-                    if (pedido && pedido.catch) pedido.catch(err => console.log(err));
-                } else {
-                    sair.call(document);
-                }
+                const pedido = (doc.fullscreenElement || doc.webkitFullscreenElement)
+                    ? sair.call(doc)
+                    : entrar.call(alvo);
+                if (pedido && pedido.catch) pedido.catch(err => console.log(err));
             } catch (e) { console.log(e); }
         });
 
@@ -1708,11 +1750,7 @@
             // A cena tem de se voltar a medir para encher o novo tamanho.
             window.dispatchEvent(new Event('resize'));
             if (scene && scene.resize) setTimeout(() => scene.resize(), 60);
-            if (document.fullscreenElement) {
-                fullscreenBtn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="square" stroke-linejoin="miter"><path d="M3 9h6V3 M21 9h-6V3 M21 15h-6v6 M3 15h6v6"></path></svg>';
-            } else {
-                fullscreenBtn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="square" stroke-linejoin="miter"><path d="M8 3H3v5m18 0V3h-5m0 18h5v-5M3 16v5h5"></path></svg>';
-            }
+            pintarBotaoDoEcra(!!document.fullscreenElement);
         });
 
         // --- Menu das resoluções ---
@@ -1879,9 +1917,13 @@
             return Math.max(80, Math.min(altura + 40, window.innerHeight * 0.25));
         };
 
+        // No palco a barra está sempre por cima da imagem, como em ecrã
+        // inteiro, e sobe também com as peças do palco — e não desce com o
+        // menu das resoluções aberto, que vai com ela.
         const arrumarBarra = () => {
-            const espreita = !document.fullscreenElement ||
-                ratoNoFundo || tecladoNaBarra;
+            const recolhida = !!document.fullscreenElement || noPalco;
+            const espreita = !recolhida || ratoNoFundo || tecladoNaBarra ||
+                comandosDoPalco || qualityMenu.classList.contains('show');
             document.body.classList.toggle('barra-a-espreitar', espreita);
         };
 
@@ -1924,7 +1966,64 @@
             ratoNoFundo = false;
             arrumarBarra();
         });
+        // O rato que sai da página já não está no fundo dela.
+        document.documentElement.addEventListener('mouseleave', () => {
+            ratoNoFundo = false;
+            arrumarBarra();
+        });
         arrumarBarra();
+
+        if (noPalco) {
+            // O rato que mexe sem arrastar — conta-se lá fora, no máximo
+            // dez vezes por segundo, que é quanto basta para as peças não
+            // se irem embora debaixo dele.
+            let ultimoAviso = 0;
+            let ultimoX = null;
+            let ultimoY = null;
+            let premidoEm = null;
+            window.addEventListener('pointerdown', (e) => {
+                if (e.pointerType === 'mouse') premidoEm = { x: e.clientX, y: e.clientY };
+            });
+            window.addEventListener('pointerup', () => { premidoEm = null; });
+            window.addEventListener('pointermove', (e) => {
+                if (e.pointerType !== 'mouse') return;
+                // Só conta o rato que andou mesmo: o navegador também avisa
+                // quando é o que está por baixo dele que muda.
+                if (e.screenX === ultimoX && e.screenY === ultimoY) return;
+                ultimoX = e.screenX;
+                ultimoY = e.screenY;
+                if (e.buttons) {
+                    // A arrastar a vista: as peças saem da frente. Só
+                    // depois de o rato andar um bocado, para um clique de
+                    // pausar não contar como arrastar.
+                    if (comandosDoPalco && premidoEm &&
+                        Math.hypot(e.clientX - premidoEm.x, e.clientY - premidoEm.y) > 10) {
+                        avisarOPalco('arrasta');
+                    }
+                    return;
+                }
+                const agora = performance.now();
+                if (agora - ultimoAviso < 100) return;
+                ultimoAviso = agora;
+                avisarOPalco('mexeu');
+            });
+
+            window.addEventListener('message', (e) => {
+                if (e.source !== window.parent || !e.data) return;
+                if (e.data.malhaViva === 'comandos360') {
+                    comandosDoPalco = !!e.data.aVer;
+                    arrumarBarra();
+                    // Com as peças, vai-se o rato — se o filme estiver a
+                    // andar e ele não estiver pousado na barra.
+                    if (!comandosDoPalco && !video.paused && !barraControlos.matches(':hover')) {
+                        clearTimeout(ratoParado);
+                        document.body.classList.add('hide-cursor');
+                    }
+                } else if (e.data.malhaViva === 'ecraInteiro360') {
+                    pintarBotaoDoEcra(!!e.data.dentro);
+                }
+            });
+        }
 
         // ---- Recuar, avançar e endireitar a vista ----
         const recuarBtn = document.getElementById('recuar-btn');
@@ -2385,20 +2484,30 @@
         window.addEventListener('mousedown', (e) => {
             mousedownPos = {x: e.clientX, y: e.clientY};
         });
+        // No palco, num ecrã de toque e com as peças do palco escondidas,
+        // o primeiro toque na imagem só as traz à vista, e não pára o
+        // filme — é o que qualquer leitor de telemóvel faz. Vê-se isso ao
+        // pousar o dedo, antes de o toque as mostrar.
+        let toqueParaVer = false;
         window.addEventListener('touchstart', (e) => {
             if (e.touches.length > 0) {
                 mousedownPos = {x: e.touches[0].clientX, y: e.touches[0].clientY};
             }
+            toqueParaVer = noPalco && !comandosDoPalco;
         });
-        
-        const handleInteractionEnd = (clientX, clientY, target) => {
+
+        const handleInteractionEnd = (clientX, clientY, target, porToque) => {
             if (target.closest('.video-controls') || target.closest('#play-overlay') || target.closest('.big-play-btn')) return;
-            
+
             const dx = clientX - mousedownPos.x;
             const dy = clientY - mousedownPos.y;
             const dist = Math.sqrt(dx*dx + dy*dy);
-            
+
             if (dist < 10 && target.tagName.toLowerCase() === 'canvas') {
+                if (porToque && noPalco) {
+                    avisarOPalco('mexeu');
+                    if (toqueParaVer) return;
+                }
                 // O clique único espera um instante: se vier um segundo
                 // atrás dele, o que se queria era saltar e não pausar.
                 clearTimeout(cliqueSozinho);
@@ -2417,12 +2526,17 @@
             saltar(e.clientX < window.innerWidth / 2 ? -SALTO : SALTO);
         });
 
+        // Depois de um toque, o navegador faz de conta que houve também um
+        // clique de rato no mesmo sítio. Esse não conta: o toque já contou.
+        let ultimoToque = 0;
         window.addEventListener('mouseup', (e) => {
-            handleInteractionEnd(e.clientX, e.clientY, e.target);
+            if (performance.now() - ultimoToque < 800) return;
+            handleInteractionEnd(e.clientX, e.clientY, e.target, false);
         });
         window.addEventListener('touchend', (e) => {
+            ultimoToque = performance.now();
             if (e.changedTouches.length > 0) {
-                handleInteractionEnd(e.changedTouches[0].clientX, e.changedTouches[0].clientY, e.target);
+                handleInteractionEnd(e.changedTouches[0].clientX, e.changedTouches[0].clientY, e.target, true);
             }
         });
         
