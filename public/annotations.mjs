@@ -668,9 +668,16 @@ AnnotationController.prototype.initialize = function() {
            meio: mudar uma destas linhas muda o palco todo. ---- */
         #video-modal,
         #modal-360 {
-            /* As imagens dos lados: pequenas o bastante para não taparem o
-               que está a dar, grandes o bastante para se saber o que são. */
-            --previa-largura: clamp(150px, 17vw, 260px);
+            /* As imagens dos lados. Metade de cada uma fica para lá da
+               borda do ecrã, a espreitar, e por isso são largas: a metade
+               que se vê chega para se saber o que são. */
+            --previa-largura: clamp(220px, 26vw, 400px);
+            /* O véu das barras que pairam por cima do vídeo: escuro junto
+               à borda do ecrã, e a desfazer-se para dentro, para o vídeo
+               se ver por trás e as letras se lerem sobre um céu claro. */
+            --veu-forte: rgba(5, 5, 10, 0.8);
+            --veu-medio: rgba(5, 5, 10, 0.45);
+            --veu-nenhum: rgba(5, 5, 10, 0);
             /* O surgir e o sumir das peças por cima do vídeo. */
             --a-surgir: 0.35s ease;
             /* O deslize da barra dos comandos, o mesmo da página da rota. */
@@ -710,7 +717,7 @@ AnnotationController.prototype.initialize = function() {
             align-items: center;
             box-sizing: border-box;
             padding: 16px 24px 40px;
-            background: linear-gradient(to bottom, rgba(5, 5, 10, 0.8), rgba(5, 5, 10, 0.45) 55%, rgba(5, 5, 10, 0));
+            background: linear-gradient(to bottom, var(--veu-forte), var(--veu-medio) 55%, var(--veu-nenhum));
             pointer-events: none;
             opacity: 0;
             transition: opacity var(--a-surgir);
@@ -726,8 +733,8 @@ AnnotationController.prototype.initialize = function() {
 
         /* ---- Os lados ----
            De cada lado, a imagem do que vem desse lado e a seta que leva
-           lá: à esquerda a imagem encostada à borda e a seta a apontar
-           para ela, à direita ao espelho. Carregar numa ou noutra troca o
+           lá: à esquerda a imagem cortada ao meio pela borda e a seta a
+           apontar para ela, à direita ao espelho. Carregar numa ou noutra troca o
            vídeo dentro do mesmo leitor. Ocupam a altura toda, com um véu
            escuro a partir da borda para a seta se ver sobre um céu claro;
            o véu não apanha o rato — só a imagem e a seta, e só quando
@@ -751,13 +758,21 @@ AnnotationController.prototype.initialize = function() {
         }
         .lado-do-palco.esquerda {
             left: 0;
-            padding: 0 8px 0 24px;
+            padding: 0 8px 0 0;
             background: linear-gradient(to right, rgba(5, 5, 10, 0.55), rgba(5, 5, 10, 0));
         }
         .lado-do-palco.direita {
             right: 0;
-            padding: 0 24px 0 8px;
+            padding: 0 0 0 8px;
             background: linear-gradient(to left, rgba(5, 5, 10, 0.55), rgba(5, 5, 10, 0));
+        }
+        /* A imagem de cada lado fica cortada ao meio pela borda do ecrã:
+           metade para cá, a espreitar, e metade para lá. */
+        .lado-do-palco.esquerda .previa {
+            margin-left: calc(var(--previa-largura) / -2);
+        }
+        .lado-do-palco.direita .previa {
+            margin-right: calc(var(--previa-largura) / -2);
         }
         .comandos-a-ver .lado-do-palco {
             opacity: 1;
@@ -804,7 +819,8 @@ AnnotationController.prototype.initialize = function() {
         }
 
         /* A imagem de cada lado: o primeiro instante do vídeo desse lado,
-           em 16:9 como o vídeo. */
+           em 16:9 como o vídeo. Meio transparente, para não roubar a vista
+           ao que está a dar; acende quando o rato lhe passa por cima. */
         .previa {
             flex: 0 0 auto;
             width: var(--previa-largura);
@@ -817,11 +833,11 @@ AnnotationController.prototype.initialize = function() {
             display: flex;
             flex-direction: column;
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
-            opacity: 0.85;
+            opacity: 0.5;
             transition: transform var(--passagem), opacity var(--passagem), translate var(--passagem);
         }
         .previa:hover {
-            opacity: 1;
+            opacity: 0.85;
             transform: scale(1.04);
         }
         /* No fim do percurso não há nada à espera desse lado, e a imagem
@@ -876,12 +892,16 @@ AnnotationController.prototype.initialize = function() {
             min-height: 0;
             aspect-ratio: auto;
         }
+        /* Sem tarja: o mesmo véu da barra do nome, virado ao contrário, e
+           com folga por cima para se desfazer antes do tempo escrito. */
         #video-modal .video-controls {
             position: absolute;
             bottom: 0;
             left: 0;
             right: 0;
-            background: linear-gradient(to top, rgba(255,255,255,0.05), transparent), #05050a;
+            padding-top: 40px;
+            background: linear-gradient(to top, var(--veu-forte), var(--veu-medio) 60%, var(--veu-nenhum));
+            border-top: none;
             transform: translateY(100%);
             transition: transform var(--deslize-da-barra);
             z-index: 100;
@@ -924,8 +944,7 @@ AnnotationController.prototype.initialize = function() {
             bottom: 0;
             height: var(--altura-controlos, 0px);
             box-sizing: border-box;
-            background: linear-gradient(to top, rgba(255,255,255,0.05), transparent), #05050a;
-            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            background: linear-gradient(to top, var(--veu-forte), var(--veu-medio) 60%, var(--veu-nenhum));
             pointer-events: none;
             transform: translateY(100%);
             transition: transform var(--deslize-da-barra);
@@ -2242,7 +2261,7 @@ AnnotationController.prototype.encherPrevia360 = function(previa, ann) {
     // a baixo, uma vista mais estreita é só o meio de uma mais larga. É
     // por isso que esta imagem serve à janela do meio tal como está,
     // venha o ecrã com o feitio que vier (ver tapar360EnquantoChega).
-    carregarPrevia360(tela, previaDe(video), olharInicialDe(video), ABERTURA_INICIAL, 768, 320)
+    carregarPrevia360(tela, previaDe(video), olharInicialDe(video), ABERTURA_INICIAL, 960, 400)
         .catch((erro) => console.warn(erro.message));
 };
 

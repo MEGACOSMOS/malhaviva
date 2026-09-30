@@ -215,6 +215,14 @@
             transform: translateY(100%);
             z-index: 1000;
         }
+        /* No palco a barra não tem tarja: é o mesmo véu escuro das peças
+           do palco, que se desfaz para cima, com folga por cima para se
+           desfazer antes do tempo escrito — o vídeo vê-se por trás. */
+        body.inteira .video-controls {
+            padding-top: 40px;
+            background: linear-gradient(to top, rgba(5, 5, 10, 0.8), rgba(5, 5, 10, 0.45) 60%, rgba(5, 5, 10, 0));
+            border-top: none;
+        }
         body.inteira.barra-a-espreitar .video-controls,
         body:fullscreen.barra-a-espreitar .video-controls {
             transform: translateY(0);
