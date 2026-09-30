@@ -982,10 +982,6 @@ AnnotationController.prototype.initialize = function() {
         #modal-360.inteira .barra-do-nome-360 button {
             pointer-events: auto;
         }
-        /* A fotografia não anda nem acaba: o "Auto" não mandava em nada. */
-        #modal-360.inteira .interruptor-auto {
-            display: none !important;
-        }
 
         /* Num ecrã estreito a seta de cada lado encosta-se mais à borda, e
            encolhe. */
@@ -1354,32 +1350,6 @@ AnnotationController.prototype.janelaAberta = function() {
 // as distingue, tanto no nome do ficheiro como na barra de cima.
 const LETRAS_DAS_ROTAS = ['A', 'B', 'C'];
 
-/**
- * Se o interruptor "Auto" (o que acaba passa sozinho ao seguinte) está
- * ligado. Com os cookies do site bloqueados no navegador, ler a memória dá
- * erro: aí fica desligado, como vem de origem.
- *
- * @returns {boolean} Se está ligado.
- */
-function autoLigado() {
-    try {
-        return localStorage.getItem('autoplay-videos') === 'true';
-    } catch (e) {
-        return false;
-    }
-}
-
-/**
- * Guarda o interruptor "Auto" para a próxima visita, se houver memória.
- *
- * @param {boolean} ligado - Se fica ligado.
- */
-function guardarAuto(ligado) {
-    try {
-        localStorage.setItem('autoplay-videos', ligado ? 'true' : 'false');
-    } catch (e) { /* sem memória: vale só para esta visita */ }
-}
-
 // Os bicos das setas do palco, e a cruz que toma o lugar da seta da
 // direita quando já não há nada de novo para o lado de lá.
 const BICO_ESQUERDA = '15 18 9 12 15 6';
@@ -1514,127 +1484,40 @@ AnnotationController.prototype.enderecoDaParagem360 = function(ann) {
         return '/image360.html?src=' + encodeURIComponent(ann.imagePath) + '&inteira=1';
     }
     // "sequencia": a rota não recomeça ao chegar ao fim, avisa cá fora
-    // (ver seguirDepoisDaRota360), como os testemunhos. "inteira": a rota
+    // (ver acabouARota360), como os testemunhos. "inteira": a rota
     // enche o ecrã, e a barra dos comandos recolhe-se por cima dela e sobe
     // quando o palco lho diz.
     return '/video360.html?nome=' + encodeURIComponent(this.videoDaRota360(ann)) + '&sequencia=1&inteira=1';
 };
 
 /**
- * Uma rota que chega ao fim conta como vista e, com o "Auto" ligado, a
- * seguinte entra sozinha — para o lado por onde se andou, ou para a
- * direita se ainda não se andou. No fim do percurso não há mais nada a
- * mostrar: o palco fecha-se e devolve o bairro. Com o "Auto" desligado a
- * rota fica parada no fim, à espera. É o mesmo que os testemunhos fazem.
+ * Uma rota que chega ao fim conta como vista, e fica parada no fim, à
+ * espera: passar à seguinte é com as setas. É o mesmo que os testemunhos
+ * fazem.
  */
-AnnotationController.prototype.seguirDepoisDaRota360 = function() {
+AnnotationController.prototype.acabouARota360 = function() {
     const palco = this.palco360;
     const ann = this.paragem360;
     if (!palco || !ann || palco.modal.style.display === 'none') {
         return;
     }
     this.marcarComoVisto(this.idDaAnotacao(ann));
-    if (!autoLigado()) {
-        return;
-    }
-    const lista = this.paragens360();
-    if (lista.indexOf(ann) < 0 || lista.length < 2) {
-        this.fecharPalco360();
-        return;
-    }
-    const p = this.percurso360;
-    const sentido = p && p.sentido ? p.sentido : 1;
-    const onde = this.andarNoPercurso(p, lista.length, sentido);
-    if (onde === null) {
-        this.fecharPalco360();
-        return;
-    }
-    this.abrirParagem360(lista[onde], sentido);
 };
 
 /**
- * Cria o grupo de botões do cabeçalho: o interruptor da reprodução
- * automática e o botão de fechar.
- *
- * O interruptor é o mesmo nos testemunhos e nas rotas 360º, e lembra-se
- * de um para o outro: ligado, o que acaba passa sozinho ao seguinte.
+ * Cria o botão de fechar do cabeçalho.
  *
  * @param {Function} fecharCallback - O que fazer ao carregar na cruz.
+ * @returns {HTMLButtonElement} O botão.
  */
-AnnotationController.prototype.criarBotoesDeTopo = function(fecharCallback) {
-    const rightGroup = document.createElement('div');
-    rightGroup.style.display = 'flex';
-    rightGroup.style.alignItems = 'center';
-    rightGroup.style.gap = '16px';
-
-    const autoPlayContainer = document.createElement('label');
-    autoPlayContainer.className = 'interruptor-auto';
-    autoPlayContainer.style.display = 'flex';
-    autoPlayContainer.style.alignItems = 'center';
-    autoPlayContainer.style.gap = '8px';
-    autoPlayContainer.style.cursor = 'pointer';
-    autoPlayContainer.title = window.Idiomas ? window.Idiomas.t('v360.autoplay') || 'Reprodução automática' : 'Reprodução automática';
-
-    const autoPlayLabel = document.createElement('span');
-    autoPlayLabel.textContent = 'Auto';
-    autoPlayLabel.style.fontSize = '12px';
-    autoPlayLabel.style.fontWeight = 'bold';
-    autoPlayLabel.style.textTransform = 'uppercase';
-    autoPlayLabel.style.color = 'rgba(255,255,255,0.7)';
-
-    const switchEl = document.createElement('div');
-    switchEl.style.width = '24px';
-    switchEl.style.height = '14px';
-    switchEl.style.backgroundColor = 'rgba(255,255,255,0.2)';
-    switchEl.style.position = 'relative';
-    switchEl.style.transition = 'background-color 0.2s';
-
-    const pointer = document.createElement('div');
-    pointer.style.width = '10px';
-    pointer.style.height = '10px';
-    pointer.style.backgroundColor = 'white';
-    pointer.style.position = 'absolute';
-    pointer.style.top = '2px';
-    pointer.style.left = '2px';
-    pointer.style.transition = 'left 0.2s';
-
-    switchEl.appendChild(pointer);
-
-    // Por definição, a reprodução automática deve estar desativada
-    let isAutoPlay = autoLigado();
-
-    const updateSwitchVisuals = () => {
-        if (isAutoPlay) {
-            switchEl.style.backgroundColor = 'rgba(255,255,255,0.6)';
-            pointer.style.left = '12px';
-        } else {
-            switchEl.style.backgroundColor = 'rgba(255,255,255,0.2)';
-            pointer.style.left = '2px';
-        }
-    };
-    updateSwitchVisuals();
-
-    autoPlayContainer.addEventListener('click', (e) => {
-        e.preventDefault();
-        isAutoPlay = !isAutoPlay;
-        guardarAuto(isAutoPlay);
-        updateSwitchVisuals();
-    });
-
-    autoPlayContainer.appendChild(autoPlayLabel);
-    autoPlayContainer.appendChild(switchEl);
-
+AnnotationController.prototype.criarBotaoDeFechar = function(fecharCallback) {
     const closeBtn = document.createElement('button');
     closeBtn.className = 'fechar-palco-btn';
     closeBtn.innerHTML = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>';
     closeBtn.setAttribute('aria-label', 'Fechar');
     closeBtn.title = 'Fechar';
     closeBtn.addEventListener('click', fecharCallback);
-
-    rightGroup.appendChild(autoPlayContainer);
-    rightGroup.appendChild(closeBtn);
-
-    return rightGroup;
+    return closeBtn;
 };
 
 /**
@@ -1670,7 +1553,7 @@ AnnotationController.prototype.setupPalco360 = function() {
     titulo.style.fontWeight = '600';
     titulo.style.fontSize = '1.1rem';
     header.appendChild(titulo);
-    header.appendChild(this.criarBotoesDeTopo(() => this.fecharPalco360()));
+    header.appendChild(this.criarBotaoDeFechar(() => this.fecharPalco360()));
 
     const moldura = document.createElement('div');
     moldura.className = 'moldura-360';
@@ -1780,7 +1663,7 @@ AnnotationController.prototype.setupPalco360 = function() {
         if (!janela || e.source !== janela.contentWindow) return;
         if (e.data.malhaViva === 'filme360Acabou') {
             // O filme chegou ao fim.
-            if (!this.palco360.aTrocar) this.seguirDepoisDaRota360();
+            if (!this.palco360.aTrocar) this.acabouARota360();
         } else if (e.data.malhaViva === 'rato360') {
             // O rato mexeu lá dentro — ou começou a arrastar a vista, e
             // aí as peças saem da frente.
@@ -2321,7 +2204,7 @@ AnnotationController.prototype.setupModal = function() {
     this.modalTitle.style.fontSize = '1.1rem';
 
     header.appendChild(this.modalTitle);
-    header.appendChild(this.criarBotoesDeTopo(() => closeModal()));
+    header.appendChild(this.criarBotaoDeFechar(() => closeModal()));
 
     // Custom Video Player UI
     const videoWrapper = document.createElement('div');
@@ -2874,30 +2757,11 @@ AnnotationController.prototype.setupModal = function() {
     // O fecho do modal fica à mão para as setas do palco o poderem usar.
     this.fecharModal = closeModal;
 
-    // Um testemunho que chega ao fim conta como visto, e o seguinte que
-    // ainda ninguém viu entra a seguir. Se era o último, não há mais nada
-    // a mostrar: a janela fecha-se e devolve o bairro.
+    // Um testemunho que chega ao fim conta como visto, e fica parado no
+    // fim, à espera: passar ao seguinte é com as setas.
     this.videoPlayer.addEventListener('ended', () => {
         if (!this.videoNome) return;
         this.marcarComoVisto('video-' + this.videoNome);
-
-        const lista = this.annotations.filter(ann => !ann.is360 && ann.video);
-        const onde = lista.findIndex(ann => ann.video === this.videoNome);
-        if (onde >= 0) {
-            if (autoLigado()) {
-                // Segue para a frente no percurso — para o lado por onde
-                // se andou, ou para a direita se ainda não se andou. No
-                // fim dele, fecha.
-                const p = this.percursoTestemunhos;
-                const sentido = p && p.sentido ? p.sentido : 1;
-                const ann = this.testemunhoAoLado(sentido);
-                if (ann) {
-                    this.openVideoModal(ann.video, ann.label, sentido);
-                } else {
-                    closeModal();
-                }
-            }
-        }
     });
 
     // Store references for the openVideoModal function
