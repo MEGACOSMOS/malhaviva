@@ -668,10 +668,6 @@ AnnotationController.prototype.initialize = function() {
            meio: mudar uma destas linhas muda o palco todo. ---- */
         #video-modal,
         #modal-360 {
-            /* As imagens dos lados. Metade de cada uma fica para lá da
-               borda do ecrã, a espreitar, e por isso são largas: a metade
-               que se vê chega para se saber o que são. */
-            --previa-largura: clamp(220px, 26vw, 400px);
             /* O véu das barras que pairam por cima do vídeo: escuro junto
                à borda do ecrã, e a desfazer-se para dentro, para o vídeo
                se ver por trás e as letras se lerem sobre um céu claro. */
@@ -732,13 +728,11 @@ AnnotationController.prototype.initialize = function() {
         }
 
         /* ---- Os lados ----
-           De cada lado, a imagem do que vem desse lado e a seta que leva
-           lá: à esquerda a imagem cortada ao meio pela borda e a seta a
-           apontar para ela, à direita ao espelho. Carregar numa ou noutra troca o
-           vídeo dentro do mesmo leitor. Ocupam a altura toda, com um véu
-           escuro a partir da borda para a seta se ver sobre um céu claro;
-           o véu não apanha o rato — só a imagem e a seta, e só quando
-           estão à vista.
+           De cada lado, junto à borda, a seta que leva ao anterior ou ao
+           seguinte, dentro do mesmo leitor. Ocupam a altura toda, com um
+           véu escuro a partir da borda para a seta se ver sobre um céu
+           claro; o véu não apanha o rato — só a seta, e só quando está à
+           vista.
 
            Escondidos, os lados só se esbatem, e é o lado inteiro que se
            esbate, e não a seta: as teclas e o comando de jogo carregam na
@@ -758,21 +752,13 @@ AnnotationController.prototype.initialize = function() {
         }
         .lado-do-palco.esquerda {
             left: 0;
-            padding: 0 8px 0 0;
+            padding: 0 24px 0 16px;
             background: linear-gradient(to right, rgba(5, 5, 10, 0.55), rgba(5, 5, 10, 0));
         }
         .lado-do-palco.direita {
             right: 0;
-            padding: 0 0 0 8px;
+            padding: 0 16px 0 24px;
             background: linear-gradient(to left, rgba(5, 5, 10, 0.55), rgba(5, 5, 10, 0));
-        }
-        /* A imagem de cada lado fica cortada ao meio pela borda do ecrã:
-           metade para cá, a espreitar, e metade para lá. */
-        .lado-do-palco.esquerda .previa {
-            margin-left: calc(var(--previa-largura) / -2);
-        }
-        .lado-do-palco.direita .previa {
-            margin-right: calc(var(--previa-largura) / -2);
         }
         .comandos-a-ver .lado-do-palco {
             opacity: 1;
@@ -818,61 +804,13 @@ AnnotationController.prototype.initialize = function() {
             opacity: 1;
         }
 
-        /* A imagem de cada lado: o primeiro instante do vídeo desse lado,
-           em 16:9 como o vídeo. Meio transparente, para não roubar a vista
-           ao que está a dar; acende quando o rato lhe passa por cima. */
+        /* A imagem do primeiro instante do anterior e do seguinte não se
+           mostra ao lado da seta. Fica na página, escondida, porque é dela
+           que a janela do meio copia a primeira imagem ao trocar de vídeo,
+           para não nascer preta (ver tapar360EnquantoChega e
+           abrirTestemunho). */
         .previa {
-            flex: 0 0 auto;
-            width: var(--previa-largura);
-            aspect-ratio: 16 / 9;
-            padding: 0;
-            font-family: inherit;
-            background: #000;
-            overflow: hidden;
-            cursor: pointer;
-            display: flex;
-            flex-direction: column;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
-            opacity: 0.5;
-            transition: transform var(--passagem), opacity var(--passagem), translate var(--passagem);
-        }
-        .previa:hover {
-            opacity: 0.85;
-            transform: scale(1.04);
-        }
-        /* No fim do percurso não há nada à espera desse lado, e a imagem
-           sai da frente. Fica a ocupar o lugar dela, para a cruz que toma
-           o lugar da seta não saltar para a borda. */
-        .previa.sem-seguinte {
-            visibility: hidden;
-        }
-        .previa-janela {
-            position: relative;
-            flex: 1 1 auto;
-            min-height: 0;
-            background: #000;
-            overflow: hidden;
-        }
-        .previa-janela video,
-        .previa-janela canvas,
-        .previa-janela img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            pointer-events: none;
-        }
-        /* Ao trocar, as imagens dos lados deslizam no mesmo sentido do
-           vídeo: saem para lá a apagar-se e as novas chegam de cá. */
-        .previa.a-trocar {
-            opacity: 0;
-            translate: calc(var(--sentido-da-troca, 1) * -80px) 0;
-            transition-duration: 0.2s;
-            transition-timing-function: ease-in;
-        }
-        .previa.a-chegar {
-            opacity: 0;
-            translate: calc(var(--sentido-da-troca, 1) * 80px) 0;
-            transition: none;
+            display: none;
         }
 
         /* ---- O leitor dos testemunhos ----
@@ -1049,12 +987,9 @@ AnnotationController.prototype.initialize = function() {
             display: none !important;
         }
 
-        /* Num ecrã estreito não há lugar para as imagens dos lados: fica só
-           a seta de cada lado, encostada à borda. */
+        /* Num ecrã estreito a seta de cada lado encosta-se mais à borda, e
+           encolhe. */
         @media (max-width: 900px) {
-            .lado-do-palco .previa {
-                display: none;
-            }
             .lado-do-palco.esquerda {
                 padding: 0 0 0 4px;
             }
@@ -1743,12 +1678,13 @@ AnnotationController.prototype.setupPalco360 = function() {
     content.appendChild(header);
     content.appendChild(moldura);
 
-    // Dos lados, como nos testemunhos, só a imagem — sem barras. Numa
-    // paragem há duas coisas possíveis a espreitar: a fotografia do alto,
-    // que é um ficheiro de imagem, ou o primeiro instante de uma rota, que
-    // é uma fotografia a dar a volta toda, vista pela mesma câmara com que
-    // a rota começa (ver previa-360.mjs). Cabem as duas na janela, e
-    // mostra-se a que for da vez.
+    // De cada lado, a imagem da paragem vizinha — escondida: é dela que a
+    // janela do meio copia a primeira imagem ao trocar, para não nascer
+    // preta (ver tapar360EnquantoChega). Numa paragem há duas coisas
+    // possíveis: a fotografia do alto, que é um ficheiro de imagem, ou o
+    // primeiro instante de uma rota, que é uma fotografia a dar a volta
+    // toda, vista pela mesma câmara com que a rota começa (ver
+    // previa-360.mjs). Cabem as duas na janela, e usa-se a que for da vez.
     const criarPrevia = (lado, sentido) => {
         const previa = document.createElement('button');
         previa.type = 'button';
@@ -1793,8 +1729,7 @@ AnnotationController.prototype.setupPalco360 = function() {
     const setaEsquerda = criarSeta('esquerda', BICO_ESQUERDA, -1);
     const setaDireita = criarSeta('direita', BICO_DIREITA, 1);
 
-    // Os lados: a imagem por fora, encostada à borda, e a seta por dentro,
-    // a apontar para ela.
+    // Os lados: a seta, junto à borda, e a imagem escondida.
     const ladoEsquerdo = document.createElement('div');
     ladoEsquerdo.className = 'lado-do-palco esquerda';
     ladoEsquerdo.appendChild(esquerda);
@@ -2082,37 +2017,15 @@ AnnotationController.prototype.mostrarParagem360 = function(ann, sentido) {
     if (aAbrir || !this.percurso360) {
         this.percurso360 = this.comecarPercurso(onde);
     }
-    const arrumarLados = () => {
-        if (avulso || lista.length < 2) return;
+    // As setas — ou a cruz, no fim do percurso — e as imagens escondidas
+    // das vizinhas novas. A imagem do meio já foi copiada da vizinha antes
+    // de ela mudar (ver tapar360EnquantoChega).
+    if (!avulso && lista.length >= 2) {
         const lados = this.ladosDoPercurso(this.percurso360, lista);
         this.arrumarLado(palco.setaEsquerda, palco.esquerda, BICO_ESQUERDA, lados.esquerda.cruz);
         this.arrumarLado(palco.setaDireita, palco.direita, BICO_DIREITA, lados.direita.cruz);
         if (lados.esquerda.ann) this.encherPrevia360(palco.esquerda, lados.esquerda.ann);
         if (lados.direita.ann) this.encherPrevia360(palco.direita, lados.direita.ann);
-    };
-
-    // Ao trocar dentro da janela, as imagens dos lados deslizam para lá a
-    // apagar-se, mudam para as vizinhas novas, e chegam de cá a acender —
-    // como nos testemunhos.
-    clearTimeout(this.esperaDosLados360);
-    const imagensDosLados = [palco.esquerda, palco.direita];
-    if (aTrocar) {
-        imagensDosLados.forEach(lado => {
-            lado.classList.remove('a-chegar');
-            lado.classList.add('a-trocar');
-        });
-        this.esperaDosLados360 = setTimeout(() => {
-            arrumarLados();
-            imagensDosLados.forEach(lado => {
-                lado.classList.remove('a-trocar');
-                lado.classList.add('a-chegar');
-            });
-            void palco.modal.offsetWidth;
-            imagensDosLados.forEach(lado => lado.classList.remove('a-chegar'));
-        }, 200);
-    } else {
-        imagensDosLados.forEach(lado => lado.classList.remove('a-trocar', 'a-chegar'));
-        arrumarLados();
     }
 
     abrirDeRepente(palco.modal);
@@ -2354,7 +2267,6 @@ AnnotationController.prototype.fecharPalco360 = function() {
     // Uma página da rota que ainda estivesse para nascer já não nasce, e
     // uma troca que estivesse a meio acaba já.
     clearTimeout(this.esperaDaJanela360);
-    clearTimeout(this.esperaDosLados360);
     this.arrumarTrocaNaJanela360();
     sairDoEcraInteiroDo(palco.modal);
     palco.pecas.esconder();
@@ -2617,8 +2529,9 @@ AnnotationController.prototype.setupModal = function() {
     moldura.appendChild(controls);
     this.barraDosComandos = controls;
 
-    // O palco: o testemunho a dar ao meio, e de cada lado só a imagem do
-    // anterior e do seguinte, para se ver quem vem a caminho.
+    // De cada lado, o primeiro instante do anterior e do seguinte —
+    // escondido: é dele que o leitor copia a primeira imagem ao trocar de
+    // testemunho, para não piscar em preto (ver abrirTestemunho).
     const criarPrevia = (lado, sentido) => {
         const previa = document.createElement('button');
         previa.type = 'button';
@@ -2647,7 +2560,7 @@ AnnotationController.prototype.setupModal = function() {
     this.previaEsquerda = criarPrevia('esquerda', -1);
     this.previaDireita = criarPrevia('direita', 1);
 
-    // A seta de cada lado vive ao pé da imagem desse lado.
+    // A seta de cada lado, junto à borda.
     const criarSeta = (lado, bico, sentido) => {
         const seta = document.createElement('button');
         seta.type = 'button';
@@ -2675,9 +2588,9 @@ AnnotationController.prototype.setupModal = function() {
     content.appendChild(header);
     content.appendChild(moldura);
 
-    // O leitor enche o ecrã; de cada lado, por cima dele, a imagem do
-    // anterior e do seguinte com a seta a apontar para ela — o mesmo
-    // desenho do palco das paragens 360º.
+    // O leitor enche o ecrã; de cada lado, por cima dele, a seta para o
+    // anterior e para o seguinte — o mesmo desenho do palco das paragens
+    // 360º.
     const ladoEsquerdo = document.createElement('div');
     ladoEsquerdo.className = 'lado-do-palco esquerda';
     ladoEsquerdo.appendChild(this.previaEsquerda);
@@ -3412,29 +3325,10 @@ AnnotationController.prototype.abrirTestemunho = function(nome, title, sentido, 
 
     this.desenharMenuDeQualidade(fontes);
 
-    // Ao trocar dentro do leitor, as imagens dos lados deslizam para lá a
-    // apagar-se, mudam para os vizinhos novos, e chegam de cá a acender.
-    clearTimeout(this.esperaDosLados);
-    const lados = [this.previaEsquerda, this.previaDireita].filter(Boolean);
-    if (sentido) {
-        lados.forEach(lado => {
-            lado.classList.remove('a-chegar');
-            lado.classList.add('a-trocar');
-        });
-        this.esperaDosLados = setTimeout(() => {
-            this.atualizarPalco(nome, sentido, oldCenterFrame);
-            lados.forEach(lado => {
-                lado.classList.remove('a-trocar');
-                lado.classList.add('a-chegar');
-            });
-            void this.modal.offsetWidth;
-            lados.forEach(lado => lado.classList.remove('a-chegar'));
-        }, 200);
-    } else {
-        this.arrumarImagemDeAntes();
-        lados.forEach(lado => lado.classList.remove('a-trocar', 'a-chegar'));
-        this.atualizarPalco(nome, sentido, oldCenterFrame);
-    }
+    // As setas e as imagens escondidas dos vizinhos novos. A imagem do
+    // leitor já foi copiada do vizinho antes de ele mudar (mais acima).
+    if (!sentido) this.arrumarImagemDeAntes();
+    this.atualizarPalco(nome, sentido, oldCenterFrame);
 
     abrirDeRepente(this.modal);
     // As peças vêm à vista ao abrir e a cada troca de testemunho — mesmo
