@@ -59,6 +59,29 @@ nem ficar vazia.
 
 ---
 
+## Mexer no guarda do arranque? Prova-o num Chrome a sério
+
+O primeiro bloco de `public/index.html` repara sozinho o Chrome que ficou
+preso a arrancar: manda-o a `/limpar`, que **apaga a cache do site**. Isso é
+caro (o motor e o bairro pesam megas) e já correu mal duas vezes de
+sentidos opostos: o Chrome ficava branco sem se reparar, e depois um
+visitante com a ligação lenta que carregasse em F5 era mandado limpar a
+cache a cada vez, sem o site chegar a guardar nada.
+
+Antes de dar por acabada qualquer alteração a esse bloco, a `/limpar`, ou
+aos cabeçalhos de cache em `public/_headers`, com o site a correr:
+
+```
+bun scripts/testar-arranque.mjs --completo
+```
+
+Abre um Chrome à parte, com perfil limpo, e confere que o guarda repara
+quando deve e só quando deve. Todas as linhas têm de dizer `ok`. Um Chrome
+embutido num painel não serve para isto: os separadores escondidos não
+desenham, e o guarda só conta o tempo em que a página está à vista.
+
+---
+
 ## Porquê esta regra e não uma lista de boas intenções
 
 O Malha Viva é feito de pessoas a contar o sítio onde vivem. Um testemunho

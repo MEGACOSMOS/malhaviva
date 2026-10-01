@@ -31,11 +31,22 @@
      *    ser a placa gráfica a não aguentar a qualidade escolhida à mão,
      *    por isso a qualidade volta ao Automático.
      *
-     * Uma visita que se fecha a meio do arranque deixa a marca também; por
-     * isso só conta se for recente, e a limpeza faz-se uma vez só.
+     * Uma visita que se fecha a meio do arranque deixa a marca também —
+     * quem carrega em F5 por impaciência, quem fecha o separador e volta a
+     * abri-lo. Isso não é uma página presa, e limpar a cache por causa
+     * disso só atrasava o arranque seguinte (os ficheiros pesados tinham
+     * de vir todos outra vez, e numa ligação lenta cada F5 era uma limpeza
+     * nova: o site nunca chegava a guardar nada). Por isso a marca leva
+     * também os segundos que a visita esteve À VISTA, e só conta se
+     * tiverem sido muitos. E a limpeza faz-se, no máximo, uma vez em cada
+     * meia hora (um bolinho, que a limpeza não apaga, lembra-se disso).
      */
     (function () {
         var CHAVE = 'arranque-pendente';
+        // Segundos à vista, sem o arranque acabar, a partir dos quais uma
+        // visita interrompida se toma por presa e não por impaciente.
+        var PACIENCIA_PAGINA = 15;
+        var PACIENCIA_BAIRRO = 20;
         var agora = Date.now();
         var ler = function (k) { try { return localStorage.getItem(k); } catch (e) { return null; } };
         var escrever = function (k, v) { try { localStorage.setItem(k, v); } catch (e) { /* sem memória: sem guarda */ } };
@@ -43,15 +54,29 @@
 
         var anterior = null;
         try { anterior = JSON.parse(ler(CHAVE) || 'null'); } catch (e) { anterior = null; }
-        var idade = anterior && typeof anterior.quando === 'number' ? agora - anterior.quando : Infinity;
+        // Há quanto tempo a visita anterior deu o último sinal, e quanto
+        // tempo esteve à vista (marcas antigas, sem isto, valem zero).
+        var ultimoSinal = anterior && typeof anterior.vivo === 'number' ? anterior.vivo : (anterior && anterior.quando);
+        var idade = typeof ultimoSinal === 'number' ? agora - ultimoSinal : Infinity;
+        var vistoAntes = anterior && typeof anterior.visto === 'number' ? anterior.visto : 0;
         var acabadoDeReparar = /[?&]reparado=1(&|$)/.test(window.location.search);
 
+        // Uma reparação por meia hora, aconteça o que acontecer: o bolinho
+        // sobrevive à limpeza (que só apaga a cache e a memória do site).
+        var reparouHaPouco = false;
+        try { reparouHaPouco = /(?:^|;\s*)reparado=1(?:;|$)/.test(document.cookie); } catch (e) { /* sem bolinhos: vale o resto */ }
+        var irReparar = function () {
+            try { document.cookie = 'reparado=1; max-age=1800; path=/; SameSite=Lax'; } catch (e) { /* segue */ }
+            window.location.replace('/limpar?idioma=' + encodeURIComponent(ler('idioma') || ''));
+        };
+
         if (anterior && !acabadoDeReparar) {
-            if (anterior.fase === 'pagina' && idade < 30 * 60 * 1000) {
-                window.location.replace('/limpar?idioma=' + encodeURIComponent(ler('idioma') || ''));
+            if (anterior.fase === 'pagina' && idade < 30 * 60 * 1000 &&
+                vistoAntes >= PACIENCIA_PAGINA && !reparouHaPouco) {
+                irReparar();
                 return;
             }
-            if (anterior.fase === 'bairro' && idade < 5 * 60 * 1000) {
+            if (anterior.fase === 'bairro' && idade < 5 * 60 * 1000 && vistoAntes >= PACIENCIA_BAIRRO) {
                 apagar('quality');
             }
         }
@@ -62,30 +87,50 @@
             window.history.replaceState(null, '', limpo);
         }
 
-        var marcar = function (fase) { escrever(CHAVE, JSON.stringify({ quando: agora, fase: fase })); };
-        marcar('pagina');
+        // Os segundos desta visita em que a página esteve à vista. Escondida
+        // (outro separador, janela tapada), o navegador não desenha nem
+        // descarrega grande coisa, e contar esse tempo era acusar a página
+        // de uma demora que não foi dela.
+        var vistoAgora = 0;
+        var fase = 'pagina';
+        var gravar = function () {
+            escrever(CHAVE, JSON.stringify({ quando: agora, vivo: Date.now(), fase: fase, visto: vistoAgora }));
+        };
+        gravar();
 
         // O vigia: não espera que alguém carregue em F5. Enquanto a página
         // está presa à espera de um ficheiro, o navegador continua a
         // contar o tempo, e este relógio corre na mesma. Se ao fim dele a
         // página ainda nem chegou ao corpo (a tela branca), ou o código do
-        // site ainda não correu, vai-se reparar — uma vez por sessão, para
-        // nunca andar às voltas.
+        // site ainda não correu, vai-se reparar — uma vez por sessão, e
+        // uma vez por meia hora (ver acima), para nunca andar às voltas.
         var jaReparou = acabadoDeReparar;
         try { jaReparou = jaReparou || sessionStorage.getItem('reparado') === '1'; } catch (e) { /* segue */ }
         if (acabadoDeReparar) {
             try { sessionStorage.setItem('reparado', '1'); } catch (e) { /* segue */ }
         }
         var reparar = function () {
-            if (jaReparou || !window.guardaDoArranque || window.guardaDoArranque.fase !== 'pagina') return;
-            window.location.replace('/limpar?idioma=' + encodeURIComponent(ler('idioma') || ''));
+            if (jaReparou || reparouHaPouco || !window.guardaDoArranque || window.guardaDoArranque.fase !== 'pagina') return;
+            irReparar();
         };
-        setTimeout(function () { if (!document.body) reparar(); }, 8000);
-        setTimeout(reparar, 30000);
+
+        // O relógio é o mesmo que mantém a marca em dia: a cada segundo à
+        // vista, anota-o nela, para a visita seguinte saber quanto esta
+        // esperou. Pára quando o bairro chega, ou ao fim de dois minutos —
+        // a essa altura a marca já diz tudo o que é preciso.
+        var pulso = setInterval(function () {
+            if (document.hidden) return;
+            vistoAgora++;
+            if (vistoAgora === 8 && !document.body) reparar();
+            if (vistoAgora === 30) reparar();
+            gravar();
+            if (vistoAgora >= 120) clearInterval(pulso);
+        }, 1000);
+
         window.guardaDoArranque = {
             fase: 'pagina',
-            codigoCorreu: function () { this.fase = 'bairro'; marcar('bairro'); },
-            bairroChegou: function () { this.fase = 'pronto'; apagar(CHAVE); }
+            codigoCorreu: function () { this.fase = fase = 'bairro'; gravar(); },
+            bairroChegou: function () { this.fase = fase = 'pronto'; clearInterval(pulso); apagar(CHAVE); }
         };
     })();
     </script>
