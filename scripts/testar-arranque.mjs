@@ -111,8 +111,19 @@ async function visitar(o) {
     idas = [];
     await enviar('Page.navigate', { url: origem + '/' });
     for (let i = 0; i < (o.f5 || 0); i++) { await dormir(2500); await enviar('Page.reload'); }
-    await dormir(o.espera);
-    const estado = JSON.parse((await avaliar(SONDA)) || '{}');
+    // Com `ateOBairro`, sai logo que o bairro aparece (a rede a sério, depois
+    // de uma limpeza, demora mais do que um tempo fixo que sirva ao localhost).
+    const fim = Date.now() + o.espera;
+    let estado;
+    do {
+        await dormir(o.ateOBairro ? 500 : o.espera);
+        estado = JSON.parse((await avaliar(SONDA)) || '{}');
+    } while (o.ateOBairro && !estado.bairro && Date.now() < fim);
+    if (o.ateOBairro && estado.bairro) {
+        // O ecrã de espera sai um instante depois de o bairro aparecer.
+        await dormir(2000);
+        estado = JSON.parse((await avaliar(SONDA)) || '{}');
+    }
     return { limpezas: idas.filter((p) => p === '/limpar').length, ...estado };
 }
 
@@ -128,16 +139,16 @@ console.log(`A provar o guarda do arranque em ${origem}, num Chrome à parte com
 let r = await visitar({ kbps: 1600, f5: 3, espera: 4000 });
 prova('F5 seguido, com ligação lenta, não limpa a cache nenhuma vez', r.limpezas === 0, `${r.limpezas} limpezas`);
 
-r = await visitar({ marca: marcaPresa(3), espera: 5000 });
+r = await visitar({ marca: marcaPresa(3), espera: 30000, ateOBairro: true });
 prova('visita anterior interrompida cedo (3 s à vista) não leva a limpeza', r.limpezas === 0 && r.bairro, JSON.stringify(r));
 
-r = await visitar({ marca: `localStorage.setItem('arranque-pendente', JSON.stringify({ quando: Date.now() - 60000, fase: 'pagina' }))`, espera: 5000 });
+r = await visitar({ marca: `localStorage.setItem('arranque-pendente', JSON.stringify({ quando: Date.now() - 60000, fase: 'pagina' }))`, espera: 30000, ateOBairro: true });
 prova('marca no formato antigo (sem os segundos à vista) não leva a limpeza', r.limpezas === 0 && r.bairro, JSON.stringify(r));
 
-r = await visitar({ marca: marcaPresa(20), espera: 8000 });
+r = await visitar({ marca: marcaPresa(20), espera: 30000, ateOBairro: true });
 prova('visita anterior mesmo presa (20 s à vista) leva uma limpeza, e o bairro arranca', r.limpezas === 1 && r.bairro && !r.espera, JSON.stringify(r));
 
-r = await visitar({ marca: marcaPresa(20), manterBolinhos: true, espera: 5000 });
+r = await visitar({ marca: marcaPresa(20), manterBolinhos: true, espera: 30000, ateOBairro: true });
 prova('e logo a seguir (dentro de meia hora) não leva outra', r.limpezas === 0 && r.bairro, JSON.stringify(r));
 
 if (completo) {
