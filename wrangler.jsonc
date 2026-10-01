@@ -13,7 +13,13 @@
 	],
 	"assets": {
 		// The path to the directory containing the `index.html` file to be served at `/`
-		"directory": "./public"
+		"directory": "./public",
+		// O código em `src/index.ts` precisa de ir buscar os ficheiros...
+		"binding": "ASSETS",
+		// ...e corre primeiro só nas páginas pesadas, para recusar o
+		// pré-carregamento do Chrome (ver `src/index.ts`). Todo o resto —
+		// o bairro, os vídeos, o código — continua a ser servido directamente.
+		"run_worker_first": ["/", "/video360", "/image360"]
 	},
 	"observability": {
 		"enabled": true

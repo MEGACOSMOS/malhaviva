@@ -112,6 +112,36 @@ com o seu vaivém de vistas leves e pesadas, se comporta.
 
 ---
 
+## Mexer em como o bairro arranca, ou em `src/index.ts`? Prova o pré-carregamento
+
+Quem escreve "malhaviva.pt" na barra do Chrome faz o Chrome adivinhar para
+onde vai e carregar o bairro **escondido**, em segundo plano ("prerender"),
+antes de a pessoa carregar em Enter. O motor 3D, a arrancar numa página
+escondida assim, deixava o separador preso para sempre — o círculo a rodar,
+a página escura, "Página sem resposta" — e a pessoa nunca via o bairro.
+Num Chrome limpo, ou no Chrome embutido de um painel, isto não se vê: só
+acontece com um Chrome a sério que pré-carrega, e passou meses a parecer
+"o Chrome às vezes encrava". O servidor (`src/index.ts`) evita-o recusando
+esse pré-carregamento nas páginas pesadas, e o Chrome abre-as normalmente.
+
+Antes de dar por acabada qualquer alteração a `src/index.ts`, ao
+`run_worker_first` de `wrangler.jsonc`, ou ao que o código principal faz
+logo que a página abre (motor 3D, WebGPU, ecrã de espera), e depois de
+publicar, com o site a correr:
+
+```
+bun scripts/testar-prerender.mjs                       # o site local
+bun scripts/testar-prerender.mjs https://malhaviva.pt  # o site publicado
+```
+
+Abre um Chrome à parte, com perfil limpo e **sem controlo remoto** (ligar o
+Chrome a um controlo desliga o pré-carregamento, e o defeito desaparece
+sem ter sido corrigido), manda-o pré-carregar o bairro e depois abri-lo.
+Tem de dizer `ok`. Se alguma vez se tirar a recusa do servidor, o teste
+tem de falhar — foi assim que se provou o defeito no site publicado.
+
+---
+
 ## Porquê esta regra e não uma lista de boas intenções
 
 O Malha Viva é feito de pessoas a contar o sítio onde vivem. Um testemunho
