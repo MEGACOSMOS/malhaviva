@@ -56,3 +56,15 @@
   ! Cache-Control
   Cache-Control: no-store
   Clear-Site-Data: "cache", "storage"
+
+# O site só funciona em HTTPS: o 3D (WebGPU) não existe numa página sem
+# cadeado. Este aviso diz ao navegador, a cada visita, que daqui em diante
+# este endereço é sempre aberto em HTTPS — mesmo quando alguém escreve só
+# "malhaviva.pt" na barra, sem o "https://". Sem ele, o Chrome tem de
+# adivinhar e tenta primeiro o endereço sem cadeado, que o servidor atende
+# na mesma; foi aí que o Chrome de quem escrevia o endereço sem "https://"
+# ficava preso, com o círculo a rodar, sem a página chegar a abrir.
+# Só vale para este endereço (sem os subdomínios, de propósito) e por 30
+# dias, renovados em cada visita; pode subir-se mais tarde.
+/*
+  Strict-Transport-Security: max-age=2592000
