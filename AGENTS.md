@@ -82,6 +82,36 @@ desenham, e o guarda só conta o tempo em que a página está à vista.
 
 ---
 
+## Mexer no afinador do modo Automático? Prova-o duas vezes
+
+O modo Automático tira pormenor ao bairro quando as imagens por segundo
+caem, e devolve-o quando há folga (`public/fluidez.mjs`, ligado em
+`afinarPelaFluidez()` no `index.html`). Uma versão anterior apontava ao 30 e
+corrigia à volta dele — passava metade do tempo do lado de lá —, e o
+resultado era ver o contador de FPS abaixo de 30 muitas vezes. Um afinador
+que mexe mal não dá erro nenhum: só deixa o site pior, em silêncio. Por
+isso, antes de dar por acabada qualquer alteração a esse ficheiro:
+
+```
+bun scripts/testar-fluidez.mjs
+```
+
+Simula ecrãs e bairros de vários pesos (sem placa gráfica) e compara com a
+versão antiga; todas as linhas têm de dizer `ok`. E depois, com o site a
+correr, no computador a sério:
+
+```
+bun scripts/medir-fluidez.mjs
+```
+
+Abre um Chrome à parte, leva a câmara por um percurso sempre igual e conta
+quantos segundos ficaram abaixo de 30 imagens (com `--aparelho=medio`,
+`--aparelho=telemovel` e `--carga=45` testam-se os outros níveis). A
+simulação apanha erros de lógica; só o Chrome a sério diz se o bairro,
+com o seu vaivém de vistas leves e pesadas, se comporta.
+
+---
+
 ## Porquê esta regra e não uma lista de boas intenções
 
 O Malha Viva é feito de pessoas a contar o sítio onde vivem. Um testemunho

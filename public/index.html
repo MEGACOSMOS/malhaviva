@@ -3469,6 +3469,7 @@
             PIXELFORMAT_RGBA8, FILTER_LINEAR, ADDRESS_CLAMP_TO_EDGE
         } from 'playcanvas';
         import { ligarLodNoCentroDaVista } from './lod-foco.mjs?v=6';
+        import { criarAfinadorDeFluidez, construirEscada } from './fluidez.mjs?v=1';
         import { criarModoVR } from './vr.mjs?v=13';
         import { ligarCeu } from './ceu.mjs?v=16';
         import { ligarComando } from './comando.mjs?v=9';
@@ -3852,7 +3853,7 @@ void modifySplatColor(vec3 center, inout vec4 color) {
                     // Automático é o afinador de fluidez que a vai mexendo.
                     window.distanciaDoDetalhe = splatEl.entity.gsplat.lodBaseDistance;
                     if (savedQuality === 'auto' && !window.modoDePoupanca) {
-                        afinarDetalhePelaFluidez(app, window.distanciaDoDetalhe);
+                        afinarPelaFluidez(app, window.distanciaDoDetalhe);
                     }
 
                     // A direcção do olhar já conta no detalhe — é o balão
@@ -3898,58 +3899,75 @@ void modifySplatColor(vec3 center, inout vec4 color) {
         }
 
         /**
-         * Afinador de fluidez do modo Automático.
+         * Liga o afinador de fluidez do modo Automático ao bairro.
          *
-         * Conta as imagens por segundo e mexe na distância até onde vai o
-         * detalhe fino, para a fluidez rondar as 30 imagens por segundo:
-         * abaixo disso o detalhe encolhe, com folga a mais estica. Mexe aos
-         * poucos e espera um pouco depois de cada mudança, porque o bairro
-         * leva um instante a carregar o detalhe novo e essas primeiras
-         * imagens saem sempre mais lentas.
+         * O afinador (ver `fluidez.mjs`) decide em que degrau se está; aqui
+         * diz-se o que cada degrau faz de verdade. Há dois botões:
+         *
+         *  - o pormenor do bairro: até onde vai o detalhe fino. Nos níveis
+         *    com tecto de manchas (Médio e Baixo) o motor refaz sozinho as
+         *    distâncias para encher esse tecto, e desfaria o que se mexesse
+         *    só nelas — por isso aí mexe-se também no próprio tecto;
+         *  - a densidade da imagem: quantos pontos se pintam por cada ponto
+         *    do ecrã. Em ecrãs grandes é o que mais pesa, e uma descida
+         *    pequena vê-se pouco e poupa muito.
+         *
+         * Só mede com o separador à vista e fora dos óculos de VR; e quando
+         * volta de lá, repõe o degrau em que estava, porque os óculos de
+         * cartão mexem na densidade e repõem a de antes.
          *
          * @param {object} app - A aplicação 3D.
          * @param {number} inicial - A distância de partida do nível detetado.
          */
-        function afinarDetalhePelaFluidez(app, inicial) {
-            const ALVO = 30;
-            const MINIMO = Math.max(30, inicial * 0.5);
-            const MAXIMO = inicial * (isLow ? 1.6 : 2.6);
-            const ESPERA_DEPOIS_DE_MUDAR = 2;   // segundos sem mexer
-            const ARRANQUE = 3000;              // deixa o bairro assentar
+        function afinarPelaFluidez(app, inicial) {
+            const manchas = app && app.scene && app.scene.gsplat;
+            const dispositivo = app && app.graphicsDevice;
+            if (!manchas || !dispositivo) return;
 
-            let imagens = 0;
-            let inicio = 0;
-            let espera = 0;
-            let media = 0;
+            const orcamentoDeOrigem = manchas.splatBudget > 0 ? manchas.splatBudget : 0;
+            const densidadeDeOrigem = dispositivo.maxPixelRatio;
+            // O limite de densidade pode ser maior do que o que o ecrã tem:
+            // as descidas contam a partir do que se desenha de facto.
+            const densidadeEfetiva = Math.min(densidadeDeOrigem, window.devicePixelRatio || 1);
 
-            const contar = (agora) => {
-                requestAnimationFrame(contar);
-                // Separador escondido ou óculos de VR: não se mede nada.
-                if (document.hidden || (app.xr && app.xr.active)) { inicio = 0; return; }
-                if (!inicio) { inicio = agora; imagens = 0; return; }
-                imagens++;
-                if (agora - inicio < 1000) return;
+            // Sem tecto de manchas, há ainda degraus acima da partida, para
+            // quem tem folga de sobra.
+            const escada = construirEscada({ comSubida: !orcamentoDeOrigem });
 
-                const fps = imagens * 1000 / (agora - inicio);
-                inicio = agora;
-                imagens = 0;
-                media = media ? media * 0.6 + fps * 0.4 : fps;
-                if (espera > 0) { espera--; return; }
-
-                let fator = 1;
-                if (media < ALVO * 0.8) fator = 0.8;
-                else if (media < ALVO - 2) fator = 0.92;
-                else if (media > ALVO * 1.5) fator = 1.1;
-                else if (media > ALVO + 5) fator = 1.04;
-                if (fator === 1) return;
-
-                const antes = window.distanciaDoDetalhe;
-                const depois = Math.min(MAXIMO, Math.max(MINIMO, antes * fator));
-                if (Math.abs(depois - antes) < 1) return;
-                window.distanciaDoDetalhe = depois;
-                espera = ESPERA_DEPOIS_DE_MUDAR;
+            const aplicar = (degrau) => {
+                window.distanciaDoDetalhe = Math.max(30, inicial * degrau.detalhe);
+                if (orcamentoDeOrigem) {
+                    // As manchas crescem mais depressa do que a distância:
+                    // meia distância é bem menos de metade das manchas.
+                    manchas.splatBudget = Math.round(orcamentoDeOrigem * Math.pow(Math.min(1, degrau.detalhe), 2));
+                }
+                const densidade = degrau.densidade >= 1
+                    ? densidadeDeOrigem
+                    : densidadeEfetiva * degrau.densidade;
+                if (Math.abs(densidade - dispositivo.maxPixelRatio) > 0.005) {
+                    dispositivo.maxPixelRatio = densidade;
+                    app.updateCanvasSize();
+                }
             };
 
+            const afinador = criarAfinadorDeFluidez({
+                degraus: escada.degraus,
+                partida: escada.partida,
+                aplicar,
+                // Separador escondido, óculos de VR ou de cartão: não se
+                // mede nada.
+                parado: () => document.hidden ||
+                    (app.xr && app.xr.active) ||
+                    document.body.classList.contains('em-cartao')
+            });
+            window.afinadorDeFluidez = afinador;
+
+            // Deixa o bairro assentar antes de começar a medir.
+            const ARRANQUE = 2000;
+            const contar = (agora) => {
+                requestAnimationFrame(contar);
+                afinador.quadro(agora);
+            };
             setTimeout(() => requestAnimationFrame(contar), ARRANQUE);
         }
 
