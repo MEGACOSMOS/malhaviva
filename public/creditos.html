@@ -469,7 +469,7 @@
      * O rolo dos créditos.
      *
      * Cada bloco aparece a esbater-se quando entra no ecrã; a página
-     * anda como qualquer outra, ao ritmo do navegador.
+     * anda ao ritmo da roda do rato, mas suavizada (ver mais abaixo).
      * Quem pediu ao sistema menos movimento vê tudo parado.
      */
     (function () {
@@ -487,6 +487,103 @@
             });
         }, { rootMargin: '0px 0px -12% 0px' });
         blocos.forEach(function (b) { olhar.observe(b); });
+    })();
+
+    /**
+     * A roda do rato, a deslizar.
+     *
+     * Um "clique" da roda não salta: a página arranca devagar, ganha
+     * ritmo e trava devagar, como o fim de um filme a subir. Cada
+     * clique só diz para onde a página tem de ir; quem a leva até lá é
+     * uma cadeia de cinco suavizações, uma a seguir à outra. Uma só
+     * travava com suavidade mas arrancava de repente; encadeadas, a
+     * velocidade sobe e desce sem degraus — arranque e travagem
+     * acentuados — e, como não se recomeça nada a cada clique, rodar a
+     * roda sem parar dá um deslize contínuo, em vez de a página ficar
+     * sempre a arrancar. Se o rato mudar de sentido a meio, trava e
+     * inverte sem solavanco.
+     *
+     * Só a roda passa por aqui. O teclado, a barra de rolagem e o dedo
+     * continuam como o navegador os faz, e a cadeia acerta-se com a
+     * posição onde eles deixarem a página. Quem pediu menos movimento
+     * fica com a roda normal.
+     */
+    (function () {
+        if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+        var ETAPAS = 5;          // quantas suavizações em cadeia
+        var TEMPO = 0.085;       // segundos de cada uma; o deslize inteiro dura ~1 s
+        var etapas = [];         // posição de cada etapa; a última é a da página
+        var alvo = 0;            // para onde a roda mandou a página ir
+        var ultima = 0;          // a posição que fui eu a pôr, para distinguir a dos outros
+        var a_andar = false;
+        var antes = 0;
+
+        function maximo() {
+            return Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
+        }
+
+        function acertar() {
+            var y = window.scrollY;
+            for (var i = 0; i < ETAPAS; i++) etapas[i] = y;
+            alvo = ultima = y;
+        }
+
+        function passo(agora) {
+            // Um separador que ficou escondido volta com um salto de
+            // tempo enorme; sem este tecto, a página saltava de uma vez.
+            var dt = Math.min((agora - antes) / 1000, 0.05);
+            antes = agora;
+            var k = 1 - Math.exp(-dt / TEMPO);
+            var entrada = alvo;
+            for (var i = 0; i < ETAPAS; i++) {
+                etapas[i] += (entrada - etapas[i]) * k;
+                entrada = etapas[i];
+            }
+            var fim = etapas[ETAPAS - 1];
+            // Chegou: encosta ao alvo em vez de andar décimas de pixel
+            // para sempre.
+            if (Math.abs(alvo - fim) < 0.4 && Math.abs(etapas[0] - fim) < 0.4) {
+                fim = alvo;
+                a_andar = false;
+            }
+            ultima = fim;
+            window.scrollTo(0, fim);
+            if (a_andar) requestAnimationFrame(passo);
+        }
+
+        window.addEventListener('wheel', function (e) {
+            // Ctrl + roda é zoom, e a roda de lado não é para descer.
+            if (e.ctrlKey || e.defaultPrevented) return;
+            if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
+
+            // A roda mede-se em pixéis, em linhas ou em páginas conforme
+            // o navegador e o rato; tudo para pixéis.
+            var dy = e.deltaY;
+            if (e.deltaMode === 1) dy *= 40;
+            else if (e.deltaMode === 2) dy *= window.innerHeight;
+
+            e.preventDefault();
+            if (!a_andar) acertar();
+            alvo = Math.min(Math.max(alvo + dy, 0), maximo());
+            if (!a_andar) {
+                a_andar = true;
+                antes = performance.now();
+                requestAnimationFrame(passo);
+            }
+        }, { passive: false });
+
+        // Alguém mexeu na página sem ser a roda (teclado, barra de
+        // rolagem, dedo, uma ligação #): larga o deslize e segue-a.
+        window.addEventListener('scroll', function () {
+            if (!a_andar) { acertar(); return; }
+            if (Math.abs(window.scrollY - ultima) > 2) {
+                a_andar = false;
+                acertar();
+            }
+        }, { passive: true });
+
+        acertar();
     })();
 
     /* O mesmo botão de língua da página do mapa, na medida desta: quem
