@@ -258,10 +258,12 @@ AnnotationController.prototype.initialize = function() {
         {
             // As fotografias de satélite do bairro, de 2009 até hoje, a
             // passar umas atrás das outras (ver timelapse.html). Abre no
-            // mesmo palco do Olho de Águia, como paragem avulsa, e fica na
-            // mesma coluna de céu que ele, mais abaixo: o olho fica acima
-            // do ecrã de quem entra no site, e este tem de se ver logo.
-            position: new pc.Vec3(0, 80, 0),
+            // mesmo palco do Olho de Águia, como paragem avulsa, e fica no
+            // céu por baixo dele: o olho fica acima do ecrã de quem entra no
+            // site, e este tem de se ver logo. Está no plano a direito à
+            // frente da câmara de entrada, e por isso ao abrir o site fica
+            // ao meio do ecrã, de lado a lado, seja qual for a largura dele.
+            position: new pc.Vec3(14.94, 80, 5.35),
             label: "Timelapse",
             is360: true,
             isImage: true,
