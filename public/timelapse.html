@@ -1,0 +1,1280 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title data-i18n-titulo="tl.titulo">Timelapse</title>
+    <script src="/idiomas.js?v=38"></script>
+    <script src="/quadrado-de-espera.js?v=4"></script>
+    <!-- O aviso de "está a demorar" e a tecla de tentar de novo, os
+         mesmos em todo o site. -->
+    <script src="/rede-de-seguranca.js?v=3"></script>
+    <script src="/comando-paginas.js?v=4" defer></script>
+    <style>
+        /* A letra do site: a Liberation Mono, servida daqui mesmo (ficheiros
+           em /fonts, licença SIL Open Font). */
+        @font-face {
+            font-family: 'Liberation Mono';
+            src: url('/fonts/LiberationMono-Regular.ttf') format('truetype');
+            font-weight: 100 500;
+            font-style: normal;
+            font-display: swap;
+        }
+        @font-face {
+            font-family: 'Liberation Mono';
+            src: url('/fonts/LiberationMono-Bold.ttf') format('truetype');
+            font-weight: 600 900;
+            font-style: normal;
+            font-display: swap;
+        }
+
+        :root {
+            /* O véu das barras que pairam por cima da fotografia, o mesmo
+               dos vídeos: escuro junto à borda do ecrã e a desfazer-se para
+               dentro, para as letras se lerem sobre um campo claro. */
+            --veu-forte: rgba(5, 5, 10, 0.8);
+            --veu-medio: rgba(5, 5, 10, 0.45);
+            --veu-nenhum: rgba(5, 5, 10, 0);
+            /* As folgas da barra de cima, as mesmas da barra do nome do
+               palco onde esta página é vista: a data fica à altura da cruz
+               de fechar, que vive lá fora. */
+            --folga-cima: 16px;
+            --folga-lado: 24px;
+        }
+
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+        }
+        body {
+            background: #05050a;
+            overflow: hidden;
+            font-family: 'Liberation Mono', 'Courier New', monospace;
+            color: #ffffff;
+        }
+
+        /* ---- A fotografia ----
+           Enche a janela toda. As fotografias estão umas por cima das
+           outras, todas do mesmo tamanho e no mesmo sítio; só se vêem a
+           que está e a que está a chegar. Arrasta-se para ver o lado, e a
+           roda (ou os dois dedos) aproxima. */
+        #palco {
+            position: absolute;
+            inset: 0;
+            overflow: hidden;
+            touch-action: none;
+            cursor: grab;
+        }
+        #palco.a-arrastar {
+            cursor: grabbing;
+        }
+        #fotos {
+            position: absolute;
+            left: 0;
+            top: 0;
+            transform-origin: 0 0;
+            will-change: transform;
+        }
+        #fotos img {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            display: block;
+            visibility: hidden;
+            user-select: none;
+            -webkit-user-drag: none;
+            pointer-events: none;
+        }
+        #fotos img.a-ver {
+            visibility: visible;
+        }
+        /* A mesma fotografia, mais nítida, por cima da leve quando se pára
+           nela. Chega a esbater, para a troca não se notar. */
+        #fotos img.nitida {
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        #fotos img.nitida.a-ver {
+            opacity: 1;
+        }
+
+        /* ---- A data, no canto de cima à esquerda ----
+           Com um véu escuro por trás, que se desfaz para baixo, como a
+           barra do nome dos vídeos. */
+        .barra-da-data {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 5;
+            box-sizing: border-box;
+            /* A altura da cruz de fechar lá de fora, para a data ficar
+               alinhada com ela. */
+            height: calc(var(--folga-cima) + 41px + 40px);
+            padding: var(--folga-cima) var(--folga-lado) 0;
+            background: linear-gradient(to bottom, var(--veu-forte), var(--veu-medio) 55%, var(--veu-nenhum));
+            pointer-events: none;
+        }
+        #data {
+            height: 41px;
+            display: flex;
+            align-items: center;
+            font-size: 1.1rem;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        /* ---- O ecrã de espera ---- */
+        #loading-overlay {
+            position: absolute;
+            inset: 0;
+            background: #05050a;
+            z-index: 2000;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 14px;
+            transition: opacity 0.4s ease;
+        }
+        #loading-overlay.escondido {
+            opacity: 0;
+            pointer-events: none;
+        }
+        .aviso {
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 0.85rem;
+        }
+
+        /* O quadrado de espera, ao centro, quando a fotografia que se pediu
+           ainda não chegou. */
+        .espera-foto {
+            --lado: 8px;
+            --folga: 3px;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            display: none;
+            z-index: 4;
+            pointer-events: none;
+        }
+        .espera-foto.a-esperar {
+            display: grid;
+        }
+
+        /* ---- A barra dos comandos ----
+           A dos vídeos: a linha do tempo em cima e os botões por baixo,
+           por cima do fundo da fotografia, com o mesmo véu virado ao
+           contrário. Fica sempre à vista, como a do Olho de Águia. */
+        .video-controls {
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            padding: 40px 24px 16px;
+            background: linear-gradient(to top, var(--veu-forte), var(--veu-medio) 60%, var(--veu-nenhum));
+        }
+
+        /* A linha do tempo: um traço por fotografia, à mesma distância
+           uns dos outros, e o quadrado que se arrasta. O que já passou
+           fica branco. A área onde se pode pegar é mais alta do que o
+           traço, para não ser preciso acertar nele. */
+        .linha-do-tempo {
+            position: relative;
+            height: 26px;
+            cursor: pointer;
+            touch-action: none;
+            outline: none;
+        }
+        .linha-do-tempo:focus-visible {
+            outline: 2px solid rgba(255, 255, 255, 0.95);
+            outline-offset: 4px;
+        }
+        .trilho {
+            position: absolute;
+            left: 0;
+            right: 0;
+            top: 50%;
+            height: 6px;
+            transform: translateY(-50%);
+            background: rgba(255, 255, 255, 0.2);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+        }
+        .feito {
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 0;
+            background: #ffffff;
+        }
+        .marca {
+            position: absolute;
+            top: 50%;
+            width: 2px;
+            height: 14px;
+            transform: translate(-50%, -50%);
+            /* Ainda a caminho: apagada. */
+            background: rgba(255, 255, 255, 0.25);
+            transition: background 0.3s ease;
+        }
+        .marca.chegou {
+            background: rgba(255, 255, 255, 0.7);
+        }
+        .marca.passou {
+            background: #ffffff;
+        }
+        .pega {
+            position: absolute;
+            top: 50%;
+            width: 14px;
+            height: 14px;
+            transform: translate(-50%, -50%);
+            background: #ffffff;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+        }
+
+        /* Os anos por cima da linha, cada um sobre a primeira fotografia
+           desse ano. Os que não cabem saem (ver arrumarAnos). */
+        .anos {
+            position: relative;
+            height: 1em;
+            font-size: 0.75rem;
+            font-variant-numeric: tabular-nums;
+            color: rgba(255, 255, 255, 0.75);
+            margin-bottom: -6px;
+        }
+        .ano {
+            position: absolute;
+            top: 0;
+            transform: translateX(-50%);
+            white-space: nowrap;
+            transition: color 0.2s ease;
+        }
+        /* O primeiro começa na ponta da linha, em vez de lhe passar para
+           fora. */
+        .ano:first-child {
+            transform: none;
+        }
+        /* Uma sombra por trás das letras pequenas, como na legenda do
+           mapa, para se lerem sobre um campo claro da fotografia. */
+        .anos,
+        .creditos {
+            text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+        }
+        .ano.atual {
+            color: #ffffff;
+            font-weight: 600;
+        }
+        .ano.nao-cabe {
+            visibility: hidden;
+        }
+
+        .controls-main {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+        }
+        .controls-left,
+        .controls-right {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        /* Os créditos que o Google Earth grava no canto de cada fotografia,
+           que ao encher o ecrã fica de fora. */
+        .creditos {
+            flex: 1 1 auto;
+            min-width: 0;
+            text-align: right;
+            font-size: 0.7rem;
+            color: rgba(255, 255, 255, 0.6);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .player-btn {
+            background: transparent;
+            border: 2.5px solid rgba(255, 255, 255, 0.15);
+            color: white;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 1;
+            transition: background 0.15s ease;
+            padding: 8px;
+            border-radius: 0;
+        }
+        /* Com o rato em cima o botão não cresce: ganha o quadrado preto,
+           como nos vídeos e no cabeçalho do bairro. Só onde há rato. */
+        @media (hover: hover) {
+            .player-btn:hover {
+                background: #05050a;
+                color: #ffffff;
+            }
+        }
+        /* Um botão que já não pode ir mais longe fica com o desenho
+           apagado, como no Olho de Águia. */
+        .player-btn:disabled {
+            color: #8e8e91;
+            cursor: default;
+        }
+        .player-btn:disabled:hover {
+            background: transparent;
+        }
+
+        @media (max-width: 900px) {
+            :root {
+                --folga-cima: 12px;
+                --folga-lado: 16px;
+            }
+            .video-controls {
+                padding: 32px 12px 14px;
+                gap: 10px;
+            }
+            .controls-left,
+            .controls-right {
+                gap: 8px;
+            }
+            .player-btn svg {
+                width: 18px;
+                height: 18px;
+            }
+            /* A cruz de fechar lá de fora encolhe com os botões. */
+            .barra-da-data {
+                height: calc(var(--folga-cima) + 39px + 32px);
+            }
+            #data {
+                height: 39px;
+            }
+        }
+        /* Num ecrã estreito os créditos não cabem ao lado dos botões, e
+           cortados não serviam de créditos: sobem para uma linha só deles. */
+        @media (max-width: 560px) {
+            .controls-main {
+                flex-wrap: wrap;
+                row-gap: 10px;
+            }
+            .creditos {
+                order: -1;
+                flex-basis: 100%;
+                white-space: normal;
+                font-size: 0.6rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="palco">
+        <div id="fotos"></div>
+        <div class="espera-foto" id="espera-foto" aria-hidden="true"></div>
+    </div>
+
+    <div class="barra-da-data">
+        <div id="data"></div>
+    </div>
+
+    <div class="video-controls" id="controlos">
+        <div class="anos" id="anos" aria-hidden="true"></div>
+        <div class="linha-do-tempo" id="linha" role="slider" tabindex="0"
+             aria-label="Data da fotografia" data-i18n-aria="tl.linha">
+            <div class="trilho"><div class="feito" id="feito"></div></div>
+            <div id="marcas"></div>
+            <div class="pega" id="pega"></div>
+        </div>
+        <div class="controls-main">
+            <div class="controls-left">
+                <button class="player-btn" id="play-pause-btn" data-i18n-title="v360.tocar" data-i18n-aria="v360.tocar" title="Tocar / Pausar" aria-label="Tocar / Pausar"></button>
+            </div>
+            <div class="creditos" id="creditos"></div>
+            <div class="controls-right">
+                <button class="player-btn" id="afastar-btn" title="Afastar" data-i18n-title="foto.afastar" data-i18n-aria="foto.afastar" aria-label="Afastar">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><line x1="8" y1="11" x2="14" y2="11"></line><line x1="16.5" y1="16.5" x2="21" y2="21"></line></svg>
+                </button>
+                <button class="player-btn" id="aproximar-btn" title="Aproximar" data-i18n-title="foto.aproximar" data-i18n-aria="foto.aproximar" aria-label="Aproximar">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><line x1="8" y1="11" x2="14" y2="11"></line><line x1="11" y1="8" x2="11" y2="14"></line><line x1="16.5" y1="16.5" x2="21" y2="21"></line></svg>
+                </button>
+                <button class="player-btn" id="fullscreen-btn" title="Ecrã inteiro" data-i18n-title="foto.ecra" data-i18n-aria="foto.ecra" aria-label="Ecrã inteiro"></button>
+            </div>
+        </div>
+    </div>
+
+    <div id="loading-overlay">
+        <div id="espera"></div>
+        <div class="aviso" data-i18n="tl.carregar">A carregar fotografias de satélite…</div>
+    </div>
+
+    <script type="module">
+        import { FOTOGRAFIAS, LARGURA_LEVE, LARGURA_NITIDA, FEITIO, enderecoDa, dataDa } from './timelapse.mjs?v=1';
+
+        const TOTAL = FOTOGRAFIAS.length;
+        const ULTIMA = TOTAL - 1;
+
+        // Quanto tempo leva uma fotografia a dar lugar à seguinte, e quanto
+        // tempo fica parada antes disso, quando o timelapse anda sozinho.
+        const PASSAGEM_MS = 600;
+        const PARAGEM_MS = 700;
+        // A primeira fica um pouco mais, para quem chega se situar antes
+        // de o bairro começar a mudar.
+        const PRIMEIRA_PARAGEM_MS = 2000;
+        // Quanto leva a assentar na fotografia mais perto, ao largar a
+        // linha do tempo, ou a passar à do lado de tecla.
+        const ASSENTAR_MS = 250;
+
+        // Quantas fotografias se vão buscar ao mesmo tempo.
+        const PEDIDOS_DE_UMA_VEZ = 3;
+
+        // Onde se olha ao abrir: o meio do bairro, em fracções da largura e
+        // da altura da fotografia. Com o ecrã mais largo do que a
+        // fotografia, o que fica de fora é o alto e o fundo.
+        const FOCO = { x: 0.6, y: 0.56 };
+
+        // O mais perto que se pode ir, em vezes a fotografia a encher o
+        // ecrã. O mais longe é a fotografia toda à vista.
+        const APROXIMAR_NO_MAXIMO = 4;
+        // O passo dos botões e da roda, em proporção (como no Olho de
+        // Águia): perto anda devagar, longe anda depressa.
+        const PASSO = 1.25;
+        // A mesma suavidade do zoom do Olho de Águia, em segundos.
+        const SUAVIDADE_DO_ZOOM = 0.12;
+
+        const parametros = new URLSearchParams(window.location.search);
+        const noPalco = parametros.get('inteira') === '1' && window.parent !== window;
+
+        const palcoEl = document.getElementById('palco');
+        const fotosEl = document.getElementById('fotos');
+        const dataEl = document.getElementById('data');
+        const creditosEl = document.getElementById('creditos');
+        const linha = document.getElementById('linha');
+        const feito = document.getElementById('feito');
+        const pega = document.getElementById('pega');
+        const marcasEl = document.getElementById('marcas');
+        const anosEl = document.getElementById('anos');
+        const esperaFoto = document.getElementById('espera-foto');
+        const overlay = document.getElementById('loading-overlay');
+        const botaoTocar = document.getElementById('play-pause-btn');
+        const botaoAproximar = document.getElementById('aproximar-btn');
+        const botaoAfastar = document.getElementById('afastar-btn');
+        const botaoEcra = document.getElementById('fullscreen-btn');
+
+        const ICONE_TOCAR = '<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>';
+        const ICONE_PAUSA = '<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>';
+        const ICONE_ECRA_INTEIRO = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true"><path d="M8 3H3v5m18 0V3h-5m0 18h5v-5M3 16v5h5"></path></svg>';
+        const ICONE_SAIR_DO_ECRA = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true"><path d="M3 9h6V3 M21 9h-6V3 M21 15h-6v6 M3 15h6v6"></path></svg>';
+
+        if (window.QuadradoDeEspera) {
+            window.QuadradoDeEspera.fazer(document.getElementById('espera'));
+            window.QuadradoDeEspera.fazer(esperaFoto);
+        }
+
+        // ---- As fotografias ----
+        //
+        // Uma imagem por fotografia, umas por cima das outras pela ordem
+        // das datas: a que está a chegar fica sempre por cima da que está.
+        // Cada uma sabe se já chegou ("pronta") ou se não há maneira de a
+        // trazer ("falhou").
+        const fotos = FOTOGRAFIAS.map((foto) => {
+            const img = document.createElement('img');
+            img.alt = '';
+            img.decoding = 'async';
+            img.draggable = false;
+            fotosEl.appendChild(img);
+            return { foto, img, estado: 'por-pedir', tentativas: 0, opacidade: -1, aVer: false };
+        });
+        const nitida = document.createElement('img');
+        nitida.className = 'nitida';
+        nitida.alt = '';
+        nitida.draggable = false;
+        fotosEl.appendChild(nitida);
+
+        // A rede de segurança da janela: se a primeira fotografia demorar
+        // demais, diz-se que está a demorar e dá-se a tecla de tentar de
+        // novo; se falhar de vez, diz-se logo.
+        const rede = window.RedeDeSeguranca ? window.RedeDeSeguranca.vigiar({
+            espera: 40,
+            pronto: () => overlay.classList.contains('escondido'),
+            caixa: () => overlay
+        }) : null;
+        const falhou = (chave, textoPt) => {
+            document.getElementById('espera').style.display = 'none';
+            overlay.querySelector('.aviso').style.display = 'none';
+            if (rede) rede.avisar(chave, textoPt);
+            else overlay.textContent = (window.Idiomas && window.Idiomas.t(chave)) || textoPt;
+        };
+
+        // ---- O estado ----
+        //
+        // Tudo sai de um número só: a posição na linha do tempo, de zero
+        // (a primeira fotografia) à última. Entre dois números inteiros
+        // está-se a meio da passagem de uma fotografia para a seguinte.
+        let posicao = 0;
+        let aTocar = false;
+        let passagem = null;     // { de, para, inicio, duracao } a deslizar
+        let paradaDesde = 0;     // quando a posição assentou numa fotografia
+        let aArrastarALinha = false;
+        let comecou = false;     // se a primeira fotografia já está à vista
+
+        // ---- Ir buscar as fotografias ----
+        //
+        // Vão-se buscar umas poucas de cada vez, as mais perto de onde se
+        // está primeiro — ao abrir é pela ordem das datas, e quem saltar
+        // para o fim da linha passa a ter as do fim primeiro.
+        const aCaminho = () => fotos.filter(f => f.estado === 'a-chegar').length;
+
+        const proximaAPedir = () => {
+            let melhor = null;
+            let menor = Infinity;
+            fotos.forEach((f, i) => {
+                if (f.estado !== 'por-pedir') return;
+                // À frente conta um pouco menos do que atrás: é para lá
+                // que o timelapse anda.
+                const d = i >= posicao ? i - posicao : (posicao - i) * 1.5;
+                if (d < menor) { menor = d; melhor = f; }
+            });
+            return melhor;
+        };
+
+        const pedirMais = () => {
+            while (aCaminho() < PEDIDOS_DE_UMA_VEZ) {
+                const f = proximaAPedir();
+                if (!f) return;
+                pedir(f);
+            }
+        };
+
+        const pedir = (f) => {
+            f.estado = 'a-chegar';
+            f.tentativas++;
+            const img = f.img;
+            img.onload = () => {
+                // Só conta como chegada depois de descodificada: assim, ao
+                // aparecer, aparece inteira e de uma vez.
+                const pronta = () => {
+                    f.estado = 'pronta';
+                    aChegada(f);
+                    pedirMais();
+                };
+                if (img.decode) img.decode().then(pronta, pronta);
+                else pronta();
+            };
+            img.onerror = () => {
+                // Uma segunda tentativa, por causa de uma ligação que
+                // falhou por um instante; à segunda desiste-se desta, e o
+                // timelapse passa por ela mostrando a do lado.
+                f.estado = f.tentativas < 2 ? 'por-pedir' : 'falhou';
+                aChegada(f);
+                pedirMais();
+            };
+            img.src = enderecoDa(f.foto, LARGURA_LEVE);
+        };
+
+        const aChegada = (f) => {
+            // Só se diz que falhou se não houver nenhuma para mostrar.
+            if (!comecou && fotos.every(x => x.estado === 'falhou')) {
+                falhou('tl.erro', 'Não foi possível carregar as fotografias de satélite.');
+                return;
+            }
+            // Começa-se com a primeira — ou, se ela não houver maneira de
+            // vir, com a que vier.
+            const primeira = fotos[0].estado;
+            if (!comecou && (primeira === 'pronta' ||
+                (primeira === 'falhou' && fotos.some(x => x.estado === 'pronta')))) {
+                comecou = true;
+                overlay.classList.add('escondido');
+                // O timelapse começa sozinho, depois de se ver a primeira
+                // fotografia um instante.
+                tocar();
+            }
+            pintarMarcas();
+            desenhar();
+            acordar();
+        };
+
+        // ---- Mostrar ----
+
+        /**
+         * A fotografia que se mostra no lugar de outra: ela mesma, se já
+         * chegou; senão a mais perto para trás que tenha chegado (e, não
+         * havendo, para a frente). Assim, enquanto uma fotografia não chega,
+         * vê-se a anterior em vez de um buraco preto.
+         */
+        const mostravel = (i) => {
+            if (fotos[i] && fotos[i].estado === 'pronta') return i;
+            for (let j = i - 1; j >= 0; j--) if (fotos[j].estado === 'pronta') return j;
+            for (let j = i + 1; j < TOTAL; j++) if (fotos[j].estado === 'pronta') return j;
+            return -1;
+        };
+
+        // A fotografia a que a posição está mais perto: é a que dá a data.
+        const atual = () => Math.max(0, Math.min(ULTIMA, Math.round(posicao)));
+
+        let dataEscrita = -1;
+
+        const desenhar = () => {
+            const i = Math.floor(posicao);
+            const fraccao = posicao - i;
+            const a = mostravel(i);
+            const b = fraccao > 0.001 ? mostravel(Math.min(ULTIMA, i + 1)) : a;
+
+            fotos.forEach((f, j) => {
+                const aVer = j === a || j === b;
+                const opacidade = j === b && b !== a ? fraccao : 1;
+                if (f.aVer !== aVer) {
+                    f.aVer = aVer;
+                    f.img.classList.toggle('a-ver', aVer);
+                }
+                if (aVer && f.opacidade !== opacidade) {
+                    f.opacidade = opacidade;
+                    f.img.style.opacity = opacidade;
+                }
+            });
+
+            // O quadrado de espera, se a fotografia que se pediu ainda não
+            // chegou (e não for uma que não há maneira de trazer).
+            const k = atual();
+            const aEsperar = comecou && fotos[k].estado !== 'pronta' && fotos[k].estado !== 'falhou';
+            esperaFoto.classList.toggle('a-esperar', aEsperar);
+
+            // A linha do tempo.
+            const fraccaoDaLinha = posicao / ULTIMA;
+            feito.style.width = (fraccaoDaLinha * 100) + '%';
+            pega.style.left = (fraccaoDaLinha * 100) + '%';
+
+            if (k !== dataEscrita) {
+                dataEscrita = k;
+                escreverAData();
+                pintarMarcas();
+            }
+
+            arrumarANitida();
+        };
+
+        const escreverAData = () => {
+            const k = atual();
+            const foto = FOTOGRAFIAS[k];
+            const data = dataDa(foto);
+            dataEl.textContent = data;
+            creditosEl.textContent = foto.creditos;
+            linha.setAttribute('aria-valuenow', String(k));
+            linha.setAttribute('aria-valuetext', data);
+            anosEl.querySelectorAll('.ano').forEach((el) => {
+                el.classList.toggle('atual', Number(el.dataset.ano) === foto.ano);
+            });
+        };
+
+        // ---- A versão nítida ----
+        //
+        // Com a fotografia parada, sem o timelapse a andar, e se o ecrã (ou
+        // o aproximar) pedir mais pontos do que a leve tem, vai-se buscar a
+        // nítida dessa fotografia e põe-se por cima. Ao sair dali, sai já.
+        const nitidas = new Map(); // índice -> 'a-chegar' | 'pronta' | 'falhou'
+        let nitidaPosta = -1;
+        // Só se vai buscar a nítida de uma fotografia em que se ficou um
+        // bocado: quem passa por elas de tecla, depressa, não precisa de
+        // nenhuma, e cada uma pesa uns megas.
+        const ESPERA_PELA_NITIDA_MS = 500;
+        let esperaDaNitida = null;
+
+        const precisaDaNitida = () =>
+            vista.largura * (window.devicePixelRatio || 1) > LARGURA_LEVE * 1.1;
+
+        // A fotografia em que se está parado, com o timelapse quieto, e a
+        // pedir mais pontos do que a leve tem; ou -1, se não for o caso.
+        const paradaNumaQuePedeNitida = () => {
+            const parada = !passagem && !aTocar && !aArrastarALinha &&
+                Math.abs(posicao - Math.round(posicao)) < 0.001;
+            const k = atual();
+            return parada && fotos[k].estado === 'pronta' && precisaDaNitida() ? k : -1;
+        };
+
+        const arrumarANitida = () => {
+            const k = paradaNumaQuePedeNitida();
+            if (k < 0) {
+                clearTimeout(esperaDaNitida);
+                esperaDaNitida = null;
+                if (nitidaPosta !== -1) {
+                    nitidaPosta = -1;
+                    // Sai já, sem esbater: a leve está por baixo.
+                    nitida.style.transition = 'none';
+                    nitida.classList.remove('a-ver');
+                    void nitida.offsetWidth;
+                    nitida.style.transition = '';
+                }
+                return;
+            }
+            if (nitidaPosta === k) return;
+            const estado = nitidas.get(k);
+            if (estado === 'pronta') {
+                nitidaPosta = k;
+                nitida.src = enderecoDa(FOTOGRAFIAS[k], LARGURA_NITIDA);
+                const mostrar = () => { if (nitidaPosta === k) nitida.classList.add('a-ver'); };
+                if (nitida.decode) nitida.decode().then(mostrar, mostrar);
+                else mostrar();
+            } else if (!estado && !esperaDaNitida) {
+                esperaDaNitida = setTimeout(() => {
+                    esperaDaNitida = null;
+                    // Ainda parada na mesma? Então vai-se buscar.
+                    if (paradaNumaQuePedeNitida() !== k || nitidas.has(k)) return;
+                    nitidas.set(k, 'a-chegar');
+                    const img = new Image();
+                    img.onload = () => { nitidas.set(k, 'pronta'); arrumarANitida(); };
+                    img.onerror = () => nitidas.set(k, 'falhou');
+                    img.src = enderecoDa(FOTOGRAFIAS[k], LARGURA_NITIDA);
+                    arrumarANitida();
+                }, ESPERA_PELA_NITIDA_MS);
+            }
+        };
+
+        // ---- A linha do tempo ----
+
+        // Um traço por fotografia, e o ano por cima da primeira de cada ano.
+        const marcas = FOTOGRAFIAS.map((foto, i) => {
+            const marca = document.createElement('div');
+            marca.className = 'marca';
+            marca.style.left = (i / ULTIMA * 100) + '%';
+            marcasEl.appendChild(marca);
+            if (i === 0 || FOTOGRAFIAS[i - 1].ano !== foto.ano) {
+                const ano = document.createElement('div');
+                ano.className = 'ano';
+                ano.dataset.ano = foto.ano;
+                ano.textContent = foto.ano;
+                ano.style.left = (i / ULTIMA * 100) + '%';
+                anosEl.appendChild(ano);
+            }
+            return marca;
+        });
+        linha.setAttribute('aria-valuemin', '0');
+        linha.setAttribute('aria-valuemax', String(ULTIMA));
+
+        const pintarMarcas = () => {
+            const k = atual();
+            marcas.forEach((marca, i) => {
+                marca.classList.toggle('chegou', fotos[i].estado === 'pronta');
+                marca.classList.toggle('passou', i <= posicao + 0.001 && i <= k);
+            });
+        };
+
+        // Os anos que não cabem saem, para não se pisarem: anda-se da
+        // esquerda para a direita e tira-se o que tocar no anterior. O
+        // último fica sempre, e se for ele a tocar sai o que vem antes.
+        const arrumarAnos = () => {
+            const anos = Array.from(anosEl.querySelectorAll('.ano'));
+            anos.forEach(a => a.classList.remove('nao-cabe'));
+            const caixas = anos.map(a => a.getBoundingClientRect());
+            const FOLGA = 10;
+            let ultimoFim = -Infinity;
+            const fimDoUltimo = caixas[caixas.length - 1].left;
+            anos.forEach((a, i) => {
+                const c = caixas[i];
+                const eOUltimo = i === anos.length - 1;
+                if (!eOUltimo && (c.left < ultimoFim + FOLGA || c.right > fimDoUltimo - FOLGA)) {
+                    a.classList.add('nao-cabe');
+                    return;
+                }
+                ultimoFim = c.right;
+            });
+        };
+
+        // Onde cai, na linha, um ponto do ecrã.
+        const posicaoNoPonto = (x) => {
+            const caixa = linha.getBoundingClientRect();
+            const f = (x - caixa.left) / caixa.width;
+            return Math.max(0, Math.min(ULTIMA, f * ULTIMA));
+        };
+
+        linha.addEventListener('pointerdown', (e) => {
+            if (e.button !== 0) return;
+            e.preventDefault();
+            linha.setPointerCapture(e.pointerId);
+            linha.focus({ preventScroll: true });
+            aArrastarALinha = true;
+            pausar();
+            passagem = null;
+            posicao = posicaoNoPonto(e.clientX);
+            desenhar();
+            pedirMais();
+        });
+        linha.addEventListener('pointermove', (e) => {
+            if (!aArrastarALinha) return;
+            posicao = posicaoNoPonto(e.clientX);
+            desenhar();
+            pedirMais();
+        });
+        const largarALinha = () => {
+            if (!aArrastarALinha) return;
+            aArrastarALinha = false;
+            // Assenta na fotografia mais perto.
+            irPara(Math.round(posicao), ASSENTAR_MS);
+        };
+        linha.addEventListener('pointerup', largarALinha);
+        linha.addEventListener('pointercancel', largarALinha);
+
+        // De tecla, na linha: as setas passam à fotografia do lado, o Início
+        // e o Fim vão às pontas. As setas não saem para o mapa: aqui não
+        // há paragem do lado para onde ir.
+        linha.addEventListener('keydown', (e) => {
+            if (e.altKey || e.ctrlKey || e.metaKey) return;
+            let destino = null;
+            if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') destino = atual() - 1;
+            else if (e.key === 'ArrowRight' || e.key === 'ArrowUp') destino = atual() + 1;
+            else if (e.key === 'Home') destino = 0;
+            else if (e.key === 'End') destino = ULTIMA;
+            else if (e.key === 'PageDown') destino = atual() - 3;
+            else if (e.key === 'PageUp') destino = atual() + 3;
+            if (destino === null) return;
+            e.preventDefault();
+            e.stopPropagation();
+            pausar();
+            irPara(destino, ASSENTAR_MS);
+        });
+
+        // ---- Andar no tempo ----
+
+        /**
+         * Desliza a posição até uma fotografia.
+         *
+         * @param {number} destino - A fotografia, na lista.
+         * @param {number} duracao - Quanto leva, em milésimos de segundo.
+         */
+        const irPara = (destino, duracao) => {
+            const para = Math.max(0, Math.min(ULTIMA, destino));
+            if (para === posicao && !passagem) {
+                desenhar();
+                return;
+            }
+            passagem = { de: posicao, para, inicio: performance.now(), duracao };
+            pedirMais();
+            acordar();
+        };
+
+        const passarFoto = (sentido) => {
+            pausar();
+            irPara(atual() + sentido, ASSENTAR_MS);
+        };
+
+        const pintarBotaoTocar = () => {
+            botaoTocar.innerHTML = aTocar ? ICONE_PAUSA : ICONE_TOCAR;
+        };
+
+        function tocar() {
+            // No fim, tocar é voltar ao princípio e ver tudo outra vez.
+            if (atual() >= ULTIMA && !passagem) {
+                posicao = 0;
+                desenhar();
+            }
+            aTocar = true;
+            paradaDesde = performance.now() + (atual() === 0 ? PRIMEIRA_PARAGEM_MS - PARAGEM_MS : 0);
+            pintarBotaoTocar();
+            arrumarANitida();
+            pedirMais();
+            acordar();
+        }
+
+        function pausar() {
+            if (!aTocar) return;
+            aTocar = false;
+            pintarBotaoTocar();
+            desenhar();
+        }
+
+        botaoTocar.addEventListener('click', () => {
+            if (aTocar) pausar();
+            else tocar();
+        });
+
+        // ---- A vista: aproximar, afastar e arrastar ----
+        //
+        // A fotografia é medida pela largura com que aparece no ecrã, e pelo
+        // sítio do seu canto de cima à esquerda. Nunca fica mais pequena do
+        // que inteira à vista, e nunca deixa à mostra o fundo de um lado
+        // quando é maior do que o ecrã desse lado.
+        const vista = { largura: 0, esquerda: 0, topo: 0 };
+        let larguraPedida = 0;
+        // O ponto que fica parado enquanto o zoom desliza: o ponto do ecrã
+        // e o ponto da fotografia (em fracções) que lá está.
+        let ancora = null;
+        // O regresso à vista do princípio (ver pedirZoomDeAbrir): de onde,
+        // para onde, e desde quando.
+        let voo = null;
+        const VOO_MS = 450;
+
+        const tamanhoDoEcra = () => ({ w: palcoEl.clientWidth || window.innerWidth, h: palcoEl.clientHeight || window.innerHeight });
+        const larguraInteira = () => { const e = tamanhoDoEcra(); return Math.min(e.w, e.h * FEITIO); };
+        const larguraACheio = () => { const e = tamanhoDoEcra(); return Math.max(e.w, e.h * FEITIO); };
+        const larguraMinima = () => larguraInteira();
+        const larguraMaxima = () => larguraACheio() * APROXIMAR_NO_MAXIMO;
+
+        const acertarVista = () => {
+            const e = tamanhoDoEcra();
+            const w = vista.largura;
+            const h = w / FEITIO;
+            vista.esquerda = w >= e.w ? Math.min(0, Math.max(e.w - w, vista.esquerda)) : (e.w - w) / 2;
+            vista.topo = h >= e.h ? Math.min(0, Math.max(e.h - h, vista.topo)) : (e.h - h) / 2;
+            fotosEl.style.width = w + 'px';
+            fotosEl.style.height = h + 'px';
+            fotosEl.style.transform = 'translate3d(' + vista.esquerda + 'px, ' + vista.topo + 'px, 0)';
+            palcoEl.style.cursor = (w > e.w + 0.5 || h > e.h + 0.5) ? '' : 'default';
+        };
+
+        // Põe a vista com uma largura, mantendo um ponto da fotografia
+        // debaixo de um ponto do ecrã.
+        const porLargura = (largura, ecraX, ecraY, fotoX, fotoY) => {
+            vista.largura = largura;
+            vista.esquerda = ecraX - fotoX * largura;
+            vista.topo = ecraY - fotoY * largura / FEITIO;
+            acertarVista();
+        };
+
+        // O ponto da fotografia, em fracções, que está debaixo de um ponto
+        // do ecrã.
+        const pontoDaFoto = (ecraX, ecraY) => ({
+            x: (ecraX - vista.esquerda) / vista.largura,
+            y: (ecraY - vista.topo) / (vista.largura / FEITIO)
+        });
+
+        const pintarBotoesDoZoom = () => {
+            botaoAproximar.disabled = larguraPedida >= larguraMaxima() - 0.5;
+            botaoAfastar.disabled = larguraPedida <= larguraMinima() + 0.5;
+        };
+
+        /**
+         * Pede uma largura nova, a deslizar até lá, com um ponto do ecrã a
+         * ficar parado (o do rato, ou o meio).
+         */
+        const pedirZoom = (largura, ecraX, ecraY) => {
+            const e = tamanhoDoEcra();
+            const x = ecraX === undefined ? e.w / 2 : ecraX;
+            const y = ecraY === undefined ? e.h / 2 : ecraY;
+            voo = null;
+            larguraPedida = Math.max(larguraMinima(), Math.min(larguraMaxima(), largura));
+            const ponto = pontoDaFoto(x, y);
+            ancora = { ecraX: x, ecraY: y, fotoX: ponto.x, fotoY: ponto.y };
+            pintarBotoesDoZoom();
+            acordar();
+        };
+
+        const vistaDeAbrir = () => {
+            const e = tamanhoDoEcra();
+            const largura = larguraACheio();
+            larguraPedida = largura;
+            ancora = null;
+            porLargura(largura, e.w / 2, e.h / 2, FOCO.x, FOCO.y);
+            pintarBotoesDoZoom();
+        };
+
+        botaoAproximar.addEventListener('click', () => pedirZoom(larguraPedida * PASSO));
+        botaoAfastar.addEventListener('click', () => pedirZoom(larguraPedida / PASSO));
+
+        // A roda conta quanto rodou, como no Olho de Águia: um rato de
+        // roda aos saltos dá o passo de sempre por estalido, e um tapete
+        // táctil aproxima aos poucos.
+        palcoEl.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            const porLinha = e.deltaMode === 1 ? 33 : (e.deltaMode === 2 ? 400 : 1);
+            const rodou = Math.max(-300, Math.min(300, e.deltaY * porLinha));
+            const caixa = palcoEl.getBoundingClientRect();
+            pedirZoom(larguraPedida * Math.pow(PASSO, -rodou / 100), e.clientX - caixa.left, e.clientY - caixa.top);
+        }, { passive: false });
+
+        // Arrastar com um dedo (ou com o rato) leva a fotografia atrás; com
+        // dois dedos, abrir e fechar aproxima e afasta.
+        const dedos = new Map();
+        let pinca = null;
+
+        const meioDosDedos = () => {
+            const [a, b] = Array.from(dedos.values());
+            return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2, d: Math.hypot(a.x - b.x, a.y - b.y) };
+        };
+
+        palcoEl.addEventListener('pointerdown', (e) => {
+            if (e.pointerType === 'mouse' && e.button !== 0) return;
+            const caixa = palcoEl.getBoundingClientRect();
+            palcoEl.setPointerCapture(e.pointerId);
+            dedos.set(e.pointerId, { x: e.clientX - caixa.left, y: e.clientY - caixa.top });
+            // Quem pega na fotografia pára o zoom que estivesse a deslizar.
+            larguraPedida = vista.largura;
+            ancora = null;
+            voo = null;
+            if (dedos.size === 2) {
+                const m = meioDosDedos();
+                const ponto = pontoDaFoto(m.x, m.y);
+                pinca = { d: m.d, largura: vista.largura, fotoX: ponto.x, fotoY: ponto.y };
+            }
+            palcoEl.classList.add('a-arrastar');
+        });
+        palcoEl.addEventListener('pointermove', (e) => {
+            const antes = dedos.get(e.pointerId);
+            if (!antes) return;
+            const caixa = palcoEl.getBoundingClientRect();
+            const agora = { x: e.clientX - caixa.left, y: e.clientY - caixa.top };
+            dedos.set(e.pointerId, agora);
+            if (dedos.size >= 2 && pinca) {
+                const m = meioDosDedos();
+                const largura = Math.max(larguraMinima(), Math.min(larguraMaxima(),
+                    pinca.largura * m.d / Math.max(1, pinca.d)));
+                larguraPedida = largura;
+                porLargura(largura, m.x, m.y, pinca.fotoX, pinca.fotoY);
+                pintarBotoesDoZoom();
+            } else if (dedos.size === 1) {
+                vista.esquerda += agora.x - antes.x;
+                vista.topo += agora.y - antes.y;
+                acertarVista();
+            }
+        });
+        const largarDedo = (e) => {
+            dedos.delete(e.pointerId);
+            if (dedos.size < 2) pinca = null;
+            if (dedos.size === 0) {
+                palcoEl.classList.remove('a-arrastar');
+                // Com a vista parada, a nítida pode vir.
+                arrumarANitida();
+            }
+        };
+        palcoEl.addEventListener('pointerup', largarDedo);
+        palcoEl.addEventListener('pointercancel', largarDedo);
+
+        // O tamanho do ecrã da última vez que se mediu, para ao mudar se
+        // saber o que estava ao meio.
+        let ecraDeAntes = tamanhoDoEcra();
+
+        window.addEventListener('resize', () => {
+            // O ponto da fotografia que estava ao meio fica ao meio, e a
+            // largura dentro dos novos limites. Ao mudar o feitio da janela
+            // a largura acompanha-a, na proporção da que fazia a fotografia
+            // encher o ecrã: quem não mexeu no zoom continua com o ecrã
+            // cheio.
+            const e = tamanhoDoEcra();
+            const meio = pontoDaFoto(ecraDeAntes.w / 2, ecraDeAntes.h / 2);
+            const cheioAntes = Math.max(ecraDeAntes.w, ecraDeAntes.h * FEITIO);
+            const proporcao = cheioAntes > 0 ? larguraACheio() / cheioAntes : 1;
+            ecraDeAntes = e;
+            voo = null;
+            ancora = null;
+            const largura = Math.max(larguraMinima(), Math.min(larguraMaxima(), vista.largura * proporcao));
+            larguraPedida = largura;
+            porLargura(largura, e.w / 2, e.h / 2, meio.x, meio.y);
+            pintarBotoesDoZoom();
+            arrumarAnos();
+            arrumarANitida();
+        });
+
+        // ---- O relógio ----
+        //
+        // Uma imagem de cada vez enquanto há alguma coisa a mexer — a
+        // passagem entre fotografias, o timelapse a andar, o zoom a
+        // deslizar — e nada quando está tudo parado.
+        let aCorrer = false;
+        let instanteAnterior = 0;
+
+        const suave = (t) => t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+
+        const tique = (agora) => {
+            const dt = instanteAnterior ? Math.min(0.1, (agora - instanteAnterior) / 1000) : 1 / 60;
+            instanteAnterior = agora;
+            let haMais = false;
+
+            // A passagem de uma fotografia para outra.
+            if (passagem) {
+                const t = Math.min(1, (agora - passagem.inicio) / passagem.duracao);
+                posicao = passagem.de + (passagem.para - passagem.de) * suave(t);
+                if (t >= 1) {
+                    posicao = passagem.para;
+                    passagem = null;
+                    paradaDesde = agora;
+                }
+                desenhar();
+                haMais = true;
+            }
+
+            // O timelapse a andar: parada a fotografia o tempo dela, passa
+            // à seguinte — se ela já tiver chegado (ou se não houver
+            // maneira de a trazer). Na última, pára.
+            if (aTocar && !passagem && !aArrastarALinha) {
+                const k = atual();
+                if (k >= ULTIMA) {
+                    pausar();
+                } else {
+                    const seguinte = fotos[k + 1];
+                    const pode = seguinte.estado === 'pronta' || seguinte.estado === 'falhou';
+                    if (agora - paradaDesde >= PARAGEM_MS && pode) {
+                        passagem = { de: posicao, para: k + 1, inicio: agora, duracao: PASSAGEM_MS };
+                    } else if (!pode) {
+                        // À espera dela: o quadrado de espera aparece se a
+                        // espera passar do tempo de uma paragem.
+                        esperaFoto.classList.toggle('a-esperar', agora - paradaDesde >= PARAGEM_MS);
+                    }
+                    haMais = true;
+                }
+            }
+
+            // O regresso à vista do princípio: a largura vai por proporção
+            // (como o zoom), o sítio vai a direito.
+            if (voo) {
+                const t = Math.min(1, (agora - voo.inicio) / VOO_MS);
+                const s = suave(t);
+                vista.largura = voo.de.largura * Math.pow(voo.para.largura / voo.de.largura, s);
+                vista.esquerda = voo.de.esquerda + (voo.para.esquerda - voo.de.esquerda) * s;
+                vista.topo = voo.de.topo + (voo.para.topo - voo.de.topo) * s;
+                larguraPedida = vista.largura;
+                acertarVista();
+                if (t >= 1) {
+                    voo = null;
+                    arrumarANitida();
+                } else {
+                    haMais = true;
+                }
+            // O zoom a deslizar até onde se pediu.
+            } else if (Math.abs(larguraPedida - vista.largura) > 0.5) {
+                const largura = vista.largura + (larguraPedida - vista.largura) *
+                    (1 - Math.exp(-dt / SUAVIDADE_DO_ZOOM));
+                if (ancora) porLargura(largura, ancora.ecraX, ancora.ecraY, ancora.fotoX, ancora.fotoY);
+                else { vista.largura = largura; acertarVista(); }
+                haMais = true;
+            } else if (larguraPedida !== vista.largura) {
+                if (ancora) porLargura(larguraPedida, ancora.ecraX, ancora.ecraY, ancora.fotoX, ancora.fotoY);
+                else { vista.largura = larguraPedida; acertarVista(); }
+                ancora = null;
+                arrumarANitida();
+            }
+
+            if (haMais) {
+                requestAnimationFrame(tique);
+            } else {
+                aCorrer = false;
+                instanteAnterior = 0;
+            }
+        };
+
+        function acordar() {
+            if (aCorrer) return;
+            aCorrer = true;
+            instanteAnterior = 0;
+            requestAnimationFrame(tique);
+        }
+
+        // ---- Ecrã inteiro ----
+        //
+        // No palco, quem vai a ecrã inteiro é o palco todo, com a cruz de
+        // fechar. O pedido é feito daqui mesmo, no instante do clique: o
+        // navegador só deixa ir a ecrã inteiro enquanto dura o toque.
+        // Aberta sozinha, vai esta página.
+        const pintarBotaoDoEcra = (dentro) => {
+            botaoEcra.innerHTML = dentro ? ICONE_SAIR_DO_ECRA : ICONE_ECRA_INTEIRO;
+        };
+        botaoEcra.addEventListener('click', () => {
+            const palco = noPalco && window.frameElement && window.frameElement.closest('#modal-360');
+            const alvo = palco || document.documentElement;
+            const doc = alvo.ownerDocument;
+            const entrar = alvo.requestFullscreen || alvo.webkitRequestFullscreen;
+            const sair = doc.exitFullscreen || doc.webkitExitFullscreen;
+            try {
+                const pedido = (doc.fullscreenElement || doc.webkitFullscreenElement)
+                    ? sair.call(doc)
+                    : entrar.call(alvo);
+                if (pedido && pedido.catch) pedido.catch(() => {});
+            } catch (e) { /* navegador sem ecrã inteiro: fica a janela */ }
+        });
+        document.addEventListener('fullscreenchange', () => {
+            pintarBotaoDoEcra(!!document.fullscreenElement);
+        });
+        // No palco, é o palco que diz quando entra e sai do ecrã inteiro.
+        window.addEventListener('message', (e) => {
+            if (e.source !== window.parent || !e.data) return;
+            if (e.data.malhaViva === 'ecraInteiro360') pintarBotaoDoEcra(!!e.data.dentro);
+        });
+
+        // ---- O teclado ----
+        //
+        // O espaço (ou o K) toca e pára, as setas passam à fotografia do
+        // lado, o Início e o Fim vão às pontas, o mais e o menos aproximam
+        // e afastam, o zero volta à vista do princípio, o F vai a ecrã
+        // inteiro. O Escape é do palco, lá fora, e fecha.
+        window.addEventListener('keydown', (e) => {
+            if (e.altKey || e.ctrlKey || e.metaKey || e.defaultPrevented) return;
+            const tecla = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+            const numBotao = e.target && e.target.tagName === 'BUTTON';
+            if ((tecla === ' ' && !numBotao) || tecla === 'k') {
+                e.preventDefault();
+                if (aTocar) pausar();
+                else tocar();
+            } else if (tecla === 'ArrowLeft') {
+                e.preventDefault();
+                passarFoto(-1);
+            } else if (tecla === 'ArrowRight') {
+                e.preventDefault();
+                passarFoto(1);
+            } else if (tecla === 'Home' || tecla === 'End') {
+                e.preventDefault();
+                pausar();
+                irPara(tecla === 'Home' ? 0 : ULTIMA, ASSENTAR_MS);
+            } else if (tecla === '+' || tecla === '=') {
+                pedirZoom(larguraPedida * PASSO);
+            } else if (tecla === '-' || tecla === '_') {
+                pedirZoom(larguraPedida / PASSO);
+            } else if (tecla === '0' || tecla === 'r') {
+                pedirZoomDeAbrir();
+            } else if (tecla === 'f') {
+                botaoEcra.click();
+            }
+        });
+
+        // Volta à vista do princípio, a deslizar: a largura e o sítio vão
+        // os dois ao mesmo tempo até lá.
+        const pedirZoomDeAbrir = () => {
+            const de = { largura: vista.largura, esquerda: vista.esquerda, topo: vista.topo };
+            vistaDeAbrir();
+            const para = { largura: vista.largura, esquerda: vista.esquerda, topo: vista.topo };
+            Object.assign(vista, de);
+            acertarVista();
+            voo = { de, para, inicio: performance.now() };
+            acordar();
+        };
+
+        // ---- O comando de jogo ----
+        //
+        // De fora, o mapa carrega nos botões desta página pelo nome (ver
+        // comando-paginas.js): o A no de tocar, o Y no do ecrã inteiro. A
+        // cruz carrega em "recuar" e "avançar", que aqui não são botões —
+        // são a fotografia do lado.
+        let ligadoAoComando = false;
+        const ligarAoComando = () => {
+            const porta = window.comandoDaJanela;
+            if (!porta || ligadoAoComando) return;
+            ligadoAoComando = true;
+            const botao = porta.botao;
+            porta.botao = (nome) => {
+                if (nome === 'recuar-btn') { passarFoto(-1); return true; }
+                if (nome === 'avancar-btn') { passarFoto(1); return true; }
+                return botao(nome);
+            };
+        };
+        ligarAoComando();
+        document.addEventListener('DOMContentLoaded', ligarAoComando);
+
+        // ---- Começar ----
+        pintarBotaoTocar();
+        pintarBotaoDoEcra(!!document.fullscreenElement);
+        if (window.Idiomas) window.Idiomas.aplicar(document);
+        vistaDeAbrir();
+        escreverAData();
+        pintarMarcas();
+        arrumarAnos();
+        // A letra do site chega depois, e os anos mudam de largura com ela.
+        if (document.fonts && document.fonts.ready) document.fonts.ready.then(arrumarAnos);
+        desenhar();
+        pedirMais();
+    </script>
+</body>
+</html>

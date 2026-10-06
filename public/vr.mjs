@@ -1,6 +1,6 @@
 import { Entity, Vec3, XRTYPE_VR, XRSPACE_LOCALFLOOR } from 'playcanvas';
 import { criarCartao } from './cartao.mjs?v=3';
-import { criarMarcadoresVR } from './marcadores-vr.mjs?v=3';
+import { criarMarcadoresVR } from './marcadores-vr.mjs?v=4';
 
 /**
  * Modo VR: o bairro visto de dentro, com óculos.

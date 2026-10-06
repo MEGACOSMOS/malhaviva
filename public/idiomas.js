@@ -82,6 +82,7 @@
             'idm.titulo': 'Idioma',
             'mapa.testemunhoDe': 'Testemunho de {nome}',
             'mapa.fotografia360': 'fotografia 360º',
+            'mapa.timelapse': 'Timelapse — fotografias de satélite do bairro, de {de} a {ate}',
 
             'carga.modelo': 'A carregar modelo 3D…',
             'carga.restaurar': 'A restaurar ambiente 3D…',
@@ -118,6 +119,12 @@
             'foto.ecra': 'Ecrã inteiro',
             'foto.aproximar': 'Aproximar',
             'foto.afastar': 'Afastar',
+
+            'tl.titulo': 'Timelapse',
+            'tl.carregar': 'A carregar fotografias de satélite…',
+            'tl.erro': 'Não foi possível carregar as fotografias de satélite.',
+            'tl.linha': 'Data da fotografia',
+            'tl.meses': 'Janeiro,Fevereiro,Março,Abril,Maio,Junho,Julho,Agosto,Setembro,Outubro,Novembro,Dezembro',
 
             'rota.titulo': 'Rota 360º',
             'palco.anterior': 'Anterior',
@@ -274,6 +281,7 @@
             'idm.titulo': 'Language',
             'mapa.testemunhoDe': 'Testimony from {nome}',
             'mapa.fotografia360': '360º photograph',
+            'mapa.timelapse': 'Timelapse — satellite photos of the neighbourhood, {de} to {ate}',
 
             'carga.modelo': 'Loading 3D model…',
             'carga.restaurar': 'Restoring 3D environment…',
@@ -310,6 +318,12 @@
             'foto.ecra': 'Fullscreen',
             'foto.aproximar': 'Zoom in',
             'foto.afastar': 'Zoom out',
+
+            'tl.titulo': 'Timelapse',
+            'tl.carregar': 'Loading satellite photos…',
+            'tl.erro': 'The satellite photos could not be loaded.',
+            'tl.linha': 'Photo date',
+            'tl.meses': 'January,February,March,April,May,June,July,August,September,October,November,December',
 
             'rota.titulo': '360º Route',
             'palco.anterior': 'Previous',
@@ -466,6 +480,7 @@
             'idm.titulo': 'Idioma',
             'mapa.testemunhoDe': 'Testimonio de {nome}',
             'mapa.fotografia360': 'fotografía 360º',
+            'mapa.timelapse': 'Timelapse — fotografías de satélite del barrio, de {de} a {ate}',
 
             'carga.modelo': 'Cargando modelo 3D…',
             'carga.restaurar': 'Restaurando entorno 3D…',
@@ -502,6 +517,12 @@
             'foto.ecra': 'Pantalla completa',
             'foto.aproximar': 'Acercar',
             'foto.afastar': 'Alejar',
+
+            'tl.titulo': 'Timelapse',
+            'tl.carregar': 'Cargando fotografías de satélite…',
+            'tl.erro': 'No se han podido cargar las fotografías de satélite.',
+            'tl.linha': 'Fecha de la fotografía',
+            'tl.meses': 'Enero,Febrero,Marzo,Abril,Mayo,Junio,Julio,Agosto,Septiembre,Octubre,Noviembre,Diciembre',
 
             'rota.titulo': 'Ruta 360º',
             'palco.anterior': 'Anterior',
@@ -658,6 +679,7 @@
             'idm.titulo': 'Lingua',
             'mapa.testemunhoDe': 'Tistimunhu di {nome}',
             'mapa.fotografia360': 'fotografia 360º',
+            'mapa.timelapse': 'Timelapse — fotografias di satélite di bairu, di {de} pa {ate}',
 
             'carga.modelo': 'Ta karega modelu 3D…',
             'carga.restaurar': 'Ta restaura anbienti 3D…',
@@ -694,6 +716,12 @@
             'foto.ecra': 'Ekran interu',
             'foto.aproximar': 'Xiga más pértu',
             'foto.afastar': 'Fasta',
+
+            'tl.titulo': 'Timelapse',
+            'tl.carregar': 'Ta karega fotografias di satélite…',
+            'tl.erro': 'Ka konsigi karega fotografias di satélite.',
+            'tl.linha': 'Data di fotografia',
+            'tl.meses': 'Janeru,Febreru,Marsu,Abril,Maiu,Junhu,Julhu,Agostu,Setenbru,Otubru,Nuvenbru,Dizenbru',
 
             'rota.titulo': 'Rota 360º',
             'palco.anterior': 'Anterior',

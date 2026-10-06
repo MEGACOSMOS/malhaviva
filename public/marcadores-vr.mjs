@@ -11,7 +11,8 @@ import {
  * ficava-se a andar pelo bairro sem um único sinal de onde há o que ver.
  * Aqui cada marcador passa a ser uma placa no próprio bairro: o mesmo
  * quadrado com o mesmo desenho (as barras de um testemunho, a moldura
- * panorâmica de uma rota, o olho da fotografia) e o nome por baixo, desenhados
+ * panorâmica de uma rota, o olho da fotografia, as setas do timelapse) e o
+ * nome por baixo, desenhados
  * numa tela e postos numa placa que vira sempre a cara para quem olha.
  * Vistos, ficam cinzentos, como no mapa.
  *
@@ -81,6 +82,10 @@ function desenharPlaca(ann, nome, visto) {
         c.closePath();
         c.moveTo(X(7), Y(8)); c.lineTo(X(17), Y(8));
         c.moveTo(X(7), Y(12)); c.lineTo(X(12), Y(12));
+    } else if (ann.timelapse) {
+        // As duas setas para trás do timelapse das fotografias de satélite.
+        c.moveTo(X(12), Y(19)); c.lineTo(X(5), Y(12)); c.lineTo(X(12), Y(5));
+        c.moveTo(X(20), Y(19)); c.lineTo(X(13), Y(12)); c.lineTo(X(20), Y(5));
     } else if (ann.isImage) {
         // O olho da fotografia.
         c.moveTo(X(2), Y(12));

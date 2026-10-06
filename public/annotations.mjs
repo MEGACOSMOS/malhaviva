@@ -2,6 +2,7 @@ import * as pc from 'playcanvas';
 import { fontesDeVideo, previaDe, olharInicialDe, ABERTURA_INICIAL } from './videos.mjs?v=7';
 import { criarGestorDeQualidade } from './qualidade-video.mjs?v=9';
 import { carregarPrevia360 } from './previa-360.mjs?v=1';
+import { FOTOGRAFIAS } from './timelapse.mjs?v=1';
 
 export const AnnotationController = pc.createScript('annotationController');
 
@@ -252,6 +253,19 @@ AnnotationController.prototype.initialize = function() {
             // que o navegador não sabe abrir sozinho e com muitos megabytes
             // pelo meio — a janela abria vazia.
             imagePath: "/ceu-olho-de-aguia.jpg",
+            element: null
+        },
+        {
+            // As fotografias de satélite do bairro, de 2009 até hoje, a
+            // passar umas atrás das outras (ver timelapse.html). Abre no
+            // mesmo palco do Olho de Águia, como paragem avulsa, e fica na
+            // mesma coluna de céu que ele, mais abaixo: o olho fica acima
+            // do ecrã de quem entra no site, e este tem de se ver logo.
+            position: new pc.Vec3(0, 80, 0),
+            label: "Timelapse",
+            is360: true,
+            isImage: true,
+            timelapse: true,
             element: null
         },
         {
@@ -1240,7 +1254,7 @@ AnnotationController.prototype.initialize = function() {
         if (ann.label === "Esvarena") el.classList.add('esvarena-marker');
         if (ann.trailIndex !== undefined) el.dataset.trailIndex = ann.trailIndex;
 
-        const annId = ann.is360 ? `360-${ann.trailIndex}` : `video-${ann.video}`;
+        const annId = this.idDaAnotacao(ann);
         const isViewed = this.viewedAnnotations.includes(annId);
 
         if (ann.is360) {
@@ -1254,10 +1268,18 @@ AnnotationController.prototype.initialize = function() {
             // por baixo. A fotografia do alto do bairro dispensa as duas
             // coisas: fica só um olho, pousado no céu.
             //
-            // Os três desenhos (testemunho, rota e olho) têm as mesmas
-            // medidas: 24 pontos no quadrado de 32, com 20 de largura lá
-            // dentro e o mesmo traço — nenhum parece maior nem mais grosso.
-            const simbolo = ann.isImage
+            // Os desenhos (testemunho, rota e olho) têm as mesmas medidas:
+            // 24 pontos no quadrado de 32, com 20 de largura lá dentro e o
+            // mesmo traço — nenhum parece maior nem mais grosso. O
+            // timelapse, ao lado do olho e da mesma cor, leva duas setas
+            // para a esquerda — as de voltar atrás no tempo, com o bico e o
+            // traço das setas dos lados dos vídeos.
+            const simbolo = ann.timelapse
+                ? `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter">
+                        <polyline points="12 19 5 12 12 5"></polyline>
+                        <polyline points="20 19 13 12 20 5"></polyline>
+                   </svg>`
+                : ann.isImage
                 ? `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter">
                         <path d="M2 12s3.64-6.36 10-6.36 10 6.36 10 6.36-3.64 6.36-10 6.36-10-6.36-10-6.36Z"></path>
                         <circle cx="12" cy="12" r="3"></circle>
@@ -1393,12 +1415,14 @@ function desenhoDaSeta(bico) {
 const DESENHO_DA_CRUZ = '<svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter"><path d="M7 7L17 17M17 7L7 17"></path></svg>';
 
 /**
- * As paragens 360º, pela ordem em que estão na lista das anotações.
+ * As paragens 360º que se percorrem com as setas, pela ordem em que estão
+ * na lista das anotações. A fotografia do alto e o timelapse ficam de
+ * fora: abrem-se sozinhos, sem nada dos lados.
  *
- * @returns {object[]} A fotografia do alto e as três rotas.
+ * @returns {object[]} As três rotas.
  */
 AnnotationController.prototype.paragens360 = function() {
-    return this.annotations.filter(ann => ann.is360 && ann.label !== "Olho de Águia");
+    return this.annotations.filter(ann => ann.is360 && !ann.isImage);
 };
 
 /**
@@ -1429,6 +1453,11 @@ AnnotationController.prototype.nomeAcessivel = function(ann) {
         return '';
     }
 
+    if (ann.timelapse) {
+        return diz('mapa.timelapse', 'Timelapse — fotografias de satélite do bairro, de {de} a {ate}')
+            .replace('{de}', FOTOGRAFIAS[0].ano)
+            .replace('{ate}', FOTOGRAFIAS[FOTOGRAFIAS.length - 1].ano);
+    }
     if (ann.is360) {
         if (ann.isImage) {
             return ann.label + ' — ' + diz('mapa.fotografia360', 'fotografia 360º');
@@ -1472,8 +1501,10 @@ AnnotationController.prototype.baptizarMarcadores = function() {
 
 AnnotationController.prototype.nomeDaParagem360 = function(ann) {
     // "Esvarena" e "Olho de Águia" são nomes de sítios: ficam iguais em
-    // qualquer língua. O que se traduz é só "Rota 360º".
-    if (ann.isImage && ann.label === "Olho de Águia") {
+    // qualquer língua. O que se traduz é só "Rota 360º". O timelapse
+    // também não leva nome na barra: no canto onde ele iria está a data
+    // da fotografia, escrita pela página do timelapse.
+    if (ann.timelapse || (ann.isImage && ann.label === "Olho de Águia")) {
         return "";
     }
     if (ann.isImage) {
@@ -1501,6 +1532,11 @@ AnnotationController.prototype.videoDaRota360 = function(ann) {
  * @returns {string} O endereço a pôr na janela do meio.
  */
 AnnotationController.prototype.enderecoDaParagem360 = function(ann) {
+    if (ann.timelapse) {
+        // As fotografias de satélite enchem o ecrã, com a data e os
+        // comandos a pairar por cima (ver timelapse.html).
+        return '/timelapse.html?inteira=1';
+    }
     if (ann.isImage) {
         // A fotografia abre de lado a lado, sem barras: a página é avisada
         // para pôr os comandos a pairar sobre a imagem.
@@ -2118,7 +2154,8 @@ AnnotationController.prototype.medirComandos360 = function() {
  * @returns {string} A chave.
  */
 AnnotationController.prototype.chaveDaAlturaDosComandos360 = function(ann) {
-    return (ann && ann.isImage ? 'foto' : 'rota') + (window.innerWidth <= 900 ? '_estreito' : '_largo');
+    const tipo = !ann ? 'rota' : (ann.timelapse ? 'timelapse' : (ann.isImage ? 'foto' : 'rota'));
+    return tipo + (window.innerWidth <= 900 ? '_estreito' : '_largo');
 };
 
 /**
@@ -2907,6 +2944,9 @@ AnnotationController.prototype.encherPrevia = function(previa, ann, posterDataUr
  * @returns {string} O nome dela na memória do navegador.
  */
 AnnotationController.prototype.idDaAnotacao = function(ann) {
+    // O timelapse não é uma rota, e sem nome próprio ficava com o mesmo
+    // do Olho de Águia ("360-undefined"): ver um apagava o outro.
+    if (ann.timelapse) return 'timelapse';
     return ann.is360 ? `360-${ann.trailIndex}` : `video-${ann.video}`;
 };
 

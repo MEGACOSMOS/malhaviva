@@ -777,10 +777,14 @@ export function ligarComando(app) {
             if (e.altKey) return;
             const janela = document.getElementById(
                 onde === 'video' ? 'video-modal' : 'modal-360');
+            // Numa paragem avulsa não há setas dos lados, e as do teclado
+            // vão para dentro: no timelapse passam à fotografia do lado.
             if (e.key === 'ArrowLeft') {
                 if (carregarEm('.seta-do-palco.esquerda', janela)) e.preventDefault();
+                else if (onde === 'palco360') passarTeclaParaDentro(e, janela);
             } else if (e.key === 'ArrowRight') {
                 if (carregarEm('.seta-do-palco.direita', janela)) e.preventDefault();
+                else if (onde === 'palco360') passarTeclaParaDentro(e, janela);
             } else if (onde === 'palco360') {
                 passarTeclaParaDentro(e, janela);
             }
