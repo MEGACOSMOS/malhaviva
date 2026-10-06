@@ -10,8 +10,8 @@
  * há aqui a maquinaria de contextos que o mapa tem. Isto olha para o que a
  * página tem e trata do que encontrar: se houver uma vista 360º, o stick
  * direito vira a cabeça; se houver um filme, o A toca e pára; se houver um
- * menu de línguas, a cruz anda por ele; se houver uma porta de saída, o B
- * sai por ela.
+ * menu de línguas, a cruz anda por ele; se houver um cartão de instruções
+ * aberto, o B fecha-o; se não, e houver uma porta de saída, o B sai por ela.
  *
  * Uma paragem 360º aberta a partir do mapa é uma página destas dentro de
  * uma moldura, e aí há uma coisa que o navegador não deixa: um comando só
@@ -163,6 +163,16 @@
     }
 
     /**
+     * Fecha o cartão das instruções, se estiver aberto, carregando na
+     * cruz do canto dele.
+     *
+     * @returns {boolean} Se havia um cartão aberto para fechar.
+     */
+    function fecharInstrucoes() {
+        return carregarEm('#instrucoes.aberta .instrucoes-fechar');
+    }
+
+    /**
      * O menu das línguas, se estiver aberto.
      *
      * @returns {Element|null} O menu.
@@ -301,10 +311,11 @@
             carregarEm('#idioma-botao');
         }
 
-        // --- A porta de saída ---
-        // Só nas páginas que tenham uma. Numa paragem 360º não há, e o B
-        // fica para quem está de fora fechar a janela.
-        if (bateuAgora(pad, BOTAO.B)) carregarEm('.back-link');
+        // --- As instruções, e depois a porta de saída ---
+        // Com o cartão das instruções aberto, o B fecha-o. Sem ele, sai
+        // pela porta — só nas páginas que tenham uma. Numa paragem 360º não
+        // há, e o B fica para quem está de fora fechar a janela.
+        if (bateuAgora(pad, BOTAO.B) && !fecharInstrucoes()) carregarEm('.back-link');
 
         guardar(pad);
     }
@@ -459,6 +470,15 @@
                 return carregarEm('#play-pause-btn') || carregarEm('#play-btn-initial');
             }
             return carregarEm('#' + nome);
+        },
+        /**
+         * Fecha o cartão das instruções desta página, se estiver aberto.
+         * É o que o B faz primeiro, antes de fechar a janela lá fora.
+         *
+         * @returns {boolean} Se havia um cartão aberto para fechar.
+         */
+        fecharInstrucoes: function () {
+            return fecharInstrucoes();
         },
         /**
          * Carrega numa tecla desta página, como se alguém lhe tivesse

@@ -521,7 +521,9 @@ export function ligarComando(app) {
             // A mira: o marcador mais perto do meio do ecrã fica escolhido.
             if (performance.now() >= miraSuspensaAte) acender(marcadorMaisPertoDoMeio());
             if (bateuAgora(pad, BOTAO.A)) activar(alvoAceso);
-            if (bateuAgora(pad, BOTAO.B)) acender(null);
+            // Com o cartão das instruções aberto, o B fecha-o, como a cruz
+            // do canto dele. Sem cartão, larga o marcador escolhido.
+            if (bateuAgora(pad, BOTAO.B) && !carregarEm('#instrucoes.aberta .menu-fechar')) acender(null);
             if (bateuAgora(pad, BOTAO.X)) carregarEm('#recenter-btn');
             if (bateuAgora(pad, BOTAO.Y)) carregarEm('#fullscreen-main-btn');
             if (bateuAgora(pad, BOTAO.START)) carregarEm('#definicoes-btn');
@@ -551,7 +553,13 @@ export function ligarComando(app) {
         const janela = document.getElementById(onde === 'video' ? 'video-modal' : 'modal-360');
 
         if (bateuAgora(pad, BOTAO.B)) {
-            carregarEm('.fechar-palco-btn', janela);
+            // Se a rota 360º tiver as instruções abertas lá dentro, o B
+            // fecha-as primeiro, e o filme segue; a janela fecha-se com o
+            // B seguinte.
+            const dentro = janelaDoPalco(janela);
+            const fechouInstrucoes = !!dentro && typeof dentro.fecharInstrucoes === 'function' &&
+                dentro.fecharInstrucoes();
+            if (!fechouInstrucoes) carregarEm('.fechar-palco-btn', janela);
             return;
         }
         if (bateuAgora(pad, BOTAO.LB)) carregarEm('.seta-do-palco.esquerda', janela);
