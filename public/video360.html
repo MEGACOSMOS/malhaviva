@@ -377,18 +377,18 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            /* A cruz numa caixa, como em todo o site. */
-            background: #05050a;
-            border: 2.5px solid #505054;
-            color: rgba(255, 255, 255, 0.55);
+            /* A cruz sem caixa, como nos menus do site: só os dois traços,
+               numa cor opaca, para o cruzamento não ficar mais claro. */
+            background: transparent;
+            border: none;
+            color: #8e8e91;
             cursor: pointer;
             padding: 0;
             z-index: 11;
-            transition: color 0.15s ease, background 0.15s ease;
+            transition: color 0.15s ease;
         }
         .instrucoes-fechar:hover {
             color: #ffffff;
-            background: #1c1c21;
         }
         .instrucoes-passos {
             display: grid;
@@ -535,23 +535,8 @@
         .instrucoes-seta.escondida {
             visibility: hidden;
         }
-        /* A cruz de saída do último passo, numa caixa como as outras
-           cruzes do site, e apagada numa cor opaca. */
-        .instrucoes-seta.a-sair {
-            color: #8e8e91;
-        }
-        .instrucoes-seta.a-sair svg {
-            box-sizing: border-box;
-            background: #05050a;
-            border: 2.5px solid #505054;
-            transition: background 0.2s ease;
-        }
-        .instrucoes-seta.a-sair:hover {
-            color: #ffffff;
-        }
-        .instrucoes-seta.a-sair:hover svg {
-            background: #1c1c21;
-        }
+        /* A cruz de saída do último passo vai sem caixa, desenhada como
+           as setas. */
         @media (max-width: 640px) {
             .instrucoes-cartao {
                 padding: 14px 14px 8px;

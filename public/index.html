@@ -825,8 +825,10 @@
         }
 
         /* ---- Fechar o menu ----
-           Todas as cruzes do site vão numa caixa: o mesmo fio de 2,5 dos
-           menus, e fundo escuro opaco. */
+           A cruz vai sem caixa, só os dois traços, que acendem com o rato
+           em cima. O apagado é uma cor opaca, e não transparência: os
+           traços são dois, e com a cor meio transparente o sítio onde se
+           cruzam ficava mais claro do que o resto. */
         .menu-fechar {
             position: absolute;
             top: 10px;
@@ -836,17 +838,16 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            background: #05050a;
-            border: 2.5px solid #505054;
-            color: rgba(255, 255, 255, 0.55);
+            background: transparent;
+            border: none;
+            color: #8e8e91;
             cursor: pointer;
             padding: 0;
-            transition: color 0.15s ease, background 0.15s ease;
+            transition: color 0.15s ease;
         }
 
         .menu-fechar:hover {
             color: #ffffff;
-            background: #1c1c21;
         }
 
         /* O primeiro título de cada menu abre espaço à cruz. */
@@ -1504,24 +1505,8 @@
         .instrucoes-seta.escondida {
             visibility: hidden;
         }
-        /* No último passo a seta da direita é a cruz de saída, numa caixa
-           como as outras cruzes do site. O apagado vai numa cor opaca, e
-           não em transparência, para a caixa ficar inteira. */
-        .instrucoes-seta.a-sair {
-            color: #8e8e91;
-        }
-        .instrucoes-seta.a-sair svg {
-            box-sizing: border-box;
-            background: #05050a;
-            border: 2.5px solid #505054;
-            transition: background 0.2s ease;
-        }
-        .instrucoes-seta.a-sair:hover {
-            color: #ffffff;
-        }
-        .instrucoes-seta.a-sair:hover svg {
-            background: #1c1c21;
-        }
+        /* No último passo a seta da direita é a cruz de saída. Vai sem
+           caixa, desenhada como as setas, e acende e cresce como elas. */
 
         @media (max-width: 640px) {
             .instrucoes-cartao {
@@ -3379,7 +3364,7 @@
         <pc-asset id="splat-scene" src="splat/lod-meta.json" type="gsplat"></pc-asset>
         <pc-asset id="camera-controls-script" src="./camera-controls.mjs?v=40" type="script"></pc-asset>
         <pc-asset id="camera-coords-script" src="./coords.mjs?v=7" type="script"></pc-asset>
-        <pc-asset id="annotations-script" src="./annotations.mjs?v=109" type="script"></pc-asset>
+        <pc-asset id="annotations-script" src="./annotations.mjs?v=110" type="script"></pc-asset>
         <pc-asset id="trail-script" src="./trail.mjs?v=31" type="script"></pc-asset>
         <pc-asset id="measure-script" src="./measure.mjs?v=1" type="script"></pc-asset>
         <pc-asset id="escala-script" src="./escala.mjs?v=2" type="script"></pc-asset>

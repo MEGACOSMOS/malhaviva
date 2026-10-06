@@ -169,17 +169,17 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            /* A cruz numa caixa, como em todo o site. */
-            background: #05050a;
-            border: 2.5px solid #505054;
-            color: rgba(255, 255, 255, 0.55);
+            /* A cruz sem caixa, como nos menus do site: só os dois traços,
+               numa cor opaca, para o cruzamento não ficar mais claro. */
+            background: transparent;
+            border: none;
+            color: #8e8e91;
             cursor: pointer;
             padding: 0;
-            transition: color 0.15s ease, background 0.15s ease;
+            transition: color 0.15s ease;
         }
         .menu-fechar:hover {
             color: #ffffff;
-            background: #1c1c21;
         }
 
         #idioma-menu > .settings-title:first-child {

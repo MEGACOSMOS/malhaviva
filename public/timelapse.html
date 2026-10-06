@@ -187,25 +187,9 @@
             outline-offset: 2px;
         }
         /* Na primeira e na última fotografia não há nada para o lado de
-           lá: a seta dá lugar à cruz numa caixa, como nos vídeos, e quem
-           carregar nela sai para o mapa. */
-        .seta-do-palco.a-sair {
-            color: #b4b4b7;
-        }
-        .seta-do-palco.a-sair svg {
-            box-sizing: border-box;
-            width: 56px;
-            height: 56px;
-            background: #05050a;
-            border: 2.5px solid #505054;
-            transition: background var(--passagem);
-        }
-        .seta-do-palco.a-sair:hover {
-            color: #ffffff;
-        }
-        .seta-do-palco.a-sair:hover svg {
-            background: #1c1c21;
-        }
+           lá: a seta dá lugar a uma cruz, como nos vídeos, e quem carregar
+           nela sai para o mapa. A cruz não leva caixa: é desenhada como as
+           setas, e acende como elas com o rato em cima. */
         /* Aberta sozinha, fora do palco, não há mapa para onde sair: na
            ponta a seta some-se. */
         .seta-do-palco.sem-saida {
@@ -439,10 +423,6 @@
             .seta-do-palco svg {
                 width: 56px;
                 height: 56px;
-            }
-            .seta-do-palco.a-sair svg {
-                width: 44px;
-                height: 44px;
             }
             .video-controls {
                 padding: 32px 12px 14px;
@@ -978,7 +958,7 @@
 
         // ---- As setas dos lados ----
         //
-        // As mesmas dos vídeos: o bico de cada lado, e a cruz numa caixa
+        // As mesmas dos vídeos: o bico de cada lado, e a cruz
         // quando não há nada para o lado de lá — na primeira fotografia à
         // esquerda, na última à direita. Carregar na cruz fecha o palco.
         const setaEsquerda = document.getElementById('seta-esquerda');

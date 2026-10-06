@@ -812,29 +812,10 @@ AnnotationController.prototype.initialize = function() {
             color: #ffffff;
         }
         /* Já não há nada de novo para o lado de lá: a seta dá lugar a uma
-           cruz, e quem carregar nela sai para o mapa.
-
-           A cruz vai numa caixa, como todas as cruzes do site. O apagado é
-           uma cor opaca, e não transparência: com a cor meio transparente,
-           o sítio onde os dois traços se cruzam ficava mais claro do que o
-           resto, e a caixa deixava ver o vídeo. */
-        .seta-do-palco.a-sair {
-            color: #b4b4b7;
-        }
-        .seta-do-palco.a-sair svg {
-            box-sizing: border-box;
-            width: 56px;
-            height: 56px;
-            background: #05050a;
-            border: 2.5px solid #505054;
-            transition: background var(--passagem);
-        }
-        .seta-do-palco.a-sair:hover {
-            color: #ffffff;
-        }
-        .seta-do-palco.a-sair:hover svg {
-            background: #1c1c21;
-        }
+           cruz, e quem carregar nela sai para o mapa. A cruz não leva
+           caixa: é desenhada como as setas — do mesmo tamanho, do mesmo
+           traço, da mesma cor, com a mesma sombra curta — e, como elas,
+           passa a branco inteiro com o rato em cima. */
 
         /* A imagem do primeiro instante do anterior e do seguinte não se
            mostra ao lado da seta. Fica na página, escondida, porque é dela
@@ -1031,10 +1012,6 @@ AnnotationController.prototype.initialize = function() {
             .seta-do-palco svg {
                 width: 56px;
                 height: 56px;
-            }
-            .seta-do-palco.a-sair svg {
-                width: 44px;
-                height: 44px;
             }
             .barra-do-nome,
             .barra-do-nome-360 {
