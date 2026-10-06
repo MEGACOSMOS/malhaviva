@@ -88,7 +88,9 @@
             display: flex; align-items: center; gap: 10px;
             backdrop-filter: blur(8px);
         }
-        #play-btn-initial:hover { background: rgba(255, 255, 255, 0.2); transform: scale(1.05); }
+        /* Com o rato em cima não cresce: fica preto, como os ícones do
+           cabeçalho do bairro. */
+        #play-btn-initial:hover { background: #05050a; }
 
         /* Quando é só para começar a ver, o botão é o mesmo círculo dos
            outros vídeos do bairro. A tarja larga com letras fica reservada
@@ -105,7 +107,7 @@
             backdrop-filter: none;
             justify-content: center;
         }
-        #play-btn-initial.play-redondo:hover { background: rgba(0,0,0,0.75); transform: scale(1.1); }
+        #play-btn-initial.play-redondo:hover { background: #05050a; }
         /* As esperas são o quadrado de espera do site, um pouco mais
            pequeno por estar em cima da imagem: o do arranque, no lugar do
            botão enquanto o vídeo não anda, e o que aparece a meio quando
@@ -158,8 +160,9 @@
             opacity: 0;
             pointer-events: none;
         }
+        /* Com o rato em cima não cresce: o círculo fica preto. */
         #ui-layer.paused .big-play-btn:hover {
-            transform: translate(-50%, -50%) scale(1.1);
+            background: #05050a;
             color: #ffffff;
         }
 
@@ -767,14 +770,19 @@
             align-items: center;
             justify-content: center;
             opacity: 1;
-            transition: background 0.15s ease, transform 0.2s ease;
+            transition: background 0.15s ease;
             padding: 8px;
             border-radius: 0;
         }
-        .player-btn:hover {
-            background: rgba(255, 255, 255, 0.05);
-            color: #ffffff;
-            transform: scale(1.05);
+        /* Com o rato em cima, o botão não cresce: ganha o quadrado preto
+           dos ícones do cabeçalho do bairro, e mantém o seu contorno. Só
+           onde há rato — num ecrã táctil o "rato em cima" fica agarrado ao
+           último botão tocado. */
+        @media (hover: hover) {
+            .player-btn:hover {
+                background: #05050a;
+                color: #ffffff;
+            }
         }
         .time-display {
             color: rgba(255,255,255,0.9);

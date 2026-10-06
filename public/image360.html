@@ -90,14 +90,15 @@
             align-items: center;
             justify-content: center;
             opacity: 1;
-            transition: background 0.15s ease, transform 0.2s ease;
+            transition: background 0.15s ease;
             padding: 8px;
             border-radius: 0;
         }
+        /* Com o rato em cima o botão não cresce: ganha o quadrado preto,
+           como nos vídeos e no cabeçalho do bairro. */
         .player-btn:hover {
-            background: rgba(255, 255, 255, 0.05);
+            background: #05050a;
             color: #ffffff;
-            transform: scale(1.05);
         }
 
         /* Um botão que já não pode ir mais longe (aproximar no máximo,
@@ -110,7 +111,6 @@
         }
         .player-btn:disabled:hover {
             background: transparent;
-            transform: none;
         }
 
         /* Sem barras: quando a página é aberta de lado a lado (a

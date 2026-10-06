@@ -541,14 +541,19 @@ AnnotationController.prototype.initialize = function() {
             align-items: center;
             justify-content: center;
             opacity: 1;
-            transition: background 0.15s ease, transform 0.2s ease;
+            transition: background 0.15s ease;
             padding: 8px;
             border-radius: 0;
         }
-        .player-btn:hover {
-            background: rgba(255, 255, 255, 0.05);
-            color: #ffffff;
-            transform: scale(1.05);
+        /* Com o rato em cima, o botão não cresce: ganha o quadrado preto
+           dos ícones do cabeçalho do bairro, e mantém o seu contorno. Só
+           onde há rato — num ecrã táctil o "rato em cima" fica agarrado ao
+           último botão tocado. */
+        @media (hover: hover) {
+            .player-btn:hover {
+                background: #05050a;
+                color: #ffffff;
+            }
         }
         .time-display {
             color: rgba(255,255,255,0.9);
@@ -650,8 +655,9 @@ AnnotationController.prototype.initialize = function() {
             opacity: 1;
             pointer-events: auto;
         }
+        /* Com o rato em cima não cresce: o círculo fica preto. */
         .custom-video-container.paused .big-play-btn:hover {
-            transform: translate(-50%, -50%) scale(1.1);
+            background: #05050a;
             color: #ffffff;
         }
 
@@ -782,11 +788,24 @@ AnnotationController.prototype.initialize = function() {
             color: rgba(255, 255, 255, 0.8);
             cursor: pointer;
             filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.6));
-            transition: color var(--passagem), transform var(--passagem);
+            transition: color var(--passagem);
+        }
+        .seta-do-palco svg {
+            transition: background var(--passagem), box-shadow var(--passagem);
         }
         .seta-do-palco:hover {
             color: #ffffff;
-            transform: scale(1.18);
+        }
+        /* Com o rato em cima a seta não cresce: ganha o quadrado preto e o
+           fio dos ícones do cabeçalho do bairro, à volta do desenho (que é
+           quadrado; o botão é mais alto). O fio é uma sombra por dentro,
+           para não apertar o desenho. Só onde há rato. A cruz do fim do
+           percurso já tem a sua caixa, e fica com ela. */
+        @media (hover: hover) {
+            .seta-do-palco:not(.a-sair):hover svg {
+                background: #05050a;
+                box-shadow: inset 0 0 0 2.5px #505054;
+            }
         }
         /* Já não há nada de novo para o lado de lá: a seta dá lugar a uma
            cruz, e quem carregar nela sai para o mapa.
@@ -1150,16 +1169,16 @@ AnnotationController.prototype.initialize = function() {
             border: 2.5px solid #505054;
             color: #9b9b9f;
             cursor: pointer;
-            transition: color 0.2s ease, background 0.2s ease, transform 0.2s ease;
+            transition: color 0.2s ease;
             padding: 0;
             display: flex;
             align-items: center;
             justify-content: center;
         }
+        /* Já é um quadrado preto: com o rato em cima não cresce, só a
+           cruz acende. */
         .fechar-palco-btn:hover {
             color: #ffffff;
-            background: #1c1c21;
-            transform: scale(1.1);
         }
         /* ─── Contornos ───
            Um fio de dois pontos e meio a toda a volta, de um só tom — o mais escuro do
