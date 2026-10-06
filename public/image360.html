@@ -100,11 +100,24 @@
             transform: scale(1.05);
         }
 
+        /* Um botão que já não pode ir mais longe (aproximar no máximo,
+           afastar no mínimo) fica com a caixa inteira e só o desenho
+           apagado, numa cor opaca — e não o botão todo transparente, que
+           deixava ver a fotografia através dele. */
+        .player-btn:disabled {
+            color: #5c5c60;
+            cursor: default;
+        }
+        .player-btn:disabled:hover {
+            background: transparent;
+            transform: none;
+        }
+
         /* Sem barras: quando a página é aberta de lado a lado (a
            fotografia do alto do bairro), os comandos deixam de ter a sua
            faixa e ficam a pairar sobre a fotografia, ao canto de baixo à
-           direita, com um véu escuro por trás de cada botão para se lerem
-           sobre o céu. */
+           direita. Cada botão é uma caixa opaca, com o fio dos menus do
+           site, para se ler sobre o céu sem nada dele passar através. */
         body.inteira .video-controls {
             position: absolute;
             right: 0;
@@ -113,10 +126,14 @@
             border-top: none;
         }
         body.inteira .player-btn {
-            background: rgba(5, 5, 10, 0.55);
+            background: #05050a;
+            border-color: #505054;
         }
         body.inteira .player-btn:hover {
-            background: rgba(5, 5, 10, 0.8);
+            background: #1c1c21;
+        }
+        body.inteira .player-btn:disabled:hover {
+            background: #05050a;
         }
 
         @media (max-width: 900px) {
@@ -292,8 +309,6 @@
             anguloPedido = Math.min(ANGULO_LARGO, Math.max(ANGULO_APERTADO, novo));
             botaoAproximar.disabled = anguloPedido <= ANGULO_APERTADO;
             botaoAfastar.disabled = anguloPedido >= ANGULO_LARGO;
-            botaoAproximar.style.opacity = botaoAproximar.disabled ? '0.35' : '1';
-            botaoAfastar.style.opacity = botaoAfastar.disabled ? '0.35' : '1';
             if (!aDeslizarOZoom) {
                 aDeslizarOZoom = true;
                 instanteAnterior = 0;
