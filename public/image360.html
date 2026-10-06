@@ -95,18 +95,23 @@
             border-radius: 0;
         }
         /* Com o rato em cima o botão não cresce: ganha o quadrado preto,
-           como nos vídeos e no cabeçalho do bairro. */
-        .player-btn:hover {
-            background: #05050a;
-            color: #ffffff;
+           como nos vídeos e no cabeçalho do bairro. Só onde há rato — num
+           ecrã táctil o "rato em cima" fica agarrado ao último botão
+           tocado. */
+        @media (hover: hover) {
+            .player-btn:hover {
+                background: #05050a;
+                color: #ffffff;
+            }
         }
 
         /* Um botão que já não pode ir mais longe (aproximar no máximo,
-           afastar no mínimo) fica com a caixa inteira e só o desenho
-           apagado, numa cor opaca — e não o botão todo transparente, que
-           deixava ver a fotografia através dele. */
+           afastar no mínimo) fica com o contorno como os outros e só o
+           desenho apagado, num cinzento opaco claro o bastante para não
+           se perder na fotografia; com o rato em cima não se enche,
+           porque não há nada para fazer. */
         .player-btn:disabled {
-            color: #5c5c60;
+            color: #8e8e91;
             cursor: default;
         }
         .player-btn:disabled:hover {
@@ -116,24 +121,14 @@
         /* Sem barras: quando a página é aberta de lado a lado (a
            fotografia do alto do bairro), os comandos deixam de ter a sua
            faixa e ficam a pairar sobre a fotografia, ao canto de baixo à
-           direita. Cada botão é uma caixa opaca, com o fio dos menus do
-           site, para se ler sobre o céu sem nada dele passar através. */
+           direita. Os botões são os dos vídeos: transparentes, só com o
+           contorno meio transparente, e pretos com o rato em cima. */
         body.inteira .video-controls {
             position: absolute;
             right: 0;
             bottom: 0;
             background: transparent;
             border-top: none;
-        }
-        body.inteira .player-btn {
-            background: #05050a;
-            border-color: #505054;
-        }
-        body.inteira .player-btn:hover {
-            background: #1c1c21;
-        }
-        body.inteira .player-btn:disabled:hover {
-            background: #05050a;
         }
 
         @media (max-width: 900px) {
