@@ -804,22 +804,10 @@ AnnotationController.prototype.initialize = function() {
             filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.6));
             transition: color var(--passagem);
         }
-        .seta-do-palco svg {
-            transition: background var(--passagem), box-shadow var(--passagem);
-        }
+        /* Com o rato em cima a seta não cresce nem ganha caixa: só passa do
+           branco meio apagado ao branco inteiro. */
         .seta-do-palco:hover {
             color: #ffffff;
-        }
-        /* Com o rato em cima a seta não cresce: ganha o quadrado preto e o
-           fio dos ícones do cabeçalho do bairro, à volta do desenho (que é
-           quadrado; o botão é mais alto). O fio é uma sombra por dentro,
-           para não apertar o desenho. Só onde há rato. A cruz do fim do
-           percurso já tem a sua caixa, e fica com ela. */
-        @media (hover: hover) {
-            .seta-do-palco:not(.a-sair):hover svg {
-                background: #05050a;
-                box-shadow: inset 0 0 0 2.5px #505054;
-            }
         }
         /* Já não há nada de novo para o lado de lá: a seta dá lugar a uma
            cruz, e quem carregar nela sai para o mapa.

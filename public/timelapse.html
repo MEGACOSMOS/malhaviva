@@ -132,11 +132,10 @@
         /* ---- Os lados ----
            As setas dos vídeos: de cada lado, junto à borda, a seta que leva
            à fotografia anterior ou à seguinte, com um véu escuro a partir
-           da borda para se ver sobre um campo claro. Aparecem quando o rato
-           mexe e somem-se uns segundos depois de ele parar. Escondidas, só
-           se esbatem: quem anda de tecla continua a chegar-lhes, e ao
-           chegar vêm à vista. Ficam por baixo das barras de cima e de
-           baixo, para o véu não escurecer os botões. */
+           da borda para se ver sobre um campo claro. Ao contrário dos
+           vídeos, estão sempre à vista, como o resto dos comandos deste
+           leitor. Ficam por baixo das barras de cima e de baixo, para o véu
+           não escurecer os botões. O véu não apanha o rato: só a seta. */
         .lado-do-palco {
             position: absolute;
             top: 0;
@@ -145,8 +144,9 @@
             display: flex;
             align-items: center;
             pointer-events: none;
-            opacity: 0;
-            transition: opacity 0.35s ease;
+        }
+        .lado-do-palco > * {
+            pointer-events: auto;
         }
         .lado-do-palco.esquerda {
             left: 0;
@@ -157,12 +157,6 @@
             right: 0;
             padding: 0 16px 0 24px;
             background: linear-gradient(to left, rgba(5, 5, 10, 0.55), rgba(5, 5, 10, 0));
-        }
-        body.comandos-a-ver .lado-do-palco {
-            opacity: 1;
-        }
-        body.comandos-a-ver .lado-do-palco > * {
-            pointer-events: auto;
         }
         /* Só o bico, sem cabo, com uma sombra curta. */
         .seta-do-palco {
@@ -180,9 +174,8 @@
             filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.6));
             transition: color var(--passagem);
         }
-        .seta-do-palco svg {
-            transition: background var(--passagem), box-shadow var(--passagem);
-        }
+        /* Com o rato em cima a seta não cresce nem ganha caixa: só passa do
+           branco meio apagado ao branco inteiro, como nos vídeos. */
         .seta-do-palco:hover {
             color: #ffffff;
         }
@@ -192,14 +185,6 @@
         .seta-do-palco:focus-visible {
             outline: 2px solid rgba(255, 255, 255, 0.95);
             outline-offset: 2px;
-        }
-        /* Com o rato em cima não cresce: ganha o quadrado preto e o fio dos
-           ícones do cabeçalho, como nos vídeos. Só onde há rato. */
-        @media (hover: hover) {
-            .seta-do-palco:not(.a-sair):hover svg {
-                background: #05050a;
-                box-shadow: inset 0 0 0 2.5px #505054;
-            }
         }
         /* Na primeira e na última fotografia não há nada para o lado de
            lá: a seta dá lugar à cruz numa caixa, como nos vídeos, e quem
@@ -720,10 +705,8 @@
                 comecou = true;
                 overlay.classList.add('escondido');
                 // O timelapse começa sozinho, depois de se ver a primeira
-                // fotografia um instante. As setas vêm à vista ao abrir,
-                // como nos vídeos.
+                // fotografia um instante.
                 tocar();
-                mostrarSetas();
             }
             pintarMarcas();
             desenhar();
@@ -991,9 +974,6 @@
         const passarFoto = (sentido) => {
             pausar();
             irPara(atual() + sentido, ASSENTAR_MS);
-            // Como nos vídeos: a cada troca as setas vêm à vista, para se
-            // ver o que vem a seguir.
-            mostrarSetas();
         };
 
         // ---- As setas dos lados ----
@@ -1048,55 +1028,6 @@
                 }
                 passarFoto(sentido);
             });
-        });
-
-        // Aparecem quando o rato mexe, quando se toca no ecrã, ou quando se
-        // chega a uma delas de tecla; vão-se uns segundos depois de o rato
-        // parar — a não ser que esteja pousado numa delas. Arrastar a
-        // fotografia não conta como mexer: quem arrasta está a olhar.
-        const SETAS_A_VER_MS = 3000;
-        let relogioDasSetas = null;
-        let ratoX = null;
-        let ratoY = null;
-
-        const setasSeguras = () => {
-            if (document.querySelector('.lado-do-palco > :hover')) return true;
-            const foco = document.activeElement;
-            return !!foco && !!foco.closest && !!foco.closest('.lado-do-palco') &&
-                foco.matches(':focus-visible');
-        };
-        const esconderSetas = () => {
-            clearTimeout(relogioDasSetas);
-            document.body.classList.remove('comandos-a-ver');
-        };
-        const armarSetas = () => {
-            clearTimeout(relogioDasSetas);
-            relogioDasSetas = setTimeout(() => {
-                if (setasSeguras()) armarSetas();
-                else esconderSetas();
-            }, SETAS_A_VER_MS);
-        };
-        function mostrarSetas() {
-            document.body.classList.add('comandos-a-ver');
-            armarSetas();
-        }
-
-        document.addEventListener('pointermove', (e) => {
-            // Só conta o rato que andou mesmo.
-            if (e.screenX === ratoX && e.screenY === ratoY) return;
-            ratoX = e.screenX;
-            ratoY = e.screenY;
-            if (e.pointerType === 'mouse' && e.buttons) return;
-            mostrarSetas();
-        });
-        document.addEventListener('pointerdown', (e) => {
-            if (e.pointerType !== 'mouse') mostrarSetas();
-        });
-        document.addEventListener('focusin', (e) => {
-            const alvo = e.target;
-            if (alvo && alvo.closest && alvo.closest('.lado-do-palco') && alvo.matches(':focus-visible')) {
-                mostrarSetas();
-            }
         });
 
         const pintarBotaoTocar = () => {
