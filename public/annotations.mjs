@@ -791,17 +791,26 @@ AnnotationController.prototype.initialize = function() {
         /* Já não há nada de novo para o lado de lá: a seta dá lugar a uma
            cruz, e quem carregar nela sai para o mapa.
 
-           O apagado é dado à cruz inteira, e não à cor de cada traço: com
-           a cor meio transparente, o sítio onde os dois se cruzam ficava
-           mais claro do que o resto e a cruz parecia dois riscos pousados
-           um por cima do outro. */
+           A cruz vai numa caixa, como todas as cruzes do site. O apagado é
+           uma cor opaca, e não transparência: com a cor meio transparente,
+           o sítio onde os dois traços se cruzam ficava mais claro do que o
+           resto, e a caixa deixava ver o vídeo. */
         .seta-do-palco.a-sair {
-            color: #ffffff;
-            opacity: 0.7;
-            transition: opacity var(--passagem), transform var(--passagem);
+            color: #b4b4b7;
+        }
+        .seta-do-palco.a-sair svg {
+            box-sizing: border-box;
+            width: 56px;
+            height: 56px;
+            background: #05050a;
+            border: 2.5px solid #505054;
+            transition: background var(--passagem);
         }
         .seta-do-palco.a-sair:hover {
-            opacity: 1;
+            color: #ffffff;
+        }
+        .seta-do-palco.a-sair:hover svg {
+            background: #1c1c21;
         }
 
         /* A imagem do primeiro instante do anterior e do seguinte não se
@@ -1000,6 +1009,10 @@ AnnotationController.prototype.initialize = function() {
                 width: 56px;
                 height: 56px;
             }
+            .seta-do-palco.a-sair svg {
+                width: 44px;
+                height: 44px;
+            }
             .barra-do-nome,
             .barra-do-nome-360 {
                 padding: 12px 16px 32px;
@@ -1126,20 +1139,26 @@ AnnotationController.prototype.initialize = function() {
             color: #fff;
             transform: scale(1.1);
         }
+        /* A cruz numa caixa, como em todo o site: o fio de 2,5 dos menus
+           e fundo escuro opaco. O apagado vai na cor da cruz, já sem
+           transparência, para a caixa não deixar ver o vídeo. */
         .fechar-palco-btn {
-            background: none;
-            border: none;
-            color: #fff;
+            flex: 0 0 auto;
+            width: 38px;
+            height: 38px;
+            background: #05050a;
+            border: 2.5px solid #505054;
+            color: #9b9b9f;
             cursor: pointer;
-            opacity: 0.6;
-            transition: opacity 0.2s ease, transform 0.2s ease;
+            transition: color 0.2s ease, background 0.2s ease, transform 0.2s ease;
             padding: 0;
             display: flex;
             align-items: center;
             justify-content: center;
         }
         .fechar-palco-btn:hover {
-            opacity: 1;
+            color: #ffffff;
+            background: #1c1c21;
             transform: scale(1.1);
         }
         /* ─── Contornos ───
