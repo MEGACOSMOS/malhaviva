@@ -40,6 +40,8 @@
                de fechar, que vive lá fora. */
             --folga-cima: 16px;
             --folga-lado: 24px;
+            /* O andamento das setas dos lados, o mesmo dos vídeos. */
+            --passagem: 0.45s cubic-bezier(0.25, 0.9, 0.3, 1);
         }
 
         html, body {
@@ -125,6 +127,104 @@
             font-size: 1.1rem;
             font-weight: 600;
             white-space: nowrap;
+        }
+
+        /* ---- Os lados ----
+           As setas dos vídeos: de cada lado, junto à borda, a seta que leva
+           à fotografia anterior ou à seguinte, com um véu escuro a partir
+           da borda para se ver sobre um campo claro. Aparecem quando o rato
+           mexe e somem-se uns segundos depois de ele parar. Escondidas, só
+           se esbatem: quem anda de tecla continua a chegar-lhes, e ao
+           chegar vêm à vista. Ficam por baixo das barras de cima e de
+           baixo, para o véu não escurecer os botões. */
+        .lado-do-palco {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            z-index: 4;
+            display: flex;
+            align-items: center;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.35s ease;
+        }
+        .lado-do-palco.esquerda {
+            left: 0;
+            padding: 0 24px 0 16px;
+            background: linear-gradient(to right, rgba(5, 5, 10, 0.55), rgba(5, 5, 10, 0));
+        }
+        .lado-do-palco.direita {
+            right: 0;
+            padding: 0 16px 0 24px;
+            background: linear-gradient(to left, rgba(5, 5, 10, 0.55), rgba(5, 5, 10, 0));
+        }
+        body.comandos-a-ver .lado-do-palco {
+            opacity: 1;
+        }
+        body.comandos-a-ver .lado-do-palco > * {
+            pointer-events: auto;
+        }
+        /* Só o bico, sem cabo, com uma sombra curta. */
+        .seta-do-palco {
+            flex: 0 0 auto;
+            width: 80px;
+            height: 100px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+            border: none;
+            background: transparent;
+            color: rgba(255, 255, 255, 0.8);
+            cursor: pointer;
+            filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.6));
+            transition: color var(--passagem);
+        }
+        .seta-do-palco svg {
+            transition: background var(--passagem), box-shadow var(--passagem);
+        }
+        .seta-do-palco:hover {
+            color: #ffffff;
+        }
+        .seta-do-palco:focus {
+            outline: none;
+        }
+        .seta-do-palco:focus-visible {
+            outline: 2px solid rgba(255, 255, 255, 0.95);
+            outline-offset: 2px;
+        }
+        /* Com o rato em cima não cresce: ganha o quadrado preto e o fio dos
+           ícones do cabeçalho, como nos vídeos. Só onde há rato. */
+        @media (hover: hover) {
+            .seta-do-palco:not(.a-sair):hover svg {
+                background: #05050a;
+                box-shadow: inset 0 0 0 2.5px #505054;
+            }
+        }
+        /* Na primeira e na última fotografia não há nada para o lado de
+           lá: a seta dá lugar à cruz numa caixa, como nos vídeos, e quem
+           carregar nela sai para o mapa. */
+        .seta-do-palco.a-sair {
+            color: #b4b4b7;
+        }
+        .seta-do-palco.a-sair svg {
+            box-sizing: border-box;
+            width: 56px;
+            height: 56px;
+            background: #05050a;
+            border: 2.5px solid #505054;
+            transition: background var(--passagem);
+        }
+        .seta-do-palco.a-sair:hover {
+            color: #ffffff;
+        }
+        .seta-do-palco.a-sair:hover svg {
+            background: #1c1c21;
+        }
+        /* Aberta sozinha, fora do palco, não há mapa para onde sair: na
+           ponta a seta some-se. */
+        .seta-do-palco.sem-saida {
+            visibility: hidden;
         }
 
         /* ---- O ecrã de espera ---- */
@@ -340,6 +440,25 @@
                 --folga-cima: 12px;
                 --folga-lado: 16px;
             }
+            /* As setas encostam-se mais à borda, e encolhem. */
+            .lado-do-palco.esquerda {
+                padding: 0 0 0 4px;
+            }
+            .lado-do-palco.direita {
+                padding: 0 4px 0 0;
+            }
+            .seta-do-palco {
+                width: 56px;
+                height: 80px;
+            }
+            .seta-do-palco svg {
+                width: 56px;
+                height: 56px;
+            }
+            .seta-do-palco.a-sair svg {
+                width: 44px;
+                height: 44px;
+            }
             .video-controls {
                 padding: 32px 12px 14px;
                 gap: 10px;
@@ -382,6 +501,13 @@
         <div class="espera-foto" id="espera-foto" aria-hidden="true"></div>
     </div>
 
+    <div class="lado-do-palco esquerda">
+        <button type="button" class="seta-do-palco esquerda" id="seta-esquerda"></button>
+    </div>
+    <div class="lado-do-palco direita">
+        <button type="button" class="seta-do-palco direita" id="seta-direita"></button>
+    </div>
+
     <div class="barra-da-data">
         <div id="data"></div>
     </div>
@@ -417,7 +543,7 @@
     </div>
 
     <script type="module">
-        import { FOTOGRAFIAS, LARGURA_LEVE, LARGURA_NITIDA, FEITIO, enderecoDa, dataDa } from './timelapse.mjs?v=1';
+        import { FOTOGRAFIAS, LARGURA_LEVE, LARGURA_NITIDA, FEITIO, enderecoDa, dataDa } from './timelapse.mjs?v=2';
 
         const TOTAL = FOTOGRAFIAS.length;
         const ULTIMA = TOTAL - 1;
@@ -594,8 +720,10 @@
                 comecou = true;
                 overlay.classList.add('escondido');
                 // O timelapse começa sozinho, depois de se ver a primeira
-                // fotografia um instante.
+                // fotografia um instante. As setas vêm à vista ao abrir,
+                // como nos vídeos.
                 tocar();
+                mostrarSetas();
             }
             pintarMarcas();
             desenhar();
@@ -672,6 +800,7 @@
             anosEl.querySelectorAll('.ano').forEach((el) => {
                 el.classList.toggle('atual', Number(el.dataset.ano) === foto.ano);
             });
+            arrumarSetas();
         };
 
         // ---- A versão nítida ----
@@ -862,7 +991,113 @@
         const passarFoto = (sentido) => {
             pausar();
             irPara(atual() + sentido, ASSENTAR_MS);
+            // Como nos vídeos: a cada troca as setas vêm à vista, para se
+            // ver o que vem a seguir.
+            mostrarSetas();
         };
+
+        // ---- As setas dos lados ----
+        //
+        // As mesmas dos vídeos: o bico de cada lado, e a cruz numa caixa
+        // quando não há nada para o lado de lá — na primeira fotografia à
+        // esquerda, na última à direita. Carregar na cruz fecha o palco.
+        const setaEsquerda = document.getElementById('seta-esquerda');
+        const setaDireita = document.getElementById('seta-direita');
+        const desenhoDaSeta = (bico) => '<svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true"><polyline points="' + bico + '"></polyline></svg>';
+        const DESENHO_DA_CRUZ = '<svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true"><path d="M7 7L17 17M17 7L7 17"></path></svg>';
+        const BICO_ESQUERDA = '15 18 9 12 15 6';
+        const BICO_DIREITA = '9 18 15 12 9 6';
+
+        // O botão de fechar do palco, lá fora — se esta página estiver nele.
+        const cruzDoPalco = () => {
+            try {
+                const palco = noPalco && window.frameElement && window.frameElement.closest('#modal-360');
+                return palco ? palco.querySelector('.fechar-palco-btn') : null;
+            } catch (e) {
+                return null;
+            }
+        };
+
+        const arrumarSeta = (seta, bico, naPonta, chave) => {
+            const cruz = naPonta && !!cruzDoPalco();
+            seta.classList.toggle('a-sair', cruz);
+            seta.classList.toggle('sem-saida', naPonta && !cruz);
+            const desenho = cruz ? DESENHO_DA_CRUZ : desenhoDaSeta(bico);
+            if (seta.dataset.desenho !== desenho) {
+                seta.dataset.desenho = desenho;
+                seta.innerHTML = desenho;
+            }
+            const nome = (window.Idiomas && window.Idiomas.t(cruz ? 'palco.sair' : chave)) || '';
+            seta.title = nome;
+            seta.setAttribute('aria-label', nome);
+        };
+
+        const arrumarSetas = () => {
+            const k = atual();
+            arrumarSeta(setaEsquerda, BICO_ESQUERDA, k <= 0, 'palco.anterior');
+            arrumarSeta(setaDireita, BICO_DIREITA, k >= ULTIMA, 'palco.seguinte');
+        };
+
+        [[setaEsquerda, -1], [setaDireita, 1]].forEach(([seta, sentido]) => {
+            seta.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (seta.classList.contains('a-sair')) {
+                    const cruz = cruzDoPalco();
+                    if (cruz) cruz.click();
+                    return;
+                }
+                passarFoto(sentido);
+            });
+        });
+
+        // Aparecem quando o rato mexe, quando se toca no ecrã, ou quando se
+        // chega a uma delas de tecla; vão-se uns segundos depois de o rato
+        // parar — a não ser que esteja pousado numa delas. Arrastar a
+        // fotografia não conta como mexer: quem arrasta está a olhar.
+        const SETAS_A_VER_MS = 3000;
+        let relogioDasSetas = null;
+        let ratoX = null;
+        let ratoY = null;
+
+        const setasSeguras = () => {
+            if (document.querySelector('.lado-do-palco > :hover')) return true;
+            const foco = document.activeElement;
+            return !!foco && !!foco.closest && !!foco.closest('.lado-do-palco') &&
+                foco.matches(':focus-visible');
+        };
+        const esconderSetas = () => {
+            clearTimeout(relogioDasSetas);
+            document.body.classList.remove('comandos-a-ver');
+        };
+        const armarSetas = () => {
+            clearTimeout(relogioDasSetas);
+            relogioDasSetas = setTimeout(() => {
+                if (setasSeguras()) armarSetas();
+                else esconderSetas();
+            }, SETAS_A_VER_MS);
+        };
+        function mostrarSetas() {
+            document.body.classList.add('comandos-a-ver');
+            armarSetas();
+        }
+
+        document.addEventListener('pointermove', (e) => {
+            // Só conta o rato que andou mesmo.
+            if (e.screenX === ratoX && e.screenY === ratoY) return;
+            ratoX = e.screenX;
+            ratoY = e.screenY;
+            if (e.pointerType === 'mouse' && e.buttons) return;
+            mostrarSetas();
+        });
+        document.addEventListener('pointerdown', (e) => {
+            if (e.pointerType !== 'mouse') mostrarSetas();
+        });
+        document.addEventListener('focusin', (e) => {
+            const alvo = e.target;
+            if (alvo && alvo.closest && alvo.closest('.lado-do-palco') && alvo.matches(':focus-visible')) {
+                mostrarSetas();
+            }
+        });
 
         const pintarBotaoTocar = () => {
             botaoTocar.innerHTML = aTocar ? ICONE_PAUSA : ICONE_TOCAR;

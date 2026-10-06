@@ -33,7 +33,6 @@ export const FOTOGRAFIAS = [
     { ano: 2021, mes: 6, creditos: MAXAR },
     { ano: 2023, mes: 4, creditos: MAXAR },
     { ano: 2024, mes: 4, creditos: MAXAR },
-    { ano: 2024, mes: 7, creditos: MAXAR },
     { ano: 2025, mes: 1, creditos: MAXAR },
     { ano: 2025, mes: 9, creditos: MAXAR },
     { ano: 2025, mes: 11, creditos: MAXAR },
