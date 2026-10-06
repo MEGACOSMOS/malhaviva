@@ -590,6 +590,15 @@ export function ligarComando(app) {
             (pad.axes[3] || 0) + olharY(),
             dt
         );
+        // Os gatilhos, que no bairro mandam na velocidade, aqui aproximam
+        // e afastam: o esquerdo chega perto, o direito afasta. Também são
+        // analógicos — meio carregado, meia velocidade.
+        const gatilho = (n) => {
+            const v = valorDoBotao(pad, n);
+            return v > LIMIAR_DO_GATILHO ? v : 0;
+        };
+        const aproxima = gatilho(BOTAO.LT) - gatilho(BOTAO.RT);
+        if (aproxima && typeof dentro.aproximar === 'function') dentro.aproximar(aproxima, dt);
         if (bateuAgora(pad, BOTAO.A)) dentro.botao('tocar');
         if (bateuAgora(pad, BOTAO.X)) dentro.botao('volume-btn');
         if (bateuAgora(pad, BOTAO.Y)) dentro.botao('fullscreen-btn');

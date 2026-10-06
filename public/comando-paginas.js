@@ -9,7 +9,8 @@
  * Cada uma destas páginas é pequena e tem pouco onde mexer, por isso não
  * há aqui a maquinaria de contextos que o mapa tem. Isto olha para o que a
  * página tem e trata do que encontrar: se houver uma vista 360º, o stick
- * direito vira a cabeça; se houver um filme, o A toca e pára; se houver um
+ * direito vira a cabeça e os gatilhos aproximam (LT) e afastam (RT); se
+ * houver um filme, o A toca e pára; se houver um
  * menu de línguas, a cruz anda por ele; se houver um cartão de instruções
  * aberto, o B fecha-o; se não, e houver uma porta de saída, o B sai por ela.
  *
@@ -53,6 +54,15 @@
     // ritmo. São os tempos de um teclado.
     var ESPERA_ATE_REPETIR = 0.45;
     var INTERVALO_DA_REPETICAO = 0.12;
+
+    // A partir de que ponto um gatilho conta como carregado: em repouso
+    // raramente ficam a zero.
+    var FOLGA_DO_GATILHO = 0.12;
+
+    // Quantos passos de zoom por segundo dá um gatilho carregado até ao
+    // fundo — os mesmos passos de um estalido da roda ou de uma tecla mais.
+    // Do mais largo ao mais apertado vai pouco menos de dois segundos.
+    var PASSOS_DE_ZOOM_POR_SEGUNDO = 5;
 
     // A classe que marca a linha escolhida. O desenho dela é posto abaixo,
     // para as páginas não terem todas de a saber de cor.
@@ -111,6 +121,42 @@
      */
     function bateuAgora(pad, n) {
         return carregado(pad, n) && !antes[n];
+    }
+
+    /**
+     * Quanto os gatilhos pedem de zoom: o esquerdo aproxima, o direito
+     * afasta. São analógicos — meio carregado, meia velocidade — e os dois
+     * ao mesmo tempo anulam-se.
+     *
+     * @param {Gamepad} pad - O comando.
+     * @returns {number} De menos um (afastar) a um (aproximar).
+     */
+    function gatilhos(pad) {
+        var valor = function (n) {
+            var b = pad.buttons[n];
+            var v = !b ? 0 : (typeof b === 'object' ? b.value : b);
+            return v > FOLGA_DO_GATILHO ? v : 0;
+        };
+        return valor(BOTAO.LT) - valor(BOTAO.RT);
+    }
+
+    /**
+     * Aproxima ou afasta a vista da página, se ela souber fazê-lo.
+     *
+     * Cada página tem o seu zoom — a rota 360º e o Olho de Águia abrem e
+     * fecham o ângulo por onde se olha — e diz como se lhe chega deixando
+     * em `window.zoomDaPagina` uma função que recebe passos de zoom:
+     * positivos para aproximar, negativos para afastar.
+     *
+     * @param {number} quanto - De menos um (afastar) a um (aproximar).
+     * @param {number} dt - O tempo desde a imagem anterior, em segundos.
+     * @returns {boolean} Se a página aproximou ou afastou.
+     */
+    function aproximar(quanto, dt) {
+        var zoom = window.zoomDaPagina;
+        if (!quanto || typeof zoom !== 'function') return false;
+        zoom(quanto * PASSOS_DE_ZOOM_POR_SEGUNDO * dt);
+        return true;
     }
 
     /**
@@ -271,8 +317,12 @@
 
         var menu = menuAberto();
 
-        // --- Virar a cabeça, com o stick direito ---
-        if (!menu) virarACabeca(pad.axes[2] || 0, pad.axes[3] || 0, dt);
+        // --- Virar a cabeça, com o stick direito, e aproximar e afastar,
+        // com os gatilhos ---
+        if (!menu) {
+            virarACabeca(pad.axes[2] || 0, pad.axes[3] || 0, dt);
+            aproximar(gatilhos(pad), dt);
+        }
 
         var esquerdo = pad.axes[0] || 0;
         var vertical = pad.axes[1] || 0;
@@ -458,6 +508,17 @@
          */
         olhar: function (x, y, dt) {
             virarACabeca(x, y, dt);
+        },
+        /**
+         * Aproxima ou afasta a vista, como se os gatilhos estivessem a ser
+         * carregados.
+         *
+         * @param {number} quanto - De menos um (afastar) a um (aproximar).
+         * @param {number} dt - O tempo desde a imagem anterior, em segundos.
+         * @returns {boolean} Se a página aproximou ou afastou.
+         */
+        aproximar: function (quanto, dt) {
+            return aproximar(quanto, dt);
         },
         /**
          * Carrega num botão desta página.

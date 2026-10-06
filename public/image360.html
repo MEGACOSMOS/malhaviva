@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Fotografia 360º</title>
-    <script src="/idiomas.js?v=38"></script>
+    <script src="/idiomas.js?v=39"></script>
     <script src="/quadrado-de-espera.js?v=4"></script>
     <!-- O aviso de "está a demorar" e a tecla de tentar de novo, os
          mesmos em todo o site. -->
@@ -12,7 +12,7 @@
     <script src="/motor/aframe-1.4.0.min.js"></script>
     <!-- O dedo olha para todos os lados, e não só de lado a lado. -->
     <script src="/toque-360.js?v=1"></script>
-    <script src="/comando-paginas.js?v=5" defer></script>
+    <script src="/comando-paginas.js?v=6" defer></script>
     <style>
         /* A letra do site: a Liberation Mono, servida daqui mesmo (ficheiros
            em /fonts, licença SIL Open Font). Dois pesos chegam: o normal
@@ -316,6 +316,10 @@
         const PASSO = 1.15;
         botaoAproximar.addEventListener('click', () => aplicarZoom(anguloPedido / PASSO));
         botaoAfastar.addEventListener('click', () => aplicarZoom(anguloPedido * PASSO));
+
+        // Os gatilhos do comando (ver comando-paginas.js) aproximam e
+        // afastam por aqui, aos passos — positivos para chegar perto.
+        window.zoomDaPagina = (passos) => aplicarZoom(anguloPedido / Math.pow(PASSO, passos));
 
         // A roda conta quanto rodou, e não só para que lado: um rato de
         // roda aos saltos dá o mesmo passo de sempre por cada estalido, e
