@@ -863,6 +863,44 @@ AnnotationController.prototype.initialize = function() {
             transform: none;
         }
 
+        /* ---- As legendas ----
+           Ao fundo da imagem, ao meio, em letra branca com uma faixa escura
+           só à volta das palavras. Quando a barra dos comandos sobe, sobem
+           com ela, para não ficarem por baixo. O texto vem de legendas.js. */
+        .legenda-do-video {
+            position: absolute;
+            left: 50%;
+            bottom: 7%;
+            transform: translate(-50%, 0);
+            width: min(90%, 46em);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.12em;
+            text-align: center;
+            pointer-events: none;
+            z-index: 6;
+            font-family: var(--font-main, sans-serif);
+            font-size: clamp(15px, 1.15rem + 0.6vw, 30px);
+            line-height: 1.3;
+            color: #ffffff;
+            transition: transform var(--deslize-da-barra, 0.3s ease);
+        }
+        .legenda-do-video > span {
+            background: rgba(5, 5, 10, 0.78);
+            padding: 0.08em 0.45em;
+        }
+        #video-modal.comandos-a-ver .legenda-do-video {
+            transform: translate(-50%, calc(-1 * var(--altura-da-barra, 110px) + 4%));
+        }
+        /* O botão das legendas desligadas leva um risco por cima. */
+        .botao-das-legendas .risco-das-legendas {
+            display: none;
+        }
+        .botao-das-legendas.legendas-desligadas .risco-das-legendas {
+            display: inline;
+        }
+
         /* ---- A janela da paragem 360º ----
            Uma janela para a página da rota (ou da fotografia), a encher o
            ecrã todo. A barra dos comandos vive lá dentro e faz o mesmo que
@@ -2386,6 +2424,14 @@ AnnotationController.prototype.setupModal = function() {
         this.abrirCinemaVR(videoWrapper, this.videoNome, momento);
     });
 
+    // As legendas: o botão de as ligar e desligar fica à esquerda das
+    // definições. O desenho e o resto vivem em legendas.js.
+    const legendasBtn = document.createElement('button');
+    legendasBtn.type = 'button';
+    legendasBtn.className = 'player-btn botao-das-legendas';
+    this.botaoDasLegendas = legendasBtn;
+
+    controlsRight.appendChild(legendasBtn);
     controlsRight.appendChild(qualityContainer);
     controlsRight.appendChild(vrBtn);
     controlsRight.appendChild(fullscreenBtn);
@@ -2431,6 +2477,13 @@ AnnotationController.prototype.setupModal = function() {
     this.imagemDeAntes.className = 'imagem-de-antes';
     this.imagemDeAntes.setAttribute('aria-hidden', 'true');
     videoWrapper.appendChild(this.imagemDeAntes);
+
+    // O texto da legenda, por cima da imagem, ao fundo.
+    const legendaCaixa = document.createElement('div');
+    videoWrapper.appendChild(legendaCaixa);
+    this.legendas = window.Legendas
+        ? window.Legendas.ligar(this.videoPlayer, legendaCaixa, this.botaoDasLegendas)
+        : null;
 
     videoWrapper.appendChild(bigPlayBtn);
 
@@ -2731,6 +2784,8 @@ AnnotationController.prototype.setupModal = function() {
             volumeBtn.click();
         } else if (tecla === 'f') {
             fullscreenBtn.click();
+        } else if (tecla === 'c' && window.Legendas) {
+            window.Legendas.alternar();
         }
     });
 
@@ -2775,7 +2830,8 @@ AnnotationController.prototype.setupModal = function() {
                 this.gestorDeQualidade = null;
             }
             this.videoPlayer.pause();
-            this.videoPlayer.src = ''; 
+            this.videoPlayer.src = '';
+            if (this.legendas) this.legendas.mostrar(null);
             const gsplat = this.app.root.findByName('gsplat-scene');
             if (gsplat) gsplat.enabled = true;
 
@@ -3178,6 +3234,7 @@ AnnotationController.prototype.abrirTestemunho = function(nome, title, sentido, 
     this.marcarComoVisto('video-' + nome);
     this.modalTitle.textContent = title;
     this.videoNome = nome;
+    if (this.legendas) this.legendas.mostrar(nome);
 
     if (this.progressFilled) this.progressFilled.style.width = '0%';
     if (this.timeDisplay) this.timeDisplay.innerText = '0:00 / 0:00';

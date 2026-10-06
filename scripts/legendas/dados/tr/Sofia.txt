@@ -1,0 +1,14 @@
+0|Yes, they come here to threaten us.|Sí, vienen aquí a amenazar.
+1|Then some houses get knocked down, but not all of them.|Luego tiran algunas casas, pero no todas.
+2|People were already desperate.|La gente ya estaba desesperada.
+3|People with families: when the house comes down, where are they supposed to go?|La gente con familia, cuando le tiran la casa, ¿adónde va a ir?
+4|There's nowhere to go. If at least they gave people houses,|No hay sitio. Si por lo menos les dieran casas,
+5|even if they had to pay rent, people would go.|aunque fuera pagando alquiler, la gente iría.
+6|But without a house, what are people supposed to do? Stay on the street?|Pero sin casa, ¿qué va a hacer la gente? ¿Quedarse en la calle?
+7|Live on the street with family?|¿Vivir en la calle con la familia?
+8|It was already sad, it was really hard.|Ya era triste, era muy complicado.
+9|Are you afraid this might happen? I'm afraid, yes. I'm afraid.|¿Tiene miedo de que eso pueda pasar? Tengo miedo, sí. Tengo miedo.
+10|And on the days they come here to tear the houses down,|Y los días que vienen aquí a tirar las casas,
+11|I don't go to work, because the fear is so great...|no voy a trabajar, porque es tanto el miedo...
+12|Lying awake, because I don't know what day they'll tear it down.|Acostarte y no dormir, porque no sé qué día vendrán a tirarla.
+13|I don't have a day, I don't have a home. Yes, that's it.|No tengo un día, no tengo casa. Sí, eso es.

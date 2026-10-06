@@ -111,6 +111,7 @@
             'video.qualidade': 'Qualidade',
             'video.resolucao': 'Resolução',
             'video.oculos': 'Ver com óculos',
+            'video.legendas': 'Legendas',
 
             'foto.carregar': 'A carregar fotografia 360º…',
             'foto.erro': 'Não foi possível carregar a fotografia 360º.',
@@ -314,6 +315,7 @@
             'video.qualidade': 'Quality',
             'video.resolucao': 'Resolution',
             'video.oculos': 'View with headset',
+            'video.legendas': 'Subtitles',
 
             'foto.carregar': 'Loading 360º photo…',
             'foto.erro': 'The 360º photo could not be loaded.',
@@ -517,6 +519,7 @@
             'video.qualidade': 'Calidad',
             'video.resolucao': 'Resolución',
             'video.oculos': 'Ver con gafas',
+            'video.legendas': 'Subtítulos',
 
             'foto.carregar': 'Cargando fotografía 360º…',
             'foto.erro': 'No se ha podido cargar la fotografía 360º.',
@@ -720,6 +723,7 @@
             'video.qualidade': 'Kualidadi',
             'video.resolucao': 'Ruzoluson',
             'video.oculos': 'Odja ku óklus',
+            'video.legendas': 'Legenda',
 
             'foto.carregar': 'Ta karega fotografia 360º…',
             'foto.erro': 'Ka konsigi karega fotografia 360º.',
