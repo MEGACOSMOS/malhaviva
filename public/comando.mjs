@@ -69,6 +69,9 @@ const CLASSE_DO_FOCO = 'comando-foco';
 // Os marcadores do mapa já sabem acender-se: é a mesma classe que o site
 // usa quando o rato pára em cima de um deles.
 const CLASSE_DO_MARCADOR = 'force-hover';
+// E leva o mesmo risco branco por cima de quem chega lá pelo Tab: o acender
+// sozinho não se via bem sobre o bairro. O desenho vive em annotations.mjs.
+const CLASSE_DO_ESCOLHIDO = 'comando-escolhido';
 
 /**
  * Diz se um elemento está mesmo à vista.
@@ -281,12 +284,13 @@ export function ligarComando(app) {
     function acender(el) {
         if (alvoAceso === el) return;
         if (alvoAceso) {
-            alvoAceso.classList.remove(CLASSE_DO_FOCO, CLASSE_DO_MARCADOR);
+            alvoAceso.classList.remove(CLASSE_DO_FOCO, CLASSE_DO_MARCADOR, CLASSE_DO_ESCOLHIDO);
         }
         alvoAceso = el || null;
         if (alvoAceso) {
             const marcador = alvoAceso.classList.contains('annotation-marker');
-            alvoAceso.classList.add(marcador ? CLASSE_DO_MARCADOR : CLASSE_DO_FOCO);
+            if (marcador) alvoAceso.classList.add(CLASSE_DO_MARCADOR, CLASSE_DO_ESCOLHIDO);
+            else alvoAceso.classList.add(CLASSE_DO_FOCO);
             if (!marcador && alvoAceso.scrollIntoView) {
                 alvoAceso.scrollIntoView({ block: 'nearest' });
             }
@@ -591,13 +595,13 @@ export function ligarComando(app) {
             dt
         );
         // Os gatilhos, que no bairro mandam na velocidade, aqui aproximam
-        // e afastam: o esquerdo chega perto, o direito afasta. Também são
+        // e afastam: o direito chega perto, o esquerdo afasta. Também são
         // analógicos — meio carregado, meia velocidade.
         const gatilho = (n) => {
             const v = valorDoBotao(pad, n);
             return v > LIMIAR_DO_GATILHO ? v : 0;
         };
-        const aproxima = gatilho(BOTAO.LT) - gatilho(BOTAO.RT);
+        const aproxima = gatilho(BOTAO.RT) - gatilho(BOTAO.LT);
         if (aproxima && typeof dentro.aproximar === 'function') dentro.aproximar(aproxima, dt);
         if (bateuAgora(pad, BOTAO.A)) dentro.botao('tocar');
         if (bateuAgora(pad, BOTAO.X)) dentro.botao('volume-btn');

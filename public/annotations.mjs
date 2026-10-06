@@ -358,11 +358,13 @@ AnnotationController.prototype.initialize = function() {
         }
         /* Quem chega ao marcador pela tecla Tab tem de ver onde está. Acende
            como se o rato lá estivesse, e leva um risco por cima — só o
-           acender não chega sobre uma fotografia cheia de contrastes. */
+           acender não chega sobre uma fotografia cheia de contrastes. O
+           marcador escolhido pelo comando de jogo leva o mesmo risco. */
         .annotation-marker:focus {
             outline: none;
         }
-        .annotation-marker:focus-visible {
+        .annotation-marker:focus-visible,
+        .annotation-marker.comando-escolhido {
             outline: 2px solid rgba(255, 255, 255, 0.95);
             outline-offset: 3px;
         }

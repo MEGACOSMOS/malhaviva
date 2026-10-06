@@ -9,7 +9,7 @@
  * Cada uma destas páginas é pequena e tem pouco onde mexer, por isso não
  * há aqui a maquinaria de contextos que o mapa tem. Isto olha para o que a
  * página tem e trata do que encontrar: se houver uma vista 360º, o stick
- * direito vira a cabeça e os gatilhos aproximam (LT) e afastam (RT); se
+ * direito vira a cabeça e os gatilhos aproximam (RT) e afastam (LT); se
  * houver um filme, o A toca e pára; se houver um
  * menu de línguas, a cruz anda por ele; se houver um cartão de instruções
  * aberto, o B fecha-o; se não, e houver uma porta de saída, o B sai por ela.
@@ -124,7 +124,7 @@
     }
 
     /**
-     * Quanto os gatilhos pedem de zoom: o esquerdo aproxima, o direito
+     * Quanto os gatilhos pedem de zoom: o direito aproxima, o esquerdo
      * afasta. São analógicos — meio carregado, meia velocidade — e os dois
      * ao mesmo tempo anulam-se.
      *
@@ -137,7 +137,7 @@
             var v = !b ? 0 : (typeof b === 'object' ? b.value : b);
             return v > FOLGA_DO_GATILHO ? v : 0;
         };
-        return valor(BOTAO.LT) - valor(BOTAO.RT);
+        return valor(BOTAO.RT) - valor(BOTAO.LT);
     }
 
     /**
