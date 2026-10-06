@@ -3963,9 +3963,16 @@ void modifySplatColor(vec3 center, inout vec4 color) {
                 const densidade = degrau.densidade >= 1
                     ? densidadeDeOrigem
                     : densidadeEfetiva * degrau.densidade;
+                // Só se muda a densidade; o tamanho da tela acerta-o o
+                // próprio motor no começo do desenho seguinte, mesmo antes
+                // de pintar. Acertá-lo daqui fazia-o depois de a imagem já
+                // estar desenhada — e mudar o tamanho de uma tela apaga-a:
+                // o navegador mostrava a tela apagada, preta, até ao
+                // desenho seguinte, que logo a seguir a uma mudança destas
+                // demora mais. Era o bairro a piscar a preto de cada vez
+                // que o afinador mexia na densidade.
                 if (Math.abs(densidade - dispositivo.maxPixelRatio) > 0.005) {
                     dispositivo.maxPixelRatio = densidade;
-                    app.updateCanvasSize();
                 }
             };
 
