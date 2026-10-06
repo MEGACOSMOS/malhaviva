@@ -1158,27 +1158,12 @@ AnnotationController.prototype.initialize = function() {
             color: #fff;
             transform: scale(1.1);
         }
-        /* A cruz numa caixa, como em todo o site: o fio de 2,5 dos menus
-           e fundo escuro opaco. O apagado vai na cor da cruz, já sem
-           transparência, para a caixa não deixar ver o vídeo. */
+        /* A cruz de fechar é um botão do leitor como os outros (leva
+           também a classe player-btn): do mesmo tamanho, transparente, só
+           com o contorno meio transparente, e com o quadrado preto quando
+           o rato passa por cima. */
         .fechar-palco-btn {
             flex: 0 0 auto;
-            width: 38px;
-            height: 38px;
-            background: #05050a;
-            border: 2.5px solid #505054;
-            color: #9b9b9f;
-            cursor: pointer;
-            transition: color 0.2s ease;
-            padding: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        /* Já é um quadrado preto: com o rato em cima não cresce, só a
-           cruz acende. */
-        .fechar-palco-btn:hover {
-            color: #ffffff;
         }
         /* ─── Contornos ───
            Um fio de dois pontos e meio a toda a volta, de um só tom — o mais escuro do
@@ -1550,8 +1535,8 @@ AnnotationController.prototype.acabouARota360 = function() {
  */
 AnnotationController.prototype.criarBotaoDeFechar = function(fecharCallback) {
     const closeBtn = document.createElement('button');
-    closeBtn.className = 'fechar-palco-btn';
-    closeBtn.innerHTML = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>';
+    closeBtn.className = 'player-btn fechar-palco-btn';
+    closeBtn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true"><path d="M5 5L19 19M19 5L5 19"></path></svg>';
     closeBtn.setAttribute('aria-label', 'Fechar');
     closeBtn.title = 'Fechar';
     closeBtn.addEventListener('click', fecharCallback);
