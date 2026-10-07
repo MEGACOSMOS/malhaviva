@@ -244,7 +244,10 @@ function sairDoEcraInteiroDo(modal) {
 AnnotationController.prototype.initialize = function() {
     this.annotations = [
         {
-            position: new pc.Vec3(0, 150, 0),
+            // Por cima do Retroceder, a prumo: no mesmo plano a direito à
+            // frente da câmara de entrada, e por isso, como ele, ao meio do
+            // ecrã de lado a lado.
+            position: new pc.Vec3(14.94, 150, 5.35),
             label: "Olho de Águia",
             is360: true,
             isImage: true,
@@ -264,7 +267,7 @@ AnnotationController.prototype.initialize = function() {
             // frente da câmara de entrada, e por isso ao abrir o site fica
             // ao meio do ecrã, de lado a lado, seja qual for a largura dele.
             position: new pc.Vec3(14.94, 80, 5.35),
-            label: "Timelapse",
+            label: "Retroceder",
             is360: true,
             isImage: true,
             timelapse: true,
@@ -1273,7 +1276,7 @@ AnnotationController.prototype.initialize = function() {
             // riscas da claquete dos créditos. O mesmo desenho está na
             // legenda, nas instruções e nas placas dos óculos. O nome vai
             // por baixo. A fotografia do alto do bairro dispensa as duas
-            // coisas: fica só um olho, pousado no céu.
+            // coisas: fica só um olho, pousado no céu, com o nome por baixo.
             //
             // Os desenhos (testemunho, rota e olho) têm as mesmas medidas:
             // 24 pontos no quadrado de 32, com 20 de largura lá dentro e o
@@ -1301,7 +1304,7 @@ AnnotationController.prototype.initialize = function() {
                 <div class="marker-dot is-360 ${ann.isImage ? 'is-foto' : ''} ${isViewed ? 'viewed' : ''}">
                     ${simbolo}
                 </div>
-                ${ann.isImage ? '' : `<div class="marker-label">${ann.label}</div>`}
+                <div class="marker-label">${ann.label}</div>
             `;
         } else {
             el.innerHTML = `
@@ -1461,7 +1464,7 @@ AnnotationController.prototype.nomeAcessivel = function(ann) {
     }
 
     if (ann.timelapse) {
-        return diz('mapa.timelapse', 'Timelapse — fotografias de satélite do bairro, de {de} a {ate}')
+        return diz('mapa.timelapse', 'Retroceder — fotografias de satélite do bairro, de {de} a {ate}')
             .replace('{de}', FOTOGRAFIAS[0].ano)
             .replace('{ate}', FOTOGRAFIAS[FOTOGRAFIAS.length - 1].ano);
     }
@@ -1547,7 +1550,9 @@ AnnotationController.prototype.enderecoDaParagem360 = function(ann) {
     if (ann.isImage) {
         // A fotografia abre de lado a lado, sem barras: a página é avisada
         // para pôr os comandos a pairar sobre a imagem.
-        return '/image360.html?src=' + encodeURIComponent(ann.imagePath) + '&inteira=1';
+        // O nome vai no canto de cima, como a data no Retroceder.
+        return '/image360.html?src=' + encodeURIComponent(ann.imagePath) +
+            '&nome=' + encodeURIComponent(ann.label) + '&inteira=1';
     }
     // "sequencia": a rota não recomeça ao chegar ao fim, avisa cá fora
     // (ver acabouARota360), como os testemunhos. "inteira": a rota
