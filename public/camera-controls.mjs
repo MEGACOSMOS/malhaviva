@@ -169,11 +169,9 @@ const screenToWorld = (camera, dx, dy, dz, out = new Vec3()) => {
  * @enum {string}
  */
 // eslint-disable-next-line no-unused-vars
-// Quantos graus a vista vira quando um dedo atravessa o ecrã de lado a
-// lado, num ecrã táctil — à maneira dos jogos de telemóvel (o Minecraft
-// é o exemplo): meia volta por cada largura de ecrã, sempre a mesma,
-// esteja a vista aproximada ou não.
-const GRAUS_POR_LARGURA_DE_ECRA = 180;
+// Quão depressa a vista apanha o dedo no telemóvel: mais baixo, mais
+// acentuados o arranque e a travagem. O caminho todo é sempre o do dedo.
+const SUAVIDADE_DO_DEDO = 4.0;
 
 // ─── Apontar e ir ───
 // Um clique (ou um toque) num sítio do bairro leva a câmara até lá: sem
@@ -1987,19 +1985,23 @@ class CameraControls extends Script {
         deltas.rotate.append([v.x, v.y, v.z]);
 
 
-        // Um dedo no ecrã arrasta a vista: o bairro fica agarrado ao dedo
-        // e vai com ele, como num mapa (e não ao contrário, como nos jogos).
+        // Um dedo no ecrã arrasta o bairro: o ponto que se agarra acaba
+        // debaixo do dedo. Cada ponto do ecrã que o dedo anda vale os graus
+        // que esse ponto ocupa na abertura da câmara, por isso ao aproximar
+        // o dedo abranda com ela. O filtro dá o arranque e a travagem
+        // suaves, mas a soma do caminho é a mesma: chega ao sítio do dedo.
         // Suavizamos o input (low-pass filter) para garantir
         // uma animação de ease in e ease out agradável.
         if (!this._smoothTouchRotate) this._smoothTouchRotate = new Vec2(0, 0);
         const targetRotX = -(1 - double) * touch[0];
         const targetRotY = -(1 - double) * touch[1];
-        this._smoothTouchRotate.x = math.lerp(this._smoothTouchRotate.x, targetRotX, 5.0 * dt);
-        this._smoothTouchRotate.y = math.lerp(this._smoothTouchRotate.y, targetRotY, 5.0 * dt);
+        this._smoothTouchRotate.x = math.lerp(this._smoothTouchRotate.x, targetRotX, SUAVIDADE_DO_DEDO * dt);
+        this._smoothTouchRotate.y = math.lerp(this._smoothTouchRotate.y, targetRotY, SUAVIDADE_DO_DEDO * dt);
 
         v.set(0, 0, 0);
         const telaDoDedo = this.app.graphicsDevice.canvas;
-        const grausPorPonto = GRAUS_POR_LARGURA_DE_ECRA / (telaDoDedo.clientWidth || 1);
+        const medidaDaTela = (this._camera.horizontalFov ? telaDoDedo.clientWidth : telaDoDedo.clientHeight) || 1;
+        const grausPorPonto = (this._camera.fov || 60) / medidaDaTela;
         const touchRotate = tmpV2.set(this._smoothTouchRotate.x, this._smoothTouchRotate.y, 0);
         v.add(touchRotate.mulScalar(grausPorPonto));
         deltas.rotate.append([v.x, v.y, v.z]);
