@@ -175,7 +175,7 @@ const SUAVIDADE_DO_DEDO = 12.0;
 
 // Quantas vezes o arrasto de um dedo vira a vista, em relação ao que o
 // dedo anda: com 1 o bairro fica colado ao dedo; com 2 vira o dobro.
-const VELOCIDADE_DO_DEDO = 2.0;
+const VELOCIDADE_DO_DEDO = 1.8;
 
 // ─── Apontar e ir ───
 // Um clique (ou um toque) num sítio do bairro leva a câmara até lá: sem
