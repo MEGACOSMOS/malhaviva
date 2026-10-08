@@ -171,7 +171,7 @@ const screenToWorld = (camera, dx, dy, dz, out = new Vec3()) => {
 // eslint-disable-next-line no-unused-vars
 // Quão depressa a vista apanha o dedo no telemóvel: mais baixo, mais
 // acentuados o arranque e a travagem. O caminho todo é sempre o do dedo.
-const SUAVIDADE_DO_DEDO = 8.0;
+const SUAVIDADE_DO_DEDO = 12.0;
 
 // ─── Apontar e ir ───
 // Um clique (ou um toque) num sítio do bairro leva a câmara até lá: sem
