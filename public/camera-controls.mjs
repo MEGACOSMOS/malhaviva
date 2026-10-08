@@ -182,7 +182,7 @@ const SUAVIDADE_DO_DEDO = 12.0;
 // alcance desde o início. As velocidades estão em ecrãs por segundo.
 const ACEL_LENTO = 0.8;        // até aqui, colado ao dedo
 const ACEL_RAPIDO = 3.5;       // a partir daqui, a aceleração toda
-const ACEL_MAXIMA = 2.5;       // quantas vezes mais vira um varrimento
+const ACEL_MAXIMA = 4.0;       // quantas vezes mais vira um varrimento
 const ACEL_ANTECIPACAO = 0.1;  // segundos que se olha para a frente
 const ACEL_SUBIDA = 0.05;      // a aceleração entra depressa...
 const ACEL_DESCIDA = 0.15;     // ...e sai com calma, sem solavancos
