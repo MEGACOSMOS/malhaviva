@@ -170,22 +170,12 @@ const screenToWorld = (camera, dx, dy, dz, out = new Vec3()) => {
  */
 // eslint-disable-next-line no-unused-vars
 // Quão depressa a vista apanha o dedo no telemóvel: mais baixo, mais
-// acentuados o arranque e a travagem. O caminho todo é sempre o do dedo.
+// acentuados o arranque e a travagem. Não muda o caminho todo.
 const SUAVIDADE_DO_DEDO = 12.0;
 
-// ─── Aceleração do dedo ───
-// Um arrasto lento fica colado ao dedo, para apontar com precisão. Um
-// arrasto rápido — o dedo a varrer o ecrã — vira a vista mais do que o
-// dedo andou, para dar a volta ao bairro sem arrastar várias vezes. A
-// aceleração não espera que o dedo já vá depressa: vê também o quanto a
-// velocidade está a crescer e adianta-se, para o varrimento ganhar
-// alcance desde o início. As velocidades estão em ecrãs por segundo.
-const ACEL_LENTO = 0.8;        // até aqui, colado ao dedo
-const ACEL_RAPIDO = 3.5;       // a partir daqui, a aceleração toda
-const ACEL_MAXIMA = 4.0;       // quantas vezes mais vira um varrimento
-const ACEL_ANTECIPACAO = 0.1;  // segundos que se olha para a frente
-const ACEL_SUBIDA = 0.05;      // a aceleração entra depressa...
-const ACEL_DESCIDA = 0.15;     // ...e sai com calma, sem solavancos
+// Quantas vezes o arrasto de um dedo vira a vista, em relação ao que o
+// dedo anda: com 1 o bairro fica colado ao dedo; com 2 vira o dobro.
+const VELOCIDADE_DO_DEDO = 2.0;
 
 // ─── Apontar e ir ───
 // Um clique (ou um toque) num sítio do bairro leva a câmara até lá: sem
@@ -1758,48 +1748,6 @@ class CameraControls extends Script {
     }
 
     /**
-     * Quantas vezes o arrasto de um dedo vira a vista neste instante: 1
-     * num arrasto lento, até ACEL_MAXIMA num varrimento. Mede a velocidade
-     * do dedo e o quanto ela está a crescer, e com as duas prevê a
-     * velocidade daqui a nada — é por essa que se decide.
-     *
-     * @param {number[]} toque - O que o dedo andou nesta imagem, em pontos.
-     * @param {number} umDedo - 1 com um dedo no ecrã, 0 com dois.
-     * @param {number} medidaDaTela - O tamanho do ecrã, em pontos.
-     * @param {number} dt - O tempo desta imagem, em segundos.
-     * @returns {number} O ganho.
-     * @private
-     */
-    _acelerarDedo(toque, umDedo, medidaDaTela, dt) {
-        const passo = Math.max(dt, 1e-3);
-        // Sem o dedo, a aceleração vai-se embora com a mesma calma: a vista
-        // acaba o varrimento ao mesmo ritmo e, se outro varrimento vier logo
-        // a seguir, já começa embalado.
-        if (this._state.touches !== 1 || !umDedo) {
-            this._velDedo = 0;
-            this._tendDedo = 0;
-            const ganho = this._ganhoDedo || 1;
-            this._ganhoDedo = ganho + (1 - ganho) * (1 - Math.exp(-passo / ACEL_DESCIDA));
-            return this._ganhoDedo;
-        }
-        const filtro = 1 - Math.exp(-passo / 0.06);
-        const velAgora = Math.hypot(toque[0], toque[1]) / medidaDaTela / passo;
-        const velAntes = this._velDedo || 0;
-        this._velDedo = velAntes + (velAgora - velAntes) * filtro;
-        const tendAgora = (this._velDedo - velAntes) / passo;
-        this._tendDedo = (this._tendDedo || 0) + (tendAgora - (this._tendDedo || 0)) * filtro;
-        // Só se antecipa o acelerar: o travar já se vê na velocidade.
-        const prevista = this._velDedo + Math.max(0, this._tendDedo) * ACEL_ANTECIPACAO;
-        let t = math.clamp((prevista - ACEL_LENTO) / (ACEL_RAPIDO - ACEL_LENTO), 0, 1);
-        t = t * t * (3 - 2 * t);
-        const alvo = 1 + (ACEL_MAXIMA - 1) * t;
-        const ganho = this._ganhoDedo || 1;
-        const demora = alvo > ganho ? ACEL_SUBIDA : ACEL_DESCIDA;
-        this._ganhoDedo = ganho + (alvo - ganho) * (1 - Math.exp(-passo / demora));
-        return this._ganhoDedo;
-    }
-
-    /**
      * @param {number} dt - The time delta.
      */
     update(dt) {
@@ -2041,23 +1989,20 @@ class CameraControls extends Script {
         deltas.rotate.append([v.x, v.y, v.z]);
 
 
-        // Um dedo no ecrã arrasta o bairro: o ponto que se agarra acaba
-        // debaixo do dedo. Cada ponto do ecrã que o dedo anda vale os graus
-        // que esse ponto ocupa na abertura da câmara, por isso ao aproximar
-        // o dedo abranda com ela. O filtro dá o arranque e a travagem
-        // suaves, mas a soma do caminho é a mesma: chega ao sítio do dedo.
+        // Um dedo no ecrã arrasta o bairro, para o lado para onde vai. Cada
+        // ponto do ecrã que o dedo anda vale os graus que esse ponto ocupa
+        // na abertura da câmara, vezes VELOCIDADE_DO_DEDO; por isso ao
+        // aproximar o dedo abranda com ela. O filtro dá o arranque e a
+        // travagem suaves, sem mudar o caminho todo.
         // Suavizamos o input (low-pass filter) para garantir
         // uma animação de ease in e ease out agradável.
         if (!this._smoothTouchRotate) this._smoothTouchRotate = new Vec2(0, 0);
         const telaDoDedo = this.app.graphicsDevice.canvas;
         const medidaDaTela = (this._camera.horizontalFov ? telaDoDedo.clientWidth : telaDoDedo.clientHeight) || 1;
         const grausPorPonto = (this._camera.fov || 60) / medidaDaTela;
-        const ganhoDoDedo = this._acelerarDedo(touch, 1 - double, medidaDaTela, dt);
-        const targetRotX = -(1 - double) * touch[0] * ganhoDoDedo;
-        const targetRotY = -(1 - double) * touch[1] * ganhoDoDedo;
-        // Num varrimento a vista também apanha o dedo mais depressa.
-        const intensidade = (ganhoDoDedo - 1) / (ACEL_MAXIMA - 1);
-        const ritmo = Math.min(1, SUAVIDADE_DO_DEDO * (1 + intensidade) * dt);
+        const targetRotX = -(1 - double) * touch[0] * VELOCIDADE_DO_DEDO;
+        const targetRotY = -(1 - double) * touch[1] * VELOCIDADE_DO_DEDO;
+        const ritmo = Math.min(1, SUAVIDADE_DO_DEDO * dt);
         this._smoothTouchRotate.x = math.lerp(this._smoothTouchRotate.x, targetRotX, ritmo);
         this._smoothTouchRotate.y = math.lerp(this._smoothTouchRotate.y, targetRotY, ritmo);
 
