@@ -1987,12 +1987,13 @@ class CameraControls extends Script {
         deltas.rotate.append([v.x, v.y, v.z]);
 
 
-        // Um dedo no ecrã vira a vista, à maneira dos jogos de telemóvel.
+        // Um dedo no ecrã arrasta a vista: o bairro fica agarrado ao dedo
+        // e vai com ele, como num mapa (e não ao contrário, como nos jogos).
         // Suavizamos o input (low-pass filter) para garantir
         // uma animação de ease in e ease out agradável.
         if (!this._smoothTouchRotate) this._smoothTouchRotate = new Vec2(0, 0);
-        const targetRotX = (1 - double) * touch[0];
-        const targetRotY = (1 - double) * touch[1];
+        const targetRotX = -(1 - double) * touch[0];
+        const targetRotY = -(1 - double) * touch[1];
         this._smoothTouchRotate.x = math.lerp(this._smoothTouchRotate.x, targetRotX, 5.0 * dt);
         this._smoothTouchRotate.y = math.lerp(this._smoothTouchRotate.y, targetRotY, 5.0 * dt);
 

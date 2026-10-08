@@ -2306,21 +2306,6 @@
 
         <div id="lado-direito" style="display: flex; align-items: center; gap: 8px; margin-left: auto;">
         <div id="acoes-do-cabecalho" style="display: flex; align-items: center; gap: 8px;">
-            <!-- O código do site no GitHub: o gato-polvo, primeiro à
-                 esquerda, só em contorno e no mesmo traço dos outros
-                 ícones. O desenho está a 94 % e centrado, para ocupar a
-                 mesma altura (1 a 23) que os Controlos e o Partilhar: à
-                 escala 1 ficava o mais alto de todos, descentrado, e com
-                 a ponta das orelhas cortada. O traço compensa a escala e
-                 fica nos mesmos 2. Abre noutro separador para não largar
-                 o bairro. -->
-            <a href="https://github.com/MEGACOSMOS/malhaviva" id="github-btn" class="adaptavel" target="_blank" rel="noopener" aria-label="Código no GitHub" title="Código no GitHub" data-i18n-aria="cab.github" data-i18n-title="cab.github">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true">
-                    <path transform="translate(12 12) scale(0.94) translate(-11.65 -11.45)" stroke-width="2.128" d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path>
-                </svg>
-                <span class="rotulo-icone" aria-hidden="true">GitHub</span>
-            </a>
-
             <div class="settings" id="dev-menu-container">
                 <button id="dev-btn" class="adaptavel" title="Menu de Desenvolvedor">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter">
@@ -2591,6 +2576,21 @@
                 </g>
             </svg>
             <span class="rotulo-icone" aria-hidden="true" data-i18n="cab.creditos">Créditos</span>
+        </a>
+
+        <!-- O código do site no GitHub: o gato-polvo, entre os
+             créditos e as definições, só em contorno e no mesmo traço dos outros
+             ícones. O desenho está a 94 % e centrado, para ocupar a
+             mesma altura (1 a 23) que os Controlos e o Partilhar: à
+             escala 1 ficava o mais alto de todos, descentrado, e com
+             a ponta das orelhas cortada. O traço compensa a escala e
+             fica nos mesmos 2. Abre noutro separador para não largar
+             o bairro. -->
+        <a href="https://github.com/MEGACOSMOS/malhaviva" id="github-btn" class="adaptavel" target="_blank" rel="noopener" aria-label="Código no GitHub" title="Código no GitHub" data-i18n-aria="cab.github" data-i18n-title="cab.github">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true">
+                <path transform="translate(12 12) scale(0.94) translate(-11.65 -11.45)" stroke-width="2.128" d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path>
+            </svg>
+            <span class="rotulo-icone" aria-hidden="true">GitHub</span>
         </a>
 
         <div class="settings">
@@ -4107,6 +4107,10 @@ void modifySplatColor(vec3 center, inout vec4 color) {
                     if (oculos.style.display !== 'none') oculos.after(creditos);
                     else gaveta.insertBefore(creditos, casaDasDefinicoes);
                 }
+                // O GitHub vai sempre logo a seguir aos créditos, entre eles
+                // e as definições.
+                const github = document.getElementById('github-btn');
+                if (creditos && github) creditos.after(github);
             };
             arrumar();
             if (gavetaExiste.addEventListener) gavetaExiste.addEventListener('change', arrumar);
