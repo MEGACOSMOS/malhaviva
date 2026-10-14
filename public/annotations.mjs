@@ -353,11 +353,16 @@ AnnotationController.prototype.initialize = function() {
             align-items: center;
         }
         .annotation-marker:hover .marker-dot, .annotation-marker.force-hover .marker-dot,
-        .annotation-marker:focus-visible .marker-dot,
-        .annotation-marker:hover .miniatura, .annotation-marker.force-hover .miniatura,
-        .annotation-marker:focus-visible .miniatura {
+        .annotation-marker:focus-visible .marker-dot {
             transform: scale(1.15);
             transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        /* A miniatura cresce do mesmo tanto, a partir do canto onde o poste
+           chega (ver arrumarMiniaturas). É com "scale" e não "transform"
+           porque o "translate" que a põe no sítio não pode crescer com ela. */
+        .annotation-marker:hover .miniatura, .annotation-marker.force-hover .miniatura,
+        .annotation-marker:focus-visible .miniatura {
+            scale: 1.15;
         }
         /* Quem chega ao marcador pela tecla Tab tem de ver onde está. Acende
            como se o rato lá estivesse, e leva um risco por cima — só o
@@ -371,7 +376,7 @@ AnnotationController.prototype.initialize = function() {
             outline: 2px solid rgba(255, 255, 255, 0.95);
             outline-offset: 3px;
         }
-        .marker-dot, .miniatura {
+        .marker-dot {
             transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
         }
         /* A cor de cada marcador vive aqui, e é dela que saem o quadrado,
@@ -412,11 +417,18 @@ AnnotationController.prototype.initialize = function() {
         }
 
         /* ---- A miniatura ----
-           Do meio do marcador sai um traço, na diagonal para baixo e para a
-           direita, que dá no canto de um rectângulo: lá dentro, a mesma
-           imagem que o palco mostra do vídeo seguinte (ver
-           desenharMiniatura), e por baixo dela o nome. O traço e o contorno
-           têm a cor do marcador.
+           Do ponto do mapa sobe um poste, a prumo no bairro — inclina-se
+           com a perspectiva, como as paredes das casas na fotografia —, e
+           no alto dele está um rectângulo: lá dentro, a mesma imagem que o
+           palco mostra do vídeo seguinte (ver desenharMiniatura), e por
+           baixo dela o nome. O poste continua pelo contorno da miniatura
+           acima, e os dois lêem-se como um só risco, da cor do marcador.
+
+           Nenhuma miniatura tapa outra, nem o quadrado de outro marcador:
+           quando não cabe, o poste cresce, ou ela passa para o outro lado
+           do poste, e se não houver lugar nenhum recolhe-se até o haver
+           (ver arrumarMiniaturas). O sítio de cada uma é posto ali, a cada
+           imagem; aqui ficam só as medidas.
 
            Fica fora da caixa do marcador, que continua a ser só o
            quadrado: é por ele que o marcador se agarra ao ponto do mapa
@@ -424,7 +436,6 @@ AnnotationController.prototype.initialize = function() {
            as do marcador ao tamanho natural; ele inteiro encolhe e cresce
            com a distância. */
         .annotation-marker {
-            --recuo-da-miniatura: 40px;
             --largura-da-miniatura: 144px;
             --traco-da-miniatura: 2.5px;
         }
@@ -432,38 +443,51 @@ AnnotationController.prototype.initialize = function() {
            computador tapavam meio bairro. */
         @media (max-width: 600px), (max-height: 500px) {
             .annotation-marker {
-                --recuo-da-miniatura: 30px;
                 --largura-da-miniatura: 108px;
             }
         }
         .miniatura-traco {
             position: absolute;
-            /* Do meio do quadrado (32 por 32)... */
+            /* Nasce no meio do quadrado (32 por 32), por baixo dele, e é
+               esticado e rodado até à miniatura. */
             left: 16px;
             top: calc(16px - var(--traco-da-miniatura) / 2);
-            /* ...até ao canto da miniatura, e um pouco para dentro dela, para
-               a ponta do traço ficar debaixo do contorno e os dois se lerem
-               como um só risco. */
-            width: calc(var(--recuo-da-miniatura) * 1.4142 + 4px);
+            width: 100px;
             height: var(--traco-da-miniatura);
             background: var(--cor-da-anotacao);
             transform-origin: 0 50%;
-            transform: rotate(45deg);
+            transform: rotate(-90deg) scaleX(0);
             z-index: 0;
+            transition: opacity 0.25s ease;
         }
         .miniatura {
             position: absolute;
-            left: calc(16px + var(--recuo-da-miniatura));
-            top: calc(16px + var(--recuo-da-miniatura));
+            left: 0;
+            top: 0;
             width: var(--largura-da-miniatura);
             box-sizing: border-box;
             border: var(--traco-da-miniatura) solid var(--cor-da-anotacao);
             background: #05050a;
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
-            /* Cresce a partir do canto onde o traço chega, para os dois não
-               se separarem com o rato em cima. */
-            transform-origin: 0 0;
             z-index: 1;
+            transition: scale 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.25s ease;
+        }
+        /* Um marcador por trás de outro mais perto some-se de todo, a
+           esbater (ver arrumarMiniaturas). É mais forte do que a
+           transparência que o update lhe põe. */
+        .annotation-marker {
+            transition: opacity 0.2s ease;
+        }
+        .annotation-marker.marcador-tapado {
+            opacity: 0 !important;
+            pointer-events: none !important;
+        }
+        /* Sem lugar livre, a miniatura e o poste somem-se a esbater, e
+           fica só o quadrado. Nasce assim, até ter o primeiro lugar. */
+        .annotation-marker.miniatura-recolhida .miniatura,
+        .annotation-marker.miniatura-recolhida .miniatura-traco {
+            opacity: 0;
+            pointer-events: none;
         }
         .miniatura canvas {
             display: block;
@@ -1402,10 +1426,12 @@ AnnotationController.prototype.initialize = function() {
             `;
         }
 
-        // A miniatura, com o nome por baixo, e o traço que a liga ao
-        // marcador. A imagem chega mais tarde (ver encherMiniaturas). Para
-        // quem não vê o ecrã não acrescenta nada: o nome do botão já diz
-        // de quem é e o que é.
+        // A miniatura, com o nome por baixo, e o poste que a liga ao
+        // marcador. A imagem chega mais tarde (ver encherMiniaturas), e o
+        // lugar dela é escolhido a cada imagem (ver arrumarMiniaturas);
+        // até lá fica recolhida. Para quem não vê o ecrã não acrescenta
+        // nada: o nome do botão já diz de quem é e o que é.
+        el.classList.add('miniatura-recolhida');
         el.insertAdjacentHTML('beforeend', `
             <div class="miniatura-traco" aria-hidden="true"></div>
             <div class="miniatura" aria-hidden="true">
@@ -3759,6 +3785,449 @@ AnnotationController.prototype.update = function(dt) {
 
             // Set z-index based on distance so closer annotations appear on top
             el.style.zIndex = Math.max(1, Math.round(10000 - distance * 10));
+
+            // Para onde é "para cima" no ecrã, ali: o caminho de um ponto um
+            // pouco acima deste, no bairro. É por aí que sobe o poste da
+            // miniatura, e por isso ele inclina-se com a perspectiva como
+            // as paredes das casas.
+            acima.copy(ann.position);
+            acima.y += ALTURA_DE_REFERENCIA;
+            camera.worldToScreen(acima, acimaNoEcra);
+            let ux = acimaNoEcra.x - screenPos.x;
+            let uy = acimaNoEcra.y - screenPos.y;
+            const comprimento = Math.hypot(ux, uy);
+            if (acimaNoEcra.z < 0 || comprimento < 0.5) {
+                ux = 0;
+                uy = -1;
+            } else {
+                ux /= comprimento;
+                uy /= comprimento;
+            }
+
+            const ecra = ann._ecra || (ann._ecra = {});
+            ecra.x = screenPos.x;
+            ecra.y = screenPos.y;
+            ecra.escala = scale;
+            ecra.distancia = distance;
+            ecra.ux = ux;
+            ecra.uy = uy;
         }
     }
+
+    this.arrumarMiniaturas(dt || 0);
+};
+
+/* ---- O lugar das miniaturas ----
+
+   A cada imagem, cada miniatura procura um lugar no alto do seu poste onde
+   não tape nada: nem outra miniatura, nem o poste de outra, nem o quadrado
+   de nenhum marcador, nem o cabeçalho e as outras peças do site que estão
+   por cima do bairro. Os marcadores mais perto de quem vê escolhem
+   primeiro — são os maiores, e os que se estão a olhar. Os lugares, do
+   preferido para o último: o poste curto com a miniatura à direita, à
+   esquerda, e depois o poste a crescer, degrau a degrau. Sem lugar livre,
+   a miniatura recolhe-se e fica só o quadrado; volta quando se aproximar
+   a câmara ou o bairro rodar. Os quadrados também não se tapam uns aos
+   outros: o de trás some-se, com miniatura e tudo, enquanto o da frente
+   lhe estiver em cima.
+
+   Para não andar a saltar de um lado para o outro enquanto a câmara mexe,
+   uma miniatura só troca o seu lugar por um melhor se ele estiver livre
+   durante um bocadinho; e desliza para o novo, em vez de saltar. Só sai
+   logo de onde está quando lá deixa de caber. ---- */
+
+// Quantos metros acima do ponto se vai ver para que lado é "para cima".
+const ALTURA_DE_REFERENCIA = 10;
+
+// O poste, em pontos ao tamanho natural do marcador: o mais curto, e quanto
+// cresce de cada vez que a miniatura não cabe.
+const POSTE_MAIS_CURTO = 28;
+const DEGRAU_DO_POSTE = 36;
+const DEGRAUS_DO_POSTE = 6;
+
+// O espaço que fica, pelo menos, à volta de cada miniatura.
+const FOLGA_DA_MINIATURA = 6;
+
+// Quanto tempo um lugar melhor tem de estar livre para a miniatura lá ir;
+// quanto tempo uma recolhida, ou um marcador escondido, espera com o lugar
+// livre antes de voltar; e quanto ela leva a deslizar, em segundos.
+const PACIENCIA_PARA_MELHORAR = 1.0;
+const PACIENCIA_DA_MINIATURA = 0.6;
+const DESLIZE_DA_MINIATURA = 0.12;
+
+// Uma miniatura já à vista escolhe o lugar como se estivesse este tanto da
+// sua distância (ver arrumarMiniaturas).
+const VANTAGEM_DE_QUEM_LA_ESTA = 0.8;
+
+const acima = new pc.Vec3();
+const acimaNoEcra = new pc.Vec3();
+
+// As peças do site que estão sempre por cima do bairro: o nome e os botões
+// do cabeçalho, a legenda, a bússola, a escala e o botão de partilhar.
+// Nenhuma miniatura se põe debaixo delas.
+const PECAS_DO_ECRA = '#header .brand, #menu-btn, #lado-direito, #legenda-mapa, ' +
+    '#compass-container, #partilhar-btn, #map-scale';
+
+// De quanto em quanto tempo se volta a ver onde elas estão, em milésimos de
+// segundo: mexem pouco, e medi-las a cada imagem obrigava o navegador a
+// refazer as contas da página toda.
+const MEDIR_PECAS_A_CADA_MS = 1000;
+
+/**
+ * As caixas das peças do site que estão à vista por cima do bairro.
+ *
+ * @returns {{x0: number, y0: number, x1: number, y1: number}[]} As caixas.
+ */
+function caixasDasPecasDoEcra() {
+    const caixas = [];
+    for (const el of document.querySelectorAll(PECAS_DO_ECRA)) {
+        if (el.checkVisibility && !el.checkVisibility({ opacityProperty: true, visibilityProperty: true })) {
+            continue;
+        }
+        const r = el.getBoundingClientRect();
+        if (r.width > 0 && r.height > 0) {
+            caixas.push({ x0: r.left, y0: r.top, x1: r.right, y1: r.bottom });
+        }
+    }
+    return caixas;
+}
+
+/**
+ * Se duas caixas se tocam.
+ *
+ * @param {{x0: number, y0: number, x1: number, y1: number}} a - Uma caixa.
+ * @param {{x0: number, y0: number, x1: number, y1: number}} b - A outra.
+ * @returns {boolean} Se sim.
+ */
+function caixasTocam(a, b) {
+    return a.x0 < b.x1 && b.x0 < a.x1 && a.y0 < b.y1 && b.y0 < a.y1;
+}
+
+/**
+ * Se um risco passa por dentro de uma caixa (as contas de Liang e Barsky:
+ * o risco é aparado por cada lado da caixa, e se sobrar alguma coisa é
+ * porque passa lá dentro).
+ *
+ * @param {{x0: number, y0: number, x1: number, y1: number}} r - O risco, de
+ *     (x0, y0) a (x1, y1).
+ * @param {{x0: number, y0: number, x1: number, y1: number}} c - A caixa.
+ * @returns {boolean} Se sim.
+ */
+function riscoTocaCaixa(r, c) {
+    const dx = r.x1 - r.x0;
+    const dy = r.y1 - r.y0;
+    let t0 = 0;
+    let t1 = 1;
+    const lados = [[-dx, r.x0 - c.x0], [dx, c.x1 - r.x0], [-dy, r.y0 - c.y0], [dy, c.y1 - r.y0]];
+    for (const [p, q] of lados) {
+        if (p === 0) {
+            if (q < 0) return false;
+            continue;
+        }
+        const t = q / p;
+        if (p < 0) {
+            if (t > t1) return false;
+            if (t > t0) t0 = t;
+        } else {
+            if (t < t0) return false;
+            if (t < t1) t1 = t;
+        }
+    }
+    return true;
+}
+
+/**
+ * Onde fica a miniatura de um marcador num dos lugares possíveis.
+ *
+ * O poste sobe do meio do quadrado na direcção de "para cima", e a
+ * miniatura agarra-se-lhe pelo canto de baixo — o esquerdo se ficar à
+ * direita do poste, o direito se ficar à esquerda —, para o poste
+ * continuar pelo contorno acima. Se a câmara olhar o bairro de cima e o
+ * poste se deitar, a miniatura agarra-se mais a meio da altura, e até pelo
+ * canto de cima, para nunca se pôr por cima do seu próprio poste.
+ *
+ * @param {object} e - O marcador no ecrã (ver update).
+ * @param {number} largura - A largura da miniatura, ao tamanho natural.
+ * @param {number} altura - A altura da miniatura, ao tamanho natural.
+ * @param {number} degrau - Quantos degraus cresceu o poste.
+ * @param {number} lado - 0 à direita do poste, 1 à esquerda.
+ * @returns {object} O lugar: o poste e a caixa, no ecrã, e as medidas para
+ *     a pôr lá.
+ */
+function lugarDaMiniatura(e, largura, altura, degrau, lado) {
+    const poste = POSTE_MAIS_CURTO + degrau * DEGRAU_DO_POSTE;
+    const px = e.ux * poste;
+    const py = e.uy * poste;
+    const agarra = Math.min(1, Math.max(0, 0.5 - e.uy / 0.6));
+    const x0 = px - lado * largura;
+    const y0 = py - agarra * altura;
+    const s = e.escala;
+    const folga = FOLGA_DA_MINIATURA * s;
+    return {
+        poste,
+        lado,
+        caixa: {
+            x0: e.x + x0 * s - folga,
+            y0: e.y + y0 * s - folga,
+            x1: e.x + (x0 + largura) * s + folga,
+            y1: e.y + (y0 + altura) * s + folga
+        },
+        risco: { x0: e.x, y0: e.y, x1: e.x + px * s, y1: e.y + py * s }
+    };
+}
+
+/**
+ * O tamanho de uma miniatura, ao tamanho natural do marcador. É igual em
+ * todas, e só muda quando a janela muda de tamanho (no telemóvel são mais
+ * pequenas).
+ *
+ * @returns {{largura: number, altura: number}|null} As medidas, ou nada se
+ *     ainda não houver nenhuma miniatura à vista para medir.
+ */
+AnnotationController.prototype.medidaDaMiniatura = function() {
+    if (this._medidaDaMiniatura) {
+        return this._medidaDaMiniatura;
+    }
+    if (!this._vigiaDaMedida) {
+        this._vigiaDaMedida = () => { this._medidaDaMiniatura = null; };
+        window.addEventListener('resize', this._vigiaDaMedida);
+        // A letra do nome pode chegar depois da primeira medida.
+        if (document.fonts && document.fonts.ready) {
+            document.fonts.ready.then(this._vigiaDaMedida);
+        }
+    }
+    for (const ann of this.annotations) {
+        const cartao = ann.element && ann.element.querySelector('.miniatura');
+        if (cartao && cartao.offsetWidth > 0) {
+            this._medidaDaMiniatura = { largura: cartao.offsetWidth, altura: cartao.offsetHeight };
+            return this._medidaDaMiniatura;
+        }
+    }
+    return null;
+};
+
+/**
+ * Esconde um marcador que ficou por trás de outro mais perto, ou devolve-o.
+ *
+ * Escondido, sai também da fila do Tab, como os que ficam para trás da
+ * câmara (ver update e AGENTS.md): andar de tecla por coisas que não se
+ * veem é pior do que não lá chegar.
+ *
+ * @param {object} ann - A anotação.
+ * @param {boolean} tapado - Se fica escondido.
+ */
+AnnotationController.prototype.taparMarcador = function(ann, tapado) {
+    if (!!ann._tapado === tapado || !ann.element) return;
+    ann._tapado = tapado;
+    const el = ann.element;
+    el.classList.toggle('marcador-tapado', tapado);
+    if (tapado) {
+        el.setAttribute('aria-hidden', 'true');
+        el.setAttribute('tabindex', '-1');
+        if (el === document.activeElement) el.blur();
+    } else if (ann._visible) {
+        el.removeAttribute('aria-hidden');
+        el.setAttribute('tabindex', '0');
+    }
+};
+
+/**
+ * Escolhe o lugar de cada miniatura e põe-na lá (ver "O lugar das
+ * miniaturas", mais acima).
+ *
+ * @param {number} dt - Segundos desde a última imagem.
+ */
+AnnotationController.prototype.arrumarMiniaturas = function(dt) {
+    const medida = this.medidaDaMiniatura();
+    if (!medida) return;
+    const { largura, altura } = medida;
+    const ecraL = window.innerWidth;
+    const ecraA = window.innerHeight;
+    const agora = performance.now();
+    if (!this._pecasDoEcra || agora - this._pecasDoEcra.quando > MEDIR_PECAS_A_CADA_MS) {
+        this._pecasDoEcra = { quando: agora, caixas: caixasDasPecasDoEcra() };
+    }
+    const pecas = this._pecasDoEcra.caixas;
+
+    // Os marcadores à vista — os desligados nas definições não contam.
+    const presentes = [];
+    for (const ann of this.annotations) {
+        if (ann.element && ann._visible && ann._ecra && ann.element.style.display !== 'none') {
+            presentes.push(ann);
+        } else {
+            ann._lugar = null;
+            ann._espera = 0;
+            this.taparMarcador(ann, false);
+        }
+    }
+    // Os mais perto escolhem primeiro. Uma miniatura que já está à vista
+    // conta como um pouco mais perto do que está: sem isto, dois marcadores
+    // quase à mesma distância trocavam de vez a cada passo da câmara, e o
+    // que perdia a vez perdia o lugar.
+    const vez = (ann) => ann._ecra.distancia *
+        (ann._lugar && ann._lugar.escolha >= 0 ? VANTAGEM_DE_QUEM_LA_ESTA : 1);
+    presentes.sort((a, b) => vez(a) - vez(b));
+
+    // Primeiro os quadrados. Um marcador cujo quadrado toque no de outro
+    // mais perto fica por trás dele, como uma casa atrás de outra: some-se
+    // logo, e só volta quando tiver o seu espaço livre durante um bocadinho.
+    const aVista = [];
+    const quadrados = [];
+    for (const ann of presentes) {
+        const e = ann._ecra;
+        const meio = MARKER_DOT_HALF * e.escala;
+        const quadrado = { x0: e.x - meio, y0: e.y - meio, x1: e.x + meio, y1: e.y + meio };
+        let tapado = false;
+        if (quadrados.some((q) => caixasTocam(quadrado, q))) {
+            tapado = true;
+            ann._espera = 0;
+        } else if (ann._tapado) {
+            ann._espera = (ann._espera || 0) + dt;
+            tapado = ann._espera < PACIENCIA_DA_MINIATURA;
+        }
+        this.taparMarcador(ann, tapado);
+        if (tapado) {
+            ann._lugar = null;
+            if (!ann.element.classList.contains('miniatura-recolhida')) {
+                ann.element.classList.add('miniatura-recolhida');
+            }
+            continue;
+        }
+        aVista.push(ann);
+        quadrados.push(quadrado);
+    }
+
+    const caixasOcupadas = [];
+    const riscosOcupados = [];
+
+    aVista.forEach((ann, quem) => {
+        const e = ann._ecra;
+
+        // Todos os lugares, pela ordem de preferência. Um poste deitado
+        // para a direita não deixa a miniatura ir para a esquerda, que lhe
+        // ficava em cima, e ao contrário.
+        const lugares = [];
+        for (let degrau = 0; degrau < DEGRAUS_DO_POSTE; degrau++) {
+            for (let lado = 0; lado < 2; lado++) {
+                if ((lado === 0 && e.ux < -0.5) || (lado === 1 && e.ux > 0.5)) {
+                    lugares.push(null);
+                    continue;
+                }
+                const lugar = lugarDaMiniatura(e, largura, altura, degrau, lado);
+                const c = lugar.caixa;
+                // O quadrado do próprio marcador também conta.
+                const tapa = quadrados.some((q) => caixasTocam(c, q)) ||
+                    pecas.some((p) => caixasTocam(c, p)) ||
+                    caixasOcupadas.some((o) => caixasTocam(c, o)) ||
+                    riscosOcupados.some((r) => riscoTocaCaixa(r, c)) ||
+                    caixasOcupadas.some((o) => riscoTocaCaixa(lugar.risco, o)) ||
+                    quadrados.some((q, i) => i !== quem && riscoTocaCaixa(lugar.risco, q));
+                if (tapa) {
+                    lugares.push(null);
+                    continue;
+                }
+                // Um lugar meio fora do ecrã só serve se não houver outro; e
+                // com mais de metade fora não serve de todo — era um poste a
+                // subir para fora do ecrã sem nada na ponta.
+                const aVistaL = Math.max(0, Math.min(c.x1, ecraL) - Math.max(c.x0, 0)) / (c.x1 - c.x0);
+                const aVistaA = Math.max(0, Math.min(c.y1, ecraA) - Math.max(c.y0, 0)) / (c.y1 - c.y0);
+                if (aVistaL * aVistaA < 0.5) {
+                    lugares.push(null);
+                    continue;
+                }
+                lugar.preferencia = lugares.length + (aVistaL * aVistaA < 1 ? 1000 : 0);
+                lugares.push(lugar);
+            }
+        }
+        let melhor = -1;
+        lugares.forEach((lugar, i) => {
+            if (lugar && (melhor < 0 || lugar.preferencia < lugares[melhor].preferencia)) melhor = i;
+        });
+
+        // Ficar, mudar, ou esperar um bocadinho antes de mudar.
+        const antes = ann._lugar;
+        let escolha;
+        if (!antes) {
+            escolha = melhor;
+        } else if (antes.escolha >= 0 && lugares[antes.escolha]) {
+            const melhora = melhor >= 0 &&
+                lugares[melhor].preferencia < lugares[antes.escolha].preferencia;
+            antes.espera = melhora ? antes.espera + dt : 0;
+            escolha = melhora && antes.espera >= PACIENCIA_PARA_MELHORAR ? melhor : antes.escolha;
+        } else if (antes.escolha >= 0) {
+            // Deixou de caber onde estava: sai já.
+            escolha = melhor;
+        } else {
+            // Recolhida: só volta quando o lugar estiver livre um bocadinho.
+            antes.espera = melhor >= 0 ? antes.espera + dt : 0;
+            escolha = melhor >= 0 && antes.espera >= PACIENCIA_DA_MINIATURA ? melhor : -1;
+        }
+
+        const lugar = escolha >= 0 ? lugares[escolha] : null;
+        if (lugar) {
+            caixasOcupadas.push(lugar.caixa);
+            riscosOcupados.push(lugar.risco);
+        }
+        this.porMiniatura(ann, lugar, escolha, antes, largura, altura, dt);
+    });
+};
+
+/**
+ * Põe a miniatura de um marcador no lugar escolhido, a deslizar até lá se
+ * já estava à vista noutro, ou recolhe-a.
+ *
+ * @param {object} ann - A anotação.
+ * @param {object|null} lugar - O lugar, ou nada para a recolher.
+ * @param {number} escolha - O número do lugar (-1 recolhida).
+ * @param {object|null} antes - O que estava antes.
+ * @param {number} largura - A largura da miniatura.
+ * @param {number} altura - A altura da miniatura.
+ * @param {number} dt - Segundos desde a última imagem.
+ */
+AnnotationController.prototype.porMiniatura = function(ann, lugar, escolha, antes, largura, altura, dt) {
+    const el = ann.element;
+    const e = ann._ecra;
+    const estado = antes || { espera: 0, poste: 0, lado: 0 };
+    if (antes && antes.escolha !== escolha) estado.espera = 0;
+
+    if (lugar) {
+        if (!antes || antes.escolha < 0) {
+            // Estava escondida: aparece já no sítio, sem vir de lado nenhum.
+            estado.poste = lugar.poste;
+            estado.lado = lugar.lado;
+        } else {
+            const k = 1 - Math.exp(-dt / DESLIZE_DA_MINIATURA);
+            estado.poste += (lugar.poste - estado.poste) * k;
+            estado.lado += (lugar.lado - estado.lado) * k;
+        }
+    }
+    estado.escolha = escolha;
+    ann._lugar = estado;
+
+    const recolhida = !lugar;
+    if (estado.recolhida !== recolhida) {
+        el.classList.toggle('miniatura-recolhida', recolhida);
+        estado.recolhida = recolhida;
+    }
+    // Recolhida, fica onde estava enquanto se esbate.
+    if (recolhida) return;
+
+    const px = e.ux * estado.poste;
+    const py = e.uy * estado.poste;
+    const agarra = Math.min(1, Math.max(0, 0.5 - e.uy / 0.6));
+    const cantoX = estado.lado * largura;
+    const cantoY = agarra * altura;
+    const angulo = Math.atan2(e.uy, e.ux) * 180 / Math.PI;
+
+    if (!estado.traco) {
+        estado.traco = el.querySelector('.miniatura-traco');
+        estado.cartao = el.querySelector('.miniatura');
+    }
+    // O poste vai um pouco para dentro da miniatura, por baixo do
+    // contorno, para os dois se lerem como um só risco.
+    estado.traco.style.transform =
+        `rotate(${angulo.toFixed(2)}deg) scaleX(${((estado.poste + 3) / 100).toFixed(3)})`;
+    estado.cartao.style.translate =
+        `${(MARKER_DOT_HALF + px - cantoX).toFixed(1)}px ${(MARKER_DOT_HALF + py - cantoY).toFixed(1)}px`;
+    estado.cartao.style.transformOrigin = `${cantoX.toFixed(1)}px ${cantoY.toFixed(1)}px`;
 };
