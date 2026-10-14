@@ -414,32 +414,46 @@ AnnotationController.prototype.initialize = function() {
         .marker-dot.viewed {
             background-color: #8a8f98;
         }
-        .annotation-marker .marker-label {
-            display: none;
-        }
-        .annotation-marker.marcador-visto .marker-label {
-            display: block;
-        }
-        /* A miniatura de um já visto fica recolhida — transparente, como as
-           que não têm lugar —, e não fora da página: assim, quando o rato
-           lha mostra (ver ratoEmCima), surge a esbater e a crescer como as
-           outras, em vez de aparecer de repente. Em cinzento, como ele.
-           Enquanto ela está à vista, o nome por baixo esbate-se, e volta
-           quando ela se recolhe; fica invisível mas no sítio, porque se
-           saísse o marcador encolhia, o rato que estivesse em cima do nome
-           ficava de fora e a miniatura fechava-se logo. */
         .annotation-marker.marcador-visto {
             --cor-da-anotacao: #8a8f98;
         }
-        .annotation-marker.marcador-visto .marker-label {
-            transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1),
-                opacity 0.25s ease, visibility 0s;
+
+        /* ---- O nome por baixo do quadrado ----
+           Todo o marcador sem miniatura à vista — já visto, ou por ver mas
+           sem lugar para ela — mostra o nome por baixo do quadrado. Quem
+           decide é arrumarMiniaturas (ver porNome), com a roupa "com-nome",
+           que põe o nome na caixa do marcador.
+
+           A miniatura de um já visto fica recolhida — transparente, como as
+           que não têm lugar —, e não fora da página: assim, quando o rato
+           lha mostra (ver ratoEmCima), surge a esbater e a crescer como as
+           outras, em vez de aparecer de repente. Enquanto uma miniatura está
+           à vista, o nome esbate-se, e volta quando ela se recolhe; e fica
+           invisível mas no sítio enquanto o rato lá estiver, porque se
+           saísse o marcador encolhia, o rato que estivesse em cima do nome
+           ficava de fora e a miniatura fechava-se logo. */
+        .annotation-marker .marker-label {
+            display: none;
         }
-        .annotation-marker.marcador-visto:not(.miniatura-recolhida) .marker-label {
+        .annotation-marker.com-nome .marker-label {
+            display: block;
             opacity: 0;
             visibility: hidden;
             transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1),
                 opacity 0.25s ease, visibility 0s linear 0.25s;
+        }
+        .annotation-marker.com-nome.nome-a-ver .marker-label {
+            opacity: 1;
+            visibility: visible;
+            transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1),
+                opacity 0.25s ease, visibility 0s;
+        }
+        /* O nome que acaba de entrar na caixa surge a esbater, como a
+           miniatura que lhe deu o lugar se esbate. */
+        @starting-style {
+            .annotation-marker.com-nome.nome-a-ver .marker-label {
+                opacity: 0;
+            }
         }
 
         /* ---- A miniatura ----
@@ -3928,6 +3942,11 @@ const CRESCE_COM_O_RATO = 1.15;
 const LARGAR_O_RATO_MS = 500;
 const ESPERA_DEPOIS_DE_ESPREITAR = 1.0;
 
+// Quanto leva o nome por baixo do quadrado a esbater-se ao sair, em
+// milésimos de segundo (o mesmo da roupa): só depois sai da caixa do
+// marcador.
+const ESBATER_DO_NOME_MS = 250;
+
 const acima = new pc.Vec3();
 const acimaNoEcra = new pc.Vec3();
 
@@ -4107,7 +4126,7 @@ AnnotationController.prototype.medidaDaMiniatura = function() {
         // Os nomes por baixo dos já vistos também se voltam a medir.
         this._vigiaDaMedida = () => {
             this._medidaDaMiniatura = null;
-            this.annotations.forEach((ann) => { ann._caixaVista = null; });
+            this.annotations.forEach((ann) => { ann._caixaComNome = null; });
         };
         window.addEventListener('resize', this._vigiaDaMedida);
         // A letra do nome pode chegar depois da primeira medida.
@@ -4134,28 +4153,85 @@ AnnotationController.prototype.medidaDaMiniatura = function() {
 };
 
 /**
- * A caixa de um marcador no ecrã: só o quadrado, ou, se já foi visto, o
- * quadrado com o nome por baixo.
+ * A caixa de um marcador no ecrã: só o quadrado, ou o quadrado com o nome
+ * por baixo.
  *
  * @param {object} ann - A anotação.
+ * @param {boolean} comNome - Se conta com o nome.
  * @returns {{x0: number, y0: number, x1: number, y1: number}} A caixa.
  */
-AnnotationController.prototype.caixaDoMarcador = function(ann) {
+AnnotationController.prototype.caixaDoMarcador = function(ann, comNome) {
     const e = ann._ecra;
     const s = e.escala;
-    if (!ann._visto) {
+    if (!comNome) {
         const meio = MARKER_DOT_HALF * s;
         return { x0: e.x - meio, y0: e.y - meio, x1: e.x + meio, y1: e.y + meio };
     }
-    // O tamanho do marcador sem a escala (o nome muda de marcador para
-    // marcador), medido uma vez; o update agarra-o pelo meio do quadrado,
-    // ao centro da largura.
-    if (!ann._caixaVista) {
-        ann._caixaVista = { largura: ann.element.offsetWidth, altura: ann.element.offsetHeight };
-    }
-    const { largura, altura } = ann._caixaVista;
+    const { largura, altura } = this.medidaComNome(ann);
     const y0 = e.y - MARKER_DOT_HALF * s;
     return { x0: e.x - largura * s / 2, y0, x1: e.x + largura * s / 2, y1: y0 + altura * s };
+};
+
+/**
+ * O tamanho do marcador com o nome por baixo, sem a escala (o nome muda de
+ * marcador para marcador). Mede-se uma vez, pondo-lhe o nome por um
+ * instante se ainda não o tiver; o update agarra-o pelo meio do quadrado,
+ * ao centro da largura.
+ *
+ * @param {object} ann - A anotação.
+ * @returns {{largura: number, altura: number}} As medidas.
+ */
+AnnotationController.prototype.medidaComNome = function(ann) {
+    if (!ann._caixaComNome) {
+        const el = ann.element;
+        const tinha = el.classList.contains('com-nome');
+        if (!tinha) el.classList.add('com-nome');
+        ann._caixaComNome = { largura: el.offsetWidth, altura: el.offsetHeight };
+        if (!tinha) el.classList.remove('com-nome');
+    }
+    return ann._caixaComNome;
+};
+
+/**
+ * Se um marcador quer o nome por baixo do quadrado: quando já foi visto, ou
+ * quando não tem miniatura à vista, ou enquanto o rato lhe mostra a que não
+ * tinha (o nome fica no sítio, invisível — ver "O nome por baixo do
+ * quadrado", na roupa).
+ *
+ * @param {object} ann - A anotação.
+ * @returns {boolean} Se sim.
+ */
+AnnotationController.prototype.querNome = function(ann) {
+    return ann._visto || !!ann._espreitou ||
+        ann.element.classList.contains('miniatura-recolhida');
+};
+
+/**
+ * Põe ou tira o nome por baixo do quadrado, a esbater.
+ *
+ * O nome fica na caixa do marcador ("com-nome") enquanto se vê e durante o
+ * esbater de saída; só se vê ("nome-a-ver") quando a miniatura está
+ * recolhida. Se a caixa mudar com a miniatura à vista, ela é reposta logo,
+ * para não fugir do poste (ver assentarCartao).
+ *
+ * @param {object} ann - A anotação.
+ * @param {boolean} mostra - Se o nome deve estar lá.
+ * @param {number} agora - O instante, em milésimos de segundo.
+ */
+AnnotationController.prototype.porNome = function(ann, mostra, agora) {
+    const el = ann.element;
+    if (mostra) ann._nomeAte = agora + ESBATER_DO_NOME_MS;
+    const comNome = mostra || agora < (ann._nomeAte || 0);
+    const aVer = mostra && el.classList.contains('miniatura-recolhida');
+    if (aVer !== !!ann._nomeAVer) {
+        ann._nomeAVer = aVer;
+        el.classList.toggle('nome-a-ver', aVer);
+    }
+    if (comNome !== !!ann._comNome) {
+        ann._comNome = comNome;
+        el.classList.toggle('com-nome', comNome);
+        this.assentarCartao(ann);
+    }
 };
 
 /**
@@ -4223,7 +4299,6 @@ AnnotationController.prototype.arrumarMiniaturas = function(dt) {
         const visto = !!ann._ponto && ann._ponto.classList.contains('viewed');
         if (visto !== !!ann._visto) {
             ann._visto = visto;
-            ann._caixaVista = null;
             ann._lugar = null;
             ann.element.classList.toggle('marcador-visto', visto);
             ann.element.classList.add('miniatura-recolhida');
@@ -4289,14 +4364,13 @@ AnnotationController.prototype.arrumarMiniaturas = function(dt) {
         (ann._lugar && ann._lugar.escolha >= 0 ? VANTAGEM_DE_QUEM_LA_ESTA : 1);
     presentes.sort((a, b) => (a === sobRato ? -1 : b === sobRato ? 1 : vez(a) - vez(b)));
 
-    // Primeiro os marcadores em si — o quadrado, e nos já vistos o nome por
-    // baixo. Um que toque noutro mais perto fica por trás dele, como uma
-    // casa atrás de outra: some-se logo, e só volta quando tiver o seu
-    // espaço livre durante um bocadinho.
+    // Primeiro os quadrados dos marcadores. Um que toque noutro mais perto
+    // fica por trás dele, como uma casa atrás de outra: some-se logo, e só
+    // volta quando tiver o seu espaço livre durante um bocadinho.
     const aVista = [];
     const quadrados = [];
     for (const ann of presentes) {
-        const quadrado = this.caixaDoMarcador(ann);
+        const quadrado = this.caixaDoMarcador(ann, false);
         let tapado = false;
         if (quadrados.some((q) => caixasTocam(quadrado, q))) {
             tapado = true;
@@ -4311,17 +4385,19 @@ AnnotationController.prototype.arrumarMiniaturas = function(dt) {
             if (!ann.element.classList.contains('miniatura-recolhida')) {
                 ann.element.classList.add('miniatura-recolhida');
             }
+            this.porNome(ann, false, agora);
             continue;
         }
         aVista.push(ann);
         quadrados.push(quadrado);
     }
 
-    if (!medida) return;
+    // Depois as miniaturas. Sem nenhuma para medir não há miniaturas a
+    // arrumar, mas os nomes, mais abaixo, continuam a ter lugar.
     const caixasOcupadas = [];
     const riscosOcupados = [];
 
-    aVista.forEach((ann, quem) => {
+    if (medida) aVista.forEach((ann, quem) => {
         const comRato = ann === sobRato;
 
         // Os já vistos só têm miniatura com o rato em cima; de resto contam
@@ -4413,6 +4489,37 @@ AnnotationController.prototype.arrumarMiniaturas = function(dt) {
         }
         this.porMiniatura(ann, lugar, escolha, antes, medida, dt);
     });
+
+    // Por fim os nomes por baixo dos quadrados — dos já vistos, e dos que
+    // estão sem miniatura à vista —, com o espaço que sobra: um nome não
+    // tira o lugar a nenhuma miniatura nem a nenhum marcador. Se lhes
+    // ficar em cima, esconde-se a esbater, e só volta quando tiver o seu
+    // espaço livre durante um bocadinho. O do marcador com o rato em cima
+    // fica onde está, sem contas: está invisível por baixo da miniatura.
+    const nomesPostos = [];
+    aVista.forEach((ann, quem) => {
+        let mostra = this.querNome(ann);
+        if (mostra && ann !== sobRato) {
+            const c = this.caixaDoMarcador(ann, true);
+            const tapa = quadrados.some((q, i) => i !== quem && caixasTocam(c, q)) ||
+                pecas.some((p) => caixasTocam(c, p)) ||
+                caixasOcupadas.some((o) => caixasTocam(c, o)) ||
+                riscosOcupados.some((r) => riscoTocaCaixa(r, c)) ||
+                nomesPostos.some((o) => caixasTocam(c, o));
+            if (tapa) {
+                ann._nomeSemLugar = true;
+                ann._esperaDoNome = 0;
+            } else if (ann._nomeSemLugar) {
+                ann._esperaDoNome = (ann._esperaDoNome || 0) + dt;
+                ann._nomeSemLugar = ann._esperaDoNome < PACIENCIA_DA_MINIATURA;
+            }
+            mostra = !ann._nomeSemLugar;
+            if (mostra) nomesPostos.push(c);
+        } else if (!mostra) {
+            ann._nomeSemLugar = false;
+        }
+        this.porNome(ann, mostra, agora);
+    });
 };
 
 /**
@@ -4464,20 +4571,36 @@ AnnotationController.prototype.porMiniatura = function(ann, lugar, escolha, ante
         estado.traco = el.querySelector('.miniatura-traco');
         estado.cartao = el.querySelector('.miniatura');
     }
-    // O meio do quadrado, de onde sai o poste. Num já visto, a caixa do
-    // marcador tem a largura do nome por baixo, e o quadrado está ao meio
-    // dela.
-    const meioX = ann._visto && ann._caixaVista ? ann._caixaVista.largura / 2 : MARKER_DOT_HALF;
-    if (estado.meioX !== meioX) {
-        estado.traco.style.left = meioX + 'px';
-        estado.meioX = meioX;
-    }
     // O poste chega ao meio do risco do contorno e segue mais um risco
     // por baixo da miniatura, escondido, para não se ver a ponta dele.
     estado.traco.style.transform =
         `rotate(${angulo.toFixed(2)}deg) scaleX(${((estado.poste + medida.traco) / 100).toFixed(4)})`;
-    estado.cartao.style.translate =
-        `${(meioX + px - canto.x).toFixed(2)}px ${(MARKER_DOT_HALF + py - canto.y).toFixed(2)}px`;
+    estado.px = px;
+    estado.py = py;
+    estado.canto = canto;
+    this.assentarCartao(ann);
     // Com o rato em cima, cresce a partir de onde o poste chega.
     estado.cartao.style.transformOrigin = `${canto.x.toFixed(2)}px ${canto.y.toFixed(2)}px`;
+};
+
+/**
+ * Põe o poste e a miniatura no sítio dentro da caixa do marcador.
+ *
+ * O poste sai do meio do quadrado; com o nome por baixo, a caixa do
+ * marcador tem a largura do nome, e o quadrado está ao meio dela. Feito à
+ * parte para se poder repor quando o nome entra ou sai da caixa com a
+ * miniatura à vista (ver porNome).
+ *
+ * @param {object} ann - A anotação.
+ */
+AnnotationController.prototype.assentarCartao = function(ann) {
+    const estado = ann._lugar;
+    if (!estado || !estado.cartao || !estado.canto) return;
+    const meioX = ann._comNome ? this.medidaComNome(ann).largura / 2 : MARKER_DOT_HALF;
+    if (estado.meioX !== meioX) {
+        estado.traco.style.left = meioX + 'px';
+        estado.meioX = meioX;
+    }
+    estado.cartao.style.translate =
+        `${(meioX + estado.px - estado.canto.x).toFixed(2)}px ${(MARKER_DOT_HALF + estado.py - estado.canto.y).toFixed(2)}px`;
 };
