@@ -424,6 +424,21 @@ AnnotationController.prototype.initialize = function() {
         .annotation-marker.marcador-visto .miniatura-traco {
             display: none;
         }
+        /* Com o rato em cima, o já visto mostra a miniatura enquanto lá
+           estiver (ver ratoEmCima), em cinzento como ele. O nome por baixo
+           fica invisível mas no sítio: se saísse, o marcador encolhia, e o
+           rato que estivesse em cima do nome ficava de fora e a miniatura
+           fechava-se logo. */
+        .annotation-marker.marcador-visto {
+            --cor-da-anotacao: #8a8f98;
+        }
+        .annotation-marker.marcador-visto.a-espreitar .miniatura,
+        .annotation-marker.marcador-visto.a-espreitar .miniatura-traco {
+            display: block;
+        }
+        .annotation-marker.marcador-visto.a-espreitar .marker-label {
+            visibility: hidden;
+        }
 
         /* ---- A miniatura ----
            Do ponto do mapa sobe um poste, a prumo no bairro — inclina-se
@@ -471,6 +486,18 @@ AnnotationController.prototype.initialize = function() {
             transform: rotate(-90deg) scaleX(0);
             z-index: 0;
             transition: opacity 0.25s ease;
+        }
+        /* Uma faixa invisível ao longo do poste, mais larga do que ele, que
+           apanha o rato: quem o leva do quadrado à miniatura pelo poste
+           acima não sai do marcador pelo caminho (ver ratoEmCima). */
+        .miniatura-traco::before {
+            content: "";
+            position: absolute;
+            left: 0;
+            right: 0;
+            top: 50%;
+            height: 16px;
+            transform: translateY(-50%);
         }
         .miniatura {
             position: absolute;
@@ -1505,6 +1532,15 @@ AnnotationController.prototype.initialize = function() {
             if (this.janelaAberta()) return;
             e.preventDefault();
             el.click();
+        });
+
+        // Com o rato em cima, a miniatura que não está à vista aparece (ver
+        // ratoEmCima). Só com rato: num ecrã de toque, tocar já abre.
+        el.addEventListener('pointerenter', (e) => {
+            if (e.pointerType === 'mouse') this.ratoEmCima(ann, true);
+        });
+        el.addEventListener('pointerleave', (e) => {
+            if (e.pointerType === 'mouse') this.ratoEmCima(ann, false);
         });
 
         this.container.appendChild(el);
@@ -3849,6 +3885,11 @@ AnnotationController.prototype.update = function(dt) {
    Os marcadores também não se tapam uns aos outros: o de trás some-se,
    com miniatura e tudo, enquanto o da frente lhe estiver em cima.
 
+   Com o rato em cima de um marcador sem miniatura à vista — recolhida, ou
+   já visto —, ela aparece enquanto ele lá estiver. Escolhe o lugar antes de
+   todas, e as vizinhas que lhe ficassem em cima afastam-se ou recolhem-se;
+   quando o rato sai, ela recolhe-se e as outras voltam.
+
    Para não andar a saltar de um lado para o outro enquanto a câmara mexe,
    uma miniatura só troca o seu lugar por um melhor se ele estiver livre
    durante um bocadinho; e desliza para o novo, em vez de saltar. Só sai
@@ -3876,6 +3917,16 @@ const DESLIZE_DA_MINIATURA = 0.12;
 // Uma miniatura já à vista escolhe o lugar como se estivesse este tanto da
 // sua distância (ver arrumarMiniaturas).
 const VANTAGEM_DE_QUEM_LA_ESTA = 0.8;
+
+// Com o rato em cima (ver ratoEmCima): quanto a miniatura cresce (o mesmo
+// "scale" da roupa); quanto tempo se espera, depois de ele sair, antes de a
+// largar; quanto leva a esbater-se a de um já visto antes de o nome voltar;
+// e quanto mais demora a voltar sozinha uma que só estava à vista por causa
+// dele, em segundos.
+const CRESCE_COM_O_RATO = 1.15;
+const LARGAR_O_RATO_MS = 500;
+const ESBATER_DO_ESPREITAR_MS = 250;
+const ESPERA_DEPOIS_DE_ESPREITAR = 1.0;
 
 const acima = new pc.Vec3();
 const acimaNoEcra = new pc.Vec3();
@@ -4008,16 +4059,19 @@ function cantoDaMiniatura(lado, uy, medida) {
  *     medidas da miniatura, ao tamanho natural.
  * @param {number} degrau - Quantos degraus cresceu o poste.
  * @param {number} lado - 0 à direita do poste, 1 à esquerda.
+ * @param {number} [cresce=1] - Quanto a miniatura cresce a partir de onde o
+ *     poste chega: com o rato em cima é maior, e o lugar tem de dar para
+ *     esse tamanho.
  * @returns {object} O lugar: o poste e a caixa, no ecrã, e as medidas para
  *     a pôr lá.
  */
-function lugarDaMiniatura(e, medida, degrau, lado) {
+function lugarDaMiniatura(e, medida, degrau, lado, cresce = 1) {
     const poste = POSTE_MAIS_CURTO + degrau * DEGRAU_DO_POSTE;
     const px = e.ux * poste;
     const py = e.uy * poste;
     const canto = cantoDaMiniatura(lado, e.uy, medida);
-    const x0 = px - canto.x;
-    const y0 = py - canto.y;
+    const x0 = px - canto.x * cresce;
+    const y0 = py - canto.y * cresce;
     const s = e.escala;
     const folga = FOLGA_DA_MINIATURA * s;
     return {
@@ -4026,8 +4080,8 @@ function lugarDaMiniatura(e, medida, degrau, lado) {
         caixa: {
             x0: e.x + x0 * s - folga,
             y0: e.y + y0 * s - folga,
-            x1: e.x + (x0 + medida.largura) * s + folga,
-            y1: e.y + (y0 + medida.altura) * s + folga
+            x1: e.x + (x0 + medida.largura * cresce) * s + folga,
+            y1: e.y + (y0 + medida.altura * cresce) * s + folga
         },
         risco: { x0: e.x, y0: e.y, x1: e.x + px * s, y1: e.y + py * s }
     };
@@ -4130,6 +4184,30 @@ AnnotationController.prototype.taparMarcador = function(ann, tapado) {
 };
 
 /**
+ * O rato entrou ou saiu de cima de um marcador.
+ *
+ * Um marcador sem miniatura à vista — recolhida por falta de lugar, ou já
+ * visto — mostra-a enquanto o rato lá estiver (ver arrumarMiniaturas). Ao
+ * sair, espera um instante antes de a largar: do quadrado à miniatura só há
+ * o poste (e uma faixa estreita à volta dele que também conta), e quem leva
+ * o rato a direito até ela pode sair do marcador pelo caminho.
+ *
+ * @param {object} ann - A anotação.
+ * @param {boolean} dentro - Se o rato entrou (ou saiu).
+ */
+AnnotationController.prototype.ratoEmCima = function(ann, dentro) {
+    clearTimeout(this._largarORato);
+    if (dentro) {
+        this._sobRato = ann;
+        return;
+    }
+    if (this._sobRato !== ann) return;
+    this._largarORato = setTimeout(() => {
+        if (this._sobRato === ann) this._sobRato = null;
+    }, LARGAR_O_RATO_MS);
+};
+
+/**
  * Escolhe o lugar de cada miniatura e põe-na lá (ver "O lugar das
  * miniaturas", mais acima).
  *
@@ -4148,6 +4226,7 @@ AnnotationController.prototype.arrumarMiniaturas = function(dt) {
             ann._caixaVista = null;
             ann._lugar = null;
             ann.element.classList.toggle('marcador-visto', visto);
+            ann.element.classList.remove('a-espreitar');
             ann.element.classList.add('miniatura-recolhida');
         }
     }
@@ -4180,13 +4259,41 @@ AnnotationController.prototype.arrumarMiniaturas = function(dt) {
             this.taparMarcador(ann, false);
         }
     }
-    // Os mais perto escolhem primeiro. Uma miniatura que já está à vista
-    // conta como um pouco mais perto do que está: sem isto, dois marcadores
-    // quase à mesma distância trocavam de vez a cada passo da câmara, e o
-    // que perdia a vez perdia o lugar.
+    // O marcador com o rato em cima (ver ratoEmCima). Fora de vista, é como
+    // se o rato tivesse saído.
+    const sobRato = presentes.includes(this._sobRato) ? this._sobRato : null;
+    if (this._espreitado !== sobRato) {
+        const deixado = this._espreitado;
+        if (deixado && deixado._espreitou) {
+            // Saiu o rato de uma miniatura que só estava à vista por causa
+            // dele: recolhe-se já, e demora mais a voltar sozinha do que as
+            // que lhe tinham dado o lugar, para essas o reaverem.
+            deixado._espreitou = false;
+            deixado._fimDoEspreitar = agora;
+            if (deixado._lugar) {
+                deixado._lugar.escolha = -1;
+                deixado._lugar.espera = -ESPERA_DEPOIS_DE_ESPREITAR;
+            }
+        }
+        if (sobRato) {
+            sobRato._espreitou = sobRato._visto ||
+                !(sobRato._lugar && sobRato._lugar.escolha >= 0);
+            // Já aqui, e não só mais abaixo: com todos os marcadores vistos
+            // não há outra miniatura à vista para se medir, e esta tem de
+            // aparecer para o poder ser.
+            if (sobRato._visto) sobRato.element.classList.add('a-espreitar');
+        }
+        this._espreitado = sobRato;
+    }
+
+    // Os mais perto escolhem primeiro — e antes de todos, o que tem o rato
+    // em cima: foi pedido, e os outros afastam-se dele. Uma miniatura que já
+    // está à vista conta como um pouco mais perto do que está: sem isto, dois
+    // marcadores quase à mesma distância trocavam de vez a cada passo da
+    // câmara, e o que perdia a vez perdia o lugar.
     const vez = (ann) => ann._ecra.distancia *
         (ann._lugar && ann._lugar.escolha >= 0 ? VANTAGEM_DE_QUEM_LA_ESTA : 1);
-    presentes.sort((a, b) => vez(a) - vez(b));
+    presentes.sort((a, b) => (a === sobRato ? -1 : b === sobRato ? 1 : vez(a) - vez(b)));
 
     // Primeiro os marcadores em si — o quadrado, e nos já vistos o nome por
     // baixo. Um que toque noutro mais perto fica por trás dele, como uma
@@ -4221,9 +4328,28 @@ AnnotationController.prototype.arrumarMiniaturas = function(dt) {
     const riscosOcupados = [];
 
     aVista.forEach((ann, quem) => {
-        // Os já vistos não têm miniatura: contam só como obstáculo.
-        if (ann._visto) return;
+        const comRato = ann === sobRato;
+
+        // Os já vistos só têm miniatura com o rato em cima; de resto contam
+        // só como obstáculo. A que se esteve a espreitar esbate-se antes de
+        // o nome voltar a aparecer por baixo do quadrado.
+        if (ann._visto) {
+            const el = ann.element;
+            if (comRato) {
+                if (!el.classList.contains('a-espreitar')) el.classList.add('a-espreitar');
+            } else {
+                if (el.classList.contains('a-espreitar')) {
+                    if (!el.classList.contains('miniatura-recolhida')) el.classList.add('miniatura-recolhida');
+                    if (agora - (ann._fimDoEspreitar || 0) > ESBATER_DO_ESPREITAR_MS) {
+                        el.classList.remove('a-espreitar');
+                        ann._lugar = null;
+                    }
+                }
+                return;
+            }
+        }
         const e = ann._ecra;
+        const cresce = comRato ? CRESCE_COM_O_RATO : 1;
 
         // Todos os lugares, pela ordem de preferência. Um poste deitado
         // para a direita não deixa a miniatura ir para a esquerda, que lhe
@@ -4235,7 +4361,7 @@ AnnotationController.prototype.arrumarMiniaturas = function(dt) {
                     lugares.push(null);
                     continue;
                 }
-                const lugar = lugarDaMiniatura(e, medida, degrau, lado);
+                const lugar = lugarDaMiniatura(e, medida, degrau, lado, cresce);
                 const c = lugar.caixa;
                 // O quadrado do próprio marcador também conta.
                 const tapa = quadrados.some((q) => caixasTocam(c, q)) ||
@@ -4269,7 +4395,14 @@ AnnotationController.prototype.arrumarMiniaturas = function(dt) {
         // Ficar, mudar, ou esperar um bocadinho antes de mudar.
         const antes = ann._lugar;
         let escolha;
-        if (!antes) {
+        if (comRato) {
+            // Com o rato em cima não se mexe de onde está — fugia-lhe de
+            // baixo. Se estava recolhida, aparece já no melhor lugar livre;
+            // e se não houver nenhum, no primeiro, à mesma: foi pedida.
+            escolha = antes && antes.escolha >= 0 ? antes.escolha
+                : melhor >= 0 ? melhor
+                : (e.ux < -0.5 ? 1 : 0);
+        } else if (!antes) {
             escolha = melhor;
         } else if (antes.escolha >= 0 && lugares[antes.escolha]) {
             const melhora = melhor >= 0 &&
@@ -4285,7 +4418,10 @@ AnnotationController.prototype.arrumarMiniaturas = function(dt) {
             escolha = melhor >= 0 && antes.espera >= PACIENCIA_DA_MINIATURA ? melhor : -1;
         }
 
-        const lugar = escolha >= 0 ? lugares[escolha] : null;
+        let lugar = escolha >= 0 ? lugares[escolha] : null;
+        if (!lugar && comRato) {
+            lugar = lugarDaMiniatura(e, medida, Math.floor(escolha / 2), escolha % 2, cresce);
+        }
         if (lugar) {
             caixasOcupadas.push(lugar.caixa);
             riscosOcupados.push(lugar.risco);
@@ -4343,12 +4479,20 @@ AnnotationController.prototype.porMiniatura = function(ann, lugar, escolha, ante
         estado.traco = el.querySelector('.miniatura-traco');
         estado.cartao = el.querySelector('.miniatura');
     }
+    // O meio do quadrado, de onde sai o poste. Num já visto, a caixa do
+    // marcador tem a largura do nome por baixo, e o quadrado está ao meio
+    // dela.
+    const meioX = ann._visto && ann._caixaVista ? ann._caixaVista.largura / 2 : MARKER_DOT_HALF;
+    if (estado.meioX !== meioX) {
+        estado.traco.style.left = meioX + 'px';
+        estado.meioX = meioX;
+    }
     // O poste chega ao meio do risco do contorno e segue mais um risco
     // por baixo da miniatura, escondido, para não se ver a ponta dele.
     estado.traco.style.transform =
         `rotate(${angulo.toFixed(2)}deg) scaleX(${((estado.poste + medida.traco) / 100).toFixed(4)})`;
     estado.cartao.style.translate =
-        `${(MARKER_DOT_HALF + px - canto.x).toFixed(2)}px ${(MARKER_DOT_HALF + py - canto.y).toFixed(2)}px`;
+        `${(meioX + px - canto.x).toFixed(2)}px ${(MARKER_DOT_HALF + py - canto.y).toFixed(2)}px`;
     // Com o rato em cima, cresce a partir de onde o poste chega.
     estado.cartao.style.transformOrigin = `${canto.x.toFixed(2)}px ${canto.y.toFixed(2)}px`;
 };
