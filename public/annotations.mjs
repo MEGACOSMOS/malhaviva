@@ -2,7 +2,7 @@ import * as pc from 'playcanvas';
 import { fontesDeVideo, previaDe, olharInicialDe, ABERTURA_INICIAL } from './videos.mjs?v=7';
 import { criarGestorDeQualidade } from './qualidade-video.mjs?v=9';
 import { carregarPrevia360 } from './previa-360.mjs?v=1';
-import { FOTOGRAFIAS } from './timelapse.mjs?v=2';
+import { FOTOGRAFIAS, enderecoDa, LARGURA_LEVE } from './timelapse.mjs?v=2';
 
 export const AnnotationController = pc.createScript('annotationController');
 
@@ -354,8 +354,8 @@ AnnotationController.prototype.initialize = function() {
         }
         .annotation-marker:hover .marker-dot, .annotation-marker.force-hover .marker-dot,
         .annotation-marker:focus-visible .marker-dot,
-        .annotation-marker:hover .marker-label, .annotation-marker.force-hover .marker-label,
-        .annotation-marker:focus-visible .marker-label {
+        .annotation-marker:hover .miniatura, .annotation-marker.force-hover .miniatura,
+        .annotation-marker:focus-visible .miniatura {
             transform: scale(1.15);
             transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
         }
@@ -371,36 +371,120 @@ AnnotationController.prototype.initialize = function() {
             outline: 2px solid rgba(255, 255, 255, 0.95);
             outline-offset: 3px;
         }
-        .marker-dot, .marker-label {
+        .marker-dot, .miniatura {
             transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        /* A cor de cada marcador vive aqui, e é dela que saem o quadrado,
+           o traço e o contorno da miniatura: verde nos testemunhos,
+           vermelho nas rotas, a cor do fundo do site nas duas paragens do
+           céu (a fotografia do alto e o timelapse). */
+        .annotation-marker {
+            --cor-da-anotacao: #10b981;
+        }
+        .annotation-marker[data-tipo="360"] {
+            --cor-da-anotacao: #ff0000;
+        }
+        .annotation-marker.marcador-do-ceu {
+            --cor-da-anotacao: #05050a;
+        }
+        /* Já visto: o marcador apaga-se em cinzento, e o traço e o
+           contorno da miniatura com ele, para se perceber de relance o que
+           falta ver sem que o que já se viu desapareça. */
+        .annotation-marker:has(> .marker-dot.viewed) {
+            --cor-da-anotacao: #8a8f98;
         }
         .marker-dot {
             width: 32px;
             height: 32px;
-            background-color: #10b981;
+            background-color: var(--cor-da-anotacao);
             color: #fff;
             border-radius: 0;
             position: relative;
+            z-index: 2;
             display: flex;
             align-items: center;
             justify-content: center;
         }
-        .marker-dot.is-360 {
-            background-color: #ff0000;
-            color: #ffffff;
-        }
-        /* A fotografia do alto do bairro, pousada no céu, leva a cor do
-           fundo do site em vez do vermelho das rotas. */
-        .marker-dot.is-360.is-foto {
-            background-color: #05050a;
-        }
-        /* Já visto: o marcador apaga-se em cinzento e deixa passar um
-           pouco do bairro por trás, para se perceber de relance o que
-           falta ver sem que o que já se viu desapareça. */
-        .marker-dot.viewed,
-        .marker-dot.is-360.viewed {
+        /* Repetido à parte do de cima para o cinzento não depender de o
+           navegador saber ler ":has". */
+        .marker-dot.viewed {
             background-color: #8a8f98;
-            color: #ffffff;
+        }
+
+        /* ---- A miniatura ----
+           Do meio do marcador sai um traço, na diagonal para baixo e para a
+           direita, que dá no canto de um rectângulo: lá dentro, a mesma
+           imagem que o palco mostra do vídeo seguinte (ver
+           desenharMiniatura), e por baixo dela o nome. O traço e o contorno
+           têm a cor do marcador.
+
+           Fica fora da caixa do marcador, que continua a ser só o
+           quadrado: é por ele que o marcador se agarra ao ponto do mapa
+           (ver update), e assim a miniatura não o desvia. As medidas são
+           as do marcador ao tamanho natural; ele inteiro encolhe e cresce
+           com a distância. */
+        .annotation-marker {
+            --recuo-da-miniatura: 40px;
+            --largura-da-miniatura: 144px;
+            --traco-da-miniatura: 2.5px;
+        }
+        /* Num telemóvel, ao alto ou deitado, as miniaturas do tamanho do
+           computador tapavam meio bairro. */
+        @media (max-width: 600px), (max-height: 500px) {
+            .annotation-marker {
+                --recuo-da-miniatura: 30px;
+                --largura-da-miniatura: 108px;
+            }
+        }
+        .miniatura-traco {
+            position: absolute;
+            /* Do meio do quadrado (32 por 32)... */
+            left: 16px;
+            top: calc(16px - var(--traco-da-miniatura) / 2);
+            /* ...até ao canto da miniatura, e um pouco para dentro dela, para
+               a ponta do traço ficar debaixo do contorno e os dois se lerem
+               como um só risco. */
+            width: calc(var(--recuo-da-miniatura) * 1.4142 + 4px);
+            height: var(--traco-da-miniatura);
+            background: var(--cor-da-anotacao);
+            transform-origin: 0 50%;
+            transform: rotate(45deg);
+            z-index: 0;
+        }
+        .miniatura {
+            position: absolute;
+            left: calc(16px + var(--recuo-da-miniatura));
+            top: calc(16px + var(--recuo-da-miniatura));
+            width: var(--largura-da-miniatura);
+            box-sizing: border-box;
+            border: var(--traco-da-miniatura) solid var(--cor-da-anotacao);
+            background: #05050a;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+            /* Cresce a partir do canto onde o traço chega, para os dois não
+               se separarem com o rato em cima. */
+            transform-origin: 0 0;
+            z-index: 1;
+        }
+        .miniatura canvas {
+            display: block;
+            width: 100%;
+            aspect-ratio: 16 / 9;
+            /* Enquanto a imagem não chega, fica o escuro do fundo, e ela
+               surge a esbater por cima dele. */
+            opacity: 0;
+            transition: opacity 0.4s ease;
+        }
+        .miniatura canvas.pronta {
+            opacity: 1;
+        }
+        .miniatura-nome {
+            color: #fff;
+            padding: 5px 10px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
         /* O último que se viu: uma caixinha da cor do fundo do site no
            canto de cima à direita do marcador, com o sinal de "voltar"
@@ -1261,6 +1345,7 @@ AnnotationController.prototype.initialize = function() {
         el.setAttribute('role', 'button');
         el.setAttribute('tabindex', '0');
         el.dataset.tipo = ann.is360 ? '360' : 'testemunho';
+        if (ann.isImage) el.classList.add('marcador-do-ceu');
         if (ann.label === "Esvarena") el.classList.add('esvarena-marker');
         if (ann.trailIndex !== undefined) el.dataset.trailIndex = ann.trailIndex;
 
@@ -1275,8 +1360,8 @@ AnnotationController.prototype.initialize = function() {
             // direitas, de cantos vivos, e a dobra com a inclinação das
             // riscas da claquete dos créditos. O mesmo desenho está na
             // legenda, nas instruções e nas placas dos óculos. O nome vai
-            // por baixo. A fotografia do alto do bairro dispensa as duas
-            // coisas: fica só um olho, pousado no céu, com o nome por baixo.
+            // na miniatura. A fotografia do alto do bairro dispensa as duas
+            // coisas: fica só um olho, pousado no céu.
             //
             // Os desenhos (testemunho, rota e olho) têm as mesmas medidas:
             // 24 pontos no quadrado de 32, com 20 de largura lá dentro e o
@@ -1304,7 +1389,6 @@ AnnotationController.prototype.initialize = function() {
                 <div class="marker-dot is-360 ${ann.isImage ? 'is-foto' : ''} ${isViewed ? 'viewed' : ''}">
                     ${simbolo}
                 </div>
-                <div class="marker-label">${ann.label}</div>
             `;
         } else {
             el.innerHTML = `
@@ -1315,9 +1399,20 @@ AnnotationController.prototype.initialize = function() {
                         <line x1="7" y1="12" x2="12" y2="12"></line>
                     </svg>
                 </div>
-                <div class="marker-label">${ann.label}</div>
             `;
         }
+
+        // A miniatura, com o nome por baixo, e o traço que a liga ao
+        // marcador. A imagem chega mais tarde (ver encherMiniaturas). Para
+        // quem não vê o ecrã não acrescenta nada: o nome do botão já diz
+        // de quem é e o que é.
+        el.insertAdjacentHTML('beforeend', `
+            <div class="miniatura-traco" aria-hidden="true"></div>
+            <div class="miniatura" aria-hidden="true">
+                <canvas width="${LARGURA_DA_MINIATURA}" height="${ALTURA_DA_MINIATURA}"></canvas>
+                <div class="miniatura-nome">${ann.label}</div>
+            </div>
+        `);
 
         el.style.position = 'absolute';
         el.style.left = '0';
@@ -1375,6 +1470,167 @@ AnnotationController.prototype.initialize = function() {
 
     this.baptizarMarcadores();
     window.addEventListener('idiomamudou', () => this.baptizarMarcadores());
+
+    // As imagens das miniaturas só se vão buscar depois de o bairro estar à
+    // vista: até lá a ligação é toda dele, e as miniaturas não se veem
+    // por trás do ecrã de espera.
+    const overlay = document.getElementById('loading-overlay');
+    if (!overlay || overlay.classList.contains('hidden')) {
+        this.encherMiniaturas();
+    } else {
+        const vigia = new MutationObserver(() => {
+            if (!overlay.classList.contains('hidden')) return;
+            vigia.disconnect();
+            this.encherMiniaturas();
+        });
+        vigia.observe(overlay, { attributes: true, attributeFilter: ['class'] });
+    }
+};
+
+/* ---- As miniaturas dos marcadores ----
+
+   A imagem de cada miniatura é a mesma que o palco mostra do vídeo
+   seguinte: o primeiro instante de um testemunho, a vista com que uma rota
+   abre, a fotografia do alto do bairro. O timelapse não aparece ao lado de
+   nada, e leva a primeira fotografia de satélite, a que se vê ao abri-lo.
+
+   Cada uma é desenhada uma só vez numa tela pequena, e o que serviu para a
+   desenhar é largado logo a seguir: sete vídeos e uma panorâmica inteira
+   pendurados no mapa só para mostrar uma imagem parada pesariam o mesmo
+   que se estivessem abertos. ---- */
+
+// A tela de cada miniatura, em pontos: o feitio dos vídeos, e folga para se
+// ver nítida com o marcador perto (ele cresce até mais do dobro).
+const LARGURA_DA_MINIATURA = 480;
+const ALTURA_DA_MINIATURA = 270;
+
+// Quanto se espera pela imagem de um vídeo antes de desistir dela.
+const ESPERA_DA_MINIATURA_MS = 20000;
+
+/**
+ * Desenha uma imagem numa tela a encher-lhe o feitio todo, cortando o que
+ * sobrar dos lados ou de cima e de baixo, por igual.
+ *
+ * @param {HTMLCanvasElement} tela - Onde desenhar.
+ * @param {CanvasImageSource} fonte - A imagem ou o vídeo.
+ * @param {number} largura - Largura natural da fonte.
+ * @param {number} altura - Altura natural da fonte.
+ */
+function desenharACobrir(tela, fonte, largura, altura) {
+    const ctx = tela.getContext('2d');
+    ctx.imageSmoothingQuality = 'high';
+    const escala = Math.max(tela.width / largura, tela.height / altura);
+    const w = tela.width / escala;
+    const h = tela.height / escala;
+    ctx.drawImage(fonte, (largura - w) / 2, (altura - h) / 2, w, h, 0, 0, tela.width, tela.height);
+}
+
+/**
+ * Vai buscar uma fotografia e desenha-a na tela.
+ *
+ * @param {HTMLCanvasElement} tela - Onde desenhar.
+ * @param {string} endereco - A fotografia.
+ * @returns {Promise<void>} Resolve quando estiver desenhada.
+ */
+function miniaturaDeFotografia(tela, endereco) {
+    return new Promise((resolver, rejeitar) => {
+        const imagem = new Image();
+        imagem.decoding = 'async';
+        imagem.onload = () => {
+            desenharACobrir(tela, imagem, imagem.naturalWidth, imagem.naturalHeight);
+            resolver();
+        };
+        imagem.onerror = () => rejeitar(new Error('Fotografia em falta: ' + endereco));
+        imagem.src = endereco;
+    });
+}
+
+/**
+ * Vai buscar o primeiro instante de um vídeo e desenha-o na tela. O vídeo
+ * é largado logo a seguir, para não ficar a ocupar a ligação nem a placa.
+ *
+ * @param {HTMLCanvasElement} tela - Onde desenhar.
+ * @param {string} endereco - O vídeo.
+ * @returns {Promise<void>} Resolve quando estiver desenhado.
+ */
+function miniaturaDeVideo(tela, endereco) {
+    return new Promise((resolver, rejeitar) => {
+        const filme = document.createElement('video');
+        filme.muted = true;
+        filme.playsInline = true;
+        filme.preload = 'auto';
+        filme.crossOrigin = 'anonymous';
+
+        let relogio = null;
+        const largar = () => {
+            clearTimeout(relogio);
+            filme.removeEventListener('loadeddata', aoChegar);
+            filme.removeEventListener('error', aoFalhar);
+            filme.removeAttribute('src');
+            filme.load();
+        };
+        const aoChegar = () => {
+            desenharACobrir(tela, filme, filme.videoWidth, filme.videoHeight);
+            largar();
+            resolver();
+        };
+        const aoFalhar = () => {
+            largar();
+            rejeitar(new Error('Vídeo em falta: ' + endereco));
+        };
+        filme.addEventListener('loadeddata', aoChegar);
+        filme.addEventListener('error', aoFalhar);
+        relogio = setTimeout(aoFalhar, ESPERA_DA_MINIATURA_MS);
+        // O mesmo "#t=0.001" das imagens do palco: pede o primeiro instante.
+        filme.src = endereco + '#t=0.001';
+    });
+}
+
+/**
+ * Desenha a imagem da miniatura de uma anotação.
+ *
+ * @param {HTMLCanvasElement} tela - A tela da miniatura.
+ * @param {object} ann - A anotação.
+ * @returns {Promise<void>} Resolve quando estiver desenhada.
+ */
+AnnotationController.prototype.desenharMiniatura = function(tela, ann) {
+    if (ann.timelapse) {
+        return miniaturaDeFotografia(tela, enderecoDa(FOTOGRAFIAS[0], LARGURA_LEVE));
+    }
+    if (ann.isImage) {
+        return miniaturaDeFotografia(tela, ann.imagePath);
+    }
+    if (ann.is360) {
+        // A mesma conta da janela do lado (ver encherPrevia360), já ao
+        // feitio da miniatura: com a mesma abertura de alto a baixo, é o
+        // meio da vista que o palco mostra.
+        const video = this.videoDaRota360(ann);
+        return carregarPrevia360(tela, previaDe(video), olharInicialDe(video),
+            ABERTURA_INICIAL, LARGURA_DA_MINIATURA, ALTURA_DA_MINIATURA);
+    }
+    // A versão mais leve, como a das imagens do palco (ver encherPrevia).
+    const fontes = fontesDeVideo(ann.video);
+    const leve = fontes['480p'] || fontes['720p'] || Object.values(fontes)[0];
+    return miniaturaDeVideo(tela, leve);
+};
+
+/**
+ * Põe as imagens nas miniaturas, uma de cada vez — todas ao mesmo tempo
+ * disputavam a ligação umas com as outras e com o bairro.
+ */
+AnnotationController.prototype.encherMiniaturas = async function() {
+    for (const ann of this.annotations) {
+        const tela = ann.element && ann.element.querySelector('.miniatura canvas');
+        if (!tela) continue;
+        try {
+            await this.desenharMiniatura(tela, ann);
+            tela.classList.add('pronta');
+        } catch (erro) {
+            // Sem imagem, a miniatura fica com o escuro do fundo e o nome:
+            // continua a abrir o que abria.
+            console.warn('Miniatura sem imagem:', ann.label, erro && erro.message);
+        }
+    }
 };
 
 /**
