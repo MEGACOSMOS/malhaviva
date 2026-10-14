@@ -43,8 +43,26 @@ export function desenharPrevia360(tela, imagem, olhar, abertura, largura, altura
 
     const destino = tela.getContext('2d');
     const saida = destino.createImageData(W, H);
-    const pixeis = saida.data;
+    projetarPrevia360(origem, fw, fh, saida.data, W, H, olhar, abertura);
+    destino.putImageData(saida, 0, 0);
+}
 
+/**
+ * A conta da janela, ponto a ponto, sem tela nenhuma: das cores da
+ * fotografia a dar a volta toda para as cores da vista. É a mesma no site
+ * e no programa que prepara as miniaturas dos marcadores
+ * (scripts/gerar-miniaturas.mjs), para as duas darem o mesmo.
+ *
+ * @param {Uint8Array|Uint8ClampedArray} origem - A fotografia, quatro valores por ponto (RGBA).
+ * @param {number} fw - Largura da fotografia, em pontos.
+ * @param {number} fh - Altura da fotografia, em pontos.
+ * @param {Uint8Array|Uint8ClampedArray} pixeis - Onde escrever a vista, quatro valores por ponto.
+ * @param {number} W - Largura da vista, em pontos.
+ * @param {number} H - Altura da vista, em pontos.
+ * @param {{yaw: number, pitch: number}} olhar - Volta e inclinação da câmara, em graus.
+ * @param {number} abertura - Abertura vertical da câmara, em graus.
+ */
+export function projetarPrevia360(origem, fw, fh, pixeis, W, H, olhar, abertura) {
     const RAD = Math.PI / 180;
     const yaw = olhar.yaw * RAD;
     const pitch = olhar.pitch * RAD;
@@ -90,7 +108,6 @@ export function desenharPrevia360(tela, imagem, olhar, abertura, largura, altura
             pixeis[o + 3] = 255;
         }
     }
-    destino.putImageData(saida, 0, 0);
 }
 
 /**

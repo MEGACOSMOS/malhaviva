@@ -1,4 +1,4 @@
-import { alturaDe, debitoDe, eOriginal, e360 } from './videos.mjs?v=7';
+import { alturaDe, debitoDe, eOriginal, e360 } from './videos.mjs?v=8';
 
 /**
  * Escolha automática da qualidade dos vídeos.

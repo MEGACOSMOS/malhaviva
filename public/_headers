@@ -45,6 +45,10 @@
 /timelapse/*
   Cache-Control: public, max-age=86400, stale-while-revalidate=604800
 
+# As imagens das miniaturas dos marcadores (ver scripts/gerar-miniaturas.mjs).
+/miniaturas/*
+  Cache-Control: public, max-age=86400, stale-while-revalidate=604800
+
 /fonts/*
   Cache-Control: public, max-age=31536000, immutable
 

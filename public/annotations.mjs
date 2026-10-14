@@ -1,7 +1,7 @@
 import * as pc from 'playcanvas';
-import { fontesDeVideo, previaDe, olharInicialDe, ABERTURA_INICIAL } from './videos.mjs?v=7';
+import { fontesDeVideo, previaDe, olharInicialDe, ABERTURA_INICIAL } from './videos.mjs?v=8';
 import { criarGestorDeQualidade } from './qualidade-video.mjs?v=9';
-import { carregarPrevia360 } from './previa-360.mjs?v=1';
+import { carregarPrevia360 } from './previa-360.mjs?v=2';
 import { FOTOGRAFIAS, enderecoDa, LARGURA_LEVE } from './timelapse.mjs?v=2';
 
 export const AnnotationController = pc.createScript('annotationController');
@@ -1566,20 +1566,9 @@ AnnotationController.prototype.initialize = function() {
     this.baptizarMarcadores();
     window.addEventListener('idiomamudou', () => this.baptizarMarcadores());
 
-    // As imagens das miniaturas só se vão buscar depois de o bairro estar à
-    // vista: até lá a ligação é toda dele, e as miniaturas não se veem
-    // por trás do ecrã de espera.
-    const overlay = document.getElementById('loading-overlay');
-    if (!overlay || overlay.classList.contains('hidden')) {
-        this.encherMiniaturas();
-    } else {
-        const vigia = new MutationObserver(() => {
-            if (!overlay.classList.contains('hidden')) return;
-            vigia.disconnect();
-            this.encherMiniaturas();
-        });
-        vigia.observe(overlay, { attributes: true, attributeFilter: ['class'] });
-    }
+    // As imagens das miniaturas vão-se buscar já, enquanto o bairro chega:
+    // são pequenas, e assim estão lá quando o ecrã de espera sai.
+    this.encherMiniaturas();
 };
 
 /* ---- As miniaturas dos marcadores ----
@@ -1589,15 +1578,38 @@ AnnotationController.prototype.initialize = function() {
    abre, a fotografia do alto do bairro. O timelapse não aparece ao lado de
    nada, e leva a primeira fotografia de satélite, a que se vê ao abri-lo.
 
-   Cada uma é desenhada uma só vez numa tela pequena, e o que serviu para a
-   desenhar é largado logo a seguir: sete vídeos e uma panorâmica inteira
-   pendurados no mapa só para mostrar uma imagem parada pesariam o mesmo
-   que se estivessem abertos. ---- */
+   Essas imagens já vêm feitas, pequenas, em public/miniaturas/ (ver
+   scripts/gerar-miniaturas.mjs): todas juntas pesam menos do que um
+   bocado do bairro, e chegam com ele. Fazê-las aqui era pedir um vídeo
+   inteiro por testemunho só para lhe tirar a primeira imagem, uma de cada
+   vez, depois de o bairro abrir — e as miniaturas demoravam.
+
+   Um marcador sem imagem feita — acrescentado sem se correr o programa —
+   tem-na na mesma, feita aqui à moda antiga. Cada uma é desenhada uma só
+   vez numa tela pequena, e o que serviu para a desenhar é largado logo a
+   seguir: sete vídeos e uma panorâmica inteira pendurados no mapa só para
+   mostrar uma imagem parada pesariam o mesmo que se estivessem abertos. ---- */
 
 // A tela de cada miniatura, em pontos: o feitio dos vídeos, e folga para se
-// ver nítida com o marcador perto (ele cresce até mais do dobro).
+// ver nítida com o marcador perto (ele cresce até mais do dobro). As
+// imagens feitas têm esta medida.
 const LARGURA_DA_MINIATURA = 480;
 const ALTURA_DA_MINIATURA = 270;
+
+/**
+ * O nome do ficheiro da imagem feita de uma miniatura (o mesmo que lhe dá
+ * scripts/gerar-miniaturas.mjs).
+ *
+ * @param {object} ann - A anotação.
+ * @returns {string} O endereço da imagem.
+ */
+AnnotationController.prototype.imagemFeitaDaMiniatura = function(ann) {
+    const nome = ann.timelapse ? 'retroceder'
+        : ann.isImage ? 'olho-de-aguia'
+        : ann.is360 ? this.videoDaRota360(ann)
+        : ann.video;
+    return '/miniaturas/' + encodeURIComponent(nome) + '.webp';
+};
 
 // Quanto se espera pela imagem de um vídeo antes de desistir dela.
 const ESPERA_DA_MINIATURA_MS = 20000;
@@ -1710,13 +1722,53 @@ AnnotationController.prototype.desenharMiniatura = function(tela, ann) {
 };
 
 /**
- * Põe as imagens nas miniaturas, uma de cada vez — todas ao mesmo tempo
- * disputavam a ligação umas com as outras e com o bairro.
+ * Cumpre-se quando o ecrã de espera sai e o bairro está à vista (já, se
+ * não houver ecrã de espera).
+ *
+ * @returns {Promise<void>}
+ */
+function quandoOBairroEstiverAVista() {
+    const overlay = document.getElementById('loading-overlay');
+    if (!overlay || overlay.classList.contains('hidden')) return Promise.resolve();
+    return new Promise((resolver) => {
+        const vigia = new MutationObserver(() => {
+            if (!overlay.classList.contains('hidden')) return;
+            vigia.disconnect();
+            resolver();
+        });
+        vigia.observe(overlay, { attributes: true, attributeFilter: ['class'] });
+    });
+}
+
+/**
+ * Põe as imagens nas miniaturas. As feitas pedem-se todas de uma vez, logo
+ * ao abrir, por serem pequenas. As que faltarem fazem-se aqui, uma de cada
+ * vez — todas ao mesmo tempo disputavam a ligação umas com as outras e com
+ * o bairro — e só depois de o bairro estar à vista: até lá a ligação é
+ * toda dele.
  */
 AnnotationController.prototype.encherMiniaturas = async function() {
-    for (const ann of this.annotations) {
-        const tela = ann.element && ann.element.querySelector('.miniatura canvas');
-        if (!tela) continue;
+    const telaDe = (ann) => ann.element && ann.element.querySelector('.miniatura canvas');
+    const feitas = await Promise.all(this.annotations.map(async (ann) => {
+        const tela = telaDe(ann);
+        if (!tela) return true;
+        try {
+            await miniaturaDeFotografia(tela, this.imagemFeitaDaMiniatura(ann));
+            tela.classList.add('pronta');
+            return true;
+        } catch (erro) {
+            return false;
+        }
+    }));
+
+    const porFazer = this.annotations.filter((ann, i) => !feitas[i]);
+    if (!porFazer.length) return;
+    console.warn('Miniaturas sem imagem feita (corra bun scripts/gerar-miniaturas.mjs):',
+        porFazer.map(ann => ann.label).join(', '));
+
+    await quandoOBairroEstiverAVista();
+    for (const ann of porFazer) {
+        const tela = telaDe(ann);
         try {
             await this.desenharMiniatura(tela, ann);
             tela.classList.add('pronta');

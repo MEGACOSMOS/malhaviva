@@ -22,7 +22,7 @@ export const RESOLUCOES = ['1440p', '1080p', '720p', '480p'];
 // quantos pontos tem na horizontal.
 const ROTULO_ORIGINAL = '2160p';
 const ROTULO_ORIGINAL_360 = '8K (7680 px)';
-const VIDEOS_360 = ['Esvarena - 360 - A', 'Esvarena - 360 - B', 'Esvarena - 360 - C'];
+export const VIDEOS_360 = ['Esvarena - 360 - A', 'Esvarena - 360 - B', 'Esvarena - 360 - C'];
 
 /**
  * Como se chama a versão original de um vídeo no menu de qualidade.

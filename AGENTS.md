@@ -45,6 +45,12 @@ O código reclama sozinho se o ponto 1 for esquecido: `baptizarMarcadores()`
 escreve um erro na consola com a anotação em falta. Um erro na consola não
 é um aviso a pedir atenção — é uma anotação que ninguém consegue abrir.
 
+E para quem vê: a miniatura de uma anotação nova (ou de uma cujo vídeo ou
+fotografia mudou) faz-se com `bun scripts/gerar-miniaturas.mjs`, que a
+guarda em `public/miniaturas/`. Sem isso a anotação tem miniatura na mesma,
+mas feita no navegador de quem visita, devagar, só depois de o bairro abrir
+— e a consola avisa.
+
 ### Como verificar, em dez segundos
 
 Com o site a correr, na consola do navegador:
