@@ -1158,9 +1158,9 @@ class CameraControls extends Script {
     /**
      * Se, neste momento, apontar para o bairro leva a algum lado.
      *
-     * Não se vai a lado nenhum com os óculos postos, nem com as
-     * ferramentas de medir ou de desenhar trilhos ligadas no menu de
-     * desenvolvedor — aí o clique é delas.
+     * Não se vai a lado nenhum com os óculos postos, nem com a
+     * ferramenta de medir ligada no menu de desenvolvedor — aí o clique
+     * é dela.
      *
      * @returns {boolean} Se leva.
      * @private
@@ -1174,8 +1174,7 @@ class CameraControls extends Script {
                 return false;
             }
             const medir = document.getElementById('dev-measure-mode');
-            const trilhos = document.getElementById('dev-trail-edit');
-            if ((medir && medir.checked) || (trilhos && trilhos.checked)) {
+            if (medir && medir.checked) {
                 return false;
             }
         }

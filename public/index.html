@@ -2334,10 +2334,6 @@
 
                     <div class="settings-options">
                         <label class="settings-radio">
-                            <input type="checkbox" id="dev-trail-edit">
-                            <span>Modo Edição de Trilha</span>
-                        </label>
-                        <label class="settings-radio">
                             <input type="checkbox" id="dev-measure-mode">
                             <span>Medição de Distâncias</span>
                         </label>
@@ -2643,7 +2639,7 @@
                     </label>
                     <label class="settings-radio">
                         <input type="checkbox" id="anot-360" checked>
-                        <span data-i18n="def.rotas360">Rotas 360º</span>
+                        <span data-i18n="def.rotas">Rotas</span>
                     </label>
                     <label class="settings-radio">
                         <input type="checkbox" id="paisagem-ligada">
@@ -2699,7 +2695,7 @@
                     <circle cx="6" cy="8.8" r="1"></circle>
                 </svg>
             </span>
-            <span data-i18n="def.rotas360">Rotas 360º</span>
+            <span data-i18n="def.rotas">Rotas</span>
         </li>
     </ul>
 
@@ -2908,7 +2904,7 @@
                         </svg>
                     </div>
                     <h2 class="instrucoes-titulo" data-i18n="ins.historiasTitulo">Ver as histórias</h2>
-                    <p class="instrucoes-texto">Os marcadores abrem os testemunhos e as rotas 360º.</p>
+                    <p class="instrucoes-texto">Os marcadores abrem os testemunhos e as rotas.</p>
                 </section>
 
                 </div>
@@ -3366,7 +3362,6 @@
         <pc-asset id="camera-controls-script" src="./camera-controls.mjs?v=48" type="script"></pc-asset>
         <pc-asset id="camera-coords-script" src="./coords.mjs?v=7" type="script"></pc-asset>
         <pc-asset id="annotations-script" src="./annotations.mjs?v=113" type="script"></pc-asset>
-        <pc-asset id="trail-script" src="./trail.mjs?v=31" type="script"></pc-asset>
         <pc-asset id="measure-script" src="./measure.mjs?v=1" type="script"></pc-asset>
         <pc-asset id="escala-script" src="./escala.mjs?v=2" type="script"></pc-asset>
         <pc-asset id="compass-script" src="./compass.mjs?v=2" type="script"></pc-asset>
@@ -3386,7 +3381,6 @@
                     <pc-script name="cameraControls" travagem="true" move-speed="25" move-fast-speed="65" move-slow-speed="7" pitch-range="-89.9 89.9" zoom-range="0.01 800" max-distance="800"></pc-script>
                     <pc-script name="cameraCoordinates"></pc-script>
                     <pc-script name="annotationController"></pc-script>
-                    <pc-script name="trailController"></pc-script>
                     <pc-script name="measureController"></pc-script>
                     <pc-script name="mapScale"></pc-script>
                     <pc-script name="compassController"></pc-script>
@@ -4243,15 +4237,6 @@ void modifySplatColor(vec3 center, inout vec4 color) {
                 document.querySelectorAll(`.annotation-marker[data-tipo="${tipo}"]`)
                     .forEach(el => { el.style.display = caixa.checked ? '' : 'none'; });
             });
-
-            // As rotas 360º incluem os trilhos tracejados desenhados no chão
-            const caixa360 = document.getElementById('anot-360');
-            const pcApp = document.querySelector('pc-app');
-            const camera = pcApp && pcApp.app && pcApp.app.root.findByName('camera');
-            const trilhos = camera && camera.script && camera.script.trailController;
-            if (caixa360 && trilhos && trilhos.setTrailsVisible) {
-                trilhos.setTrailsVisible(caixa360.checked);
-            }
         }
 
         // --- Paisagem ---

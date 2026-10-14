@@ -1,7 +1,7 @@
 /**
  * A janela para dentro de uma fotografia 360º.
  *
- * As rotas 360º são filmadas a dar a volta toda a quem filma, e a imagem
+ * As rotas são filmadas a dar a volta toda a quem filma, e a imagem
  * do primeiro instante de cada uma está guardada assim, esticada de lado
  * a lado (equirectangular). Vista de frente essa imagem não se parece com
  * nada: as casas ficam curvas e a pessoa aparece nas duas pontas. Aqui

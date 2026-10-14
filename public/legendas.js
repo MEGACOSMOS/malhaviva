@@ -7,7 +7,7 @@
  * texto qualquer). A legenda que se vê é a da língua escolhida no site, e
  * troca sozinha quando se troca de língua.
  *
- * O desenho não é o do navegador. O leitor das rotas 360º mostra o filme
+ * O desenho não é o do navegador. O leitor das rotas mostra o filme
  * colado numa esfera, dentro de uma tela 3D, onde o navegador não sabe
  * pôr legendas; por isso as duas peças fazem igual — o texto vai numa
  * caixa nossa, por cima da imagem, com o desenho do site.

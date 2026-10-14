@@ -10,7 +10,7 @@ import { alturaDe, debitoDe, eOriginal, e360 } from './videos.mjs?v=7';
  * A decisão junta quatro coisas:
  *
  *  1. O tamanho do player no ecrã. Pôr uma versão de 1440p numa janela
- *     pequena gasta dados sem se ver diferença nenhuma. Nas rotas 360º a
+ *     pequena gasta dados sem se ver diferença nenhuma. Nas rotas a
  *     conta é outra: só se vê um pedaço da imagem de cada vez, por isso é
  *     preciso bastante mais do que o ecrã mostra.
  *  2. O que a ligação aguenta. Ao princípio pergunta-se ao navegador,
@@ -20,7 +20,7 @@ import { alturaDe, debitoDe, eOriginal, e360 } from './videos.mjs?v=7';
  *     de segundos adiantados encolhe, desce-se de versão de imediato. Se
  *     a reserva está folgada e sobra ligação, sobe-se — mas com calma,
  *     para a imagem não andar aos saltos entre qualidades.
- *  4. O que o aparelho consegue mostrar. Nas rotas 360º há placas
+ *  4. O que o aparelho consegue mostrar. Nas rotas há placas
  *     gráficas que não conseguem sequer abrir a imagem de 8K.
  *
  * Quem escolher uma versão à mão manda sempre: a partir daí o automático
@@ -70,7 +70,7 @@ const ESPERA_ENTRE_SONDAGENS = 25000;
 // medição sai limpa, sem estar a disputar espaço com o próprio vídeo.
 const SEM_DESCARREGAR = 1;
 
-// Nas rotas 360º vê-se de cada vez pouco mais do que um quarto da imagem
+// Nas rotas vê-se de cada vez pouco mais do que um quarto da imagem
 // na horizontal; a imagem tem de ser bastante maior do que o ecrã para se
 // ver nítida.
 const FATOR_PANORAMICO = 2.5;
@@ -89,7 +89,7 @@ const TOLERANCIA_DO_ECRA = 1.3;
  * @param {HTMLElement} [opcoes.moldura] - A caixa onde o vídeo é mostrado.
  * @param {Function} [opcoes.aoMudar] - Chamada sempre que algo muda.
  * @param {number} [opcoes.limiteDeTextura] - Maior imagem que a placa
- *   gráfica consegue usar, em pontos (só interessa nas rotas 360º).
+ *   gráfica consegue usar, em pontos (só interessa nas rotas).
  * @returns {object} O gestor.
  */
 export function criarGestorDeQualidade(opcoes) {
@@ -158,7 +158,7 @@ export function criarGestorDeQualidade(opcoes) {
         if (escolhaDoSite === 'low') tecto = 720;
         else if (escolhaDoSite === 'med') tecto = 1080;
 
-        // Uma rota 360º é aberta como uma imagem única à volta do
+        // Uma rota é aberta como uma imagem única à volta do
         // observador: se a placa gráfica não a conseguir guardar inteira,
         // aparece preta. Mais vale nem oferecer essa versão.
         if (e360(nome) && limiteDeTextura) {
@@ -515,7 +515,7 @@ export function criarGestorDeQualidade(opcoes) {
 
 /**
  * A maior imagem que a placa gráfica deste aparelho consegue usar.
- * Serve para não oferecer rotas 360º que ela não conseguiria mostrar.
+ * Serve para não oferecer rotas que ela não conseguiria mostrar.
  *
  * @returns {number} Lado máximo em pontos, ou 0 se não se souber.
  */

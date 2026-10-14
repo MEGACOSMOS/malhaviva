@@ -113,7 +113,7 @@ MeasureController.prototype.rebuildMeasurement = function() {
 
 MeasureController.prototype.cliqueEmUI = function(e) {
     const alvo = e && e.event && e.event.target;
-    return !!(alvo && alvo.closest && alvo.closest('#header, #definicoes-menu, #idioma-menu, #dev-menu, #filter-panel, #camera-stuck-popup, #measure-ui, #trail-edit-ui, .annotation-marker, #video-modal, #modal-360'));
+    return !!(alvo && alvo.closest && alvo.closest('#header, #definicoes-menu, #idioma-menu, #dev-menu, #filter-panel, #camera-stuck-popup, #measure-ui, .annotation-marker, #video-modal, #modal-360'));
 };
 
 MeasureController.prototype.onMouseDown = function(e) {

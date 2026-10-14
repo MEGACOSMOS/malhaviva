@@ -3,7 +3,7 @@
  *
  * Todos os vídeos estão guardados na nuvem (Cloudflare R2), cada um em
  * várias resoluções. Este ficheiro é a única lista dessas versões: tanto o
- * player das entrevistas como o player das rotas 360º vão buscar aqui os
+ * player das entrevistas como o player das rotas vão buscar aqui os
  * endereços, para não haver duas listas a dizer coisas diferentes.
  */
 
@@ -16,7 +16,7 @@ export const RESOLUCOES = ['1440p', '1080p', '720p', '480p'];
 // Rótulo do ficheiro original de cada vídeo, tal como saiu da montagem.
 //
 // As entrevistas foram filmadas em 4K (3840 x 2160), por isso o 2160p diz
-// tudo. As rotas 360º são 8K e muito mais largas — a imagem dá a volta
+// tudo. As rotas são 8K e muito mais largas — a imagem dá a volta
 // toda ao observador — e como os números terminados em "p" só contam as
 // linhas, ficariam a esconder metade da história. Nessas, o rótulo diz
 // quantos pontos tem na horizontal.
@@ -35,7 +35,7 @@ export function rotuloOriginal(nome) {
 }
 
 /**
- * Se um vídeo é uma rota 360º (uma imagem que dá a volta ao observador).
+ * Se um vídeo é uma rota (uma imagem que dá a volta ao observador).
  *
  * @param {string} nome - Nome do vídeo.
  * @returns {boolean} Verdadeiro nas rotas.
@@ -74,7 +74,7 @@ export function alturaDe(nome, resolucao) {
 
 // Quantos megabits por segundo é preciso conseguir descarregar para cada
 // versão correr sem parar. São valores medidos nos ficheiros verdadeiros,
-// arredondados para cima — as rotas 360º pesam bastante mais porque a
+// arredondados para cima — as rotas pesam bastante mais porque a
 // imagem cobre tudo à volta.
 const DEBITOS = {
     entrevista: { '480p': 0.3, '720p': 0.7, '1080p': 1.8, '1440p': 8, original: 48 },
@@ -130,7 +130,7 @@ export function enderecoDe(nome, resolucao) {
     return BASE + encodeURIComponent(ficheiro);
 }
 
-// Para onde cada rota 360º olha ao começar — a volta (yaw) e a inclinação
+// Para onde cada rota olha ao começar — a volta (yaw) e a inclinação
 // (pitch), em graus, lidos na janela das coordenadas do olhar do player.
 // É daqui que o player parte, é para aqui que o botão de endireitar
 // volta, e é assim que as janelas dos lados mostram a rota vizinha.
@@ -144,7 +144,7 @@ const OLHAR_INICIAL = {
 export const ABERTURA_INICIAL = 80;
 
 /**
- * Para onde uma rota 360º olha ao começar.
+ * Para onde uma rota olha ao começar.
  *
  * @param {string} nome - Nome do vídeo.
  * @returns {{yaw: number, pitch: number}} Volta e inclinação, em graus.
@@ -154,7 +154,7 @@ export function olharInicialDe(nome) {
 }
 
 /**
- * A imagem do primeiro instante de uma rota 360º: a fotografia inteira,
+ * A imagem do primeiro instante de uma rota: a fotografia inteira,
  * a dar a volta toda (equirectangular), guardada no próprio site. É o
  * que o player mostra antes de o filme andar, e o que as janelas dos
  * lados mostram da rota vizinha.

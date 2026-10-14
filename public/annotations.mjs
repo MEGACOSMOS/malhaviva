@@ -641,7 +641,7 @@ AnnotationController.prototype.initialize = function() {
                um pouco encolhida e leva a passagem a abrir): a esbater ao
                mesmo tempo que a janela nascia, o esbatimento perdia-se
                dentro da entrada dela e não se via — é assim que se vê nas
-               rotas 360, onde os botões chegam depois de a janela estar
+               rotas, onde os botões chegam depois de a janela estar
                aberta. Ao passar de um vídeo para o outro a janela já lá
                está, e esbate-se logo (a demora vem de quem chama). */
             animation: botoes-a-surgir 0.5s ease-out both;
@@ -1848,7 +1848,7 @@ AnnotationController.prototype.baptizarMarcadores = function() {
 
 AnnotationController.prototype.nomeDaParagem360 = function(ann) {
     // "Esvarena" e "Olho de Águia" são nomes de sítios: ficam iguais em
-    // qualquer língua. O que se traduz é só "Rota 360º". O timelapse
+    // qualquer língua. O que se traduz é só "Rota". O timelapse
     // também não leva nome na barra: no canto onde ele iria está a data
     // da fotografia, escrita pela página do timelapse.
     if (ann.timelapse || (ann.isImage && ann.label === "Olho de Águia")) {
@@ -1859,7 +1859,7 @@ AnnotationController.prototype.nomeDaParagem360 = function(ann) {
     }
     const letra = LETRAS_DAS_ROTAS[ann.trailIndex] || LETRAS_DAS_ROTAS[0];
     return ann.label + ' — ' +
-        (window.Idiomas ? window.Idiomas.t('rota.titulo') : 'Rota 360º') + ' ' + letra;
+        (window.Idiomas ? window.Idiomas.t('rota.titulo') : 'Rota') + ' ' + letra;
 };
 
 /**
@@ -2694,7 +2694,7 @@ AnnotationController.prototype.setupModal = function() {
     volumeContainer.appendChild(volumeBtn);
     volumeContainer.appendChild(volumeSliderWrapper);
 
-    // Recuar e avançar cinco segundos, como no tocador das rotas 360º.
+    // Recuar e avançar cinco segundos, como no tocador das rotas.
     const recuarBtn = document.createElement('button');
     recuarBtn.className = 'player-btn';
     recuarBtn.setAttribute('data-i18n-title', 'v360.recuar');
@@ -2756,7 +2756,7 @@ AnnotationController.prototype.setupModal = function() {
 
     // Uma entrevista dentro dos óculos vê-se como num cinema vazio: um
     // ecrã grande à frente, com o vídeo a continuar de onde ia. Quem trata
-    // disso é a mesma página que já mostra as rotas 360º, aqui em modo de
+    // disso é a mesma página que já mostra as rotas, aqui em modo de
     // ecrã plano.
     vrBtn.addEventListener('click', (e) => {
         e.stopPropagation();
@@ -3656,7 +3656,7 @@ AnnotationController.prototype.abrirTestemunho = function(nome, title, sentido, 
  * Troca o vídeo por uma sala de cinema virtual, onde ele se vê num ecrã
  * grande com os óculos postos.
  *
- * A sala é a mesma página que mostra as rotas 360º, aqui posta em modo de
+ * A sala é a mesma página que mostra as rotas, aqui posta em modo de
  * ecrã plano. Fica dentro da mesma janela, e o botão de fechar de sempre
  * devolve tudo ao sítio.
  *

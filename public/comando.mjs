@@ -557,7 +557,7 @@ export function ligarComando(app) {
         const janela = document.getElementById(onde === 'video' ? 'video-modal' : 'modal-360');
 
         if (bateuAgora(pad, BOTAO.B)) {
-            // Se a rota 360º tiver as instruções abertas lá dentro, o B
+            // Se a rota tiver as instruções abertas lá dentro, o B
             // fecha-as primeiro, e o filme segue; a janela fecha-se com o
             // B seguinte.
             const dentro = janelaDoPalco(janela);

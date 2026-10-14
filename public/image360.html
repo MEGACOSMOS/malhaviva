@@ -321,7 +321,7 @@
 
         const ANGULO_LARGO = 80;   // como se chega à fotografia
         const ANGULO_APERTADO = 22; // o mais perto que se pode ir
-        // A mesma suavidade das rotas 360º (ver video360.html): quanto
+        // A mesma suavidade das rotas (ver video360.html): quanto
         // demora o ângulo a chegar perto de onde se pediu, em segundos.
         const SUAVIDADE_DO_ZOOM = 0.12;
         let angulo = ANGULO_LARGO;      // o ângulo que se vê agora
@@ -414,7 +414,7 @@
         };
 
         // De teclado: mais, menos, o zero para voltar ao princípio e o R
-        // para endireitar a vista — o mesmo R das rotas 360º. Virar a
+        // para endireitar a vista — o mesmo R das rotas. Virar a
         // cabeça é no W, A, S e D, e disso trata o ficheiro do comando.
         window.addEventListener('keydown', (e) => {
             if (e.altKey || e.ctrlKey || e.metaKey) return;

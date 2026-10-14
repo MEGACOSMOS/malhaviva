@@ -4,7 +4,7 @@
  * O mapa é uma página; as paragens 360º e a folha dos controlos são
  * outras. Um comando só é ouvido dentro da página onde está, por isso o
  * que serve ao mapa não chega aqui — e sem isto, quem estivesse a olhar
- * uma rota 360º ou a ler os controlos tinha de largar o comando.
+ * uma rota ou a ler os controlos tinha de largar o comando.
  *
  * Cada uma destas páginas é pequena e tem pouco onde mexer, por isso não
  * há aqui a maquinaria de contextos que o mapa tem. Isto olha para o que a
@@ -143,7 +143,7 @@
     /**
      * Aproxima ou afasta a vista da página, se ela souber fazê-lo.
      *
-     * Cada página tem o seu zoom — a rota 360º e o Olho de Águia abrem e
+     * Cada página tem o seu zoom — a rota e o Olho de Águia abrem e
      * fecham o ângulo por onde se olha — e diz como se lhe chega deixando
      * em `window.zoomDaPagina` uma função que recebe passos de zoom:
      * positivos para aproximar, negativos para afastar.
