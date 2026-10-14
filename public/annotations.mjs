@@ -353,7 +353,9 @@ AnnotationController.prototype.initialize = function() {
             align-items: center;
         }
         .annotation-marker:hover .marker-dot, .annotation-marker.force-hover .marker-dot,
-        .annotation-marker:focus-visible .marker-dot {
+        .annotation-marker:focus-visible .marker-dot,
+        .annotation-marker:hover .marker-label, .annotation-marker.force-hover .marker-label,
+        .annotation-marker:focus-visible .marker-label {
             transform: scale(1.15);
             transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
         }
@@ -376,11 +378,11 @@ AnnotationController.prototype.initialize = function() {
             outline: 2px solid rgba(255, 255, 255, 0.95);
             outline-offset: 3px;
         }
-        .marker-dot {
+        .marker-dot, .marker-label {
             transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
         }
         /* A cor de cada marcador vive aqui, e é dela que saem o quadrado,
-           o traço e o contorno da miniatura: verde nos testemunhos,
+           o poste e o contorno da miniatura: verde nos testemunhos,
            vermelho nas rotas, a cor do fundo do site nas duas paragens do
            céu (a fotografia do alto e o timelapse). */
         .annotation-marker {
@@ -391,12 +393,6 @@ AnnotationController.prototype.initialize = function() {
         }
         .annotation-marker.marcador-do-ceu {
             --cor-da-anotacao: #05050a;
-        }
-        /* Já visto: o marcador apaga-se em cinzento, e o traço e o
-           contorno da miniatura com ele, para se perceber de relance o que
-           falta ver sem que o que já se viu desapareça. */
-        .annotation-marker:has(> .marker-dot.viewed) {
-            --cor-da-anotacao: #8a8f98;
         }
         .marker-dot {
             width: 32px;
@@ -410,10 +406,23 @@ AnnotationController.prototype.initialize = function() {
             align-items: center;
             justify-content: center;
         }
-        /* Repetido à parte do de cima para o cinzento não depender de o
-           navegador saber ler ":has". */
+        /* Já visto: o marcador apaga-se em cinzento, para se perceber de
+           relance o que falta ver sem que o que já se viu desapareça. E
+           fica mais simples: sem poste nem miniatura, só o quadrado com o
+           nome por baixo, como eram os marcadores antes de as terem. Quem
+           põe a roupa "marcador-visto" é arrumarMiniaturas. */
         .marker-dot.viewed {
             background-color: #8a8f98;
+        }
+        .annotation-marker .marker-label {
+            display: none;
+        }
+        .annotation-marker.marcador-visto .marker-label {
+            display: block;
+        }
+        .annotation-marker.marcador-visto .miniatura,
+        .annotation-marker.marcador-visto .miniatura-traco {
+            display: none;
         }
 
         /* ---- A miniatura ----
@@ -449,7 +458,10 @@ AnnotationController.prototype.initialize = function() {
         .miniatura-traco {
             position: absolute;
             /* Nasce no meio do quadrado (32 por 32), por baixo dele, e é
-               esticado e rodado até à miniatura. */
+               esticado e rodado até à miniatura. A grossura é a que o
+               navegador dá de facto ao contorno — ele acerta-o aos pontos
+               do ecrã, e 2,5 pode sair 2 —, posta por medidaDaMiniatura,
+               para o poste e o contorno serem o mesmo risco. */
             left: 16px;
             top: calc(16px - var(--traco-da-miniatura) / 2);
             width: 100px;
@@ -1384,8 +1396,9 @@ AnnotationController.prototype.initialize = function() {
             // direitas, de cantos vivos, e a dobra com a inclinação das
             // riscas da claquete dos créditos. O mesmo desenho está na
             // legenda, nas instruções e nas placas dos óculos. O nome vai
-            // na miniatura. A fotografia do alto do bairro dispensa as duas
-            // coisas: fica só um olho, pousado no céu.
+            // na miniatura, ou por baixo, depois de visto. A fotografia do
+            // alto do bairro dispensa as duas coisas: fica só um olho,
+            // pousado no céu.
             //
             // Os desenhos (testemunho, rota e olho) têm as mesmas medidas:
             // 24 pontos no quadrado de 32, com 20 de largura lá dentro e o
@@ -1413,6 +1426,7 @@ AnnotationController.prototype.initialize = function() {
                 <div class="marker-dot is-360 ${ann.isImage ? 'is-foto' : ''} ${isViewed ? 'viewed' : ''}">
                     ${simbolo}
                 </div>
+                <div class="marker-label">${ann.label}</div>
             `;
         } else {
             el.innerHTML = `
@@ -1423,6 +1437,7 @@ AnnotationController.prototype.initialize = function() {
                         <line x1="7" y1="12" x2="12" y2="12"></line>
                     </svg>
                 </div>
+                <div class="marker-label">${ann.label}</div>
             `;
         }
 
@@ -1430,8 +1445,10 @@ AnnotationController.prototype.initialize = function() {
         // marcador. A imagem chega mais tarde (ver encherMiniaturas), e o
         // lugar dela é escolhido a cada imagem (ver arrumarMiniaturas);
         // até lá fica recolhida. Para quem não vê o ecrã não acrescenta
-        // nada: o nome do botão já diz de quem é e o que é.
+        // nada: o nome do botão já diz de quem é e o que é. Um marcador já
+        // visto não a mostra: fica com o nome por baixo do quadrado.
         el.classList.add('miniatura-recolhida');
+        if (isViewed) el.classList.add('marcador-visto');
         el.insertAdjacentHTML('beforeend', `
             <div class="miniatura-traco" aria-hidden="true"></div>
             <div class="miniatura" aria-hidden="true">
@@ -3827,9 +3844,10 @@ AnnotationController.prototype.update = function(dt) {
    preferido para o último: o poste curto com a miniatura à direita, à
    esquerda, e depois o poste a crescer, degrau a degrau. Sem lugar livre,
    a miniatura recolhe-se e fica só o quadrado; volta quando se aproximar
-   a câmara ou o bairro rodar. Os quadrados também não se tapam uns aos
-   outros: o de trás some-se, com miniatura e tudo, enquanto o da frente
-   lhe estiver em cima.
+   a câmara ou o bairro rodar. Os marcadores já vistos não têm miniatura —
+   só o quadrado e o nome por baixo —, e as outras também não os tapam.
+   Os marcadores também não se tapam uns aos outros: o de trás some-se,
+   com miniatura e tudo, enquanto o da frente lhe estiver em cima.
 
    Para não andar a saltar de um lado para o outro enquanto a câmara mexe,
    uma miniatura só troca o seu lugar por um melhor se ele estiver livre
@@ -3876,9 +3894,15 @@ const MEDIR_PECAS_A_CADA_MS = 1000;
 /**
  * As caixas das peças do site que estão à vista por cima do bairro.
  *
+ * Cada peça conta com o maior tamanho que já teve: o nome do cabeçalho vai
+ * trocando entre "Malha Viva" e "Bairro de Penajóia" (ver index.html), e
+ * uma miniatura ao pé dele ia e vinha a cada troca. As lembranças
+ * esquecem-se quando a janela muda de tamanho ou de língua.
+ *
+ * @param {Map<Element, object>} lembradas - O maior tamanho de cada peça.
  * @returns {{x0: number, y0: number, x1: number, y1: number}[]} As caixas.
  */
-function caixasDasPecasDoEcra() {
+function caixasDasPecasDoEcra(lembradas) {
     const caixas = [];
     for (const el of document.querySelectorAll(PECAS_DO_ECRA)) {
         if (el.checkVisibility && !el.checkVisibility({ opacityProperty: true, visibilityProperty: true })) {
@@ -3886,7 +3910,15 @@ function caixasDasPecasDoEcra() {
         }
         const r = el.getBoundingClientRect();
         if (r.width > 0 && r.height > 0) {
-            caixas.push({ x0: r.left, y0: r.top, x1: r.right, y1: r.bottom });
+            const antes = lembradas.get(el);
+            const caixa = antes
+                ? {
+                    x0: Math.min(antes.x0, r.left), y0: Math.min(antes.y0, r.top),
+                    x1: Math.max(antes.x1, r.right), y1: Math.max(antes.y1, r.bottom)
+                }
+                : { x0: r.left, y0: r.top, x1: r.right, y1: r.bottom };
+            lembradas.set(el, caixa);
+            caixas.push(caixa);
         }
     }
     return caixas;
@@ -3937,30 +3969,55 @@ function riscoTocaCaixa(r, c) {
 }
 
 /**
- * Onde fica a miniatura de um marcador num dos lugares possíveis.
+ * O ponto da miniatura onde o poste chega, medido a partir do canto de
+ * cima à esquerda dela.
  *
- * O poste sobe do meio do quadrado na direcção de "para cima", e a
- * miniatura agarra-se-lhe pelo canto de baixo — o esquerdo se ficar à
- * direita do poste, o direito se ficar à esquerda —, para o poste
- * continuar pelo contorno acima. Se a câmara olhar o bairro de cima e o
- * poste se deitar, a miniatura agarra-se mais a meio da altura, e até pelo
- * canto de cima, para nunca se pôr por cima do seu próprio poste.
+ * A miniatura agarra-se ao poste pelo canto de baixo — o esquerdo se ficar
+ * à direita do poste, o direito se ficar à esquerda. Se a câmara olhar o
+ * bairro de cima e o poste se deitar, agarra-se mais a meio da altura, e
+ * até pelo canto de cima, para nunca se pôr por cima do seu próprio poste.
+ *
+ * O ponto fica no meio do risco do contorno, e não na beira de fora dele:
+ * o poste, que tem a grossura do contorno, continua assim pelo contorno
+ * acima como um só risco, em vez de ficar meio risco ao lado, por fora.
+ *
+ * @param {number} lado - 0 à direita do poste, 1 à esquerda, e o que está
+ *     pelo meio enquanto desliza de um para o outro.
+ * @param {number} uy - Quanto o poste aponta para baixo no ecrã (-1 a
+ *     direito para cima).
+ * @param {{largura: number, altura: number, traco: number}} medida - As
+ *     medidas da miniatura.
+ * @returns {{x: number, y: number}} O ponto.
+ */
+function cantoDaMiniatura(lado, uy, medida) {
+    const agarra = Math.min(1, Math.max(0, 0.5 - uy / 0.6));
+    const meioTraco = medida.traco / 2;
+    return {
+        x: lado * medida.largura + (1 - 2 * lado) * meioTraco,
+        y: agarra * medida.altura + (1 - 2 * agarra) * meioTraco
+    };
+}
+
+/**
+ * Onde fica a miniatura de um marcador num dos lugares possíveis: o poste
+ * sobe do meio do quadrado na direcção de "para cima", e a miniatura
+ * agarra-se-lhe no alto (ver cantoDaMiniatura).
  *
  * @param {object} e - O marcador no ecrã (ver update).
- * @param {number} largura - A largura da miniatura, ao tamanho natural.
- * @param {number} altura - A altura da miniatura, ao tamanho natural.
+ * @param {{largura: number, altura: number, traco: number}} medida - As
+ *     medidas da miniatura, ao tamanho natural.
  * @param {number} degrau - Quantos degraus cresceu o poste.
  * @param {number} lado - 0 à direita do poste, 1 à esquerda.
  * @returns {object} O lugar: o poste e a caixa, no ecrã, e as medidas para
  *     a pôr lá.
  */
-function lugarDaMiniatura(e, largura, altura, degrau, lado) {
+function lugarDaMiniatura(e, medida, degrau, lado) {
     const poste = POSTE_MAIS_CURTO + degrau * DEGRAU_DO_POSTE;
     const px = e.ux * poste;
     const py = e.uy * poste;
-    const agarra = Math.min(1, Math.max(0, 0.5 - e.uy / 0.6));
-    const x0 = px - lado * largura;
-    const y0 = py - agarra * altura;
+    const canto = cantoDaMiniatura(lado, e.uy, medida);
+    const x0 = px - canto.x;
+    const y0 = py - canto.y;
     const s = e.escala;
     const folga = FOLGA_DA_MINIATURA * s;
     return {
@@ -3969,27 +4026,35 @@ function lugarDaMiniatura(e, largura, altura, degrau, lado) {
         caixa: {
             x0: e.x + x0 * s - folga,
             y0: e.y + y0 * s - folga,
-            x1: e.x + (x0 + largura) * s + folga,
-            y1: e.y + (y0 + altura) * s + folga
+            x1: e.x + (x0 + medida.largura) * s + folga,
+            y1: e.y + (y0 + medida.altura) * s + folga
         },
         risco: { x0: e.x, y0: e.y, x1: e.x + px * s, y1: e.y + py * s }
     };
 }
 
 /**
- * O tamanho de uma miniatura, ao tamanho natural do marcador. É igual em
- * todas, e só muda quando a janela muda de tamanho (no telemóvel são mais
- * pequenas).
+ * O tamanho de uma miniatura, ao tamanho natural do marcador, e a grossura
+ * que o navegador deu ao contorno dela. É igual em todas, e só muda quando
+ * a janela muda de tamanho (no telemóvel são mais pequenas).
  *
- * @returns {{largura: number, altura: number}|null} As medidas, ou nada se
- *     ainda não houver nenhuma miniatura à vista para medir.
+ * A grossura do contorno passa logo para os postes: o navegador acerta-a
+ * aos pontos do ecrã (os 2,5 da roupa saem 2 num ecrã comum), e um poste
+ * mais grosso do que o contorno não se lia como o mesmo risco.
+ *
+ * @returns {{largura: number, altura: number, traco: number}|null} As
+ *     medidas, ou nada se ainda não houver nenhuma miniatura para medir.
  */
 AnnotationController.prototype.medidaDaMiniatura = function() {
     if (this._medidaDaMiniatura) {
         return this._medidaDaMiniatura;
     }
     if (!this._vigiaDaMedida) {
-        this._vigiaDaMedida = () => { this._medidaDaMiniatura = null; };
+        // Os nomes por baixo dos já vistos também se voltam a medir.
+        this._vigiaDaMedida = () => {
+            this._medidaDaMiniatura = null;
+            this.annotations.forEach((ann) => { ann._caixaVista = null; });
+        };
         window.addEventListener('resize', this._vigiaDaMedida);
         // A letra do nome pode chegar depois da primeira medida.
         if (document.fonts && document.fonts.ready) {
@@ -3999,11 +4064,44 @@ AnnotationController.prototype.medidaDaMiniatura = function() {
     for (const ann of this.annotations) {
         const cartao = ann.element && ann.element.querySelector('.miniatura');
         if (cartao && cartao.offsetWidth > 0) {
-            this._medidaDaMiniatura = { largura: cartao.offsetWidth, altura: cartao.offsetHeight };
+            const traco = parseFloat(getComputedStyle(cartao).borderLeftWidth) || 2;
+            this._medidaDaMiniatura = { largura: cartao.offsetWidth, altura: cartao.offsetHeight, traco };
+            this.annotations.forEach((outra) => {
+                const poste = outra.element && outra.element.querySelector('.miniatura-traco');
+                if (poste) {
+                    poste.style.height = traco + 'px';
+                    poste.style.top = (MARKER_DOT_HALF - traco / 2) + 'px';
+                }
+            });
             return this._medidaDaMiniatura;
         }
     }
     return null;
+};
+
+/**
+ * A caixa de um marcador no ecrã: só o quadrado, ou, se já foi visto, o
+ * quadrado com o nome por baixo.
+ *
+ * @param {object} ann - A anotação.
+ * @returns {{x0: number, y0: number, x1: number, y1: number}} A caixa.
+ */
+AnnotationController.prototype.caixaDoMarcador = function(ann) {
+    const e = ann._ecra;
+    const s = e.escala;
+    if (!ann._visto) {
+        const meio = MARKER_DOT_HALF * s;
+        return { x0: e.x - meio, y0: e.y - meio, x1: e.x + meio, y1: e.y + meio };
+    }
+    // O tamanho do marcador sem a escala (o nome muda de marcador para
+    // marcador), medido uma vez; o update agarra-o pelo meio do quadrado,
+    // ao centro da largura.
+    if (!ann._caixaVista) {
+        ann._caixaVista = { largura: ann.element.offsetWidth, altura: ann.element.offsetHeight };
+    }
+    const { largura, altura } = ann._caixaVista;
+    const y0 = e.y - MARKER_DOT_HALF * s;
+    return { x0: e.x - largura * s / 2, y0, x1: e.x + largura * s / 2, y1: y0 + altura * s };
 };
 
 /**
@@ -4038,14 +4136,36 @@ AnnotationController.prototype.taparMarcador = function(ann, tapado) {
  * @param {number} dt - Segundos desde a última imagem.
  */
 AnnotationController.prototype.arrumarMiniaturas = function(dt) {
+    // Os já vistos ficam só com o quadrado e o nome por baixo. A marca de
+    // visto é posta e tirada em vários sítios (marcarComoVisto, o clique
+    // que recomeça a colecção); é aqui que o marcador inteiro a segue.
+    for (const ann of this.annotations) {
+        if (!ann.element) continue;
+        if (!ann._ponto) ann._ponto = ann.element.querySelector('.marker-dot');
+        const visto = !!ann._ponto && ann._ponto.classList.contains('viewed');
+        if (visto !== !!ann._visto) {
+            ann._visto = visto;
+            ann._caixaVista = null;
+            ann._lugar = null;
+            ann.element.classList.toggle('marcador-visto', visto);
+            ann.element.classList.add('miniatura-recolhida');
+        }
+    }
+
+    // Sem nenhuma miniatura para medir (todos vistos), não há miniaturas a
+    // arrumar — mas os marcadores continuam a não se poder tapar.
     const medida = this.medidaDaMiniatura();
-    if (!medida) return;
-    const { largura, altura } = medida;
     const ecraL = window.innerWidth;
     const ecraA = window.innerHeight;
     const agora = performance.now();
+    if (!this._pecasLembradas) {
+        this._pecasLembradas = new Map();
+        const esquecer = () => this._pecasLembradas.clear();
+        window.addEventListener('resize', esquecer);
+        window.addEventListener('idiomamudou', esquecer);
+    }
     if (!this._pecasDoEcra || agora - this._pecasDoEcra.quando > MEDIR_PECAS_A_CADA_MS) {
-        this._pecasDoEcra = { quando: agora, caixas: caixasDasPecasDoEcra() };
+        this._pecasDoEcra = { quando: agora, caixas: caixasDasPecasDoEcra(this._pecasLembradas) };
     }
     const pecas = this._pecasDoEcra.caixas;
 
@@ -4068,15 +4188,14 @@ AnnotationController.prototype.arrumarMiniaturas = function(dt) {
         (ann._lugar && ann._lugar.escolha >= 0 ? VANTAGEM_DE_QUEM_LA_ESTA : 1);
     presentes.sort((a, b) => vez(a) - vez(b));
 
-    // Primeiro os quadrados. Um marcador cujo quadrado toque no de outro
-    // mais perto fica por trás dele, como uma casa atrás de outra: some-se
-    // logo, e só volta quando tiver o seu espaço livre durante um bocadinho.
+    // Primeiro os marcadores em si — o quadrado, e nos já vistos o nome por
+    // baixo. Um que toque noutro mais perto fica por trás dele, como uma
+    // casa atrás de outra: some-se logo, e só volta quando tiver o seu
+    // espaço livre durante um bocadinho.
     const aVista = [];
     const quadrados = [];
     for (const ann of presentes) {
-        const e = ann._ecra;
-        const meio = MARKER_DOT_HALF * e.escala;
-        const quadrado = { x0: e.x - meio, y0: e.y - meio, x1: e.x + meio, y1: e.y + meio };
+        const quadrado = this.caixaDoMarcador(ann);
         let tapado = false;
         if (quadrados.some((q) => caixasTocam(quadrado, q))) {
             tapado = true;
@@ -4097,10 +4216,13 @@ AnnotationController.prototype.arrumarMiniaturas = function(dt) {
         quadrados.push(quadrado);
     }
 
+    if (!medida) return;
     const caixasOcupadas = [];
     const riscosOcupados = [];
 
     aVista.forEach((ann, quem) => {
+        // Os já vistos não têm miniatura: contam só como obstáculo.
+        if (ann._visto) return;
         const e = ann._ecra;
 
         // Todos os lugares, pela ordem de preferência. Um poste deitado
@@ -4113,7 +4235,7 @@ AnnotationController.prototype.arrumarMiniaturas = function(dt) {
                     lugares.push(null);
                     continue;
                 }
-                const lugar = lugarDaMiniatura(e, largura, altura, degrau, lado);
+                const lugar = lugarDaMiniatura(e, medida, degrau, lado);
                 const c = lugar.caixa;
                 // O quadrado do próprio marcador também conta.
                 const tapa = quadrados.some((q) => caixasTocam(c, q)) ||
@@ -4168,7 +4290,7 @@ AnnotationController.prototype.arrumarMiniaturas = function(dt) {
             caixasOcupadas.push(lugar.caixa);
             riscosOcupados.push(lugar.risco);
         }
-        this.porMiniatura(ann, lugar, escolha, antes, largura, altura, dt);
+        this.porMiniatura(ann, lugar, escolha, antes, medida, dt);
     });
 };
 
@@ -4180,11 +4302,11 @@ AnnotationController.prototype.arrumarMiniaturas = function(dt) {
  * @param {object|null} lugar - O lugar, ou nada para a recolher.
  * @param {number} escolha - O número do lugar (-1 recolhida).
  * @param {object|null} antes - O que estava antes.
- * @param {number} largura - A largura da miniatura.
- * @param {number} altura - A altura da miniatura.
+ * @param {{largura: number, altura: number, traco: number}} medida - As
+ *     medidas da miniatura.
  * @param {number} dt - Segundos desde a última imagem.
  */
-AnnotationController.prototype.porMiniatura = function(ann, lugar, escolha, antes, largura, altura, dt) {
+AnnotationController.prototype.porMiniatura = function(ann, lugar, escolha, antes, medida, dt) {
     const el = ann.element;
     const e = ann._ecra;
     const estado = antes || { espera: 0, poste: 0, lado: 0 };
@@ -4214,20 +4336,19 @@ AnnotationController.prototype.porMiniatura = function(ann, lugar, escolha, ante
 
     const px = e.ux * estado.poste;
     const py = e.uy * estado.poste;
-    const agarra = Math.min(1, Math.max(0, 0.5 - e.uy / 0.6));
-    const cantoX = estado.lado * largura;
-    const cantoY = agarra * altura;
+    const canto = cantoDaMiniatura(estado.lado, e.uy, medida);
     const angulo = Math.atan2(e.uy, e.ux) * 180 / Math.PI;
 
     if (!estado.traco) {
         estado.traco = el.querySelector('.miniatura-traco');
         estado.cartao = el.querySelector('.miniatura');
     }
-    // O poste vai um pouco para dentro da miniatura, por baixo do
-    // contorno, para os dois se lerem como um só risco.
+    // O poste chega ao meio do risco do contorno e segue mais um risco
+    // por baixo da miniatura, escondido, para não se ver a ponta dele.
     estado.traco.style.transform =
-        `rotate(${angulo.toFixed(2)}deg) scaleX(${((estado.poste + 3) / 100).toFixed(3)})`;
+        `rotate(${angulo.toFixed(2)}deg) scaleX(${((estado.poste + medida.traco) / 100).toFixed(4)})`;
     estado.cartao.style.translate =
-        `${(MARKER_DOT_HALF + px - cantoX).toFixed(1)}px ${(MARKER_DOT_HALF + py - cantoY).toFixed(1)}px`;
-    estado.cartao.style.transformOrigin = `${cantoX.toFixed(1)}px ${cantoY.toFixed(1)}px`;
+        `${(MARKER_DOT_HALF + px - canto.x).toFixed(2)}px ${(MARKER_DOT_HALF + py - canto.y).toFixed(2)}px`;
+    // Com o rato em cima, cresce a partir de onde o poste chega.
+    estado.cartao.style.transformOrigin = `${canto.x.toFixed(2)}px ${canto.y.toFixed(2)}px`;
 };
