@@ -420,24 +420,26 @@ AnnotationController.prototype.initialize = function() {
         .annotation-marker.marcador-visto .marker-label {
             display: block;
         }
-        .annotation-marker.marcador-visto .miniatura,
-        .annotation-marker.marcador-visto .miniatura-traco {
-            display: none;
-        }
-        /* Com o rato em cima, o já visto mostra a miniatura enquanto lá
-           estiver (ver ratoEmCima), em cinzento como ele. O nome por baixo
-           fica invisível mas no sítio: se saísse, o marcador encolhia, e o
-           rato que estivesse em cima do nome ficava de fora e a miniatura
-           fechava-se logo. */
+        /* A miniatura de um já visto fica recolhida — transparente, como as
+           que não têm lugar —, e não fora da página: assim, quando o rato
+           lha mostra (ver ratoEmCima), surge a esbater e a crescer como as
+           outras, em vez de aparecer de repente. Em cinzento, como ele.
+           Enquanto ela está à vista, o nome por baixo esbate-se, e volta
+           quando ela se recolhe; fica invisível mas no sítio, porque se
+           saísse o marcador encolhia, o rato que estivesse em cima do nome
+           ficava de fora e a miniatura fechava-se logo. */
         .annotation-marker.marcador-visto {
             --cor-da-anotacao: #8a8f98;
         }
-        .annotation-marker.marcador-visto.a-espreitar .miniatura,
-        .annotation-marker.marcador-visto.a-espreitar .miniatura-traco {
-            display: block;
+        .annotation-marker.marcador-visto .marker-label {
+            transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1),
+                opacity 0.25s ease, visibility 0s;
         }
-        .annotation-marker.marcador-visto.a-espreitar .marker-label {
+        .annotation-marker.marcador-visto:not(.miniatura-recolhida) .marker-label {
+            opacity: 0;
             visibility: hidden;
+            transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1),
+                opacity 0.25s ease, visibility 0s linear 0.25s;
         }
 
         /* ---- A miniatura ----
@@ -3920,12 +3922,10 @@ const VANTAGEM_DE_QUEM_LA_ESTA = 0.8;
 
 // Com o rato em cima (ver ratoEmCima): quanto a miniatura cresce (o mesmo
 // "scale" da roupa); quanto tempo se espera, depois de ele sair, antes de a
-// largar; quanto leva a esbater-se a de um já visto antes de o nome voltar;
-// e quanto mais demora a voltar sozinha uma que só estava à vista por causa
-// dele, em segundos.
+// largar; e quanto mais demora a voltar sozinha uma que só estava à vista
+// por causa dele, em segundos.
 const CRESCE_COM_O_RATO = 1.15;
 const LARGAR_O_RATO_MS = 500;
-const ESBATER_DO_ESPREITAR_MS = 250;
 const ESPERA_DEPOIS_DE_ESPREITAR = 1.0;
 
 const acima = new pc.Vec3();
@@ -4226,7 +4226,6 @@ AnnotationController.prototype.arrumarMiniaturas = function(dt) {
             ann._caixaVista = null;
             ann._lugar = null;
             ann.element.classList.toggle('marcador-visto', visto);
-            ann.element.classList.remove('a-espreitar');
             ann.element.classList.add('miniatura-recolhida');
         }
     }
@@ -4269,7 +4268,6 @@ AnnotationController.prototype.arrumarMiniaturas = function(dt) {
             // dele: recolhe-se já, e demora mais a voltar sozinha do que as
             // que lhe tinham dado o lugar, para essas o reaverem.
             deixado._espreitou = false;
-            deixado._fimDoEspreitar = agora;
             if (deixado._lugar) {
                 deixado._lugar.escolha = -1;
                 deixado._lugar.espera = -ESPERA_DEPOIS_DE_ESPREITAR;
@@ -4278,10 +4276,6 @@ AnnotationController.prototype.arrumarMiniaturas = function(dt) {
         if (sobRato) {
             sobRato._espreitou = sobRato._visto ||
                 !(sobRato._lugar && sobRato._lugar.escolha >= 0);
-            // Já aqui, e não só mais abaixo: com todos os marcadores vistos
-            // não há outra miniatura à vista para se medir, e esta tem de
-            // aparecer para o poder ser.
-            if (sobRato._visto) sobRato.element.classList.add('a-espreitar');
         }
         this._espreitado = sobRato;
     }
@@ -4331,22 +4325,13 @@ AnnotationController.prototype.arrumarMiniaturas = function(dt) {
         const comRato = ann === sobRato;
 
         // Os já vistos só têm miniatura com o rato em cima; de resto contam
-        // só como obstáculo. A que se esteve a espreitar esbate-se antes de
-        // o nome voltar a aparecer por baixo do quadrado.
-        if (ann._visto) {
+        // só como obstáculo, e a miniatura fica recolhida — esbate-se no
+        // sítio onde estava, e o nome volta por baixo do quadrado.
+        if (ann._visto && !comRato) {
             const el = ann.element;
-            if (comRato) {
-                if (!el.classList.contains('a-espreitar')) el.classList.add('a-espreitar');
-            } else {
-                if (el.classList.contains('a-espreitar')) {
-                    if (!el.classList.contains('miniatura-recolhida')) el.classList.add('miniatura-recolhida');
-                    if (agora - (ann._fimDoEspreitar || 0) > ESBATER_DO_ESPREITAR_MS) {
-                        el.classList.remove('a-espreitar');
-                        ann._lugar = null;
-                    }
-                }
-                return;
-            }
+            if (!el.classList.contains('miniatura-recolhida')) el.classList.add('miniatura-recolhida');
+            ann._lugar = null;
+            return;
         }
         const e = ann._ecra;
         const cresce = comRato ? CRESCE_COM_O_RATO : 1;
