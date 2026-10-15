@@ -3944,7 +3944,8 @@ AnnotationController.prototype.update = function(dt) {
    não tape nada: nem outra miniatura, nem o poste de outra, nem o quadrado
    de nenhum marcador, nem o cabeçalho e as outras peças do site que estão
    por cima do bairro. Os marcadores mais perto de quem vê escolhem
-   primeiro — são os maiores, e os que se estão a olhar. Os lugares, do
+   primeiro — são os maiores, e os que se estão a olhar —, e só os três
+   primeiros a ter lugar mostram a miniatura (ver MAXIMO_DE_MINIATURAS). Os lugares, do
    preferido para o último: o poste curto com a miniatura à direita, à
    esquerda, e depois o poste a crescer, degrau a degrau. Sem lugar livre,
    a miniatura recolhe-se e fica só o quadrado; volta quando se aproximar
@@ -3975,16 +3976,24 @@ const DEGRAUS_DO_POSTE = 6;
 // O espaço que fica, pelo menos, à volta de cada miniatura.
 const FOLGA_DA_MINIATURA = 6;
 
+// Quantas miniaturas se mostram de cada vez, no máximo: as dos marcadores
+// mais perto de quem vê. Os outros ficam com o nome por baixo do quadrado.
+// A que o rato mostra (ver ratoEmCima) não conta — é passageira, e tirar
+// outra do sítio para lhe dar a vez era mais um movimento.
+const MAXIMO_DE_MINIATURAS = 3;
+
 // Quanto tempo um lugar melhor tem de estar livre para a miniatura lá ir;
 // quanto tempo uma recolhida, ou um marcador escondido, espera com o lugar
-// livre antes de voltar; e quanto ela leva a deslizar, em segundos.
-const PACIENCIA_PARA_MELHORAR = 1.0;
-const PACIENCIA_DA_MINIATURA = 0.6;
-const DESLIZE_DA_MINIATURA = 0.12;
+// livre antes de voltar; e quanto ela leva a deslizar, em segundos. Com
+// folga, para as miniaturas não andarem a saltar com a câmara a mexer.
+const PACIENCIA_PARA_MELHORAR = 2.0;
+const PACIENCIA_DA_MINIATURA = 1.0;
+const DESLIZE_DA_MINIATURA = 0.2;
 
-// Uma miniatura já à vista escolhe o lugar como se estivesse este tanto da
-// sua distância (ver arrumarMiniaturas).
-const VANTAGEM_DE_QUEM_LA_ESTA = 0.8;
+// Uma miniatura já à vista escolhe o lugar — e fica entre as que se
+// mostram — como se estivesse este tanto da sua distância (ver
+// arrumarMiniaturas): só cede a vez a uma que esteja bem mais perto.
+const VANTAGEM_DE_QUEM_LA_ESTA = 0.7;
 
 // Com o rato em cima (ver ratoEmCima): quanto a miniatura cresce (o mesmo
 // "scale" da roupa); quanto tempo se espera, depois de ele sair, antes de a
@@ -4449,8 +4458,12 @@ AnnotationController.prototype.arrumarMiniaturas = function(dt) {
     const caixasOcupadas = [];
     const riscosOcupados = [];
 
+    let postas = 0;
     if (medida) aVista.forEach((ann, quem) => {
         const comRato = ann === sobRato;
+        // A que só está à vista por o rato estar em cima não conta para o
+        // máximo (ver MAXIMO_DE_MINIATURAS).
+        const deEspreitar = comRato && ann._espreitou;
 
         // Os já vistos só têm miniatura com o rato em cima; de resto contam
         // só como obstáculo, e a miniatura fica recolhida — esbate-se no
@@ -4459,6 +4472,16 @@ AnnotationController.prototype.arrumarMiniaturas = function(dt) {
             const el = ann.element;
             if (!el.classList.contains('miniatura-recolhida')) el.classList.add('miniatura-recolhida');
             ann._lugar = null;
+            return;
+        }
+
+        // Já há miniaturas que cheguem à vista: esta recolhe-se, e quando
+        // voltar a ter a vez espera o lugar livre um bocadinho, como as
+        // outras recolhidas.
+        if (postas >= MAXIMO_DE_MINIATURAS && !deEspreitar) {
+            const antes = ann._lugar;
+            if (antes) antes.espera = 0;
+            this.porMiniatura(ann, null, -1, antes, medida, dt);
             return;
         }
         const e = ann._ecra;
@@ -4538,8 +4561,14 @@ AnnotationController.prototype.arrumarMiniaturas = function(dt) {
         if (lugar) {
             caixasOcupadas.push(lugar.caixa);
             riscosOcupados.push(lugar.risco);
+            if (!deEspreitar) postas++;
         }
         this.porMiniatura(ann, lugar, escolha, antes, medida, dt);
+        // A meio de um deslize, ocupa também o sítio por onde vai a passar.
+        if (lugar && ann._lugar && ann._lugar.noEcra) {
+            caixasOcupadas.push(ann._lugar.noEcra.caixa);
+            riscosOcupados.push(ann._lugar.noEcra.risco);
+        }
     });
 
     // Por fim os nomes por baixo dos quadrados — dos já vistos, e dos que
@@ -4631,6 +4660,21 @@ AnnotationController.prototype.porMiniatura = function(ann, lugar, escolha, ante
     estado.py = py;
     estado.canto = canto;
     this.assentarCartao(ann);
+
+    // Onde está de facto no ecrã, que a meio de um deslize não é o lugar
+    // escolhido: as outras miniaturas e os nomes também se desviam daqui
+    // (ver arrumarMiniaturas).
+    const s = e.escala;
+    const folga = FOLGA_DA_MINIATURA * s;
+    estado.noEcra = {
+        caixa: {
+            x0: e.x + (px - canto.x) * s - folga,
+            y0: e.y + (py - canto.y) * s - folga,
+            x1: e.x + (px - canto.x + medida.largura) * s + folga,
+            y1: e.y + (py - canto.y + medida.altura) * s + folga
+        },
+        risco: { x0: e.x, y0: e.y, x1: e.x + px * s, y1: e.y + py * s }
+    };
     // Com o rato em cima, cresce a partir de onde o poste chega.
     estado.cartao.style.transformOrigin = `${canto.x.toFixed(2)}px ${canto.y.toFixed(2)}px`;
 };
