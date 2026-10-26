@@ -131,30 +131,93 @@ reproduzível.
 
 ## Reproduzir noutro bairro
 
-O caminho que o Malha Viva seguiu, e onde cada parte vive neste repositório:
+Um projeto como o Malha Viva não se reproduz copiando o código: reproduz-se
+refazendo o trabalho com outro bairro. O código é uma das ferramentas; o que
+faz a obra é o processo, feito *com* quem lá vive e não *sobre* quem lá vive.
+São sete fases, pela ordem em que acontecem — e cada uma pede tanto ao bairro
+como a quem filma.
 
-1. **Primeiro, a comunidade.** Tudo começa por um trabalho feito com os
-   moradores — o que filmar, onde, com quem, e o que fica de fora. Algumas
-   localizações reais não estão no mapa de propósito.
-2. **O mapa.** Fotografias aéreas de drone transformadas num *Gaussian Splat*
-   (aqui com o MipMap), desenhado no navegador pelo motor PlayCanvas
-   ([`public/splat`](public/splat), [`public/index.html`](public/index.html)),
-   com níveis de qualidade para funcionar de um telemóvel modesto a um
-   computador potente.
-3. **Os testemunhos.** Entrevistas filmadas, guardadas na nuvem em várias
-   resoluções ([`public/videos.mjs`](public/videos.mjs)), com legendas em
-   português, inglês e espanhol ([`scripts/legendas`](scripts/legendas)).
-4. **As rotas 360º.** Filmadas com uma câmara de duas lentes, com o pau
-   escondido no ângulo morto da imagem; a direção da cara de quem guia é
-   medida filme fora ([`scripts/seguir-a-cara.py`](scripts/seguir-a-cara.py))
-   e o leitor ([`public/video360.html`](public/video360.html)) vai atrás dela,
-   com a vista de quem vê por cima.
-5. **Os pontos no mapa.** Cada testemunho, rota e fotografia é um marcador em
-   [`public/annotations.mjs`](public/annotations.mjs), com miniatura
-   ([`scripts/gerar-miniaturas.mjs`](scripts/gerar-miniaturas.mjs)) e com as
-   regras de acessibilidade de [`AGENTS.md`](AGENTS.md).
-6. **Publicar.** O site corre na Cloudflare (Workers e R2), num endereço que
-   qualquer pessoa pode abrir.
+### 1. Combinar para que serve, e para quem
+
+Antes de filmar ou de levantar um drone, decidir com os moradores — e com a
+associação de moradores, se houver — o que o mapa tem de fazer: pôr o bairro
+num mapa de onde está apagado, apoiar uma reivindicação junto das
+instituições, guardar a memória de como foi construído. A resposta decide o
+que entra e o que fica de fora. Planear quem faz o quê, e deixar o plano
+aberto a mudar pelo caminho.
+
+### 2. Chegar a toda a gente, e pedir licença
+
+Conversar porta a porta e nos sítios onde o bairro se junta, com convites e
+cartazes, para chegar a quem não costuma falar e não só aos porta-vozes de
+sempre. Quem aparece no mapa sabe o que é o projeto, onde vai ser visto —
+aberto, na internet, por qualquer pessoa — e que pode dizer que não, usar um
+nome fictício ou pedir mais tarde para retirar alguma coisa; no Malha Viva,
+há testemunhos com nomes fictícios. E juntar gerações: os mais novos ajudam
+os mais velhos com a tecnologia, os mais velhos trazem a memória do sítio.
+
+### 3. Olhar o bairro de cima, juntos
+
+Antes de decidir o que mapear, ver o bairro de um ponto de vista pouco
+habitual: as fotografias de satélite ao longo dos anos, o primeiro voo de
+drone, o modelo 3D no telemóvel. É uma aprendizagem para os dois lados —
+quem mora aprende a ler o mapa, quem filma aprende a ler o bairro. O próprio
+voo combina-se com os moradores: o olhar aéreo que serve para vigiar o
+bairro passa, aqui, a estar do lado dele.
+
+### 4. O bairro decide o que entra, e como
+
+São os moradores que escolhem o que vai para o mapa, o que fica de fora e
+como se mostra: que lugares, que histórias, que caminhos. No Malha Viva,
+algumas localizações reais ficaram fora do mapa de propósito. Os sítios têm
+os nomes que o bairro lhes dá, na língua em que os diz; os ícones e as cores
+dos pontos combinam-se em conjunto. Cada pessoa escolhe o que conta no seu
+testemunho, e as rotas são guiadas por quem lá vive: a de Esvarena de Sousa
+é dela, e a câmara vai atrás dela.
+
+### 5. Construir o mapa
+
+A parte técnica, e onde cada peça vive neste repositório:
+
+- **O mapa.** Fotografias aéreas de drone transformadas num *Gaussian Splat*
+  (aqui com o MipMap), desenhado no navegador pelo motor PlayCanvas
+  ([`public/splat`](public/splat), [`public/index.html`](public/index.html)),
+  com níveis de qualidade para funcionar de um telemóvel modesto a um
+  computador potente.
+- **Os testemunhos.** Entrevistas filmadas, guardadas na nuvem em várias
+  resoluções ([`public/videos.mjs`](public/videos.mjs)), com legendas em
+  português, inglês e espanhol ([`scripts/legendas`](scripts/legendas)).
+- **As rotas 360º.** Filmadas com uma câmara de duas lentes, com o pau
+  escondido no ângulo morto da imagem; a direção da cara de quem guia é
+  medida filme fora ([`scripts/seguir-a-cara.py`](scripts/seguir-a-cara.py))
+  e o leitor ([`public/video360.html`](public/video360.html)) vai atrás dela,
+  com a vista de quem vê por cima.
+- **Os pontos no mapa.** Cada testemunho, rota e fotografia é um marcador em
+  [`public/annotations.mjs`](public/annotations.mjs), com miniatura
+  ([`scripts/gerar-miniaturas.mjs`](scripts/gerar-miniaturas.mjs)) e com as
+  regras de acessibilidade de [`AGENTS.md`](AGENTS.md).
+
+### 6. Mostrar, corrigir, voltar a mostrar
+
+Antes de publicar, mostrar o mapa a quem nele aparece. Cada pessoa vê o seu
+testemunho inteiro e confirma os sítios e os nomes; o que estiver errado, ou
+a deixar alguém desconfortável, corrige-se ou sai. Num dos testemunhos do
+Malha Viva, um morador conta como as reportagens cortavam partes importantes
+do que os moradores diziam — por isso, aqui, nada se corta sem eles. Repete-se
+até o bairro se reconhecer no mapa. No fim, o mapa diz quem o fez: os
+moradores ficam nos créditos, com o seu acordo.
+
+### 7. Devolver o mapa ao bairro
+
+O mapa tem de servir sem quem o fez: aberto e gratuito, publicado num
+endereço que qualquer pessoa abre no telemóvel (aqui, na Cloudflare, com
+Workers e R2), nas línguas do bairro e acessível a quem não vê o ecrã. Os
+meios ficam à vista — o código e este método são abertos, sob
+[CC BY-NC-SA](LICENSE.md) —, para que a associação o possa levar às suas
+reivindicações, junto das instituições, da imprensa e dos vizinhos, e para
+que outros bairros façam o seu. E o bairro cresce todos os dias: o mapa
+pode crescer com ele, com novos voos e novos testemunhos, como o Retroceder
+mostra o terreno a mudar ano após ano.
 
 ---
 
