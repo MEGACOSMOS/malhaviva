@@ -5,7 +5,7 @@ em Almada, que não aparece nos mapas.
 
 [**malhaviva.pt**](https://malhaviva.pt) · [Créditos](https://malhaviva.pt/creditos) · [Controlos](https://malhaviva.pt/controlos) · [Licença](LICENSE.md)
 
-![O Bairro de Penajóia no Malha Viva: o modelo 3D do bairro, com Lisboa e a ponte ao fundo, e os pontos dos testemunhos e das rotas.](docs/mapa.jpg)
+![O mapa inteiro do Malha Viva: o modelo 3D do Bairro de Penajóia visto do alto, com o Tejo, a ponte 25 de Abril e Lisboa no horizonte, e os pontos dos testemunhos e das rotas espalhados pelo bairro.](docs/mapa.jpg)
 
 > *I am the cinema-eye. I am a constructor.*
 > — Dziga Vertov, 1923
