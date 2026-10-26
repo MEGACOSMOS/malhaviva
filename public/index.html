@@ -2,7 +2,9 @@
 <html lang="pt">
 <head>
     <meta charset="UTF-8">
-    <!-- O ícone do separador: as iniciais do logótipo (ver scripts/fazer-icone.mjs). -->
+    <!-- O ícone do separador: as iniciais do logótipo, escuras ou claras
+         conforme o modo do navegador (ver icone.js, mais abaixo, e
+         scripts/fazer-icone.mjs). -->
     <link rel="icon" href="/favicon.ico" sizes="32x32">
     <link rel="icon" href="/favicon.svg" type="image/svg+xml">
     <link rel="apple-touch-icon" href="/apple-touch-icon.png">
@@ -151,6 +153,9 @@
     <!-- O logótipo, no cabeçalho e no ecrã de espera. Também antes, pela
          mesma razão. -->
     <script src="/logotipo.js?v=1"></script>
+
+    <!-- O ícone do separador, escuro ou claro conforme o navegador. -->
+    <script src="/icone.js?v=1" defer></script>
 
     <!-- O aviso de "está a demorar" e a tecla de tentar de novo, os
          mesmos em todo o site. Antes de tudo, para estar cá mesmo que o

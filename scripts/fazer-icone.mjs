@@ -1,17 +1,31 @@
 /**
- * Faz o ícone do site — o quadradinho do separador do navegador — com as
- * iniciais do projecto: o "M" de MALHA, na letra cheia, e o "V" de VIVA,
- * na letra de fio, tirados do próprio logótipo (`public/logotipo.js`),
- * brancos num quadrado da cor do fundo do site.
+ * Faz o ícone do site — o do separador do navegador — com as iniciais do
+ * projecto: o "M" de MALHA, na letra cheia, e o "V" de VIVA, na letra de
+ * fio, tirados do próprio logótipo (`public/logotipo.js`).
+ *
+ * Não tem fundo: as letras ficam por cima da cor do separador, e por isso
+ * há duas — escuras (a cor do fundo do site) para o navegador em modo
+ * claro, e brancas para o navegador em modo escuro. Quem escolhe uma ou
+ * outra é `public/icone.js`.
  *
  * O fio do "V" é fino de mais para se ver num ícone de 16 pontos: aqui
- * leva um contorno da mesma cor, que o engrossa sem lhe mudar a forma.
+ * leva um contorno da mesma cor, que o engrossa sem lhe mudar a forma. E
+ * o "V" é acertado ao tamanho do "M" — a mesma altura e a mesma largura,
+ * contorno incluído —, porque com o contorno, e mais largo do que o "M"
+ * como é no logótipo, parecia maior do que ele.
  *
  * Escreve em `public/`:
- *   favicon.svg            o ícone em desenho, para os navegadores que o lêem
- *   favicon.ico            16, 32 e 48 pontos, para os outros (e para quem
+ *   favicon.svg            o ícone em desenho, que muda de cor sozinho ao
+ *                          abrir a página (é o que fica sem icone.js)
+ *   favicon-escuro.svg     letras escuras, para o navegador em modo claro
+ *   favicon-claro.svg      letras brancas, para o navegador em modo escuro
+ *   favicon.ico            letras escuras, 16, 32 e 48 pontos, para os
+ *                          navegadores que não lêem desenhos (e para quem
  *                          o pede sem a página dizer onde está)
- *   apple-touch-icon.png   180 pontos, para o ecrã principal do iPhone
+ *   favicon-claro.ico      o mesmo, com letras brancas
+ *   apple-touch-icon.png   180 pontos, para o ecrã principal do iPhone —
+ *                          este com o fundo escuro do site, porque o
+ *                          iPhone pinta de preto o que for transparente
  *
  * Para o passar a imagens abre um Chrome à parte, sem janela, e desenha-o
  * lá. Corre-se de novo se o logótipo mudar:
@@ -29,6 +43,7 @@ import { fileURLToPath } from 'node:url';
 const raiz = join(dirname(fileURLToPath(import.meta.url)), '..');
 const publico = join(raiz, 'public');
 const dormir = (ms) => new Promise((r) => setTimeout(r, ms));
+const r = (n) => Math.round(n * 1000) / 1000;
 
 // ---- O desenho ----
 
@@ -49,27 +64,94 @@ const letraV = pedacos.find((p) => inicioDe(p) > 440);
 const M = { x0: 0, x1: 78.42, y0: 3.05, y1: 121.25 };
 const V = { x0: 455.87, x1: 543.19, y0: 3.05, y1: 123.4 };
 
+const ESCURO = '#05050a';  // a cor do fundo do site
+const CLARO = '#ffffff';
 const FIO_DO_V = 9;        // o contorno que engrossa o fio do "V"
 const ENTRE_LETRAS = 18;   // o espaço entre as duas
-const LADO = 220;          // o quadrado, com pouca folga à volta das letras
 
+/**
+ * Muda os números de um desenho: cada x por fx(x), e cada y por fy(y).
+ * Os desenhos do logótipo só usam ordens absolutas: M, L e Q levam pares
+ * x y, H só x, e V só y.
+ */
+function mexer(d, fx, fy) {
+    let ordem = '';
+    let i = 0;
+    return d.replace(/([MLHVQZ])|(-?[\d.]+)/g, (_, letra, numero) => {
+        if (letra) {
+            ordem = letra;
+            i = 0;
+            return letra;
+        }
+        const v = Number(numero);
+        const novo = ordem === 'H' ? fx(v) : ordem === 'V' ? fy(v) : i % 2 === 0 ? fx(v) : fy(v);
+        i++;
+        return String(r(novo));
+    });
+}
+
+// O "V" é acertado para que, com o contorno, ocupe a mesma caixa do "M":
+// do cimo à base dele, e da mesma largura. Fica com as pontas direitas,
+// como no logótipo.
+const alturaM = M.y1 - M.y0;
+const larguraM = M.x1 - M.x0;
 const meioFio = FIO_DO_V / 2;
-const puxarV = V.x0 - (M.x1 + ENTRE_LETRAS + meioFio);
-const largura = V.x1 - puxarV + meioFio - M.x0;
-const topo = Math.min(M.y0, V.y0 - meioFio);
-const fundo = Math.max(M.y1, V.y1 + meioFio);
-const dx = (LADO - largura) / 2 - M.x0;
-const dy = (LADO - (fundo - topo)) / 2 - topo;
-const r = (n) => Math.round(n * 100) / 100;
+const escalaX = (larguraM - FIO_DO_V) / (V.x1 - V.x0);
+const escalaY = (alturaM - FIO_DO_V) / (V.y1 - V.y0);
+const inicioV = M.x1 + ENTRE_LETRAS + meioFio;
+const desenhoV = mexer(letraV,
+    (x) => inicioV + escalaX * (x - V.x0),
+    (y) => M.y0 + meioFio + escalaY * (y - V.y0));
+const largura = 2 * larguraM + ENTRE_LETRAS;
 
-const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${LADO} ${LADO}">` +
-    `<rect width="${LADO}" height="${LADO}" fill="#05050a"/>` +
-    `<g fill="#fff" transform="translate(${r(dx)} ${r(dy)})">` +
-    `<path d="${letraM}"/>` +
-    `<path d="${letraV}" transform="translate(${r(-puxarV)} 0)" stroke="#fff" stroke-width="${FIO_DO_V}" stroke-linejoin="round"/>` +
-    `</g></svg>\n`;
-writeFileSync(join(publico, 'favicon.svg'), svg);
-console.log('favicon.svg');
+/**
+ * As duas letras, com o canto de cima à esquerda em (x, y).
+ *
+ * @param {number} x
+ * @param {number} y
+ * @param {string} cor - A cor das letras (ou currentColor).
+ */
+function letras(x, y, cor) {
+    return `<g fill="${cor}" transform="translate(${r(x - M.x0)} ${r(y - M.y0)})">` +
+        `<path d="${letraM}"/>` +
+        `<path d="${desenhoV}" stroke="${cor}" stroke-width="${FIO_DO_V}"/>` +
+        `</g>`;
+}
+
+/**
+ * O ícone num quadrado, com as letras ao meio.
+ *
+ * @param {object} o
+ * @param {number} o.folga - O espaço de cada lado das letras.
+ * @param {string} [o.cor] - A cor das letras; sem ela, mudam com o modo
+ *     do navegador.
+ * @param {string} [o.fundo] - A cor do fundo; sem ela, não há fundo.
+ */
+function icone({ folga, cor, fundo }) {
+    const lado = r(largura + 2 * folga);
+    const estilo = cor ? '' :
+        `<style>svg{color:${ESCURO}}@media (prefers-color-scheme:dark){svg{color:${CLARO}}}</style>`;
+    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${lado} ${lado}">` + estilo +
+        (fundo ? `<rect width="${lado}" height="${lado}" fill="${fundo}"/>` : '') +
+        letras(folga, (lado - alturaM) / 2, cor || 'currentColor') +
+        `</svg>\n`;
+}
+
+// No separador as letras vão quase de beira a beira: sem fundo, não há
+// quadrado nenhum a mostrar a folga. No iPhone, o ícone é um quadrado de
+// cantos redondos, e as letras afastam-se deles.
+const separador = { folga: 4 };
+const iphone = { folga: 28, cor: CLARO, fundo: ESCURO };
+
+const desenhos = {
+    'favicon.svg': icone(separador),
+    'favicon-escuro.svg': icone({ ...separador, cor: ESCURO }),
+    'favicon-claro.svg': icone({ ...separador, cor: CLARO }),
+};
+for (const [nome, svg] of Object.entries(desenhos)) {
+    writeFileSync(join(publico, nome), svg);
+    console.log(nome);
+}
 
 // ---- As imagens, num Chrome à parte ----
 
@@ -114,10 +196,10 @@ ws.onmessage = (m) => {
 };
 const enviar = (method, params = {}) => new Promise((r) => { const i = ++seq; pendentes.set(i, r); ws.send(JSON.stringify({ id: i, method, params })); });
 
-/** O ícone num PNG de n por n pontos, desenhado pelo Chrome a esse tamanho. */
-async function png(n) {
+/** Um desenho num PNG de n por n pontos, desenhado pelo Chrome a esse tamanho. */
+async function png(svg, n) {
     const comTamanho = svg.replace('<svg ', `<svg width="${n}" height="${n}" `);
-    const r = await enviar('Runtime.evaluate', {
+    const resposta = await enviar('Runtime.evaluate', {
         awaitPromise: true,
         returnByValue: true,
         expression: `(async () => {
@@ -130,33 +212,38 @@ async function png(n) {
             return tela.toDataURL('image/png').split(',')[1];
         })()`,
     });
-    if (r.result.exceptionDetails) throw new Error(JSON.stringify(r.result.exceptionDetails));
-    return Buffer.from(r.result.result.value, 'base64');
+    if (resposta.result.exceptionDetails) throw new Error(JSON.stringify(resposta.result.exceptionDetails));
+    return Buffer.from(resposta.result.result.value, 'base64');
 }
 
-// O .ico é uma lista de PNGs com um índice à frente.
-const tamanhos = [16, 32, 48];
-const imagens = [];
-for (const n of tamanhos) imagens.push(await png(n));
-const cabeca = Buffer.alloc(6 + 16 * imagens.length);
-cabeca.writeUInt16LE(0, 0);
-cabeca.writeUInt16LE(1, 2);
-cabeca.writeUInt16LE(imagens.length, 4);
-let onde = cabeca.length;
-imagens.forEach((dados, i) => {
-    const e = 6 + 16 * i;
-    cabeca.writeUInt8(tamanhos[i] % 256, e);
-    cabeca.writeUInt8(tamanhos[i] % 256, e + 1);
-    cabeca.writeUInt16LE(1, e + 4);
-    cabeca.writeUInt16LE(32, e + 6);
-    cabeca.writeUInt32LE(dados.length, e + 8);
-    cabeca.writeUInt32LE(onde, e + 12);
-    onde += dados.length;
-});
-writeFileSync(join(publico, 'favicon.ico'), Buffer.concat([cabeca, ...imagens]));
-console.log('favicon.ico');
+/** Um .ico: uma lista de PNGs com um índice à frente. */
+async function ico(svg) {
+    const tamanhos = [16, 32, 48];
+    const imagens = [];
+    for (const n of tamanhos) imagens.push(await png(svg, n));
+    const cabeca = Buffer.alloc(6 + 16 * imagens.length);
+    cabeca.writeUInt16LE(0, 0);
+    cabeca.writeUInt16LE(1, 2);
+    cabeca.writeUInt16LE(imagens.length, 4);
+    let onde = cabeca.length;
+    imagens.forEach((dados, i) => {
+        const e = 6 + 16 * i;
+        cabeca.writeUInt8(tamanhos[i] % 256, e);
+        cabeca.writeUInt8(tamanhos[i] % 256, e + 1);
+        cabeca.writeUInt16LE(1, e + 4);
+        cabeca.writeUInt16LE(32, e + 6);
+        cabeca.writeUInt32LE(dados.length, e + 8);
+        cabeca.writeUInt32LE(onde, e + 12);
+        onde += dados.length;
+    });
+    return Buffer.concat([cabeca, ...imagens]);
+}
 
-writeFileSync(join(publico, 'apple-touch-icon.png'), await png(180));
+writeFileSync(join(publico, 'favicon.ico'), await ico(desenhos['favicon-escuro.svg']));
+console.log('favicon.ico');
+writeFileSync(join(publico, 'favicon-claro.ico'), await ico(desenhos['favicon-claro.svg']));
+console.log('favicon-claro.ico');
+writeFileSync(join(publico, 'apple-touch-icon.png'), await png(icone(iphone), 180));
 console.log('apple-touch-icon.png');
 
 arrumar();
