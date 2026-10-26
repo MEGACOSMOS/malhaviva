@@ -144,6 +144,10 @@
          ecrã de espera se desenhar, para nascer já com a sua roupa. -->
     <script src="/quadrado-de-espera.js?v=4"></script>
 
+    <!-- O logótipo, no cabeçalho e no ecrã de espera. Também antes, pela
+         mesma razão. -->
+    <script src="/logotipo.js?v=1"></script>
+
     <!-- O aviso de "está a demorar" e a tecla de tentar de novo, os
          mesmos em todo o site. Antes de tudo, para estar cá mesmo que o
          resto não chegue. -->
@@ -276,6 +280,14 @@
             text-align: center;
         }
 
+        /* O logótipo do ecrã de espera, que se acende da esquerda para a
+           direita à medida que o bairro chega (o desenho e a varredura
+           vêm do ficheiro dele; aqui só se diz o tamanho). */
+        .loading-logotipo {
+            width: min(320px, 72vw);
+            color: var(--color-accent);
+        }
+
         /* A espera do bairro é o quadrado de espera do site — o desenho
            vem do ficheiro dele; aqui só se põe a meio, por baixo do nome. */
         .loading-square {
@@ -345,6 +357,17 @@
         /* O nome a meio da troca (ver o guião do cabeçalho). */
         .brand-name.a-trocar {
             opacity: 0;
+        }
+
+        /* O nome do projecto é o logótipo, à altura de uma linha. */
+        .brand-name .logotipo {
+            height: 22px;
+        }
+
+        @media (max-width: 640px) {
+            .brand-name .logotipo {
+                height: 19px;
+            }
         }
 
         .brand-subtitle {
@@ -1944,7 +1967,7 @@
     <div id="loading-overlay">
         <div class="loading-content">
             <div class="loading-brand">
-                <div class="loading-logo" data-i18n="site.nome">Malha Viva</div>
+                <div class="loading-logotipo" id="loading-logotipo" role="img" aria-label="Malha Viva" data-i18n-aria="site.nome"></div>
                 <div class="loading-square" id="loading-square" aria-hidden="true"></div>
             </div>
             <div class="loading-text" data-i18n="carga.modelo">A carregar modelo 3D…</div>
@@ -1958,16 +1981,17 @@
 
     <script>
     /**
-     * O quadrado de espera do bairro, e a luz que sobe por baixo do rasto.
+     * O quadrado de espera do bairro, a luz que sobe por baixo do rasto e
+     * o logótipo que se acende por cima.
      *
      * O rasto anda sozinho — é o quadrado de espera do site, o mesmo das
-     * janelas 360º. O que aqui se faz é a luz de fundo: no arranque do
-     * motor não há maneira honesta de saber quanto falta, e a luz sobe
-     * como quem se aproxima de uma porta — cada passo é uma fracção do
-     * que falta, e assim nunca pára nem chega ao fim antes de tempo.
-     * Depois disso passa a haver: os bocados do bairro já se contam um a
-     * um, e o último quarto da luz é essa conta a sério. Quando o mapa
-     * está mesmo pronto, o rasto pára e o quadrado acende todo.
+     * janelas 360º. O que aqui se acende é o resto: a luz de fundo do
+     * quadrado e o logótipo, da esquerda para a direita, os dois pela
+     * mesma conta — quanto do bairro já chegou de facto, contado pelo
+     * motor à medida que os pedaços do mapa vão chegando (ver
+     * carga-do-bairro.mjs). Não há conta inventada: enquanto nada do
+     * bairro chegou, a luz fica apagada, e só anda quando chega. Quando o
+     * mapa está mesmo pronto, o rasto pára e tudo fica aceso.
      */
     (function () {
         const elemento = document.getElementById('loading-square');
@@ -1975,31 +1999,32 @@
         if (!elemento || !overlay || !window.QuadradoDeEspera) return;
 
         const quadrado = window.QuadradoDeEspera.fazer(elemento);
+        const sitioDoLogotipo = document.getElementById('loading-logotipo');
+        const logotipo = sitioDoLogotipo && window.Logotipo
+            ? window.Logotipo.deEspera(sitioDoLogotipo) : null;
 
         let fraccao = 0;
-        let relogio = null;
+        let aEsperar = false;
 
-        const desenhar = () => quadrado.luz(fraccao);
-
-        const parar = () => { clearInterval(relogio); relogio = null; };
-
-        const andar = () => {
-            // O aviso de que falta o WebGL substitui o conteúdo todo do
-            // ecrã de espera; a partir daí não há quadrado para mexer.
-            if (!elemento.isConnected) { parar(); return; }
-            fraccao += (0.92 - fraccao) * 0.03;
-            desenhar();
+        const desenhar = () => {
+            quadrado.luz(fraccao);
+            if (logotipo) logotipo.progresso(fraccao);
         };
 
         const comecar = () => {
-            parar();
+            aEsperar = true;
             quadrado.recomecar();
+            if (logotipo) logotipo.recomecar();
             fraccao = 0;
             desenhar();
-            relogio = setInterval(andar, 90);
         };
         const peloMenos = (f) => { if (f > fraccao) { fraccao = f; desenhar(); } };
-        const acabar = () => { parar(); fraccao = 1; desenhar(); quadrado.pronto(); };
+        // Ao sair, o quadrado acende todo. O logótipo não: fica onde a
+        // conta o deixou. Quando o ecrã de espera sai porque o bairro
+        // chegou, a conta já está no fim; quando sai antes, pelo limite de
+        // segurança, o bairro ainda está a chegar — e o logótipo não diz
+        // o contrário.
+        const acabar = () => { aEsperar = false; fraccao = 1; quadrado.luz(1); quadrado.pronto(); };
 
         window.barraDeCarga = { comecar, peloMenos, acabar };
         comecar();
@@ -2008,7 +2033,7 @@
         // 360º e o bairro é reposto. Aqui o quadrado dá por isso sozinho.
         new MutationObserver(() => {
             if (overlay.classList.contains('hidden')) acabar();
-            else if (!relogio) comecar();
+            else if (!aEsperar) comecar();
         }).observe(overlay, { attributes: true, attributeFilter: ['class'] });
     })();
     </script>
@@ -2264,15 +2289,17 @@
         </button>
         <div class="brand">
             <div class="brand-text">
-                <span class="brand-name adaptavel">Malha Viva</span>
+                <span class="brand-name adaptavel"></span>
             </div>
         </div>
         <script>
         /**
          * O nome do cabeçalho vai trocando, de cinco em cinco segundos,
          * entre o do projecto e o do bairro: esbate-se, muda, e volta.
-         * Os dois dizem-se na língua de quem lê ("Malha Viva", "Living
-         * Mesh"; "Bairro de Penajóia", "Penajóia neighbourhood"), e mudam
+         * O do projecto é o logótipo, que não muda de língua mas se diz na
+         * de quem lê a quem usa leitor de ecrã ("Malha Viva", "Living
+         * Mesh"); o do bairro vai escrito, também na língua de quem lê
+         * ("Bairro de Penajóia", "Penajóia neighbourhood"). Os dois mudam
          * logo se se trocar de língua. Quem pediu ao sistema menos
          * movimento vê a troca sem o esbater.
          */
@@ -2284,23 +2311,34 @@
                 () => diz('site.nome', 'Malha Viva'),
                 () => diz('cab.bairro', 'Bairro de Penajóia')
             ];
-            nome.textContent = NOMES[0]();
+            let qual = 0;
+            const mostrar = () => {
+                if (qual === 0 && window.Logotipo) {
+                    window.Logotipo.desenhar(nome);
+                    nome.setAttribute('role', 'img');
+                    nome.setAttribute('aria-label', NOMES[0]());
+                } else {
+                    nome.textContent = NOMES[qual]();
+                    nome.removeAttribute('role');
+                    nome.removeAttribute('aria-label');
+                }
+            };
+            mostrar();
             const ESBATER_MS = 400;
             const semMovimento = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-            let qual = 0;
             setInterval(() => {
                 qual = (qual + 1) % NOMES.length;
                 if (semMovimento) {
-                    nome.textContent = NOMES[qual]();
+                    mostrar();
                     return;
                 }
                 nome.classList.add('a-trocar');
                 setTimeout(() => {
-                    nome.textContent = NOMES[qual]();
+                    mostrar();
                     nome.classList.remove('a-trocar');
                 }, ESBATER_MS);
             }, 5000);
-            window.addEventListener('idiomamudou', () => { nome.textContent = NOMES[qual](); });
+            window.addEventListener('idiomamudou', mostrar);
         })();
         </script>
 
@@ -3468,6 +3506,7 @@
             PIXELFORMAT_RGBA8, FILTER_LINEAR, ADDRESS_CLAMP_TO_EDGE
         } from 'playcanvas';
         import { ligarLodNoCentroDaVista } from './lod-foco.mjs?v=6';
+        import { medirACargaDoBairro } from './carga-do-bairro.mjs?v=1';
         import { criarAfinadorDeFluidez, construirEscada } from './fluidez.mjs?v=1';
         import { criarModoVR } from './vr.mjs?v=14';
         import { ligarCeu } from './ceu.mjs?v=16';
@@ -4331,12 +4370,6 @@ void modifySplatColor(vec3 center, inout vec4 color) {
                     // arranque pode descansar (ver `arranque`).
                     if (chegaram > 0 && window.arranque) window.arranque.marcar('bairro');
 
-                    // A barra deixa de andar a fingir nesta última parte: o
-                    // quarto final são bocados contados de verdade.
-                    if (window.barraDeCarga && bocados.length > 0) {
-                        window.barraDeCarga.peloMenos(0.75 + 0.24 * (chegaram / bocados.length));
-                    }
-
                     if (chegaram === 0 || aCaminho > 0) {
                         calmoDesde = 0;
                         imagensCalmas = 0;
@@ -4372,8 +4405,21 @@ void modifySplatColor(vec3 center, inout vec4 color) {
         };
 
         whenReady('pc-app').then(({ app }) => {
-            // O motor já arrancou: falta só o bairro chegar aos bocados.
-            if (window.barraDeCarga) window.barraDeCarga.peloMenos(0.75);
+            // O motor já arrancou: falta só o bairro chegar aos bocados. O
+            // ecrã de espera acende-se pelo que deles já chegou, medido a
+            // cada imagem desenhada enquanto está à vista — também quando
+            // volta, ao fechar um vídeo 360º, e aí começa a conta de novo.
+            const cargaDoBairro = medirACargaDoBairro(app);
+            const ecraDeEspera = document.getElementById('loading-overlay');
+            let ecraDeEsperaAVista = true;
+            app.on('frameend', () => {
+                const aVista = !!ecraDeEspera && !ecraDeEspera.classList.contains('hidden');
+                if (aVista && !ecraDeEsperaAVista) cargaDoBairro.recomecar();
+                ecraDeEsperaAVista = aVista;
+                if (!aVista || !window.barraDeCarga) return;
+                const fraccao = cargaDoBairro.medir();
+                if (fraccao !== null) window.barraDeCarga.peloMenos(fraccao);
+            });
 
             // --- Tecto de manchas no ecrã ---
             //
@@ -4837,8 +4883,12 @@ void modifySplatColor(vec3 center, inout vec4 color) {
             // No Máximo o balão não é encolhido para poupar manchas.
             window.lodFoco = ligarLodNoCentroDaVista(app, { conterNoAntigo: !isMax });
 
-            // O ecrã de espera só sai quando o bairro estiver mesmo lá.
-            esperarPeloBairro(app).then(showUIOnce);
+            // O ecrã de espera só sai quando o bairro estiver mesmo lá — e
+            // aí, com tudo chegado, o logótipo está inteiro.
+            esperarPeloBairro(app).then(() => {
+                if (window.barraDeCarga) window.barraDeCarga.peloMenos(1);
+                showUIOnce();
+            });
         });
 
         // O limite de segurança, para o caso de alguma coisa correr mal e o

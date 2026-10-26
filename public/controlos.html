@@ -6,6 +6,7 @@
     <title data-i18n-titulo="ctl.titulo">Controlos do Mapa — Malha Viva</title>
     <meta name="description" content="Guia dos controlos do visualizador 3D Malha Viva. Navega como num mapa: arrasta com o rato, aproxima com o scroll, roda com Ctrl.">
     <script src="/idiomas.js?v=40"></script>
+    <script src="/logotipo.js?v=1"></script>
     <script src="/comando-paginas.js?v=7" defer></script>
 
     <style>
@@ -86,6 +87,11 @@
             font-weight: 700;
             letter-spacing: -0.02em;
             color: var(--color-accent);
+        }
+
+        /* O nome do projecto é o logótipo, à altura de uma linha. */
+        .brand-name .logotipo {
+            height: 22px;
         }
 
         .back-link {
@@ -480,6 +486,10 @@
                 font-size: 1.05rem;
             }
 
+            .brand-name .logotipo {
+                height: 19px;
+            }
+
             .back-link {
                 padding: 6px 12px;
                 font-size: 0.75rem;
@@ -548,9 +558,11 @@
 <body>
     <!-- Header -->
     <header class="page-header">
-        <a href="/" class="brand">
-            <span class="brand-name" data-i18n="site.nome">Malha Viva</span>
+        <a href="/" class="brand" aria-label="Malha Viva" data-i18n-aria="site.nome">
+            <span class="brand-name" id="nome-do-site">Malha Viva</span>
         </a>
+        <!-- O nome é o logótipo do projecto (ver logotipo.js). -->
+        <script>window.Logotipo && window.Logotipo.desenhar(document.getElementById('nome-do-site'));</script>
         <a href="/" class="back-link">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <line x1="19" y1="12" x2="5" y2="12"></line>
