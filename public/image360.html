@@ -6,7 +6,6 @@
     <title>Fotografia 360º</title>
     <script src="/idiomas.js?v=40"></script>
     <script src="/quadrado-de-espera.js?v=4"></script>
-    <script src="/logotipo.js?v=1"></script>
     <!-- O aviso de "está a demorar" e a tecla de tentar de novo, os
          mesmos em todo o site. -->
     <script src="/rede-de-seguranca.js?v=3"></script>
@@ -60,15 +59,6 @@
             transition: opacity 0.4s ease;
         }
         #loading-overlay.escondido { opacity: 0; pointer-events: none; }
-
-        /* Por cima do quadrado, o logótipo do projecto, que se acende da
-           esquerda para a direita à medida que a fotografia chega (ver
-           logotipo.js). */
-        .logotipo-espera {
-            width: min(320px, 72vw);
-            color: #ffffff;
-            margin-bottom: 14px;
-        }
 
         .aviso {
             color: rgba(255,255,255,0.6);
@@ -204,7 +194,6 @@
         </div>
 
         <div id="loading-overlay">
-            <div class="logotipo-espera" id="logotipo-espera" aria-hidden="true"></div>
             <div id="espera"></div>
             <div class="aviso" data-i18n="foto.carregar">A carregar fotografia 360º…</div>
         </div>
@@ -243,8 +232,6 @@
         if (window.QuadradoDeEspera) {
             window.QuadradoDeEspera.fazer(document.getElementById('espera'));
         }
-        const logotipo = window.Logotipo
-            ? window.Logotipo.deEspera(document.getElementById('logotipo-espera')) : null;
 
         // A rede de segurança da janela (ver rede-de-seguranca.js): se a
         // fotografia demorar demais, diz-se que está a demorar e dá-se a
@@ -258,7 +245,6 @@
         }) : null;
         const falhou = (chave, textoPt) => {
             document.getElementById('espera').style.display = 'none';
-            document.getElementById('logotipo-espera').style.display = 'none';
             overlay.querySelector('.aviso').style.display = 'none';
             if (rede) rede.avisar(chave, textoPt);
             else overlay.textContent = (window.Idiomas && window.Idiomas.t(chave)) || textoPt;
@@ -267,24 +253,17 @@
         if (semVisor) falhou('visor.erro', 'Não foi possível abrir o visor 360º.');
 
         // A fotografia é trazida à parte para se saber ao certo quando está
-        // pronta — e para haver um aviso claro se não vier. Quem a vai
-        // buscar é o logótipo do ecrã de espera, que se acende à medida
-        // que ela chega; o que ele traz é a mesma fotografia que depois se
-        // mostra, sem a ir buscar outra vez. O céu recebe a própria imagem,
-        // e não o endereço dela: o visor, com um endereço do que já foi
-        // trazido, ficava a perguntar-lhe o que era e nunca a mostrava.
+        // pronta — e para haver um aviso claro se não vier.
         const fotografia = new Image();
         fotografia.crossOrigin = 'anonymous';
         fotografia.onload = () => {
             // Sem visor não há onde a pôr: fica o aviso que já lá está.
             if (semVisor) return;
-            if (logotipo) logotipo.pronto();
-            ceu.setAttribute('material', { shader: 'flat', src: fotografia, side: 'back' });
+            ceu.setAttribute('material', { shader: 'flat', src: endereco, side: 'back' });
             overlay.classList.add('escondido');
         };
         fotografia.onerror = () => falhou('foto.erro', 'Não foi possível carregar a fotografia 360º.');
-        (logotipo ? logotipo.trazer(endereco) : Promise.resolve(endereco))
-            .then((trazida) => { fotografia.src = trazida; });
+        fotografia.src = endereco;
 
         // Ecrã inteiro. O pedido é feito à página toda (e não só ao corpo),
         // que é o que os navegadores tratam melhor, e a seguir avisa-se a

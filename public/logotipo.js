@@ -6,9 +6,9 @@
  * logótipo não vai escrito: vai desenhado, letra a letra, já passado a
  * contorno (por `scripts/fazer-logotipo.py`, a partir do ficheiro do
  * logótipo). Vive aqui, num sítio só, e as páginas põem-no onde faz
- * falta: no cabeçalho, no lugar do nome, e nos ecrãs de espera que
- * enchem o ecrã, onde nasce apagado e se vai acendendo da esquerda para
- * a direita à medida que o que se espera vai chegando.
+ * falta: no cabeçalho, no lugar do nome, e no ecrã de espera de quando
+ * o site abre, onde nasce apagado e se vai acendendo da esquerda para a
+ * direita à medida que o bairro vai chegando.
  *
  * A cor é a do texto à volta: o logótipo pinta-se com a cor de quem o
  * leva, e assim é branco no fundo escuro do site sem ter de o dizer.
@@ -34,10 +34,6 @@
     // já chegou vêm aos pedaços; isto só lhes tira o salto seco, sem as
     // deixar para trás.
     var ANDAR_MS = 200;
-
-    // Quando o tamanho do ficheiro não vem dito, a luz anda pelo que já
-    // chegou, a abrandar: este tanto acende metade do que falta.
-    var MEIO_CAMINHO_BYTES = 500000;
 
     function svg() {
         return '<svg class="logotipo" viewBox="0 0 ' + LARGURA + ' ' + ALTURA + '" ' +
@@ -127,8 +123,7 @@
      * @param {Element} el - O elemento; a página diz-lhe a largura.
      * @returns {object} O que se lhe pode pedir: `progresso`, com quanto
      *     do que se espera já chegou, de zero a um; `pronto`, para o
-     *     acender todo; `recomecar`, para o apagar de novo; e `trazer`,
-     *     para ir buscar um ficheiro acendendo-o à medida que chega.
+     *     acender todo; e `recomecar`, para o apagar de novo.
      */
     function deEspera(el) {
         vestir();
@@ -156,51 +151,10 @@
             el.classList.remove('de-uma-vez');
         }
 
-        /**
-         * Vai buscar um ficheiro e acende o logótipo à medida que ele
-         * chega.
-         *
-         * Devolve um endereço para o ficheiro já trazido, que se dá a uma
-         * imagem como outro qualquer — sem o ir buscar segunda vez. Se o
-         * pedido falhar, devolve o endereço de origem: a página pede-o do
-         * modo de sempre, e se falhar de vez é ela que o diz.
-         *
-         * @param {string} endereco - O ficheiro.
-         * @returns {Promise<string>} O endereço a usar.
-         */
-        function trazer(endereco) {
-            return new Promise(function (resolver) {
-                var pedido = new XMLHttpRequest();
-                try {
-                    pedido.open('GET', endereco);
-                    pedido.responseType = 'blob';
-                } catch (e) {
-                    resolver(endereco);
-                    return;
-                }
-                pedido.onprogress = function (e) {
-                    progresso(e.lengthComputable && e.total > 0
-                        ? e.loaded / e.total
-                        : e.loaded / (e.loaded + MEIO_CAMINHO_BYTES));
-                };
-                pedido.onload = function () {
-                    if (pedido.status >= 200 && pedido.status < 300 && pedido.response) {
-                        progresso(1);
-                        resolver(URL.createObjectURL(pedido.response));
-                    } else {
-                        resolver(endereco);
-                    }
-                };
-                pedido.onerror = pedido.onabort = function () { resolver(endereco); };
-                pedido.send();
-            });
-        }
-
         return {
             progresso: progresso,
             pronto: function () { progresso(1); },
-            recomecar: recomecar,
-            trazer: trazer
+            recomecar: recomecar
         };
     }
 

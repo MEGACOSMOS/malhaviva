@@ -6,7 +6,6 @@
     <title data-i18n-titulo="tl.titulo">Retroceder</title>
     <script src="/idiomas.js?v=40"></script>
     <script src="/quadrado-de-espera.js?v=4"></script>
-    <script src="/logotipo.js?v=1"></script>
     <!-- O aviso de "está a demorar" e a tecla de tentar de novo, os
          mesmos em todo o site. -->
     <script src="/rede-de-seguranca.js?v=3"></script>
@@ -217,15 +216,6 @@
         .aviso {
             color: rgba(255, 255, 255, 0.6);
             font-size: 0.85rem;
-        }
-
-        /* Por cima do quadrado, o logótipo do projecto, que se acende da
-           esquerda para a direita à medida que a primeira fotografia
-           chega (ver logotipo.js). */
-        .logotipo-espera {
-            width: min(320px, 72vw);
-            color: #ffffff;
-            margin-bottom: 14px;
         }
 
         /* O quadrado de espera, ao centro, quando a fotografia que se pediu
@@ -513,7 +503,6 @@
     </div>
 
     <div id="loading-overlay">
-        <div class="logotipo-espera" id="logotipo-espera" aria-hidden="true"></div>
         <div id="espera"></div>
         <div class="aviso" data-i18n="tl.carregar">A carregar fotografias de satélite…</div>
     </div>
@@ -580,8 +569,6 @@
             window.QuadradoDeEspera.fazer(document.getElementById('espera'));
             window.QuadradoDeEspera.fazer(esperaFoto);
         }
-        const logotipo = window.Logotipo
-            ? window.Logotipo.deEspera(document.getElementById('logotipo-espera')) : null;
 
         // ---- As fotografias ----
         //
@@ -613,7 +600,6 @@
         }) : null;
         const falhou = (chave, textoPt) => {
             document.getElementById('espera').style.display = 'none';
-            document.getElementById('logotipo-espera').style.display = 'none';
             overlay.querySelector('.aviso').style.display = 'none';
             if (rede) rede.avisar(chave, textoPt);
             else overlay.textContent = (window.Idiomas && window.Idiomas.t(chave)) || textoPt;
@@ -682,17 +668,7 @@
                 aChegada(f);
                 pedirMais();
             };
-            // A primeira, enquanto o ecrã de espera está à vista, é trazida
-            // pelo logótipo dele, que se acende à medida que ela chega; o
-            // que ele traz é a mesma fotografia, sem a ir buscar outra vez.
-            // As outras — e esta, se tiver de se tentar de novo — vêm do
-            // modo de sempre.
-            const endereco = enderecoDa(f.foto, LARGURA_LEVE);
-            if (logotipo && !comecou && f === fotos[0] && f.tentativas === 1) {
-                logotipo.trazer(endereco).then((trazida) => { img.src = trazida; });
-            } else {
-                img.src = endereco;
-            }
+            img.src = enderecoDa(f.foto, LARGURA_LEVE);
         };
 
         const aChegada = (f) => {
@@ -707,7 +683,6 @@
             if (!comecou && (primeira === 'pronta' ||
                 (primeira === 'falhou' && fotos.some(x => x.estado === 'pronta')))) {
                 comecou = true;
-                if (logotipo) logotipo.pronto();
                 overlay.classList.add('escondido');
                 // O timelapse começa sozinho, depois de se ver a primeira
                 // fotografia um instante.
