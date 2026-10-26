@@ -3990,9 +3990,9 @@ AnnotationController.prototype.update = function(dt) {
    A cada imagem, cada miniatura procura um lugar no alto do seu poste onde
    não tape nada: nem outra miniatura, nem o poste de outra, nem o quadrado
    de nenhum marcador, nem o cabeçalho e as outras peças do site que estão
-   por cima do bairro. Os marcadores mais perto de quem vê escolhem
-   primeiro — são os maiores, e os que se estão a olhar —, e só os dois
-   primeiros a ter lugar mostram a miniatura (ver MAXIMO_DE_MINIATURAS). Os lugares, do
+   por cima do bairro. Os marcadores mais perto do meio do ecrã escolhem
+   primeiro — é para onde se está a olhar —, e só os dois primeiros a ter
+   lugar mostram a miniatura (ver MAXIMO_DE_MINIATURAS). Os lugares, do
    preferido para o último: o poste curto com a miniatura à direita, à
    esquerda, e depois o poste a crescer, degrau a degrau. Sem lugar livre,
    a miniatura recolhe-se e fica só o quadrado; volta quando se aproximar
@@ -4030,7 +4030,8 @@ const DEGRAUS_DO_POSTE = 6;
 const FOLGA_DA_MINIATURA = 6;
 
 // Quantas miniaturas se mostram de cada vez, no máximo: as dos marcadores
-// mais perto de quem vê. Os outros ficam com o nome por baixo do quadrado.
+// mais perto do meio do ecrã. Os outros ficam com o nome por baixo do
+// quadrado.
 // A que o rato mostra (ver ratoEmCima) não conta — é passageira, e tirar
 // outra do sítio para lhe dar a vez era mais um movimento.
 const MAXIMO_DE_MINIATURAS = 2;
@@ -4064,8 +4065,8 @@ const PACIENCIA_DA_MINIATURA = 1.0;
 const DESLIZE_DA_MINIATURA = 0.2;
 
 // Uma miniatura já à vista escolhe o lugar — e fica entre as que se
-// mostram — como se estivesse este tanto da sua distância (ver
-// arrumarMiniaturas): só cede a vez a uma que esteja bem mais perto.
+// mostram — como se estivesse este tanto da sua distância ao meio do ecrã
+// (ver arrumarMiniaturas): só cede a vez a uma que esteja bem mais perto.
 const VANTAGEM_DE_QUEM_LA_ESTA = 0.7;
 
 // Com o rato em cima (ver ratoEmCima): quanto a miniatura cresce (o mesmo
@@ -4494,8 +4495,10 @@ AnnotationController.prototype.arrumarMiniaturas = function(dt) {
         this._espreitado = sobRato;
     }
 
-    // Os mais perto escolhem primeiro — e antes de todos, o que tem o rato
-    // em cima: foi pedido, e os outros afastam-se dele. Uma miniatura que já
+    // Os mais perto vêm primeiro — é por esta ordem que os quadrados se tapam
+    // uns aos outros e que os nomes têm lugar; as miniaturas têm a sua, mais
+    // abaixo —, e antes de todos o que tem o rato em cima: foi pedido, e os
+    // outros afastam-se dele. Uma miniatura que já
     // está à vista conta como um pouco mais perto do que está: sem isto, dois
     // marcadores quase à mesma distância trocavam de vez a cada passo da
     // câmara, e o que perdia a vez perdia o lugar.
@@ -4548,9 +4551,23 @@ AnnotationController.prototype.arrumarMiniaturas = function(dt) {
     }
     this._semMiniaturas = !comMiniaturas;
 
+    // As miniaturas vão para os marcadores mais perto do meio do ecrã, que é
+    // para onde se está a olhar — e antes de todos, o que tem o rato em
+    // cima. Uma já à vista conta como um pouco mais perto do meio do que
+    // está (ver VANTAGEM_DE_QUEM_LA_ESTA), para não trocarem de vez a cada
+    // passo da câmara.
+    const meioX = ecraL / 2;
+    const meioY = ecraA / 2;
+    const longeDoMeio = (ann) => Math.hypot(ann._ecra.x - meioX, ann._ecra.y - meioY) *
+        (ann._lugar && ann._lugar.escolha >= 0 ? VANTAGEM_DE_QUEM_LA_ESTA : 1);
+    const ordemDasMiniaturas = aVista.map((ann, quem) => quem).sort((a, b) =>
+        (aVista[a] === sobRato ? -1 : aVista[b] === sobRato ? 1
+            : longeDoMeio(aVista[a]) - longeDoMeio(aVista[b])));
+
     let postas = 0;
     if (!comMiniaturas) aVista.forEach((ann) => this.porMiniatura(ann, null, -1, ann._lugar, medida, dt));
-    if (medida && comMiniaturas) aVista.forEach((ann, quem) => {
+    if (medida && comMiniaturas) ordemDasMiniaturas.forEach((quem) => {
+        const ann = aVista[quem];
         const comRato = ann === sobRato;
         // A que só está à vista por o rato estar em cima não conta para o
         // máximo (ver MAXIMO_DE_MINIATURAS).
