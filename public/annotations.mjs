@@ -3991,12 +3991,18 @@ AnnotationController.prototype.update = function(dt) {
    não tape nada: nem outra miniatura, nem o poste de outra, nem o quadrado
    de nenhum marcador, nem o cabeçalho e as outras peças do site que estão
    por cima do bairro. Os marcadores mais perto de quem vê escolhem
-   primeiro — são os maiores, e os que se estão a olhar —, e só os três
+   primeiro — são os maiores, e os que se estão a olhar —, e só os dois
    primeiros a ter lugar mostram a miniatura (ver MAXIMO_DE_MINIATURAS). Os lugares, do
    preferido para o último: o poste curto com a miniatura à direita, à
    esquerda, e depois o poste a crescer, degrau a degrau. Sem lugar livre,
    a miniatura recolhe-se e fica só o quadrado; volta quando se aproximar
-   a câmara ou o bairro rodar. Os marcadores já vistos não têm miniatura —
+   a câmara ou o bairro rodar.
+
+   Uma miniatura só tem lugar todo dentro do ecrã. A que começar a sair
+   dele, com a câmara a mexer, apaga-se — não foge para outro lugar do
+   poste — e a vez passa ao marcador seguinte; só volta quando o sítio de
+   onde saiu estiver outra vez bem dentro do ecrã (ver MARGEM_PARA_VOLTAR).
+   Os marcadores já vistos não têm miniatura —
    só o quadrado e o nome por baixo —, e as outras também não os tapam.
    Os marcadores também não se tapam uns aos outros: o de trás some-se,
    com miniatura e tudo, enquanto o da frente lhe estiver em cima.
@@ -4027,7 +4033,27 @@ const FOLGA_DA_MINIATURA = 6;
 // mais perto de quem vê. Os outros ficam com o nome por baixo do quadrado.
 // A que o rato mostra (ver ratoEmCima) não conta — é passageira, e tirar
 // outra do sítio para lhe dar a vez era mais um movimento.
-const MAXIMO_DE_MINIATURAS = 3;
+const MAXIMO_DE_MINIATURAS = 2;
+
+// Uma miniatura que se apagou por começar a sair do ecrã só volta quando o
+// sítio de onde saiu estiver pelo menos este tanto para dentro dele, em
+// pontos do ecrã: sem esta folga, à beira do ecrã ia e vinha com qualquer
+// tremor da câmara, e tirava a vez à que ficou no lugar dela.
+const MARGEM_PARA_VOLTAR = 48;
+
+/**
+ * Se uma caixa cabe toda dentro do ecrã, com uma margem por dentro.
+ *
+ * @param {{x0: number, y0: number, x1: number, y1: number}} c - A caixa.
+ * @param {number} largura - A largura do ecrã.
+ * @param {number} altura - A altura do ecrã.
+ * @param {number} [margem=0] - Quanto tem de ficar para dentro da beira.
+ * @returns {boolean} Se cabe.
+ */
+function cabeNoEcra(c, largura, altura, margem = 0) {
+    return c.x0 >= margem && c.y0 >= margem &&
+        c.x1 <= largura - margem && c.y1 <= altura - margem;
+}
 
 // Quanto tempo um lugar melhor tem de estar livre para a miniatura lá ir;
 // quanto tempo uma recolhida, ou um marcador escondido, espera com o lugar
@@ -4540,6 +4566,24 @@ AnnotationController.prototype.arrumarMiniaturas = function(dt) {
             return;
         }
 
+        const e = ann._ecra;
+
+        // Apagou-se há pouco por começar a sair do ecrã: fica sem miniatura,
+        // sem contar para o máximo, até o sítio de onde saiu estar outra vez
+        // bem dentro dele (ver MARGEM_PARA_VOLTAR). O rato pode mostrá-la à
+        // mesma: foi pedida.
+        if (ann._saiuDe !== undefined && !comRato) {
+            const onde = lugarDaMiniatura(e, medida, Math.floor(ann._saiuDe / 2), ann._saiuDe % 2);
+            if (cabeNoEcra(onde.caixa, ecraL, ecraA, MARGEM_PARA_VOLTAR)) {
+                ann._saiuDe = undefined;
+            } else {
+                const antes = ann._lugar;
+                if (antes) antes.espera = 0;
+                this.porMiniatura(ann, null, -1, antes, medida, dt);
+                return;
+            }
+        }
+
         // Já há miniaturas que cheguem à vista: esta recolhe-se, e quando
         // voltar a ter a vez espera o lugar livre um bocadinho, como as
         // outras recolhidas.
@@ -4549,13 +4593,15 @@ AnnotationController.prototype.arrumarMiniaturas = function(dt) {
             this.porMiniatura(ann, null, -1, antes, medida, dt);
             return;
         }
-        const e = ann._ecra;
         const cresce = comRato ? CRESCE_COM_O_RATO : 1;
 
         // Todos os lugares, pela ordem de preferência. Um poste deitado
         // para a direita não deixa a miniatura ir para a esquerda, que lhe
-        // ficava em cima, e ao contrário.
+        // ficava em cima, e ao contrário. Os que saem do ecrã, nem que seja
+        // um bocadinho, ficam marcados à parte: a miniatura que lá estiver
+        // apaga-se, em vez de ir para outro.
         const lugares = [];
+        const foraDoEcra = [];
         for (let degrau = 0; degrau < DEGRAUS_DO_POSTE; degrau++) {
             for (let lado = 0; lado < 2; lado++) {
                 if ((lado === 0 && e.ux < -0.5) || (lado === 1 && e.ux > 0.5)) {
@@ -4564,6 +4610,11 @@ AnnotationController.prototype.arrumarMiniaturas = function(dt) {
                 }
                 const lugar = lugarDaMiniatura(e, medida, degrau, lado, cresce);
                 const c = lugar.caixa;
+                if (!cabeNoEcra(c, ecraL, ecraA)) {
+                    foraDoEcra[lugares.length] = true;
+                    lugares.push(null);
+                    continue;
+                }
                 // O quadrado do próprio marcador também conta.
                 const tapa = quadrados.some((q) => caixasTocam(c, q)) ||
                     pecas.some((p) => caixasTocam(c, p)) ||
@@ -4575,16 +4626,7 @@ AnnotationController.prototype.arrumarMiniaturas = function(dt) {
                     lugares.push(null);
                     continue;
                 }
-                // Um lugar meio fora do ecrã só serve se não houver outro; e
-                // com mais de metade fora não serve de todo — era um poste a
-                // subir para fora do ecrã sem nada na ponta.
-                const aVistaL = Math.max(0, Math.min(c.x1, ecraL) - Math.max(c.x0, 0)) / (c.x1 - c.x0);
-                const aVistaA = Math.max(0, Math.min(c.y1, ecraA) - Math.max(c.y0, 0)) / (c.y1 - c.y0);
-                if (aVistaL * aVistaA < 0.5) {
-                    lugares.push(null);
-                    continue;
-                }
-                lugar.preferencia = lugares.length + (aVistaL * aVistaA < 1 ? 1000 : 0);
+                lugar.preferencia = lugares.length;
                 lugares.push(lugar);
             }
         }
@@ -4610,6 +4652,10 @@ AnnotationController.prototype.arrumarMiniaturas = function(dt) {
                 lugares[melhor].preferencia < lugares[antes.escolha].preferencia;
             antes.espera = melhora ? antes.espera + dt : 0;
             escolha = melhora && antes.espera >= PACIENCIA_PARA_MELHORAR ? melhor : antes.escolha;
+        } else if (antes.escolha >= 0 && foraDoEcra[antes.escolha]) {
+            // Começou a sair do ecrã: apaga-se, e a vez passa a outra.
+            ann._saiuDe = antes.escolha;
+            escolha = -1;
         } else if (antes.escolha >= 0) {
             // Deixou de caber onde estava: sai já.
             escolha = melhor;
