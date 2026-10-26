@@ -280,9 +280,12 @@ AnnotationController.prototype.initialize = function() {
             // (-9.182153, 38.671623), passado para o bairro pelo registo do
             // ortofotomapa — no meio do bairro, ao lado da coluna do
             // Retroceder —, e um pouco acima dos telhados: o chão ali está
-            // a 6 m, e os telhados mais altos a 17. Abre no mesmo palco e
-            // com a mesma cor do Olho de Águia, como paragem avulsa.
-            position: new pc.Vec3(28.70, 30, -5.99),
+            // a 6 m, e os telhados mais altos a 17. Aos 45 o nome cabe por
+            // baixo dele logo ao entrar no site, entre o Retroceder e o
+            // Carlos; aos 30 tocava no quadrado do Carlos e apagava-se.
+            // Abre no mesmo palco e com a mesma cor do Olho de Águia, como
+            // paragem avulsa.
+            position: new pc.Vec3(28.70, 45, -5.99),
             label: "Mapa dos Bairros",
             is360: true,
             isImage: true,

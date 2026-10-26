@@ -6,7 +6,6 @@
     <title data-i18n-titulo="mb.separador">Mapa dos Bairros</title>
     <script src="/idiomas.js?v=40"></script>
     <script src="/quadrado-de-espera.js?v=4"></script>
-    <script src="/logotipo.js?v=1"></script>
     <!-- O aviso de "está a demorar" e a tecla de tentar de novo, os
          mesmos em todo o site. -->
     <script src="/rede-de-seguranca.js?v=3"></script>
@@ -288,14 +287,6 @@
             color: rgba(255, 255, 255, 0.6);
             font-size: 0.85rem;
         }
-        /* Por cima do quadrado, o logótipo do projecto, que se acende da
-           esquerda para a direita à medida que a fotografia de satélite
-           chega (ver logotipo.js). */
-        .logotipo-espera {
-            width: min(320px, 72vw);
-            color: #ffffff;
-            margin-bottom: 14px;
-        }
 
         @media (max-width: 900px) {
             :root {
@@ -362,7 +353,6 @@
     </div>
 
     <div id="loading-overlay">
-        <div class="logotipo-espera" id="logotipo-espera" aria-hidden="true"></div>
         <div id="espera"></div>
         <div class="aviso" data-i18n="mb.carregar">A carregar o mapa de satélite…</div>
     </div>
@@ -404,8 +394,6 @@
         if (window.QuadradoDeEspera) {
             window.QuadradoDeEspera.fazer(document.getElementById('espera'));
         }
-        const logotipo = window.Logotipo
-            ? window.Logotipo.deEspera(document.getElementById('logotipo-espera')) : null;
 
         // A rede de segurança da janela (ver rede-de-seguranca.js): se o
         // mapa demorar demais, diz-se que está a demorar e dá-se a tecla de
@@ -417,7 +405,6 @@
         }) : null;
         const falhou = (chave, textoPt) => {
             document.getElementById('espera').style.display = 'none';
-            document.getElementById('logotipo-espera').style.display = 'none';
             overlay.querySelector('.aviso').style.display = 'none';
             overlay.classList.remove('escondido');
             if (rede) rede.avisar(chave, textoPt);
@@ -610,23 +597,17 @@
 
         // ---- O ecrã de espera ----
         //
-        // O logótipo acende-se à medida que chegam os bocados da fotografia
+        // O quadrado de espera anda até chegarem os bocados da fotografia
         // de satélite da primeira vista, e sai quando estão todos.
         let pedidos = 0;
-        let chegados = 0;
         let falhados = 0;
-        const contar = () => {
-            if (logotipo && pedidos) logotipo.progresso(chegados / pedidos);
-        };
-        satelite.on('tileloadstart', () => { pedidos++; contar(); });
-        satelite.on('tileload', () => { chegados++; contar(); });
-        satelite.on('tileerror', () => { chegados++; falhados++; contar(); });
+        satelite.on('tileloadstart', () => { pedidos++; });
+        satelite.on('tileerror', () => { falhados++; });
 
         let aberto = false;
         const abrir = () => {
             if (aberto) return;
             aberto = true;
-            if (logotipo) logotipo.pronto();
             overlay.classList.add('escondido');
             arrumarJa();
             pintarBotoesDoZoom();
