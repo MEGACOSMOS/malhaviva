@@ -2207,10 +2207,33 @@
         const RAD = Math.PI / 180;
         const haCaminhoDaCara = temCaminhoDaCara(nome) && !ecraPlano;
 
-        // Onde está a cara dela neste instante do filme.
+        // O instante do filme que conta é o da imagem que está no ecrã, e
+        // não o do relógio do leitor. Quando se salta, o relógio diz logo
+        // o tempo novo, mas a imagem nova só aparece um bocado depois —
+        // descodificar 8K não é de graça —, e com a ligação a custar há
+        // imagens que se perdem pelo caminho e o relógio vai à frente do
+        // que se vê. Com a câmara agarrada ao relógio, via-se a vista a
+        // virar por cima da imagem antiga e a imagem a chegar depois, já
+        // fora de sítio. O navegador sabe dizer qual foi a última imagem
+        // que pôs no ecrã e de que instante do filme ela é
+        // (requestVideoFrameCallback): é a essa que a vista anda
+        // agarrada. Onde esse aviso não existe, fica o relógio do leitor.
+        const avisaDaImagem = typeof video.requestVideoFrameCallback === 'function';
+        let instanteNoEcra = 0;
+        if (avisaDaImagem) {
+            const imagemPosta = (agora, dados) => {
+                const instante = dados && dados.mediaTime;
+                instanteNoEcra = isFinite(instante) ? instante : (video.currentTime || 0);
+                video.requestVideoFrameCallback(imagemPosta);
+            };
+            video.requestVideoFrameCallback(imagemPosta);
+        }
+        const instanteDoFilme = () => (avisaDaImagem ? instanteNoEcra : (video.currentTime || 0));
+
+        // Onde está a cara dela no instante que está no ecrã.
         const olharDaRota = () => {
             if (!haCaminhoDaCara) return olharInicial;
-            return olharDaCara(nome, video.currentTime || 0) || olharInicial;
+            return olharDaCara(nome, instanteDoFilme()) || olharInicial;
         };
 
         const controlosDoOlhar = () =>
@@ -2274,12 +2297,26 @@
             return falta;
         };
 
-        // Se a câmara não está onde a deixámos, foi outra pessoa a mexer
-        // nela — o rato, o dedo ou o comando — e a vista passa a ser dela.
-        const mexeramNaVista = (olhar) =>
-            !!postoPorNos &&
-            (Math.abs(olhar.yawObject.rotation.y - postoPorNos.volta) > 1e-6 ||
-             Math.abs(olhar.pitchObject.rotation.x - postoPorNos.inclinacao) > 1e-6);
+        // Quem arrasta a vista fica com ela: se a câmara não está onde a
+        // deixámos, foi o rato, o dedo ou o comando. Mas um toque de nada
+        // não é arrastar — ao carregar na imagem para parar o filme, o
+        // rato quase sempre escorrega um ponto ou dois, e perder a cara
+        // dela por causa disso era um aborrecimento. Só quando as mexidas
+        // de fora somam um grau é que a vista passa a ser de quem lhe
+        // mexeu, e a conta volta a zero mal haja uma imagem em que
+        // ninguém lhe tocou, para dois escorregões afastados não se
+        // juntarem.
+        const ARRASTO_A_SERIO = 1 * RAD;
+        let mexidaDeFora = 0;
+
+        // De uma imagem para a outra, o filme anda uns centésimos de
+        // segundo. Um salto maior do que isto não é o filme a andar: é
+        // alguém a carregar em avançar, a ir à barra do tempo, o filme a
+        // recomeçar, ou imagens que se perderam pelo caminho. Nesses
+        // casos a vista aparece logo no sítio, sem fazer a viagem à vista
+        // de quem está a ver.
+        const SALTO_NO_FILME = 0.5;   // segundos de filme
+        let instanteSeguido = 0;
 
         const irAtrasDela = (agora) => {
             if (!aSeguirACara) return;
@@ -2288,10 +2325,26 @@
             if (scene.is('vr-mode')) { requestAnimationFrame(irAtrasDela); return; }
             // A primeira vez não se desliza: põe-se a câmara no sítio.
             if (!postoPorNos) { apontarACara(); requestAnimationFrame(irAtrasDela); return; }
-            if (mexeramNaVista(olhar)) {
-                aSeguirACara = false;
+
+            const mexida = Math.abs(olhar.yawObject.rotation.y - postoPorNos.volta) +
+                           Math.abs(olhar.pitchObject.rotation.x - postoPorNos.inclinacao);
+            if (mexida > 1e-6) {
+                mexidaDeFora += mexida;
+                if (mexidaDeFora > ARRASTO_A_SERIO) { aSeguirACara = false; return; }
+            } else {
+                mexidaDeFora = 0;
+            }
+
+            const instante = instanteDoFilme();
+            const saltou = Math.abs(instante - instanteSeguido) > SALTO_NO_FILME;
+            instanteSeguido = instante;
+            if (saltou) {
+                apontarACara();
+                instanteDoSeguir = 0;
+                requestAnimationFrame(irAtrasDela);
                 return;
             }
+
             const dt = instanteDoSeguir ? Math.min(0.1, (agora - instanteDoSeguir) / 1000) : 1 / 60;
             instanteDoSeguir = agora;
             const alvo = olharDaRota();
@@ -2308,27 +2361,11 @@
             if (!haCaminhoDaCara || aSeguirACara) return;
             aSeguirACara = true;
             instanteDoSeguir = 0;
+            instanteSeguido = instanteDoFilme();
+            mexidaDeFora = 0;
             requestAnimationFrame(irAtrasDela);
         };
         seguirACara();
-
-        // Um salto no tempo não se vê a andar. O deslize é para o filme a
-        // correr, onde ela se desloca um bocadinho de cada vez; quem
-        // salta cinco segundos, ou vai dar a um ponto do filme pela
-        // barra, caía numa viagem de câmara que ninguém pediu — e a
-        // contas tão longe uma da outra, uma volta inteira à procura
-        // dela. Num salto a vista aparece logo onde ela está. Isto é
-        // tanto para os botões de recuar e avançar como para as teclas e
-        // para a barra do tempo: todos mexem no relógio do filme, e é o
-        // relógio que avisa.
-        const saltouNoTempo = () => {
-            if (!aSeguirACara) return;
-            const olhar = controlosDoOlhar();
-            if (olhar && mexeramNaVista(olhar)) { aSeguirACara = false; return; }
-            apontarACara();
-        };
-        video.addEventListener('seeking', saltouNoTempo);
-        video.addEventListener('seeked', saltouNoTempo);
 
         // Endireitar a vista: quem se perde a olhar para trás volta à cara
         // dela com um botão, em vez de ter de arrastar até acertar — e a
