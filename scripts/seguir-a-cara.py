@@ -10,8 +10,9 @@ filma: ao longo do caminho passa para a frente, fica para trás, vira-se
 para apontar uma casa. Uma direcção fixa deixava-a sair do ecrã. Este
 programa vê o filme uma vez, fora do site, encontra a cara dela em cada
 meio segundo e guarda a direcção onde ela está em
-`public/olhar-das-rotas.mjs`. O player lê esse caminho e vai atrás dela
-enquanto ninguém arrastar a vista (ver `public/video360.html`).
+`public/olhar-das-rotas.mjs`. O player lê esse caminho e vai sempre atrás
+dela; quem arrasta a vista olha a partir de onde ela está (ver
+`public/video360.html`).
 
 Como procura: de meio em meio segundo abre uma janela larga na direcção
 onde ela estava — a mesma conta do site (`public/previa-360.mjs`), porque

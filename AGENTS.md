@@ -71,8 +71,10 @@ Nas três rotas a vista não fica parada numa direcção: vai atrás da cara da
 Esvarena, que é quem leva quem vê pelo bairro e que, ao longo do caminho,
 passa para a frente, fica para trás e vira-se para apontar uma casa. Onde
 ela está em cada meio segundo do filme não é adivinhado no navegador —
-está medido em `public/olhar-das-rotas.mjs`, e o player segue esse caminho
-enquanto ninguém arrastar a vista.
+está medido em `public/olhar-das-rotas.mjs`. O player segue sempre esse
+caminho, e quem arrasta a vista olha a partir dele: a câmara tem duas
+mãos, a de baixo agarrada à cara dela e a de cima de quem está a ver (ver
+`juntarAsDuasMaos` em `public/video360.html`).
 
 Se uma rota for remontada — cortada, rodada, exportada de novo — o caminho
 medido passa a apontar para sítios que já não são aqueles. Isso não dá
