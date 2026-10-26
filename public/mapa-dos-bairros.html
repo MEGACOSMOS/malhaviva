@@ -122,8 +122,8 @@
             font-size: 0.85rem;
         }
         /* Sem lugar à direita, o nome vai para a esquerda; sem lugar
-           nenhum, apaga-se (ver arrumarNomes) — e volta com o rato em cima
-           ou com o Tab, num véu escuro por cima dos outros. */
+           nenhum, apaga-se (ver arrumarNomes) — e volta com o rato em cima,
+           num véu escuro por cima dos outros. */
         .bairro.nome-a-esquerda .nome {
             left: auto;
             right: calc(100% + 6px);
@@ -136,17 +136,42 @@
             background: rgba(5, 5, 10, 0.8);
             text-shadow: none;
         }
-        .bairro:focus {
-            outline: none;
+        /* Os quadrados não se carregam: o rato em cima só mostra o nome, e
+           o cursor fica o do mapa, que se arrasta. */
+        .bairro.leaflet-interactive {
+            cursor: inherit;
         }
-        .bairro:focus-visible .ponto {
-            outline: 2px solid rgba(255, 255, 255, 0.95);
-            outline-offset: 3px;
+
+        /* ---- As coordenadas do rato ----
+           Só para quem tem o menu de desenvolvedor ligado no bairro (a
+           mesma memória do navegador diz-o aqui), como as do olhar nas
+           rotas: a latitude e a longitude do sítio onde o rato está, e o
+           mesmo sítio nas coordenadas do bairro em 3D (X e Z), as da
+           "Posição do Cursor". Por baixo do título, à esquerda. */
+        #coordenadas {
+            position: absolute;
+            left: var(--folga-lado);
+            z-index: 1001;
+            display: none;
+            grid-template-columns: auto auto;
+            column-gap: 24px;
+            row-gap: 8px;
+            padding: 12px 16px;
+            background: linear-gradient(to bottom, rgba(255, 255, 255, 0.05), transparent), #05050a;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+            font-size: 0.8rem;
+            font-variant-numeric: tabular-nums;
+            pointer-events: none;
         }
-        @media (hover: hover) {
-            .bairro:hover .ponto {
-                transform: scale(1.3);
-            }
+        #coordenadas.visivel {
+            display: grid;
+        }
+        #coordenadas b {
+            font-weight: 600;
+        }
+        #coordenadas span {
+            text-align: right;
         }
 
         /* ---- O título, no canto de cima à esquerda ----
@@ -339,6 +364,13 @@
         </div>
     </div>
 
+    <div id="coordenadas" aria-hidden="true">
+        <b>Lat</b><span id="coord-lat">—</span>
+        <b>Lon</b><span id="coord-lon">—</span>
+        <b>X</b><span id="coord-x">—</span>
+        <b>Z</b><span id="coord-z">—</span>
+    </div>
+
     <div class="video-controls" id="controlos">
         <div class="creditos" id="creditos"></div>
         <div class="controls-right">
@@ -360,13 +392,18 @@
     <script type="module">
         import { BAIRROS, FONTE, SATELITE, PENAJOIA } from './mapa-dos-bairros.mjs?v=1';
 
-        // O passo dos botões, das teclas e do comando, em níveis do mapa
-        // (cada nível é o dobro do anterior): meio nível, como quem
-        // aproxima 1,4 vezes.
-        const PASSO = 0.5;
-        // Quanto mais perto se vai ao carregar num bairro: o bastante para
-        // se verem as casas.
-        const ZOOM_DE_UM_BAIRRO = 17;
+        // O passo dos botões, das teclas e do duplo clique, em níveis do
+        // mapa (cada nível é o dobro do anterior): um nível inteiro, o
+        // mapa a ficar duas vezes maior ou mais pequeno.
+        const PASSO = 1;
+        // Quanto a roda tem de rodar para andar um nível. Um estalido de
+        // uma roda de rato dá 100: um nível por estalido. Um tapete táctil
+        // manda muitos toques pequenos, e aproxima aos poucos.
+        const RODA_POR_NIVEL = 100;
+        // Quanto demora o zoom a chegar perto de onde se pediu, em
+        // segundos: um pouco mais rápido do que no Olho de Águia, porque
+        // aqui se vai da Grande Lisboa inteira até às casas.
+        const SUAVIDADE_DO_ZOOM = 0.1;
         // Quanto se anda com as setas, em pontos do ecrã.
         const PASSO_DAS_SETAS = 120;
         // Se a fotografia não acabar de chegar, o ecrã de espera sai na
@@ -387,6 +424,7 @@
         const botaoAproximar = document.getElementById('aproximar-btn');
         const botaoAfastar = document.getElementById('afastar-btn');
         const botaoEcra = document.getElementById('fullscreen-btn');
+        const coordenadasEl = document.getElementById('coordenadas');
 
         const ICONE_ECRA_INTEIRO = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true"><path d="M8 3H3v5m18 0V3h-5m0 18h5v-5M3 16v5h5"></path></svg>';
         const ICONE_SAIR_DO_ECRA = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true"><path d="M3 9h6V3 M21 9h-6V3 M21 15h-6v6 M3 15h6v6"></path></svg>';
@@ -438,14 +476,18 @@
         //
         // Sem os botões nem os créditos do próprio Leaflet: os do site estão
         // na barra de baixo. O zoom anda aos bocadinhos (zoomSnap 0), como
-        // no resto do site, e não aos saltos de nível em nível.
+        // no resto do site, e não aos saltos de nível em nível. A roda, o
+        // duplo clique e o teclado são deste site (ver "Aproximar e
+        // afastar"), e não do Leaflet; os dois dedos continuam a ser dele.
         const limites = L.latLngBounds(BAIRROS.map((b) => [b.lat, b.lon]));
         const mapa = L.map('mapa', {
             zoomControl: false,
             attributionControl: false,
             zoomSnap: 0,
             zoomDelta: PASSO,
-            wheelPxPerZoomLevel: 120,
+            scrollWheelZoom: false,
+            doubleClickZoom: false,
+            keyboard: false,
             maxZoom: SATELITE.zoomMaximo,
             // Não se sai da Grande Lisboa: há margem para os lados, mas não
             // para se perder no mar.
@@ -490,36 +532,26 @@
                 iconSize: [lado, lado],
                 iconAnchor: [lado / 2, lado / 2]
             });
+            // Os quadrados não se carregam nem entram na fila do Tab: não
+            // abrem nada. Para um leitor de ecrã são imagens com o nome do
+            // bairro, que ele lê ao passar pelo mapa.
             const marcador = L.marker([bairro.lat, bairro.lon], {
                 icon: icone,
-                keyboard: true,
+                keyboard: false,
                 riseOnHover: true,
                 // A Penajóia por cima das outras, quando se tocam.
                 zIndexOffset: penajoia ? 1000 : 0
             }).addTo(mapa);
             const el = marcador.getElement();
             el.querySelector('.nome').textContent = bairro.nome;
-            el.setAttribute('role', 'button');
+            el.setAttribute('role', 'img');
             el.setAttribute('aria-label', nomeAcessivel(bairro));
 
-            // Carregar num bairro leva lá, perto o bastante para se verem
-            // as casas. O Enter já vem do Leaflet; o espaço, não.
-            marcador.on('click', () => {
-                mapa.flyTo([bairro.lat, bairro.lon], Math.max(mapa.getZoom(), ZOOM_DE_UM_BAIRRO), { duration: 1.2 });
-            });
-            el.addEventListener('keydown', (e) => {
-                if (e.key === ' ') {
-                    e.preventDefault();
-                    marcador.fire('click');
-                }
-            });
-            // Com o rato em cima, ou com o Tab, o nome aparece sempre, mesmo
-            // que não tivesse lugar.
+            // Com o rato em cima o nome aparece sempre, mesmo que não
+            // tivesse lugar.
             const focar = (sim) => el.classList.toggle('em-foco', sim);
             el.addEventListener('mouseenter', () => focar(true));
             el.addEventListener('mouseleave', () => focar(false));
-            el.addEventListener('focus', () => focar(true));
-            el.addEventListener('blur', () => focar(false));
             return { bairro, marcador, el, penajoia };
         });
 
@@ -547,6 +579,7 @@
                 caixa(document.querySelector('.controls-right')),
                 caixa(creditosEl)
             ];
+            if (coordenadasEl.classList.contains('visivel')) ocupado.push(caixa(coordenadasEl));
             marcadores.forEach(({ el }) => ocupado.push(caixa(el.querySelector('.ponto'))));
             const largura = window.innerWidth;
             const altura = window.innerHeight;
@@ -575,25 +608,114 @@
                 arrumarNomes();
             });
         };
-        mapa.on('zoomend moveend resize', arrumarJa);
+        mapa.on('zoom zoomend moveend resize', arrumarJa);
         window.addEventListener('resize', arrumarJa);
         // A letra do site chega depois, e os nomes mudam de largura com ela.
         if (document.fonts && document.fonts.ready) document.fonts.ready.then(arrumarJa);
 
         // ---- Aproximar e afastar ----
+        //
+        // O zoom do próprio Leaflet ia aos solavancos: esperava que a roda
+        // parasse, dava um salto pequeno e só depois voltava a ouvir. Aqui
+        // o zoom desliza até onde se pediu, imagem a imagem, cada vez mais
+        // devagar à medida que chega — como no Olho de Águia e no
+        // Retroceder —, e um pedido novo a meio só muda o destino, sem
+        // recomeçar nada. A roda e o duplo clique aproximam à volta do
+        // rato (o sítio debaixo dele fica parado); os botões, as teclas e o
+        // comando, à volta do meio do ecrã.
+        //
+        // Anda pelo mesmo caminho por onde o Leaflet faz o zoom dos dois
+        // dedos (_moveStart, _move, _moveEnd): os bocados da fotografia e
+        // os quadrados acompanham a cada imagem, sem o mapa se apagar. São
+        // peças por dentro do Leaflet, mas a versão está fixa no nome do
+        // ficheiro (motor/leaflet-1.9.4.js) e não muda debaixo dos pés.
+        let zoomPedido = mapa.getZoom();
+        let ancora = null;
+        let aDeslizar = false;
+        let instanteAnterior = 0;
+
         const pintarBotoesDoZoom = () => {
-            botaoAproximar.disabled = mapa.getZoom() >= mapa.getMaxZoom() - 0.01;
-            botaoAfastar.disabled = mapa.getZoom() <= mapa.getMinZoom() + 0.01;
+            const z = aDeslizar ? zoomPedido : mapa.getZoom();
+            botaoAproximar.disabled = z >= mapa.getMaxZoom() - 0.01;
+            botaoAfastar.disabled = z <= mapa.getMinZoom() + 0.01;
         };
         mapa.on('zoomend', pintarBotoesDoZoom);
-        botaoAproximar.addEventListener('click', () => mapa.zoomIn(PASSO));
-        botaoAfastar.addEventListener('click', () => mapa.zoomOut(PASSO));
+
+        const pararOZoom = () => {
+            if (!aDeslizar) return;
+            aDeslizar = false;
+            mapa._moveEnd(true);
+        };
+
+        const deslizar = (agora) => {
+            if (!aDeslizar) return;
+            const dt = instanteAnterior ? Math.min(0.1, (agora - instanteAnterior) / 1000) : 1 / 60;
+            instanteAnterior = agora;
+            const atual = mapa.getZoom();
+            const falta = zoomPedido - atual;
+            const chegou = Math.abs(falta) < 0.002;
+            const z = chegou ? zoomPedido : atual + falta * (1 - Math.exp(-dt / SUAVIDADE_DO_ZOOM));
+            // O sítio da âncora fica debaixo do mesmo ponto do ecrã; sem
+            // sair dos limites da Grande Lisboa.
+            const desvio = ancora.ponto.subtract(mapa.getSize().divideBy(2));
+            const centro = mapa.unproject(mapa.project(ancora.sitio, z).subtract(desvio), z);
+            mapa._move(mapa._limitCenter(centro, z, mapa.options.maxBounds), z);
+            if (chegou) pararOZoom();
+            else requestAnimationFrame(deslizar);
+        };
+
+        /**
+         * Leva o zoom até um nível, a deslizar.
+         *
+         * @param {number} novo - O nível pedido.
+         * @param {L.Point} [ponto] - O ponto do ecrã que fica parado. O
+         * meio, se não se disser nada.
+         */
+        const pedirZoom = (novo, ponto) => {
+            if (!aDeslizar) {
+                mapa.stop();
+                zoomPedido = mapa.getZoom();
+            }
+            zoomPedido = Math.min(mapa.getMaxZoom(), Math.max(mapa.getMinZoom(), novo));
+            const p = ponto || mapa.getSize().divideBy(2);
+            ancora = { ponto: p, sitio: mapa.containerPointToLatLng(p) };
+            if (!aDeslizar) {
+                aDeslizar = true;
+                instanteAnterior = 0;
+                mapa._moveStart(true, false);
+                requestAnimationFrame(deslizar);
+            }
+            pintarBotoesDoZoom();
+        };
+        // O nível de onde parte o próximo pedido: o destino, se o zoom
+        // ainda está a caminho dele.
+        const zoomDeOndeSeParte = () => (aDeslizar ? zoomPedido : mapa.getZoom());
+
+        botaoAproximar.addEventListener('click', () => pedirZoom(zoomDeOndeSeParte() + PASSO));
+        botaoAfastar.addEventListener('click', () => pedirZoom(zoomDeOndeSeParte() - PASSO));
+
+        // A roda conta quanto rodou, e não só para que lado.
+        const contentor = mapa.getContainer();
+        contentor.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            const porLinha = e.deltaMode === 1 ? 33 : (e.deltaMode === 2 ? 400 : 1);
+            const rodou = Math.max(-300, Math.min(300, e.deltaY * porLinha));
+            pedirZoom(zoomDeOndeSeParte() - rodou / RODA_POR_NIVEL, mapa.mouseEventToContainerPoint(e));
+        }, { passive: false });
+        // O duplo clique aproxima um nível à volta do rato; com o Shift,
+        // afasta.
+        contentor.addEventListener('dblclick', (e) => {
+            e.preventDefault();
+            pedirZoom(zoomDeOndeSeParte() + (e.shiftKey ? -PASSO : PASSO), mapa.mouseEventToContainerPoint(e));
+        });
+        // Pegar no mapa — com o rato ou com os dedos — pára o zoom onde
+        // está: quem arrasta é quem manda.
+        contentor.addEventListener('mousedown', pararOZoom, true);
+        contentor.addEventListener('touchstart', pararOZoom, { capture: true, passive: true });
 
         // Os gatilhos do comando (ver comando-paginas.js) aproximam e
         // afastam por aqui, aos passos — positivos para chegar perto.
-        window.zoomDaPagina = (passos) => {
-            mapa.setZoom(mapa.getZoom() + passos * PASSO * 0.4, { animate: false });
-        };
+        window.zoomDaPagina = (passos) => pedirZoom(zoomDeOndeSeParte() + passos * 0.3);
 
         // ---- O ecrã de espera ----
         //
@@ -657,9 +779,7 @@
         //
         // O mais e o menos aproximam e afastam, o zero (ou o R) volta à
         // vista do princípio, as setas andam pelo mapa, o F vai a ecrã
-        // inteiro. Com o mapa escolhido no Tab, as setas e o mais e o menos
-        // são do próprio Leaflet, que não os deixa chegar aqui. O Escape é
-        // do palco, lá fora, e fecha.
+        // inteiro. O Escape é do palco, lá fora, e fecha.
         window.addEventListener('keydown', (e) => {
             if (e.altKey || e.ctrlKey || e.metaKey || e.defaultPrevented) return;
             const tecla = e.key.length === 1 ? e.key.toLowerCase() : e.key;
@@ -671,17 +791,100 @@
             };
             if (setas[tecla]) {
                 e.preventDefault();
+                pararOZoom();
                 mapa.panBy(setas[tecla]);
             } else if (tecla === '+' || tecla === '=') {
-                mapa.zoomIn(PASSO);
+                pedirZoom(zoomDeOndeSeParte() + PASSO);
             } else if (tecla === '-' || tecla === '_') {
-                mapa.zoomOut(PASSO);
+                pedirZoom(zoomDeOndeSeParte() - PASSO);
             } else if (tecla === '0' || tecla === 'r') {
+                pararOZoom();
                 vistaDoPrincipio(true);
             } else if (tecla === 'f') {
                 botaoEcra.click();
             }
         });
+
+        // ---- As coordenadas do rato ----
+        //
+        // Só com o menu de desenvolvedor ligado no bairro ("programador",
+        // na mesma memória do navegador). A latitude e a longitude do sítio
+        // debaixo do rato, e o mesmo sítio em X e Z do bairro em 3D — as da
+        // "Posição do Cursor" —, para se poder escolher no satélite onde
+        // pôr uma coisa no bairro.
+        //
+        // A passagem é a do registo do ortofotomapa
+        // (Imagens/Ortofotomapa/processo/registo.json): da Web Mercator, por
+        // uma escala, uma rotação e um desvio, saem os metros do modelo,
+        // com o x a leste e o y a norte; na cena do site, o z é o sul.
+        const REGISTO = {
+            s: 1.279649374024575,
+            R: [[0.9999996830300597, 0.0007962033536671643], [-0.0007962033536671134, 0.9999996830300596]],
+            t: [-1022189.3319480077, 4674735.312243435]
+        };
+        const RAIO_DA_TERRA = 6378137;
+        const noBairro = (sitio) => {
+            const E = RAIO_DA_TERRA * sitio.lng * Math.PI / 180;
+            const N = RAIO_DA_TERRA * Math.log(Math.tan(Math.PI / 4 + sitio.lat * Math.PI / 360));
+            const a = (E - REGISTO.t[0]) / REGISTO.s;
+            const b = (N - REGISTO.t[1]) / REGISTO.s;
+            const leste = REGISTO.R[0][0] * a + REGISTO.R[1][0] * b;
+            const norte = REGISTO.R[0][1] * a + REGISTO.R[1][1] * b;
+            return { x: leste, z: -norte };
+        };
+
+        const coordLat = document.getElementById('coord-lat');
+        const coordLon = document.getElementById('coord-lon');
+        const coordX = document.getElementById('coord-x');
+        const coordZ = document.getElementById('coord-z');
+        let comCoordenadas = false;
+        let pontoDoRato = null;
+
+        // Logo por baixo da fonte, à esquerda, qualquer que seja a altura
+        // da barra do título (no telemóvel o título parte-se em duas).
+        const assentarCoordenadas = () => {
+            coordenadasEl.style.top = Math.max(0, document.querySelector('.barra-do-titulo').offsetHeight - 24) + 'px';
+        };
+        const verSeHaCoordenadas = () => {
+            let quer = false;
+            try { quer = localStorage.getItem('programador') === 'on'; } catch (e) { /* sem memória */ }
+            if (quer === comCoordenadas) return;
+            comCoordenadas = quer;
+            coordenadasEl.classList.toggle('visivel', quer);
+            assentarCoordenadas();
+            arrumarJa();
+        };
+        const escreverCoordenadas = () => {
+            if (!comCoordenadas) return;
+            if (!pontoDoRato) {
+                coordLat.textContent = coordLon.textContent = coordX.textContent = coordZ.textContent = '—';
+                return;
+            }
+            const sitio = mapa.containerPointToLatLng(pontoDoRato);
+            const cena = noBairro(sitio);
+            coordLat.textContent = sitio.lat.toFixed(6);
+            coordLon.textContent = sitio.lng.toFixed(6);
+            coordX.textContent = cena.x.toFixed(2);
+            coordZ.textContent = cena.z.toFixed(2);
+        };
+        mapa.on('mousemove', (e) => {
+            verSeHaCoordenadas();
+            pontoDoRato = e.containerPoint;
+            escreverCoordenadas();
+        });
+        mapa.on('mouseout', () => {
+            pontoDoRato = null;
+            escreverCoordenadas();
+        });
+        // Com o rato parado, o sítio debaixo dele muda na mesma quando o
+        // mapa aproxima ou anda.
+        mapa.on('zoom move', escreverCoordenadas);
+        // Ligar ou desligar o menu no bairro chega aqui sem recarregar.
+        window.addEventListener('storage', (e) => {
+            if (e.key === 'programador' || e.key === null) verSeHaCoordenadas();
+        });
+        window.addEventListener('resize', assentarCoordenadas);
+        verSeHaCoordenadas();
 
         // A língua pode mudar com a página aberta.
         window.addEventListener('idiomamudou', escreverTextos);
