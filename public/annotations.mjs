@@ -277,10 +277,10 @@ AnnotationController.prototype.initialize = function() {
             // Os 27 bairros de barracas da Grande Lisboa, num mapa de
             // satélite (ver mapa-dos-bairros.html). O sítio foi escolhido
             // no próprio bairro, com a "Posição do Cursor": o chão em
-            // (48.61, 3.73, 126.94). O marcador fica por cima dele, a
-            // flutuar uns 26 m acima do chão. Abre no mesmo palco e com a
+            // (21.71, -3.13, 139.60). O marcador fica por cima dele, a
+            // flutuar uns 33 m acima do chão. Abre no mesmo palco e com a
             // mesma cor do Olho de Águia, como paragem avulsa.
-            position: new pc.Vec3(48.61, 30, 126.94),
+            position: new pc.Vec3(21.71, 30, 139.60),
             label: "Mapa dos Bairros",
             is360: true,
             isImage: true,
