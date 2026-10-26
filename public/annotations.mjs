@@ -275,17 +275,12 @@ AnnotationController.prototype.initialize = function() {
         },
         {
             // Os 27 bairros de barracas da Grande Lisboa, num mapa de
-            // satélite (ver mapa-dos-bairros.html). A Penajóia é um deles,
-            // e o marcador fica onde o ponto dela cai no mapa dos bairros
-            // (-9.182153, 38.671623), passado para o bairro pelo registo do
-            // ortofotomapa — no meio do bairro, ao lado da coluna do
-            // Retroceder —, e um pouco acima dos telhados: o chão ali está
-            // a 6 m, e os telhados mais altos a 17. Aos 45 o nome cabe por
-            // baixo dele logo ao entrar no site, entre o Retroceder e o
-            // Carlos; aos 30 tocava no quadrado do Carlos e apagava-se.
-            // Abre no mesmo palco e com a mesma cor do Olho de Águia, como
-            // paragem avulsa.
-            position: new pc.Vec3(28.70, 45, -5.99),
+            // satélite (ver mapa-dos-bairros.html). O sítio foi escolhido
+            // no próprio bairro, com a "Posição do Cursor": o chão em
+            // (48.61, 3.73, 126.94). O marcador fica por cima dele, a
+            // flutuar uns 26 m acima do chão. Abre no mesmo palco e com a
+            // mesma cor do Olho de Águia, como paragem avulsa.
+            position: new pc.Vec3(48.61, 30, 126.94),
             label: "Mapa dos Bairros",
             is360: true,
             isImage: true,
