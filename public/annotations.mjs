@@ -4442,8 +4442,8 @@ AnnotationController.prototype.arrumarMiniaturas = function(dt) {
         }
     }
     // As miniaturas podem ser desligadas nas definições ("Previsualizações",
-    // no index.html): ficam todas recolhidas, como as dos já vistos, e os
-    // marcadores só com o nome por baixo.
+    // no index.html): ficam todas recolhidas, e os marcadores só com o nome
+    // por baixo.
     const comMiniaturas = !document.body.classList.contains('sem-previsualizacoes');
 
     // O marcador com o rato em cima (ver ratoEmCima). Fora de vista, é como
@@ -4510,12 +4510,20 @@ AnnotationController.prototype.arrumarMiniaturas = function(dt) {
     const caixasOcupadas = [];
     const riscosOcupados = [];
 
+    // Desligadas, recolhem-se como as que não têm lugar: ficam onde estavam
+    // enquanto se esbatem, sem perder o lugar — o nome entra na caixa ao
+    // mesmo tempo e alarga-a, e sem lugar a miniatura não acompanhava o
+    // quadrado (ver assentarCartao) e fugia para a esquerda. Ao voltarem a
+    // ser ligadas, aparecem logo, sem a espera das recolhidas.
+    if (comMiniaturas && this._semMiniaturas) {
+        for (const ann of this.annotations) {
+            if (ann._lugar && ann._lugar.escolha < 0) ann._lugar = null;
+        }
+    }
+    this._semMiniaturas = !comMiniaturas;
+
     let postas = 0;
-    if (!comMiniaturas) aVista.forEach((ann) => {
-        const el = ann.element;
-        if (!el.classList.contains('miniatura-recolhida')) el.classList.add('miniatura-recolhida');
-        ann._lugar = null;
-    });
+    if (!comMiniaturas) aVista.forEach((ann) => this.porMiniatura(ann, null, -1, ann._lugar, medida, dt));
     if (medida && comMiniaturas) aVista.forEach((ann, quem) => {
         const comRato = ann === sobRato;
         // A que só está à vista por o rato estar em cima não conta para o
