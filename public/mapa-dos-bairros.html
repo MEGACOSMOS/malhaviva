@@ -499,11 +499,19 @@
             maxBoundsViscosity: 1
         });
 
+        // Nos ecrãs finos (mais de um ponto do ecrã por ponto da página), a
+        // fotografia de um nível mais perto, para não se ver desfocada. Para
+        // isso o Leaflet soma um nível a cada pedido e, sem avisar, tira um
+        // nível ao zoom máximo da fotografia — e no último nível do mapa a
+        // fotografia deixava de existir: o mapa ficava preto. Por isso, num
+        // ecrã fino, o máximo vai um nível acima (o Leaflet tira-o) e a
+        // fotografia mais funda que se pede vai um nível abaixo (o Leaflet
+        // soma-o): o pedido acaba sempre no último nível que a Esri tem, e
+        // daí para a frente essa fotografia é ampliada.
+        const ecraFino = L.Browser.retina;
         const satelite = L.tileLayer(SATELITE.endereco, {
-            maxZoom: SATELITE.zoomMaximo,
-            maxNativeZoom: SATELITE.zoomMaximo,
-            // Nos ecrãs finos, a fotografia de um nível mais perto, para não
-            // se ver desfocada.
+            maxZoom: SATELITE.zoomMaximo + (ecraFino ? 1 : 0),
+            maxNativeZoom: SATELITE.zoomMaximo - (ecraFino ? 1 : 0),
             detectRetina: true,
             keepBuffer: 4
         }).addTo(mapa);
