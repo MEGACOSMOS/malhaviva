@@ -274,6 +274,22 @@ AnnotationController.prototype.initialize = function() {
             element: null
         },
         {
+            // Os 27 bairros de barracas da Grande Lisboa, num mapa de
+            // satélite (ver mapa-dos-bairros.html). A Penajóia é um deles,
+            // e o marcador fica onde o ponto dela cai no mapa dos bairros
+            // (-9.182153, 38.671623), passado para o bairro pelo registo do
+            // ortofotomapa — no meio do bairro, ao lado da coluna do
+            // Retroceder —, e um pouco acima dos telhados: o chão ali está
+            // a 6 m, e os telhados mais altos a 17. Abre no mesmo palco e
+            // com a mesma cor do Olho de Águia, como paragem avulsa.
+            position: new pc.Vec3(28.70, 30, -5.99),
+            label: "Mapa dos Bairros",
+            is360: true,
+            isImage: true,
+            mapaDosBairros: true,
+            element: null
+        },
+        {
             position: new pc.Vec3(-102.35, -14.56, 57.67),
             label: "Esvarena",
             is360: true,
@@ -389,8 +405,8 @@ AnnotationController.prototype.initialize = function() {
         }
         /* A cor de cada marcador vive aqui, e é dela que saem o quadrado,
            o poste e o contorno da miniatura: verde nos testemunhos,
-           vermelho nas rotas, a cor do fundo do site nas duas paragens do
-           céu (a fotografia do alto e o timelapse). */
+           vermelho nas rotas, a cor do fundo do site nas três paragens do
+           céu (a fotografia do alto, o timelapse e o mapa dos bairros). */
         .annotation-marker {
             --cor-da-anotacao: #10b981;
         }
@@ -1454,11 +1470,19 @@ AnnotationController.prototype.initialize = function() {
             // mesmo traço — nenhum parece maior nem mais grosso. O
             // timelapse, ao lado do olho e da mesma cor, leva duas setas
             // para a esquerda — as de voltar atrás no tempo, com o bico e o
-            // traço das setas dos lados dos vídeos.
+            // traço das setas dos lados dos vídeos. O mapa dos bairros, da
+            // mesma cor, leva um mapa dobrado em três, com os mesmos 20 de
+            // largura.
             const simbolo = ann.timelapse
                 ? `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter">
                         <polyline points="12 19 5 12 12 5"></polyline>
                         <polyline points="20 19 13 12 20 5"></polyline>
+                   </svg>`
+                : ann.mapaDosBairros
+                ? `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter">
+                        <polygon points="2 6, 8.67 4, 15.33 6, 22 4, 22 18, 15.33 20, 8.67 18, 2 20"></polygon>
+                        <line x1="8.67" y1="4" x2="8.67" y2="18"></line>
+                        <line x1="15.33" y1="6" x2="15.33" y2="20"></line>
                    </svg>`
                 : ann.isImage
                 ? `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter">
@@ -1611,6 +1635,7 @@ const ALTURA_DA_MINIATURA = 270;
  */
 AnnotationController.prototype.imagemFeitaDaMiniatura = function(ann) {
     const nome = ann.timelapse ? 'retroceder'
+        : ann.mapaDosBairros ? 'mapa-dos-bairros'
         : ann.isImage ? 'olho-de-aguia'
         : ann.is360 ? this.videoDaRota360(ann)
         : ann.video;
@@ -1709,6 +1734,11 @@ function miniaturaDeVideo(tela, endereco) {
 AnnotationController.prototype.desenharMiniatura = function(tela, ann) {
     if (ann.timelapse) {
         return miniaturaDeFotografia(tela, enderecoDa(FOTOGRAFIAS[0], LARGURA_LEVE));
+    }
+    if (ann.mapaDosBairros) {
+        // A vista com que o mapa abre, já feita (ver
+        // scripts/fazer-vista-dos-bairros.py).
+        return miniaturaDeFotografia(tela, '/mapa-dos-bairros/vista.jpg');
     }
     if (ann.isImage) {
         return miniaturaDeFotografia(tela, ann.imagePath);
@@ -1877,6 +1907,9 @@ AnnotationController.prototype.nomeAcessivel = function(ann) {
             .replace('{de}', FOTOGRAFIAS[0].ano)
             .replace('{ate}', FOTOGRAFIAS[FOTOGRAFIAS.length - 1].ano);
     }
+    if (ann.mapaDosBairros) {
+        return diz('mapa.bairros', 'Mapa dos Bairros — os 27 bairros de barracas da Grande Lisboa, num mapa de satélite');
+    }
     if (ann.is360) {
         if (ann.isImage) {
             return ann.label + ' — ' + diz('mapa.fotografia360', 'fotografia 360º');
@@ -1922,8 +1955,9 @@ AnnotationController.prototype.nomeDaParagem360 = function(ann) {
     // "Esvarena" e "Olho de Águia" são nomes de sítios: ficam iguais em
     // qualquer língua. O que se traduz é só "Rota". O timelapse
     // também não leva nome na barra: no canto onde ele iria está a data
-    // da fotografia, escrita pela página do timelapse.
-    if (ann.timelapse || (ann.isImage && ann.label === "Olho de Águia")) {
+    // da fotografia, escrita pela página do timelapse. O mapa dos bairros
+    // escreve lá o seu título, com a fonte por baixo.
+    if (ann.timelapse || ann.mapaDosBairros || (ann.isImage && ann.label === "Olho de Águia")) {
         return "";
     }
     if (ann.isImage) {
@@ -1955,6 +1989,11 @@ AnnotationController.prototype.enderecoDaParagem360 = function(ann) {
         // As fotografias de satélite enchem o ecrã, com a data e os
         // comandos a pairar por cima (ver timelapse.html).
         return '/timelapse.html?inteira=1';
+    }
+    if (ann.mapaDosBairros) {
+        // O mapa enche o ecrã, com o título e os comandos a pairar por
+        // cima (ver mapa-dos-bairros.html).
+        return '/mapa-dos-bairros.html?inteira=1';
     }
     if (ann.isImage) {
         // A fotografia abre de lado a lado, sem barras: a página é avisada
@@ -2575,7 +2614,10 @@ AnnotationController.prototype.medirComandos360 = function() {
  * @returns {string} A chave.
  */
 AnnotationController.prototype.chaveDaAlturaDosComandos360 = function(ann) {
-    const tipo = !ann ? 'rota' : (ann.timelapse ? 'timelapse' : (ann.isImage ? 'foto' : 'rota'));
+    const tipo = !ann ? 'rota'
+        : ann.timelapse ? 'timelapse'
+        : ann.mapaDosBairros ? 'mapa'
+        : ann.isImage ? 'foto' : 'rota';
     return tipo + (window.innerWidth <= 900 ? '_estreito' : '_largo');
 };
 
@@ -3386,6 +3428,7 @@ AnnotationController.prototype.idDaAnotacao = function(ann) {
     // O timelapse não é uma rota, e sem nome próprio ficava com o mesmo
     // do Olho de Águia ("360-undefined"): ver um apagava o outro.
     if (ann.timelapse) return 'timelapse';
+    if (ann.mapaDosBairros) return 'mapa-dos-bairros';
     return ann.is360 ? `360-${ann.trailIndex}` : `video-${ann.video}`;
 };
 

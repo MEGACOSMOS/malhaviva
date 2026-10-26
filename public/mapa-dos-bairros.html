@@ -1,0 +1,716 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title data-i18n-titulo="mb.separador">Mapa dos Bairros</title>
+    <script src="/idiomas.js?v=40"></script>
+    <script src="/quadrado-de-espera.js?v=4"></script>
+    <script src="/logotipo.js?v=1"></script>
+    <!-- O aviso de "está a demorar" e a tecla de tentar de novo, os
+         mesmos em todo o site. -->
+    <script src="/rede-de-seguranca.js?v=3"></script>
+    <script src="/comando-paginas.js?v=7" defer></script>
+    <!-- O mapa que se arrasta e aproxima: o Leaflet, servido daqui mesmo,
+         com a versão no nome do ficheiro (ver _headers). -->
+    <link rel="stylesheet" href="/motor/leaflet-1.9.4.css">
+    <script src="/motor/leaflet-1.9.4.js"></script>
+    <style>
+        /* A letra do site: a Liberation Mono, servida daqui mesmo (ficheiros
+           em /fonts, licença SIL Open Font). */
+        @font-face {
+            font-family: 'Liberation Mono';
+            src: url('/fonts/LiberationMono-Regular.ttf') format('truetype');
+            font-weight: 100 500;
+            font-style: normal;
+            font-display: swap;
+        }
+        @font-face {
+            font-family: 'Liberation Mono';
+            src: url('/fonts/LiberationMono-Bold.ttf') format('truetype');
+            font-weight: 600 900;
+            font-style: normal;
+            font-display: swap;
+        }
+
+        :root {
+            /* O véu das barras que pairam por cima do mapa, o mesmo do
+               Retroceder e dos vídeos: escuro junto à borda do ecrã e a
+               desfazer-se para dentro, para as letras se lerem sobre um
+               campo claro da fotografia. */
+            --veu-forte: rgba(5, 5, 10, 0.8);
+            --veu-medio: rgba(5, 5, 10, 0.45);
+            --veu-nenhum: rgba(5, 5, 10, 0);
+            /* As folgas da barra de cima, as mesmas da barra do nome do
+               palco onde esta página é vista: o título fica à altura da
+               cruz de fechar, que vive lá fora. */
+            --folga-cima: 16px;
+            --folga-lado: 24px;
+        }
+
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+        }
+        body {
+            background: #05050a;
+            overflow: hidden;
+            font-family: 'Liberation Mono', 'Courier New', monospace;
+            color: #ffffff;
+        }
+
+        /* ---- O mapa ----
+           Enche a janela toda. Arrasta-se para ver o lado, e a roda (ou os
+           dois dedos) aproxima. */
+        #mapa {
+            position: absolute;
+            inset: 0;
+            background: #05050a;
+            font-family: inherit;
+        }
+        #mapa.leaflet-container {
+            font-family: 'Liberation Mono', 'Courier New', monospace;
+            background: #05050a;
+        }
+        #mapa:focus {
+            outline: none;
+        }
+        #mapa:focus-visible {
+            outline: 2px solid rgba(255, 255, 255, 0.95);
+            outline-offset: -4px;
+        }
+
+        /* ---- Os bairros ----
+           Um quadrado por bairro, com o nome ao lado: o escuro do fundo do
+           site com o contorno branco, para se ver tanto sobre a cidade como
+           sobre o mato. A Penajóia, o bairro deste site, ao contrário:
+           branca, maior, com o nome a cheio. */
+        .bairro {
+            background: none;
+            border: none;
+        }
+        .bairro .ponto {
+            position: absolute;
+            inset: 0;
+            box-sizing: border-box;
+            background: #05050a;
+            border: 2px solid #ffffff;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
+            transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        .bairro.penajoia .ponto {
+            background: #ffffff;
+            border-color: #05050a;
+        }
+        .bairro .nome {
+            position: absolute;
+            top: 50%;
+            left: calc(100% + 6px);
+            transform: translateY(-50%);
+            padding: 2px 4px;
+            white-space: nowrap;
+            font-size: 0.75rem;
+            line-height: 1.2;
+            color: #ffffff;
+            text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9), 0 0 2px rgba(0, 0, 0, 0.9);
+            pointer-events: none;
+            transition: opacity 0.2s ease;
+        }
+        .bairro.penajoia .nome {
+            font-weight: 600;
+            font-size: 0.85rem;
+        }
+        /* Sem lugar à direita, o nome vai para a esquerda; sem lugar
+           nenhum, apaga-se (ver arrumarNomes) — e volta com o rato em cima
+           ou com o Tab, num véu escuro por cima dos outros. */
+        .bairro.nome-a-esquerda .nome {
+            left: auto;
+            right: calc(100% + 6px);
+        }
+        .bairro.nome-escondido .nome {
+            opacity: 0;
+        }
+        .bairro.em-foco .nome {
+            opacity: 1;
+            background: rgba(5, 5, 10, 0.8);
+            text-shadow: none;
+        }
+        .bairro:focus {
+            outline: none;
+        }
+        .bairro:focus-visible .ponto {
+            outline: 2px solid rgba(255, 255, 255, 0.95);
+            outline-offset: 3px;
+        }
+        @media (hover: hover) {
+            .bairro:hover .ponto {
+                transform: scale(1.3);
+            }
+        }
+
+        /* ---- O título, no canto de cima à esquerda ----
+           Com um véu escuro por trás, que se desfaz para baixo, como a data
+           no Retroceder. Por baixo do título, a fonte: o artigo do Expresso
+           de onde saem os bairros. */
+        .barra-do-titulo {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            box-sizing: border-box;
+            padding: var(--folga-cima) var(--folga-lado) 40px;
+            background: linear-gradient(to bottom, var(--veu-forte), var(--veu-medio) 55%, var(--veu-nenhum));
+            pointer-events: none;
+        }
+        /* No palco, a cruz de fechar lá de fora fica no canto da direita:
+           o título não lhe passa por baixo. */
+        body.inteira .barra-do-titulo {
+            padding-right: calc(var(--folga-lado) + 64px);
+        }
+        #titulo {
+            margin: 0;
+            min-height: 41px;
+            display: flex;
+            align-items: center;
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+        .fonte {
+            margin-top: 2px;
+            font-size: 0.75rem;
+            color: rgba(255, 255, 255, 0.75);
+            text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+        }
+        .fonte a {
+            color: #ffffff;
+            text-decoration: underline;
+            text-underline-offset: 2px;
+            pointer-events: auto;
+        }
+        .fonte a:focus {
+            outline: none;
+        }
+        .fonte a:focus-visible {
+            outline: 2px solid rgba(255, 255, 255, 0.95);
+            outline-offset: 2px;
+        }
+
+        /* ---- A barra dos comandos ----
+           A do Retroceder, sem a linha do tempo: os créditos da fotografia
+           de satélite e os botões, por cima do fundo do mapa, com o mesmo
+           véu virado ao contrário. Fica sempre à vista. */
+        .video-controls {
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 1000;
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            gap: 16px;
+            padding: 40px 24px 16px;
+            background: linear-gradient(to top, var(--veu-forte), var(--veu-medio) 60%, var(--veu-nenhum));
+            pointer-events: none;
+        }
+        .video-controls > * {
+            pointer-events: auto;
+        }
+        .controls-right {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        .creditos {
+            flex: 1 1 auto;
+            min-width: 0;
+            text-align: right;
+            font-size: 0.7rem;
+            color: rgba(255, 255, 255, 0.6);
+            text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .player-btn {
+            background: transparent;
+            border: 2.5px solid rgba(255, 255, 255, 0.15);
+            color: white;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 1;
+            transition: background 0.15s ease;
+            padding: 8px;
+            border-radius: 0;
+        }
+        /* Com o rato em cima o botão não cresce: ganha o quadrado preto,
+           como nos vídeos e no cabeçalho do bairro. Só onde há rato. */
+        @media (hover: hover) {
+            .player-btn:hover {
+                background: #05050a;
+                color: #ffffff;
+            }
+        }
+        /* Um botão que já não pode ir mais longe fica com o desenho
+           apagado, como no Olho de Águia. */
+        .player-btn:disabled {
+            color: #8e8e91;
+            cursor: default;
+        }
+        .player-btn:disabled:hover {
+            background: transparent;
+        }
+
+        /* ---- O ecrã de espera ---- */
+        #loading-overlay {
+            position: absolute;
+            inset: 0;
+            background: #05050a;
+            z-index: 2000;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 14px;
+            transition: opacity 0.4s ease;
+        }
+        #loading-overlay.escondido {
+            opacity: 0;
+            pointer-events: none;
+        }
+        .aviso {
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 0.85rem;
+        }
+        /* Por cima do quadrado, o logótipo do projecto, que se acende da
+           esquerda para a direita à medida que a fotografia de satélite
+           chega (ver logotipo.js). */
+        .logotipo-espera {
+            width: min(320px, 72vw);
+            color: #ffffff;
+            margin-bottom: 14px;
+        }
+
+        @media (max-width: 900px) {
+            :root {
+                --folga-cima: 12px;
+                --folga-lado: 16px;
+            }
+            #titulo {
+                min-height: 39px;
+                font-size: 0.95rem;
+            }
+            .video-controls {
+                padding: 32px 12px 14px;
+                gap: 10px;
+            }
+            .controls-right {
+                gap: 8px;
+            }
+            .player-btn svg {
+                width: 18px;
+                height: 18px;
+            }
+        }
+        /* Num ecrã estreito os créditos não cabem ao lado dos botões, e
+           cortados não serviam de créditos: sobem para uma linha só deles. */
+        @media (max-width: 560px) {
+            .video-controls {
+                flex-wrap: wrap;
+                row-gap: 10px;
+            }
+            .creditos {
+                order: -1;
+                flex-basis: 100%;
+                white-space: normal;
+                font-size: 0.6rem;
+            }
+            .fonte {
+                font-size: 0.65rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="mapa" aria-label="Mapa de satélite dos 27 bairros" data-i18n-aria="mb.mapa"></div>
+
+    <div class="barra-do-titulo">
+        <h1 id="titulo" data-i18n="mb.titulo">27 bairros de barracas na Grande Lisboa</h1>
+        <div class="fonte">
+            <span data-i18n="mb.fonte">Fonte:</span>
+            <a id="fonte" target="_blank" rel="noopener"></a>
+        </div>
+    </div>
+
+    <div class="video-controls" id="controlos">
+        <div class="creditos" id="creditos"></div>
+        <div class="controls-right">
+            <button class="player-btn" id="afastar-btn" title="Afastar" data-i18n-title="foto.afastar" data-i18n-aria="foto.afastar" aria-label="Afastar">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><line x1="8" y1="11" x2="14" y2="11"></line><line x1="16.5" y1="16.5" x2="21" y2="21"></line></svg>
+            </button>
+            <button class="player-btn" id="aproximar-btn" title="Aproximar" data-i18n-title="foto.aproximar" data-i18n-aria="foto.aproximar" aria-label="Aproximar">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><line x1="8" y1="11" x2="14" y2="11"></line><line x1="11" y1="8" x2="11" y2="14"></line><line x1="16.5" y1="16.5" x2="21" y2="21"></line></svg>
+            </button>
+            <button class="player-btn" id="fullscreen-btn" title="Ecrã inteiro" data-i18n-title="foto.ecra" data-i18n-aria="foto.ecra" aria-label="Ecrã inteiro"></button>
+        </div>
+    </div>
+
+    <div id="loading-overlay">
+        <div class="logotipo-espera" id="logotipo-espera" aria-hidden="true"></div>
+        <div id="espera"></div>
+        <div class="aviso" data-i18n="mb.carregar">A carregar o mapa de satélite…</div>
+    </div>
+
+    <script type="module">
+        import { BAIRROS, FONTE, SATELITE, PENAJOIA } from './mapa-dos-bairros.mjs?v=1';
+
+        // O passo dos botões, das teclas e do comando, em níveis do mapa
+        // (cada nível é o dobro do anterior): meio nível, como quem
+        // aproxima 1,4 vezes.
+        const PASSO = 0.5;
+        // Quanto mais perto se vai ao carregar num bairro: o bastante para
+        // se verem as casas.
+        const ZOOM_DE_UM_BAIRRO = 17;
+        // Quanto se anda com as setas, em pontos do ecrã.
+        const PASSO_DAS_SETAS = 120;
+        // Se a fotografia não acabar de chegar, o ecrã de espera sai na
+        // mesma ao fim disto: mais vale um mapa a compor-se aos poucos do
+        // que um logótipo parado.
+        const ESPERA_MAXIMA_MS = 12000;
+
+        const parametros = new URLSearchParams(window.location.search);
+        const noPalco = parametros.get('inteira') === '1' && window.parent !== window;
+        if (parametros.get('inteira') === '1') document.body.classList.add('inteira');
+
+        const diz = (chave, alternativa) =>
+            (window.Idiomas && window.Idiomas.t(chave)) || alternativa;
+
+        const overlay = document.getElementById('loading-overlay');
+        const creditosEl = document.getElementById('creditos');
+        const fonteEl = document.getElementById('fonte');
+        const botaoAproximar = document.getElementById('aproximar-btn');
+        const botaoAfastar = document.getElementById('afastar-btn');
+        const botaoEcra = document.getElementById('fullscreen-btn');
+
+        const ICONE_ECRA_INTEIRO = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true"><path d="M8 3H3v5m18 0V3h-5m0 18h5v-5M3 16v5h5"></path></svg>';
+        const ICONE_SAIR_DO_ECRA = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true"><path d="M3 9h6V3 M21 9h-6V3 M21 15h-6v6 M3 15h6v6"></path></svg>';
+
+        if (window.QuadradoDeEspera) {
+            window.QuadradoDeEspera.fazer(document.getElementById('espera'));
+        }
+        const logotipo = window.Logotipo
+            ? window.Logotipo.deEspera(document.getElementById('logotipo-espera')) : null;
+
+        // A rede de segurança da janela (ver rede-de-seguranca.js): se o
+        // mapa demorar demais, diz-se que está a demorar e dá-se a tecla de
+        // tentar de novo.
+        const rede = window.RedeDeSeguranca ? window.RedeDeSeguranca.vigiar({
+            espera: 40,
+            pronto: () => overlay.classList.contains('escondido'),
+            caixa: () => overlay
+        }) : null;
+        const falhou = (chave, textoPt) => {
+            document.getElementById('espera').style.display = 'none';
+            document.getElementById('logotipo-espera').style.display = 'none';
+            overlay.querySelector('.aviso').style.display = 'none';
+            overlay.classList.remove('escondido');
+            if (rede) rede.avisar(chave, textoPt);
+            else overlay.textContent = diz(chave, textoPt);
+        };
+
+        // ---- Os textos que mudam com a língua ----
+        //
+        // A fonte e os créditos têm pedaços que não se traduzem — o nome do
+        // jornal, o da Esri e o da Vantor — e por isso não vão pela marca
+        // data-i18n: são escritos aqui, e outra vez se a língua mudar.
+        const escreverTextos = () => {
+            fonteEl.href = FONTE.endereco;
+            fonteEl.textContent = FONTE.jornal + ', ' + diz('mb.dataDaFonte', '5 de junho de 2025');
+            fonteEl.title = FONTE.titulo;
+            creditosEl.textContent = diz('mb.satelite', 'Imagem de satélite: {creditos}, setembro e novembro de 2025')
+                .replace('{creditos}', SATELITE.creditos);
+            marcadores.forEach(({ bairro, marcador }) => {
+                const el = marcador.getElement();
+                if (el) el.setAttribute('aria-label', nomeAcessivel(bairro));
+            });
+        };
+
+        // O nome que um leitor de ecrã lê de cada quadrado: o do bairro, e
+        // na Penajóia também que é o bairro deste site.
+        const nomeAcessivel = (bairro) => bairro.nome === PENAJOIA
+            ? bairro.nome + ' — ' + diz('mb.esteBairro', 'o bairro do {site}').replace('{site}', diz('site.nome', 'Malha Viva'))
+            : bairro.nome;
+
+        // ---- O mapa ----
+        //
+        // Sem os botões nem os créditos do próprio Leaflet: os do site estão
+        // na barra de baixo. O zoom anda aos bocadinhos (zoomSnap 0), como
+        // no resto do site, e não aos saltos de nível em nível.
+        const limites = L.latLngBounds(BAIRROS.map((b) => [b.lat, b.lon]));
+        const mapa = L.map('mapa', {
+            zoomControl: false,
+            attributionControl: false,
+            zoomSnap: 0,
+            zoomDelta: PASSO,
+            wheelPxPerZoomLevel: 120,
+            maxZoom: SATELITE.zoomMaximo,
+            // Não se sai da Grande Lisboa: há margem para os lados, mas não
+            // para se perder no mar.
+            maxBounds: limites.pad(0.6),
+            maxBoundsViscosity: 1
+        });
+
+        const satelite = L.tileLayer(SATELITE.endereco, {
+            maxZoom: SATELITE.zoomMaximo,
+            maxNativeZoom: SATELITE.zoomMaximo,
+            // Nos ecrãs finos, a fotografia de um nível mais perto, para não
+            // se ver desfocada.
+            detectRetina: true,
+            keepBuffer: 4
+        }).addTo(mapa);
+
+        // A vista do princípio: os 27 bairros todos à vista, entre a barra
+        // do título e a dos comandos.
+        const folgas = () => {
+            const cima = document.querySelector('.barra-do-titulo').offsetHeight;
+            const baixo = document.getElementById('controlos').offsetHeight;
+            return {
+                paddingTopLeft: [24, Math.max(24, cima - 16)],
+                paddingBottomRight: [24, Math.max(24, baixo - 8)]
+            };
+        };
+        const vistaDoPrincipio = (animar) => {
+            if (animar) mapa.flyToBounds(limites, { ...folgas(), duration: 0.8 });
+            else mapa.fitBounds(limites, { ...folgas(), animate: false });
+        };
+        vistaDoPrincipio(false);
+        // Mais longe do que a Grande Lisboa toda não se vai.
+        mapa.setMinZoom(Math.max(0, mapa.getZoom() - 1));
+
+        // ---- Os quadrados dos bairros ----
+        const marcadores = BAIRROS.map((bairro) => {
+            const penajoia = bairro.nome === PENAJOIA;
+            const lado = penajoia ? 18 : 14;
+            const icone = L.divIcon({
+                className: 'bairro' + (penajoia ? ' penajoia' : ''),
+                html: '<span class="ponto"></span><span class="nome" aria-hidden="true"></span>',
+                iconSize: [lado, lado],
+                iconAnchor: [lado / 2, lado / 2]
+            });
+            const marcador = L.marker([bairro.lat, bairro.lon], {
+                icon: icone,
+                keyboard: true,
+                riseOnHover: true,
+                // A Penajóia por cima das outras, quando se tocam.
+                zIndexOffset: penajoia ? 1000 : 0
+            }).addTo(mapa);
+            const el = marcador.getElement();
+            el.querySelector('.nome').textContent = bairro.nome;
+            el.setAttribute('role', 'button');
+            el.setAttribute('aria-label', nomeAcessivel(bairro));
+
+            // Carregar num bairro leva lá, perto o bastante para se verem
+            // as casas. O Enter já vem do Leaflet; o espaço, não.
+            marcador.on('click', () => {
+                mapa.flyTo([bairro.lat, bairro.lon], Math.max(mapa.getZoom(), ZOOM_DE_UM_BAIRRO), { duration: 1.2 });
+            });
+            el.addEventListener('keydown', (e) => {
+                if (e.key === ' ') {
+                    e.preventDefault();
+                    marcador.fire('click');
+                }
+            });
+            // Com o rato em cima, ou com o Tab, o nome aparece sempre, mesmo
+            // que não tivesse lugar.
+            const focar = (sim) => el.classList.toggle('em-foco', sim);
+            el.addEventListener('mouseenter', () => focar(true));
+            el.addEventListener('mouseleave', () => focar(false));
+            el.addEventListener('focus', () => focar(true));
+            el.addEventListener('blur', () => focar(false));
+            return { bairro, marcador, el, penajoia };
+        });
+
+        // ---- Os nomes ----
+        //
+        // Muitos bairros ficam perto uns dos outros (na Amadora há cinco
+        // em menos de um quilómetro), e de longe os nomes ficavam uns em
+        // cima dos outros, a não se ler nenhum. Por isso cada nome procura
+        // lugar, por ordem — a Penajóia primeiro —, à direita do quadrado e
+        // depois à esquerda; se não houver, apaga-se até se aproximar. Não
+        // pode tocar em nenhum quadrado, em nenhum nome já posto, nem nas
+        // letras e nos botões das barras.
+        const ordemDosNomes = [...marcadores].sort((a, b) => (b.penajoia ? 1 : 0) - (a.penajoia ? 1 : 0));
+        const caixa = (el) => {
+            const r = el.getBoundingClientRect();
+            return { x0: r.left, y0: r.top, x1: r.right, y1: r.bottom };
+        };
+        const tocam = (a, b, folga) =>
+            a.x0 < b.x1 + folga && b.x0 < a.x1 + folga && a.y0 < b.y1 + folga && b.y0 < a.y1 + folga;
+
+        const arrumarNomes = () => {
+            const ocupado = [
+                caixa(document.getElementById('titulo')),
+                caixa(document.querySelector('.fonte')),
+                caixa(document.querySelector('.controls-right')),
+                caixa(creditosEl)
+            ];
+            marcadores.forEach(({ el }) => ocupado.push(caixa(el.querySelector('.ponto'))));
+            const largura = window.innerWidth;
+            const altura = window.innerHeight;
+            for (const { el } of ordemDosNomes) {
+                const nome = el.querySelector('.nome');
+                let lugar = null;
+                for (const lado of ['direita', 'esquerda']) {
+                    el.classList.toggle('nome-a-esquerda', lado === 'esquerda');
+                    const c = caixa(nome);
+                    const dentro = c.x0 >= 0 && c.y0 >= 0 && c.x1 <= largura && c.y1 <= altura;
+                    if (dentro && !ocupado.some((o) => tocam(c, o, 2))) {
+                        lugar = c;
+                        break;
+                    }
+                }
+                if (!lugar) el.classList.remove('nome-a-esquerda');
+                el.classList.toggle('nome-escondido', !lugar);
+                if (lugar) ocupado.push(lugar);
+            }
+        };
+        let pedidoDeArrumar = 0;
+        const arrumarJa = () => {
+            if (pedidoDeArrumar) return;
+            pedidoDeArrumar = requestAnimationFrame(() => {
+                pedidoDeArrumar = 0;
+                arrumarNomes();
+            });
+        };
+        mapa.on('zoomend moveend resize', arrumarJa);
+        window.addEventListener('resize', arrumarJa);
+        // A letra do site chega depois, e os nomes mudam de largura com ela.
+        if (document.fonts && document.fonts.ready) document.fonts.ready.then(arrumarJa);
+
+        // ---- Aproximar e afastar ----
+        const pintarBotoesDoZoom = () => {
+            botaoAproximar.disabled = mapa.getZoom() >= mapa.getMaxZoom() - 0.01;
+            botaoAfastar.disabled = mapa.getZoom() <= mapa.getMinZoom() + 0.01;
+        };
+        mapa.on('zoomend', pintarBotoesDoZoom);
+        botaoAproximar.addEventListener('click', () => mapa.zoomIn(PASSO));
+        botaoAfastar.addEventListener('click', () => mapa.zoomOut(PASSO));
+
+        // Os gatilhos do comando (ver comando-paginas.js) aproximam e
+        // afastam por aqui, aos passos — positivos para chegar perto.
+        window.zoomDaPagina = (passos) => {
+            mapa.setZoom(mapa.getZoom() + passos * PASSO * 0.4, { animate: false });
+        };
+
+        // ---- O ecrã de espera ----
+        //
+        // O logótipo acende-se à medida que chegam os bocados da fotografia
+        // de satélite da primeira vista, e sai quando estão todos.
+        let pedidos = 0;
+        let chegados = 0;
+        let falhados = 0;
+        const contar = () => {
+            if (logotipo && pedidos) logotipo.progresso(chegados / pedidos);
+        };
+        satelite.on('tileloadstart', () => { pedidos++; contar(); });
+        satelite.on('tileload', () => { chegados++; contar(); });
+        satelite.on('tileerror', () => { chegados++; falhados++; contar(); });
+
+        let aberto = false;
+        const abrir = () => {
+            if (aberto) return;
+            aberto = true;
+            if (logotipo) logotipo.pronto();
+            overlay.classList.add('escondido');
+            arrumarJa();
+            pintarBotoesDoZoom();
+        };
+        satelite.once('load', () => {
+            // Sem um único bocado da fotografia, não há mapa: diz-se.
+            if (pedidos && falhados === pedidos) {
+                falhou('mb.erro', 'Não foi possível carregar o mapa de satélite.');
+                return;
+            }
+            abrir();
+        });
+        setTimeout(abrir, ESPERA_MAXIMA_MS);
+
+        // ---- Ecrã inteiro ----
+        //
+        // No palco, quem vai a ecrã inteiro é o palco todo, com a cruz de
+        // fechar. O pedido é feito daqui mesmo, no instante do clique: o
+        // navegador só deixa ir a ecrã inteiro enquanto dura o toque.
+        // Aberta sozinha, vai esta página.
+        const pintarBotaoDoEcra = (dentro) => {
+            botaoEcra.innerHTML = dentro ? ICONE_SAIR_DO_ECRA : ICONE_ECRA_INTEIRO;
+        };
+        botaoEcra.addEventListener('click', () => {
+            const palco = noPalco && window.frameElement && window.frameElement.closest('#modal-360');
+            const alvo = palco || document.documentElement;
+            const doc = alvo.ownerDocument;
+            const entrar = alvo.requestFullscreen || alvo.webkitRequestFullscreen;
+            const sair = doc.exitFullscreen || doc.webkitExitFullscreen;
+            try {
+                const pedido = (doc.fullscreenElement || doc.webkitFullscreenElement)
+                    ? sair.call(doc)
+                    : entrar.call(alvo);
+                if (pedido && pedido.catch) pedido.catch(() => {});
+            } catch (e) { /* navegador sem ecrã inteiro: fica a janela */ }
+        });
+        document.addEventListener('fullscreenchange', () => {
+            pintarBotaoDoEcra(!!document.fullscreenElement);
+        });
+        // No palco, é o palco que diz quando entra e sai do ecrã inteiro.
+        window.addEventListener('message', (e) => {
+            if (e.source !== window.parent || !e.data) return;
+            if (e.data.malhaViva === 'ecraInteiro360') pintarBotaoDoEcra(!!e.data.dentro);
+        });
+
+        // ---- O teclado ----
+        //
+        // O mais e o menos aproximam e afastam, o zero (ou o R) volta à
+        // vista do princípio, as setas andam pelo mapa, o F vai a ecrã
+        // inteiro. Com o mapa escolhido no Tab, as setas e o mais e o menos
+        // são do próprio Leaflet, que não os deixa chegar aqui. O Escape é
+        // do palco, lá fora, e fecha.
+        window.addEventListener('keydown', (e) => {
+            if (e.altKey || e.ctrlKey || e.metaKey || e.defaultPrevented) return;
+            const tecla = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+            const setas = {
+                ArrowLeft: [-PASSO_DAS_SETAS, 0],
+                ArrowRight: [PASSO_DAS_SETAS, 0],
+                ArrowUp: [0, -PASSO_DAS_SETAS],
+                ArrowDown: [0, PASSO_DAS_SETAS]
+            };
+            if (setas[tecla]) {
+                e.preventDefault();
+                mapa.panBy(setas[tecla]);
+            } else if (tecla === '+' || tecla === '=') {
+                mapa.zoomIn(PASSO);
+            } else if (tecla === '-' || tecla === '_') {
+                mapa.zoomOut(PASSO);
+            } else if (tecla === '0' || tecla === 'r') {
+                vistaDoPrincipio(true);
+            } else if (tecla === 'f') {
+                botaoEcra.click();
+            }
+        });
+
+        // A língua pode mudar com a página aberta.
+        window.addEventListener('idiomamudou', escreverTextos);
+
+        // ---- Começar ----
+        pintarBotaoDoEcra(!!document.fullscreenElement);
+        if (window.Idiomas) window.Idiomas.aplicar(document);
+        escreverTextos();
+        pintarBotoesDoZoom();
+        arrumarJa();
+    </script>
+</body>
+</html>

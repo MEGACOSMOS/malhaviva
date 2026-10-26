@@ -108,6 +108,8 @@ const testemunhos = [...anotacoes.matchAll(/^\s*video:\s*"([^"]+)"/gm)].map((m) 
 const trabalho = [
     ['olho-de-aguia', (d) => deFotografia(join(PUBLICO, 'ceu-olho-de-aguia.jpg'), d)],
     ['retroceder', (d) => deFotografia(local(enderecoDa(FOTOGRAFIAS[0], LARGURA_NITIDA)), d)],
+    // A vista com que o mapa dos bairros abre (scripts/fazer-vista-dos-bairros.py).
+    ['mapa-dos-bairros', (d) => deFotografia(join(PUBLICO, 'mapa-dos-bairros', 'vista.jpg'), d)],
     ...VIDEOS_360.map((nome) => [nome, (d) => deRota(nome, d)]),
     ...testemunhos.map((nome) => [nome, (d) => deVideo(nome, d)])
 ];

@@ -84,6 +84,7 @@
             'mapa.testemunhoDe': 'Testemunho de {nome}',
             'mapa.fotografia360': 'fotografia 360º',
             'mapa.timelapse': 'Retroceder — fotografias de satélite do bairro, de {de} a {ate}',
+            'mapa.bairros': 'Mapa dos Bairros — os 27 bairros de barracas da Grande Lisboa, num mapa de satélite',
 
             'carga.modelo': 'A carregar modelo 3D…',
             'carga.restaurar': 'A restaurar ambiente 3D…',
@@ -127,6 +128,18 @@
             'tl.erro': 'Não foi possível carregar as fotografias de satélite.',
             'tl.linha': 'Data da fotografia',
             'tl.meses': 'Janeiro,Fevereiro,Março,Abril,Maio,Junho,Julho,Agosto,Setembro,Outubro,Novembro,Dezembro',
+
+            // O mapa dos bairros. "Mapa dos Bairros" é o nome do sítio,
+            // como "Retroceder": fica igual em todas as línguas.
+            'mb.separador': 'Mapa dos Bairros',
+            'mb.titulo': '27 bairros de barracas na Grande Lisboa',
+            'mb.mapa': 'Mapa de satélite dos 27 bairros',
+            'mb.fonte': 'Fonte:',
+            'mb.dataDaFonte': '5 de junho de 2025',
+            'mb.satelite': 'Imagem de satélite: {creditos}, setembro e novembro de 2025',
+            'mb.esteBairro': 'o bairro do {site}',
+            'mb.carregar': 'A carregar o mapa de satélite…',
+            'mb.erro': 'Não foi possível carregar o mapa de satélite.',
 
             'rota.titulo': 'Rota',
             'palco.anterior': 'Anterior',
@@ -288,6 +301,7 @@
             'mapa.testemunhoDe': 'Testimony from {nome}',
             'mapa.fotografia360': '360º photograph',
             'mapa.timelapse': 'Retroceder — satellite photos of the neighbourhood, {de} to {ate}',
+            'mapa.bairros': 'Mapa dos Bairros — the 27 shantytowns of Greater Lisbon, on a satellite map',
 
             'carga.modelo': 'Loading 3D model…',
             'carga.restaurar': 'Restoring 3D environment…',
@@ -331,6 +345,16 @@
             'tl.erro': 'The satellite photos could not be loaded.',
             'tl.linha': 'Photo date',
             'tl.meses': 'January,February,March,April,May,June,July,August,September,October,November,December',
+
+            'mb.separador': 'Mapa dos Bairros',
+            'mb.titulo': '27 shantytowns in Greater Lisbon',
+            'mb.mapa': 'Satellite map of the 27 shantytowns',
+            'mb.fonte': 'Source:',
+            'mb.dataDaFonte': '5 June 2025',
+            'mb.satelite': 'Satellite imagery: {creditos}, September and November 2025',
+            'mb.esteBairro': 'the neighbourhood of {site}',
+            'mb.carregar': 'Loading the satellite map…',
+            'mb.erro': 'The satellite map could not be loaded.',
 
             'rota.titulo': 'Route',
             'palco.anterior': 'Previous',
@@ -492,6 +516,7 @@
             'mapa.testemunhoDe': 'Testimonio de {nome}',
             'mapa.fotografia360': 'fotografía 360º',
             'mapa.timelapse': 'Retroceder — fotografías de satélite del barrio, de {de} a {ate}',
+            'mapa.bairros': 'Mapa dos Bairros — los 27 barrios de chabolas de la Gran Lisboa, en un mapa de satélite',
 
             'carga.modelo': 'Cargando modelo 3D…',
             'carga.restaurar': 'Restaurando entorno 3D…',
@@ -535,6 +560,16 @@
             'tl.erro': 'No se han podido cargar las fotografías de satélite.',
             'tl.linha': 'Fecha de la fotografía',
             'tl.meses': 'Enero,Febrero,Marzo,Abril,Mayo,Junio,Julio,Agosto,Septiembre,Octubre,Noviembre,Diciembre',
+
+            'mb.separador': 'Mapa dos Bairros',
+            'mb.titulo': '27 barrios de chabolas en la Gran Lisboa',
+            'mb.mapa': 'Mapa de satélite de los 27 barrios',
+            'mb.fonte': 'Fuente:',
+            'mb.dataDaFonte': '5 de junio de 2025',
+            'mb.satelite': 'Imagen de satélite: {creditos}, septiembre y noviembre de 2025',
+            'mb.esteBairro': 'el barrio de {site}',
+            'mb.carregar': 'Cargando el mapa de satélite…',
+            'mb.erro': 'No se ha podido cargar el mapa de satélite.',
 
             'rota.titulo': 'Ruta',
             'palco.anterior': 'Anterior',
@@ -696,6 +731,7 @@
             'mapa.testemunhoDe': 'Tistimunhu di {nome}',
             'mapa.fotografia360': 'fotografia 360º',
             'mapa.timelapse': 'Retroceder — fotografias di satélite di bairu, di {de} pa {ate}',
+            'mapa.bairros': 'Mapa dos Bairros — kes 27 bairu di barraka di Grandi Lisboa, na un mapa di satélite',
 
             'carga.modelo': 'Ta karega modelu 3D…',
             'carga.restaurar': 'Ta restaura anbienti 3D…',
@@ -739,6 +775,16 @@
             'tl.erro': 'Ka konsigi karega fotografias di satélite.',
             'tl.linha': 'Data di fotografia',
             'tl.meses': 'Janeru,Febreru,Marsu,Abril,Maiu,Junhu,Julhu,Agostu,Setenbru,Otubru,Nuvenbru,Dizenbru',
+
+            'mb.separador': 'Mapa dos Bairros',
+            'mb.titulo': '27 bairu di barraka na Grandi Lisboa',
+            'mb.mapa': 'Mapa di satélite di kes 27 bairu',
+            'mb.fonte': 'Fonti:',
+            'mb.dataDaFonte': '5 di Junhu di 2025',
+            'mb.satelite': 'Imaji di satélite: {creditos}, Setenbru i Nuvenbru di 2025',
+            'mb.esteBairro': 'bairu di {site}',
+            'mb.carregar': 'Ta karega mapa di satélite…',
+            'mb.erro': 'Ka konsigi karega mapa di satélite.',
 
             'rota.titulo': 'Rota',
             'palco.anterior': 'Anterior',

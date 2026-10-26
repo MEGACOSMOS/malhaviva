@@ -86,6 +86,14 @@ function desenharPlaca(ann, nome, visto) {
         // As duas setas para trás do timelapse das fotografias de satélite.
         c.moveTo(X(12), Y(19)); c.lineTo(X(5), Y(12)); c.lineTo(X(12), Y(5));
         c.moveTo(X(20), Y(19)); c.lineTo(X(13), Y(12)); c.lineTo(X(20), Y(5));
+    } else if (ann.mapaDosBairros) {
+        // O mapa dobrado em três do mapa dos bairros.
+        c.moveTo(X(2), Y(6)); c.lineTo(X(8.67), Y(4)); c.lineTo(X(15.33), Y(6));
+        c.lineTo(X(22), Y(4)); c.lineTo(X(22), Y(18)); c.lineTo(X(15.33), Y(20));
+        c.lineTo(X(8.67), Y(18)); c.lineTo(X(2), Y(20));
+        c.closePath();
+        c.moveTo(X(8.67), Y(4)); c.lineTo(X(8.67), Y(18));
+        c.moveTo(X(15.33), Y(6)); c.lineTo(X(15.33), Y(20));
     } else if (ann.isImage) {
         // O olho da fotografia.
         c.moveTo(X(2), Y(12));
