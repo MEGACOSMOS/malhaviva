@@ -131,13 +131,20 @@ export function enderecoDe(nome, resolucao) {
 }
 
 // Para onde cada rota olha ao começar — a volta (yaw) e a inclinação
-// (pitch), em graus, lidos na janela das coordenadas do olhar do player.
-// É daqui que o player parte, é para aqui que o botão de endireitar
-// volta, e é assim que as janelas dos lados mostram a rota vizinha.
+// (pitch), em graus, medidos na fotografia do primeiro instante de cada
+// rota (public/previas/). É daqui que o player parte, é para aqui que o
+// botão de endireitar volta, e é assim que as janelas dos lados mostram a
+// rota vizinha.
+//
+// Nas três, a vista neutra está apontada à cara da Esvarena, que é quem
+// leva quem vê pelo bairro: ao abrir a rota, na miniatura do marcador, na
+// janela do lado e sempre que se carrega em endireitar, é para ela que se
+// olha. Quem mexer nestes números volte a medi-los na mesma fotografia —
+// a cara ao meio da vista — e refaça as miniaturas (ver AGENTS.md).
 const OLHAR_INICIAL = {
-    'Esvarena - 360 - A': { yaw: 116.5, pitch: -12.3 },
-    'Esvarena - 360 - B': { yaw: 84.3, pitch: -27.7 },
-    'Esvarena - 360 - C': { yaw: 81.4, pitch: -17.6 }
+    'Esvarena - 360 - A': { yaw: 76.3, pitch: 9.1 },
+    'Esvarena - 360 - B': { yaw: 66.7, pitch: -11.8 },
+    'Esvarena - 360 - C': { yaw: 77.7, pitch: -12.4 }
 };
 
 // A abertura da câmara com que uma rota se começa a ver, em graus.
