@@ -167,3 +167,6 @@ dist
 .wrangler/
 __pycache__/
 .claude/settings.local.json
+
+# o detector de caras que scripts/seguir-a-cara.py descarrega
+scripts/yunet.onnx

@@ -65,6 +65,34 @@ nem ficar vazia.
 
 ---
 
+## Remontar uma rota 360? Refaz o caminho da cara
+
+Nas três rotas a vista não fica parada numa direcção: vai atrás da cara da
+Esvarena, que é quem leva quem vê pelo bairro e que, ao longo do caminho,
+passa para a frente, fica para trás e vira-se para apontar uma casa. Onde
+ela está em cada meio segundo do filme não é adivinhado no navegador —
+está medido em `public/olhar-das-rotas.mjs`, e o player segue esse caminho
+enquanto ninguém arrastar a vista.
+
+Se uma rota for remontada — cortada, rodada, exportada de novo — o caminho
+medido passa a apontar para sítios que já não são aqueles. Isso não dá
+erro nenhum: só se vê a vista a fugir dela. Por isso, ao trocar o ficheiro
+de uma rota, refaz-se tudo o que foi medido a partir dele:
+
+```
+python scripts/seguir-a-cara.py     # o caminho da cara, filme fora
+bun scripts/gerar-miniaturas.mjs    # as miniaturas dos marcadores
+```
+
+e a fotografia do primeiro instante, `public/previas/<nome>.jpg`
+(2160 × 1080, tirada da versão de 1080 linhas), que é o que o palco mostra
+antes de o filme andar e de onde saem as miniaturas. O `OLHAR_INICIAL` de
+`public/videos.mjs` — a direcção com que a rota abre, que é também o
+primeiro ponto do caminho — mede-se nessa mesma fotografia, com a cara
+dela ao meio da vista.
+
+---
+
 ## Mexer no guarda do arranque? Prova-o num Chrome a sério
 
 O primeiro bloco de `public/index.html` repara sozinho o Chrome que ficou

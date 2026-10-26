@@ -1309,6 +1309,7 @@
     <script type="module">
         import { fontesDeVideo, previaDe, olharInicialDe, ABERTURA_INICIAL } from './videos.mjs?v=8';
         import { criarGestorDeQualidade, limiteDeTexturaDoAparelho } from './qualidade-video.mjs?v=9';
+        import { temCaminhoDaCara, olharDaCara } from './olhar-das-rotas.mjs?v=1';
 
         const urlParams = new URLSearchParams(window.location.search);
 
@@ -2196,35 +2197,123 @@
         palco.addEventListener('touchend', largarDedos);
         palco.addEventListener('touchcancel', largarDedos);
 
-        // Para onde cada rota olha ao começar — a volta (yaw) e a
-        // inclinação (pitch), em graus, na lista dos vídeos. Uma rota que
-        // não esteja lá começa a direito.
+        // Para onde a rota olha — a volta (yaw) e a inclinação (pitch),
+        // em graus. Ao começar é o que está na lista dos vídeos; daí em
+        // diante é onde está a cara da Esvarena, que vem medida de meio
+        // em meio segundo do filme (ver olhar-das-rotas.mjs). Uma rota
+        // sem esse caminho medido fica parada no olhar inicial, como
+        // dantes.
         const olharInicial = olharInicialDe(nome);
         const RAD = Math.PI / 180;
+        const haCaminhoDaCara = temCaminhoDaCara(nome) && !ecraPlano;
 
-        // Aponta a câmara para o olhar inicial da rota.
-        const apontarAoInicio = () => {
-            const olhar = cameraEl && cameraEl.components && cameraEl.components['look-controls'];
+        // Onde está a cara dela neste instante do filme.
+        const olharDaRota = () => {
+            if (!haCaminhoDaCara) return olharInicial;
+            return olharDaCara(nome, video.currentTime || 0) || olharInicial;
+        };
+
+        const controlosDoOlhar = () =>
+            (cameraEl && cameraEl.components && cameraEl.components['look-controls']) || null;
+
+        // O que fomos nós a pôr na câmara. Guarda-se para se saber, na
+        // imagem seguinte, se foi outra pessoa a mexer na vista.
+        let postoPorNos = null;
+        const guardarOPosto = (olhar) => {
+            postoPorNos = {
+                volta: olhar.yawObject.rotation.y,
+                inclinacao: olhar.pitchObject.rotation.x
+            };
+        };
+
+        // Aponta a câmara à cara dela neste instante (ao abrir, é o
+        // princípio do caminho, que é o olhar inicial da rota).
+        const apontarACara = () => {
+            const olhar = controlosDoOlhar();
             if (!olhar) return false;
-            olhar.pitchObject.rotation.x = olharInicial.pitch * RAD;
-            olhar.yawObject.rotation.y = olharInicial.yaw * RAD;
+            const alvo = olharDaRota();
+            olhar.pitchObject.rotation.x = alvo.pitch * RAD;
+            olhar.yawObject.rotation.y = alvo.yaw * RAD;
+            guardarOPosto(olhar);
             return true;
         };
 
         // Mal a câmara nasça, já olha para onde a rota manda.
-        if (!apontarAoInicio()) {
+        if (!apontarACara()) {
             cameraEl.addEventListener('componentinitialized', (e) => {
-                if (e.detail && e.detail.name === 'look-controls') apontarAoInicio();
+                if (e.detail && e.detail.name === 'look-controls') apontarACara();
             });
-            cameraEl.addEventListener('loaded', apontarAoInicio, { once: true });
+            cameraEl.addEventListener('loaded', apontarACara, { once: true });
         }
 
-        // Endireitar a vista: quem se perde a olhar para trás volta ao
-        // olhar inicial da rota com um botão, em vez de ter de arrastar
-        // até acertar. E volta também à distância a que se chegou, para
-        // o mesmo botão repor tudo como estava.
+        // ---- A vista anda atrás da cara dela ----
+        //
+        // A Esvarena vai a andar ao lado de quem filma: ao longo do
+        // caminho passa para a frente, fica para trás, vira-se para
+        // apontar uma casa. Uma direcção fixa deixava-a sair do ecrã, por
+        // isso a vista vai atrás da cara dela — sempre a deslizar, e
+        // nunca aos saltos, que numa imagem que envolve a pessoa isso
+        // enjoa.
+        //
+        // Quem arrastar a vista fica com ela: a partir daí a câmara é de
+        // quem a mexeu, e só o botão de endireitar a devolve à cara dela.
+        // Sabe-se isso sem perguntar a ninguém — guarda-se o que fomos nós
+        // a pôr e, se na imagem seguinte a câmara estiver noutro sítio,
+        // foi o rato, o dedo ou o comando. Dentro dos óculos é a cabeça
+        // de quem lá está que manda, e aí não se mexe em nada.
+        const SUAVIDADE_DO_SEGUIR = 0.35;   // segundos a chegar ao sítio
+        let aSeguirACara = false;
+        let instanteDoSeguir = 0;
+
+        // Quanto falta virar, pelo caminho mais curto: meia volta para um
+        // lado vale menos do que a volta toda para o outro.
+        const faltaParaOAlvo = (alvo, agora) => {
+            let falta = (alvo - agora) % (2 * Math.PI);
+            if (falta > Math.PI) falta -= 2 * Math.PI;
+            if (falta < -Math.PI) falta += 2 * Math.PI;
+            return falta;
+        };
+
+        const irAtrasDela = (agora) => {
+            if (!aSeguirACara) return;
+            const olhar = controlosDoOlhar();
+            if (!olhar) { requestAnimationFrame(irAtrasDela); return; }
+            if (scene.is('vr-mode')) { requestAnimationFrame(irAtrasDela); return; }
+            // A primeira vez não se desliza: põe-se a câmara no sítio.
+            if (!postoPorNos) { apontarACara(); requestAnimationFrame(irAtrasDela); return; }
+            if (postoPorNos &&
+                (Math.abs(olhar.yawObject.rotation.y - postoPorNos.volta) > 1e-6 ||
+                 Math.abs(olhar.pitchObject.rotation.x - postoPorNos.inclinacao) > 1e-6)) {
+                aSeguirACara = false;
+                return;
+            }
+            const dt = instanteDoSeguir ? Math.min(0.1, (agora - instanteDoSeguir) / 1000) : 1 / 60;
+            instanteDoSeguir = agora;
+            const alvo = olharDaRota();
+            const parte = 1 - Math.exp(-dt / SUAVIDADE_DO_SEGUIR);
+            olhar.yawObject.rotation.y +=
+                faltaParaOAlvo(alvo.yaw * RAD, olhar.yawObject.rotation.y) * parte;
+            olhar.pitchObject.rotation.x +=
+                (alvo.pitch * RAD - olhar.pitchObject.rotation.x) * parte;
+            guardarOPosto(olhar);
+            requestAnimationFrame(irAtrasDela);
+        };
+
+        const seguirACara = () => {
+            if (!haCaminhoDaCara || aSeguirACara) return;
+            aSeguirACara = true;
+            instanteDoSeguir = 0;
+            requestAnimationFrame(irAtrasDela);
+        };
+        seguirACara();
+
+        // Endireitar a vista: quem se perde a olhar para trás volta à cara
+        // dela com um botão, em vez de ter de arrastar até acertar — e a
+        // vista volta a andar-lhe atrás. Volta também à distância a que se
+        // chegou, para o mesmo botão repor tudo como estava.
         const endireitar = () => {
-            apontarAoInicio();
+            apontarACara();
+            seguirACara();
             aplicarZoom(ANGULO_LARGO);
             showControls();
         };
