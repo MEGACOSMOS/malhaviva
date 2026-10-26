@@ -288,11 +288,20 @@
             color: var(--color-accent);
         }
 
-        /* A espera do bairro é o quadrado de espera do site — o desenho
-           vem do ficheiro dele; aqui só se põe a meio, por baixo do nome. */
+        /* Quando o bairro volta a ser posto — ao fechar uma janela grande,
+           ou a placa gráfica a recomeçar —, a espera é o quadrado de espera
+           do site: o desenho vem do ficheiro dele; aqui só se põe a meio. */
         .loading-square {
             --cor: var(--color-accent);
             margin: 0 auto;
+        }
+
+        /* O mesmo ecrã de espera serve dois momentos. Ao abrir o site, o
+           logótipo sozinho, a acender-se; das outras vezes, o quadrado
+           sozinho (ver o guião do ecrã de espera). */
+        #loading-overlay[data-momento="abertura"] .loading-square,
+        #loading-overlay[data-momento="regresso"] .loading-logotipo {
+            display: none;
         }
 
         .loading-text {
@@ -1964,7 +1973,7 @@
     </div>
 
     <!-- Loading Overlay -->
-    <div id="loading-overlay">
+    <div id="loading-overlay" data-momento="abertura">
         <div class="loading-content">
             <div class="loading-brand">
                 <div class="loading-logotipo" id="loading-logotipo" role="img" aria-label="Malha Viva" data-i18n-aria="site.nome"></div>
@@ -1981,17 +1990,20 @@
 
     <script>
     /**
-     * O quadrado de espera do bairro, a luz que sobe por baixo do rasto e
-     * o logótipo que se acende por cima.
+     * O que o ecrã de espera do bairro mostra enquanto espera.
      *
-     * O rasto anda sozinho — é o quadrado de espera do site, o mesmo das
-     * janelas 360º. O que aqui se acende é o resto: a luz de fundo do
-     * quadrado e o logótipo, da esquerda para a direita, os dois pela
-     * mesma conta — quanto do bairro já chegou de facto, contado pelo
-     * motor à medida que os pedaços do mapa vão chegando (ver
-     * carga-do-bairro.mjs). Não há conta inventada: enquanto nada do
-     * bairro chegou, a luz fica apagada, e só anda quando chega. Quando o
-     * mapa está mesmo pronto, o rasto pára e tudo fica aceso.
+     * Ao abrir o site, o logótipo, sozinho, a acender-se da esquerda para
+     * a direita. Das outras vezes que o ecrã de espera aparece — quando se
+     * fecha uma janela grande e o bairro é reposto, ou a placa gráfica
+     * recomeça —, o quadrado de espera do site, sozinho, o mesmo das
+     * janelas 360º: o rasto anda sozinho, e por baixo dele sobe uma luz.
+     *
+     * O logótipo e a luz do quadrado acendem-se pela mesma conta — quanto
+     * do bairro já chegou de facto, contado pelo motor à medida que os
+     * pedaços do mapa vão chegando (ver carga-do-bairro.mjs). Não há
+     * conta inventada: enquanto nada do bairro chegou, a luz fica apagada,
+     * e só anda quando chega. Quando o mapa está mesmo pronto, o rasto
+     * pára e tudo fica aceso.
      */
     (function () {
         const elemento = document.getElementById('loading-square');
@@ -2005,6 +2017,7 @@
 
         let fraccao = 0;
         let aEsperar = false;
+        let jaAbriu = false;
 
         const desenhar = () => {
             quadrado.luz(fraccao);
@@ -2013,6 +2026,11 @@
 
         const comecar = () => {
             aEsperar = true;
+            // A primeira espera é a da abertura; as seguintes são regressos.
+            // (O momento vai num atributo à parte, e não numa classe, para
+            // não acordar quem está à escuta das classes, aqui em baixo.)
+            overlay.dataset.momento = jaAbriu ? 'regresso' : 'abertura';
+            jaAbriu = true;
             quadrado.recomecar();
             if (logotipo) logotipo.recomecar();
             fraccao = 0;
@@ -2030,7 +2048,7 @@
         comecar();
 
         // O mesmo ecrã de espera volta a aparecer quando se fecha um vídeo
-        // 360º e o bairro é reposto. Aqui o quadrado dá por isso sozinho.
+        // 360º e o bairro é reposto. Aqui dá-se por isso sozinho.
         new MutationObserver(() => {
             if (overlay.classList.contains('hidden')) acabar();
             else if (!aEsperar) comecar();
