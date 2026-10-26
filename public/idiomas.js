@@ -6,7 +6,8 @@
  * o texto) ou `data-i18n-title="chave"` (para a etiqueta que aparece quando
  * o rato pára em cima), e esta lista é que decide o que lá vai parar.
  *
- * Os nomes das pessoas — Dulce, Luna, Sofia, Frei, Edson, Edmilson, Carlos —
+ * Os nomes das pessoas — Dulce, Luna, Sofia, Frei, Edson, Edmilson, Carlos,
+ * Helena —
  * e os nomes de sítios como Esvarena ou Olho de Águia nunca são traduzidos:
  * são nomes próprios e ficam como estão em qualquer língua.
  *

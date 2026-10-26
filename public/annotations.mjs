@@ -335,6 +335,12 @@ AnnotationController.prototype.initialize = function() {
             label: "Carlos",
             video: "Carlos",
             element: null
+        },
+        {
+            position: new pc.Vec3(-57.35, -5.68, 50.14),
+            label: "Helena",
+            video: "Helena",
+            element: null
         }
     ];
 
