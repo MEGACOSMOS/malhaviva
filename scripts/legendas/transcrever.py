@@ -27,7 +27,7 @@ SAIDA = os.path.join(PASTA, 'out')
 os.makedirs(SAIDA, exist_ok=True)
 
 PROMPT = ('Testemunhos de moradores do Bairro de Penajóia, em Almada. '
-          'Dulce, Luna, Sofia, Frei, Edson, Edmilson, Carlos, Esvarena.')
+          'Dulce, Luna, Sofia, Frei, Edson, Edmilson, Carlos, Helena, Esvarena.')
 
 
 def ler_audio(caminho):
