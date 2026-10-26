@@ -2686,7 +2686,8 @@
                 </div>
 
                 <!-- O que se vê no bairro e se pode dispensar: os
-                     marcadores de cada tipo e a paisagem. -->
+                     marcadores de cada tipo, as miniaturas por cima
+                     deles e a paisagem. -->
                 <div class="settings-title" style="margin-top: 18px;" data-i18n="def.interface">Interface</div>
                 <div class="settings-options">
                     <label class="settings-radio">
@@ -2696,6 +2697,10 @@
                     <label class="settings-radio">
                         <input type="checkbox" id="anot-360" checked>
                         <span data-i18n="def.rotas">Rotas</span>
+                    </label>
+                    <label class="settings-radio">
+                        <input type="checkbox" id="previsualizacoes-ligadas" checked>
+                        <span data-i18n="def.previsualizacoes">Previsualizações</span>
                     </label>
                     <label class="settings-radio">
                         <input type="checkbox" id="paisagem-ligada">
@@ -4325,6 +4330,25 @@ void modifySplatColor(vec3 center, inout vec4 color) {
                 aplicarVisibilidadeAnotacoes();
             });
         });
+
+        // --- Previsualizações ---
+        //
+        // As miniaturas por cima dos marcadores, com a imagem do que cada
+        // um abre. Desligadas, os marcadores ficam só com o quadrado e o
+        // nome por baixo, e o rato também já não as mostra. Quem as tira
+        // é arrumarMiniaturas (em annotations.mjs), pela roupa
+        // "sem-previsualizacoes" do corpo da página.
+        const caixaDasPrevisualizacoes = document.getElementById('previsualizacoes-ligadas');
+        if (caixaDasPrevisualizacoes) {
+            const aplicar = () => document.body.classList.toggle('sem-previsualizacoes',
+                !caixaDasPrevisualizacoes.checked);
+            caixaDasPrevisualizacoes.checked = memoria.ler('previsualizacoes') !== 'off';
+            aplicar();
+            caixaDasPrevisualizacoes.addEventListener('change', () => {
+                memoria.guardar('previsualizacoes', caixaDasPrevisualizacoes.checked ? 'on' : 'off');
+                aplicar();
+            });
+        }
 
         /**
          * Espera que o bairro esteja mesmo desenhado antes de abrir a porta.

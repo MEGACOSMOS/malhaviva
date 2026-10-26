@@ -4441,9 +4441,14 @@ AnnotationController.prototype.arrumarMiniaturas = function(dt) {
             this.taparMarcador(ann, false);
         }
     }
+    // As miniaturas podem ser desligadas nas definições ("Previsualizações",
+    // no index.html): ficam todas recolhidas, como as dos já vistos, e os
+    // marcadores só com o nome por baixo.
+    const comMiniaturas = !document.body.classList.contains('sem-previsualizacoes');
+
     // O marcador com o rato em cima (ver ratoEmCima). Fora de vista, é como
-    // se o rato tivesse saído.
-    const sobRato = presentes.includes(this._sobRato) ? this._sobRato : null;
+    // se o rato tivesse saído; e sem miniaturas não há nada a mostrar-lhe.
+    const sobRato = comMiniaturas && presentes.includes(this._sobRato) ? this._sobRato : null;
     if (this._espreitado !== sobRato) {
         const deixado = this._espreitado;
         if (deixado && deixado._espreitou) {
@@ -4506,7 +4511,12 @@ AnnotationController.prototype.arrumarMiniaturas = function(dt) {
     const riscosOcupados = [];
 
     let postas = 0;
-    if (medida) aVista.forEach((ann, quem) => {
+    if (!comMiniaturas) aVista.forEach((ann) => {
+        const el = ann.element;
+        if (!el.classList.contains('miniatura-recolhida')) el.classList.add('miniatura-recolhida');
+        ann._lugar = null;
+    });
+    if (medida && comMiniaturas) aVista.forEach((ann, quem) => {
         const comRato = ann === sobRato;
         // A que só está à vista por o rato estar em cima não conta para o
         // máximo (ver MAXIMO_DE_MINIATURAS).
