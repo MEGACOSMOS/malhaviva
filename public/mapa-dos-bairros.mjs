@@ -59,7 +59,7 @@ export const BAIRROS = [
     { nome: 'Quinta do Lamas', lon: -9.193677, lat: 38.779955 },
     { nome: 'Pombais / Urbeira', lon: -9.193358, lat: 38.775249 },
     { nome: 'Avenida Gulbenkian', lon: -9.195627, lat: 38.769458 },
-    { nome: 'Estrada Padre Cruz', lon: -9.200169, lat: 38.768281 },
+    { nome: 'Estrada Padre Cruz', lon: -9.200169, lat: 38.768281, demolido: true },
     { nome: 'Pátio Oliveira Mota', lon: -9.203229, lat: 38.765262 },
     { nome: 'Bairro de Montemor', lon: -9.201357, lat: 38.815389 },
     { nome: 'Quinta da Lage', lon: -9.221454, lat: 38.762577 },
