@@ -8,8 +8,9 @@
  * Bairros" em annotations.mjs).
  *
  * As coordenadas são as do mapa, tal e qual — longitude e latitude, em
- * graus (WGS84) —, menos as do Casal dos Estanques, das Marinhas do Tejo e
- * da Rua Moinho da Arroja, acertadas à mão sobre a fotografia de satélite
+ * graus (WGS84) —, menos as do Casal dos Estanques, das Marinhas do Tejo,
+ * da Rua Moinho da Arroja e da Quinta do Pomar, acertadas à mão sobre a
+ * fotografia de satélite
  * (com as coordenadas do rato do modo de desenvolvedor). Um bairro que já
  * foi deitado abaixo leva "demolido", e no mapa o nome leva "(demolido)" à
  * frente. Um bairro por linha, para scripts/fazer-vista-dos-bairros.py as
@@ -64,7 +65,7 @@ export const BAIRROS = [
     { nome: 'Bairro de Montemor', lon: -9.201357, lat: 38.815389 },
     { nome: 'Quinta da Lage', lon: -9.221454, lat: 38.762577 },
     { nome: 'Outros Núcleos Dispersos', lon: -9.227706, lat: 38.763874 },
-    { nome: 'Quinta do Pomar', lon: -9.253607, lat: 38.772096 },
+    { nome: 'Quinta do Pomar', lon: -9.253519, lat: 38.772671 },
     { nome: 'Estrada Militar do Alto da Damaia', lon: -9.223545, lat: 38.748294 },
     { nome: 'Cova da Moura', lon: -9.215457, lat: 38.744885 },
     { nome: 'Bairro do 1º Torrão', lon: -9.237074, lat: 38.670966 },
