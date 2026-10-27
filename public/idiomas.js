@@ -191,6 +191,7 @@
             'nav.p.chegadaDireita': 'Chegou: a casa {numero} fica à sua direita.',
             'nav.p.chegadaFrente': 'Chegou: a casa {numero} fica à sua frente.',
             'nav.p.longe': 'A casa {numero} fica a cerca de {metros} m, numa zona que o drone não fotografou: siga a linha a tracejado.',
+            'nav.p.longeDentro': 'A casa {numero} fica a cerca de {metros} m, por um caminho que não se vê de cima: siga a linha a tracejado.',
 
             'rota.titulo': 'Rota',
             'palco.anterior': 'Anterior',
@@ -454,6 +455,7 @@
             'nav.p.chegadaDireita': 'You have arrived: house {numero} is on your right.',
             'nav.p.chegadaFrente': 'You have arrived: house {numero} is in front of you.',
             'nav.p.longe': 'House {numero} is about {metros} m away, in an area the drone did not photograph: follow the dotted line.',
+            'nav.p.longeDentro': 'House {numero} is about {metros} m away, along a path that cannot be seen from above: follow the dotted line.',
 
             'rota.titulo': 'Route',
             'palco.anterior': 'Previous',
@@ -717,6 +719,7 @@
             'nav.p.chegadaDireita': 'Ha llegado: la casa {numero} está a su derecha.',
             'nav.p.chegadaFrente': 'Ha llegado: la casa {numero} está delante de usted.',
             'nav.p.longe': 'La casa {numero} está a unos {metros} m, en una zona que el dron no fotografió: siga la línea de puntos.',
+            'nav.p.longeDentro': 'La casa {numero} está a unos {metros} m, por un camino que no se ve desde arriba: siga la línea de puntos.',
 
             'rota.titulo': 'Ruta',
             'palco.anterior': 'Anterior',
@@ -980,6 +983,7 @@
             'nav.p.chegadaDireita': 'Bu txiga: kaza {numero} sta na bu direita.',
             'nav.p.chegadaFrente': 'Bu txiga: kaza {numero} sta na bu frenti.',
             'nav.p.longe': 'Kaza {numero} sta más ô ménus a {metros} m, na un zona ki dron ka fotografa: sigi linha di pontu.',
+            'nav.p.longeDentro': 'Kaza {numero} sta más ô ménus a {metros} m, pa un kaminhu ki ka ta odja di riba: sigi linha di pontu.',
 
             'rota.titulo': 'Rota',
             'palco.anterior': 'Anterior',

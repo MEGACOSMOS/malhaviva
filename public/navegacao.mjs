@@ -469,17 +469,20 @@ export class Rede {
         };
 
         // Onde se vira: só nos cruzamentos, e só onde há por onde errar —
-        // seguir pelo caminho mais a direito não se diz, mesmo que ele
-        // curve. Os cruzamentos muito juntos contam como um.
+        // seguir pelo caminho mais a direito, ou pela rua mais larga (quem
+        // anda segue a rua principal sem pensar nisso), não se diz, mesmo que
+        // curve um pouco. Os cruzamentos muito juntos contam como um.
+        const largura = (t) => (t.tipo === ESTRADA ? Math.max(t.largura, 8) : t.largura);
         const eventos = [];
         for (const { no, s, entra, sai } of percurso.nos) {
             if (s < 2 || s > total - 2 || !sai || this.grau(no) < 3) continue;
             const antes = rumo(s - RUMO_M, s);
             const angulo = viragem(rumo(s, s + RUMO_M), antes);
-            const outros = this.vizinhos[no].filter((t) => t !== entra && t !== sai)
-                .map((t) => Math.abs(viragem(this.rumoDoTroco(t, no), antes)));
+            const alternativas = this.vizinhos[no].filter((t) => t !== entra && t !== sai);
+            const outros = alternativas.map((t) => Math.abs(viragem(this.rumoDoTroco(t, no), antes)));
             const maisDireito = !outros.length || Math.abs(angulo) <= Math.min(...outros) + 5;
-            if (maisDireito && Math.abs(angulo) < SEGUIR_DOBRA_GRAUS) continue;
+            const maisLargo = !alternativas.length || largura(sai) >= 0.8 * Math.max(...alternativas.map(largura));
+            if ((maisDireito || maisLargo) && Math.abs(angulo) < SEGUIR_DOBRA_GRAUS) continue;
             const ultimo = eventos[eventos.length - 1];
             if (ultimo && s - ultimo.s1 < JUNTAR_M) {
                 ultimo.s1 = s;
@@ -539,7 +542,7 @@ export class Rede {
             const a = viragem(Math.atan2(porta[1] - fim[1], porta[0] - fim[0]), rumo(total - RUMO_M, total));
             if (Math.abs(a) >= 25 && Math.abs(a) <= 155) lado = a > 0 ? 'esquerda' : 'direita';
         }
-        passos.push({ acao: 'chegada', lado, longe: casa.longe ? arredondar(casa.longe) : 0 });
+        passos.push({ acao: 'chegada', lado, longe: casa.longe ? arredondar(casa.longe) : 0, fora: !!casa.fora });
         return passos;
     }
 }
