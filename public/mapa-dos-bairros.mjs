@@ -4,12 +4,15 @@
  * São os 27 que o Expresso contou em junho de 2025, postos no mapa (o
  * "Mapa dos Bairros AML", feito à mão no Google My Maps a partir do artigo)
  * com um ponto por bairro. A Penajóia é um deles: é o bairro deste site, e
- * o marcador que abre este mapa está no céu dela, por cima do sítio onde o
- * ponto dela cai (ver a anotação "Mapa dos Bairros" em annotations.mjs).
+ * o marcador que abre este mapa está no céu dela (ver a anotação "Mapa dos
+ * Bairros" em annotations.mjs).
  *
- * As coordenadas são as do mapa, tal e qual: longitude e latitude, em graus
- * (WGS84). Um bairro por linha, para scripts/fazer-vista-dos-bairros.py as
- * ler daqui sem haver outra lista a dizer coisas diferentes.
+ * As coordenadas são as do mapa, tal e qual — longitude e latitude, em
+ * graus (WGS84) —, menos as do Casal dos Estanques e das Marinhas do Tejo,
+ * acertadas à mão sobre a fotografia de satélite (com as coordenadas do
+ * rato do modo de desenvolvedor). Um bairro por linha, para
+ * scripts/fazer-vista-dos-bairros.py as ler daqui sem haver outra lista a
+ * dizer coisas diferentes.
  */
 
 // O artigo de onde saem os bairros. A data e o título vêm do próprio
@@ -44,9 +47,9 @@ export const BAIRROS = [
     { nome: 'Bairro do Zambujal', lon: -9.123805, lat: 38.868564 },
     { nome: 'Bairro da Estrada Militar da Mina', lon: -9.245281, lat: 38.765007 },
     { nome: 'Bairro do Clarimundo', lon: -9.027305, lat: 38.912532 },
-    { nome: 'Casal dos Estanques', lon: -9.078165, lat: 38.877049 },
+    { nome: 'Casal dos Estanques', lon: -9.078572, lat: 38.877227 },
     { nome: 'Traseiras da Improsit', lon: -9.027434, lat: 38.913857 },
-    { nome: 'Marinhas do Tejo', lon: -9.087146, lat: 38.835644 },
+    { nome: 'Marinhas do Tejo', lon: -9.088127, lat: 38.833571 },
     { nome: 'Bairro Talude Militar', lon: -9.135997, lat: 38.818424 },
     { nome: 'Quinta da Várzea / Cucos da Serra', lon: -9.157737, lat: 38.795063 },
     { nome: 'Barruncho', lon: -9.167744, lat: 38.799292 },
