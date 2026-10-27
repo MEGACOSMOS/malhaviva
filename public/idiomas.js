@@ -141,6 +141,7 @@
             'mb.esteBairro': 'o bairro do {site}',
             'mb.carregar': 'A carregar o mapa de satélite…',
             'mb.erro': 'Não foi possível carregar o mapa de satélite.',
+            'mb.demolido': '(demolido)',
 
             'rota.titulo': 'Rota',
             'palco.anterior': 'Anterior',
@@ -357,6 +358,7 @@
             'mb.esteBairro': 'the neighbourhood of {site}',
             'mb.carregar': 'Loading the satellite map…',
             'mb.erro': 'The satellite map could not be loaded.',
+            'mb.demolido': '(demolished)',
 
             'rota.titulo': 'Route',
             'palco.anterior': 'Previous',
@@ -573,6 +575,7 @@
             'mb.esteBairro': 'el barrio de {site}',
             'mb.carregar': 'Cargando el mapa de satélite…',
             'mb.erro': 'No se ha podido cargar el mapa de satélite.',
+            'mb.demolido': '(demolido)',
 
             'rota.titulo': 'Ruta',
             'palco.anterior': 'Anterior',
@@ -789,6 +792,7 @@
             'mb.esteBairro': 'bairu di {site}',
             'mb.carregar': 'Ta karega mapa di satélite…',
             'mb.erro': 'Ka konsigi karega mapa di satélite.',
+            'mb.demolido': '(dimolidu)',
 
             'rota.titulo': 'Rota',
             'palco.anterior': 'Anterior',

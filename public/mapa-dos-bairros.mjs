@@ -10,7 +10,9 @@
  * As coordenadas são as do mapa, tal e qual — longitude e latitude, em
  * graus (WGS84) —, menos as do Casal dos Estanques e das Marinhas do Tejo,
  * acertadas à mão sobre a fotografia de satélite (com as coordenadas do
- * rato do modo de desenvolvedor). Um bairro por linha, para
+ * rato do modo de desenvolvedor). Um bairro que já foi deitado abaixo leva
+ * "demolido", e no mapa o nome leva "(demolido)" à frente. Um bairro por
+ * linha, para
  * scripts/fazer-vista-dos-bairros.py as ler daqui sem haver outra lista a
  * dizer coisas diferentes.
  */
@@ -53,7 +55,7 @@ export const BAIRROS = [
     { nome: 'Bairro Talude Militar', lon: -9.135997, lat: 38.818424 },
     { nome: 'Quinta da Várzea / Cucos da Serra', lon: -9.157737, lat: 38.795063 },
     { nome: 'Barruncho', lon: -9.167744, lat: 38.799292 },
-    { nome: 'Pomarinho', lon: -9.18252, lat: 38.801824 },
+    { nome: 'Pomarinho', lon: -9.18252, lat: 38.801824, demolido: true },
     { nome: 'Rua Moinho da Arroja', lon: -9.18925, lat: 38.797593 },
     { nome: 'Quinta do Lamas', lon: -9.193677, lat: 38.779955 },
     { nome: 'Pombais / Urbeira', lon: -9.193358, lat: 38.775249 },

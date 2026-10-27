@@ -394,7 +394,7 @@
     </div>
 
     <script type="module">
-        import { BAIRROS, FONTE, SATELITE, PENAJOIA } from './mapa-dos-bairros.mjs?v=2';
+        import { BAIRROS, FONTE, SATELITE, PENAJOIA } from './mapa-dos-bairros.mjs?v=3';
 
         // O passo dos botões, das teclas e do duplo clique, em níveis do
         // mapa (cada nível é o dobro do anterior): um nível inteiro, o
@@ -466,15 +466,25 @@
                 .replace('{creditos}', SATELITE.creditos);
             marcadores.forEach(({ bairro, marcador }) => {
                 const el = marcador.getElement();
-                if (el) el.setAttribute('aria-label', nomeAcessivel(bairro));
+                if (!el) return;
+                el.querySelector('.nome').textContent = nomeAVista(bairro);
+                el.setAttribute('aria-label', nomeAcessivel(bairro));
             });
+            arrumarJa();
         };
 
-        // O nome que um leitor de ecrã lê de cada quadrado: o do bairro, e
-        // na Penajóia também que é o bairro deste site.
+        // O nome escrito ao lado do quadrado: o do bairro, e, num bairro
+        // que já foi deitado abaixo, "(demolido)" à frente, na língua de
+        // quem lê. O nome do bairro não se traduz.
+        const nomeAVista = (bairro) => bairro.demolido
+            ? bairro.nome + ' ' + diz('mb.demolido', '(demolido)')
+            : bairro.nome;
+
+        // O nome que um leitor de ecrã lê de cada quadrado: o que está
+        // escrito, e na Penajóia também que é o bairro deste site.
         const nomeAcessivel = (bairro) => bairro.nome === PENAJOIA
             ? bairro.nome + ' — ' + diz('mb.esteBairro', 'o bairro do {site}').replace('{site}', diz('site.nome', 'Malha Viva'))
-            : bairro.nome;
+            : nomeAVista(bairro);
 
         // ---- O mapa ----
         //
@@ -555,7 +565,7 @@
                 zIndexOffset: penajoia ? 1000 : 0
             }).addTo(mapa);
             const el = marcador.getElement();
-            el.querySelector('.nome').textContent = bairro.nome;
+            el.querySelector('.nome').textContent = nomeAVista(bairro);
             el.setAttribute('role', 'img');
             el.setAttribute('aria-label', nomeAcessivel(bairro));
 
