@@ -8,13 +8,12 @@
  * Bairros" em annotations.mjs).
  *
  * As coordenadas são as do mapa, tal e qual — longitude e latitude, em
- * graus (WGS84) —, menos as do Casal dos Estanques, das Marinhas do Tejo,
- * da Rua Moinho da Arroja e da Quinta do Pomar, acertadas à mão sobre a
- * fotografia de satélite
- * (com as coordenadas do rato do modo de desenvolvedor). Um bairro que já
- * foi deitado abaixo leva "demolido", e no mapa o nome leva "(demolido)" à
- * frente. Um bairro por linha, para scripts/fazer-vista-dos-bairros.py as
- * ler daqui sem haver outra lista a dizer coisas diferentes.
+ * graus (WGS84) —, menos as das linhas marcadas "acertado à mão": essas
+ * foram postas sobre a fotografia de satélite, com as coordenadas do rato
+ * do modo de desenvolvedor. Um bairro que já foi deitado abaixo leva
+ * "demolido", e no mapa o nome leva "(demolido)" à frente. Um bairro por
+ * linha, para scripts/fazer-vista-dos-bairros.py as ler daqui sem haver
+ * outra lista a dizer coisas diferentes.
  */
 
 // O artigo de onde saem os bairros. A data e o título vêm do próprio
@@ -49,14 +48,14 @@ export const BAIRROS = [
     { nome: 'Bairro do Zambujal', lon: -9.123805, lat: 38.868564 },
     { nome: 'Bairro da Estrada Militar da Mina', lon: -9.245281, lat: 38.765007 },
     { nome: 'Bairro do Clarimundo', lon: -9.027305, lat: 38.912532 },
-    { nome: 'Casal dos Estanques', lon: -9.078572, lat: 38.877227 },
+    { nome: 'Casal dos Estanques', lon: -9.078572, lat: 38.877227 },   // acertado à mão
     { nome: 'Traseiras da Improsit', lon: -9.027434, lat: 38.913857 },
-    { nome: 'Marinhas do Tejo', lon: -9.088127, lat: 38.833571 },
+    { nome: 'Marinhas do Tejo', lon: -9.088127, lat: 38.833571 },   // acertado à mão
     { nome: 'Bairro Talude Militar', lon: -9.135997, lat: 38.818424 },
     { nome: 'Quinta da Várzea / Cucos da Serra', lon: -9.157737, lat: 38.795063 },
     { nome: 'Barruncho', lon: -9.167744, lat: 38.799292 },
     { nome: 'Pomarinho', lon: -9.18252, lat: 38.801824, demolido: true },
-    { nome: 'Rua Moinho da Arroja', lon: -9.188632, lat: 38.797147 },
+    { nome: 'Rua Moinho da Arroja', lon: -9.188632, lat: 38.797147 },   // acertado à mão
     { nome: 'Quinta do Lamas', lon: -9.193677, lat: 38.779955 },
     { nome: 'Pombais / Urbeira', lon: -9.193358, lat: 38.775249 },
     { nome: 'Avenida Gulbenkian', lon: -9.195627, lat: 38.769458 },
@@ -65,9 +64,9 @@ export const BAIRROS = [
     { nome: 'Bairro de Montemor', lon: -9.201357, lat: 38.815389 },
     { nome: 'Quinta da Lage', lon: -9.221454, lat: 38.762577 },
     { nome: 'Outros Núcleos Dispersos', lon: -9.227706, lat: 38.763874 },
-    { nome: 'Quinta do Pomar', lon: -9.253519, lat: 38.772671 },
+    { nome: 'Quinta do Pomar', lon: -9.253519, lat: 38.772671 },   // acertado à mão
     { nome: 'Estrada Militar do Alto da Damaia', lon: -9.223545, lat: 38.748294 },
-    { nome: 'Cova da Moura', lon: -9.215457, lat: 38.744885 },
+    { nome: 'Cova da Moura', lon: -9.213968, lat: 38.744626 },   // acertado à mão
     { nome: 'Bairro do 1º Torrão', lon: -9.237074, lat: 38.670966 },
     { nome: 'Bairro do 2º Torrão', lon: -9.245502, lat: 38.667291 }
 ];
