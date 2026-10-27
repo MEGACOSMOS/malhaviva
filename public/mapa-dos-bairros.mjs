@@ -1,5 +1,5 @@
 /**
- * Os bairros de barracas da Grande Lisboa, num mapa de satélite.
+ * Os bairros informais da Grande Lisboa, num mapa de satélite.
  *
  * São os 27 que o Expresso contou em junho de 2025, postos no mapa (o
  * "Mapa dos Bairros AML", feito à mão no Google My Maps a partir do artigo)
@@ -17,7 +17,9 @@
  */
 
 // O artigo de onde saem os bairros. A data e o título vêm do próprio
-// endereço do artigo.
+// endereço do artigo; o título é o do jornal, tal e qual, e por isso
+// continua a dizer "bairros de barracas", que o site trocou por "bairros
+// informais".
 export const FONTE = {
     jornal: 'Expresso',
     titulo: 'Há 27 bairros de barracas na Grande Lisboa',

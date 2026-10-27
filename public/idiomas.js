@@ -85,7 +85,7 @@
             'mapa.testemunhoDe': 'Testemunho de {nome}',
             'mapa.fotografia360': 'fotografia 360º',
             'mapa.timelapse': 'Retroceder — fotografias de satélite do bairro, de {de} a {ate}',
-            'mapa.bairros': 'Mapa dos Bairros — os 27 bairros de barracas da Grande Lisboa, num mapa de satélite',
+            'mapa.bairros': 'Mapa dos Bairros — os 27 bairros informais da Grande Lisboa, num mapa de satélite',
 
             'carga.modelo': 'A carregar modelo 3D…',
             'carga.restaurar': 'A restaurar ambiente 3D…',
@@ -133,7 +133,7 @@
             // O mapa dos bairros. "Mapa dos Bairros" é o nome do sítio,
             // como "Retroceder": fica igual em todas as línguas.
             'mb.separador': 'Mapa dos Bairros',
-            'mb.titulo': '27 bairros de barracas na Grande Lisboa',
+            'mb.titulo': '27 bairros informais na Grande Lisboa',
             'mb.mapa': 'Mapa de satélite dos 27 bairros',
             'mb.fonte': 'Fonte:',
             'mb.dataDaFonte': '5 de junho de 2025',
@@ -304,7 +304,7 @@
             'mapa.testemunhoDe': 'Testimony from {nome}',
             'mapa.fotografia360': '360º photograph',
             'mapa.timelapse': 'Retroceder — satellite photos of the neighbourhood, {de} to {ate}',
-            'mapa.bairros': 'Mapa dos Bairros — the 27 shantytowns of Greater Lisbon, on a satellite map',
+            'mapa.bairros': 'Mapa dos Bairros — the 27 informal settlements of Greater Lisbon, on a satellite map',
 
             'carga.modelo': 'Loading 3D model…',
             'carga.restaurar': 'Restoring 3D environment…',
@@ -350,8 +350,8 @@
             'tl.meses': 'January,February,March,April,May,June,July,August,September,October,November,December',
 
             'mb.separador': 'Mapa dos Bairros',
-            'mb.titulo': '27 shantytowns in Greater Lisbon',
-            'mb.mapa': 'Satellite map of the 27 shantytowns',
+            'mb.titulo': '27 informal settlements in Greater Lisbon',
+            'mb.mapa': 'Satellite map of the 27 informal settlements',
             'mb.fonte': 'Source:',
             'mb.dataDaFonte': '5 June 2025',
             'mb.satelite': 'Satellite imagery: {creditos}, September and November 2025',
@@ -521,7 +521,7 @@
             'mapa.testemunhoDe': 'Testimonio de {nome}',
             'mapa.fotografia360': 'fotografía 360º',
             'mapa.timelapse': 'Retroceder — fotografías de satélite del barrio, de {de} a {ate}',
-            'mapa.bairros': 'Mapa dos Bairros — los 27 barrios de chabolas de la Gran Lisboa, en un mapa de satélite',
+            'mapa.bairros': 'Mapa dos Bairros — los 27 barrios informales de la Gran Lisboa, en un mapa de satélite',
 
             'carga.modelo': 'Cargando modelo 3D…',
             'carga.restaurar': 'Restaurando entorno 3D…',
@@ -567,7 +567,7 @@
             'tl.meses': 'Enero,Febrero,Marzo,Abril,Mayo,Junio,Julio,Agosto,Septiembre,Octubre,Noviembre,Diciembre',
 
             'mb.separador': 'Mapa dos Bairros',
-            'mb.titulo': '27 barrios de chabolas en la Gran Lisboa',
+            'mb.titulo': '27 barrios informales en la Gran Lisboa',
             'mb.mapa': 'Mapa de satélite de los 27 barrios',
             'mb.fonte': 'Fuente:',
             'mb.dataDaFonte': '5 de junio de 2025',
@@ -738,7 +738,7 @@
             'mapa.testemunhoDe': 'Tistimunhu di {nome}',
             'mapa.fotografia360': 'fotografia 360º',
             'mapa.timelapse': 'Retroceder — fotografias di satélite di bairu, di {de} pa {ate}',
-            'mapa.bairros': 'Mapa dos Bairros — kes 27 bairu di barraka di Grandi Lisboa, na un mapa di satélite',
+            'mapa.bairros': 'Mapa dos Bairros — kes 27 bairu informal di Grandi Lisboa, na un mapa di satélite',
 
             'carga.modelo': 'Ta karega modelu 3D…',
             'carga.restaurar': 'Ta restaura anbienti 3D…',
@@ -784,7 +784,7 @@
             'tl.meses': 'Janeru,Febreru,Marsu,Abril,Maiu,Junhu,Julhu,Agostu,Setenbru,Otubru,Nuvenbru,Dizenbru',
 
             'mb.separador': 'Mapa dos Bairros',
-            'mb.titulo': '27 bairu di barraka na Grandi Lisboa',
+            'mb.titulo': '27 bairu informal na Grandi Lisboa',
             'mb.mapa': 'Mapa di satélite di kes 27 bairu',
             'mb.fonte': 'Fonti:',
             'mb.dataDaFonte': '5 di Junhu di 2025',

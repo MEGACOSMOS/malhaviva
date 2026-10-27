@@ -275,7 +275,7 @@ AnnotationController.prototype.initialize = function() {
             element: null
         },
         {
-            // Os 27 bairros de barracas da Grande Lisboa, num mapa de
+            // Os 27 bairros informais da Grande Lisboa, num mapa de
             // satélite (ver mapa-dos-bairros.html). Fica no céu mesmo ao
             // lado do Olho de Águia, à direita. Abre no mesmo palco e com a
             // mesma cor do Olho de Águia, como paragem avulsa.
@@ -1905,7 +1905,7 @@ AnnotationController.prototype.nomeAcessivel = function(ann) {
             .replace('{ate}', FOTOGRAFIAS[FOTOGRAFIAS.length - 1].ano);
     }
     if (ann.mapaDosBairros) {
-        return diz('mapa.bairros', 'Mapa dos Bairros — os 27 bairros de barracas da Grande Lisboa, num mapa de satélite');
+        return diz('mapa.bairros', 'Mapa dos Bairros — os 27 bairros informais da Grande Lisboa, num mapa de satélite');
     }
     if (ann.is360) {
         if (ann.isImage) {
