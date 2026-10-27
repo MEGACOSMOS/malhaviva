@@ -350,31 +350,20 @@
             pointer-events: auto;
         }
 
+        /* O logótipo do projecto e, ao lado, depois de um fio a prumo, o
+           nome do bairro. Quando falta largura para os ícones da direita, o
+           nome do bairro passa a duas linhas em vez de os empurrar. */
         .brand {
             display: flex;
             align-items: center;
             gap: 12px;
-        }
-
-
-        .brand-text {
-            display: flex;
-            flex-direction: column;
-            gap: 1px;
+            min-width: 0;
+            margin-right: 24px;
         }
 
         .brand-name {
-            font-size: 1.2rem;
-            font-weight: 700;
-            letter-spacing: -0.02em;
             color: var(--color-accent);
-            white-space: nowrap;
-            transition: opacity 0.4s ease;
-        }
-
-        /* O nome a meio da troca (ver o guião do cabeçalho). */
-        .brand-name.a-trocar {
-            opacity: 0;
+            flex-shrink: 0;
         }
 
         /* O nome do projecto é o logótipo, à altura de uma linha. */
@@ -382,17 +371,34 @@
             height: 22px;
         }
 
+        .brand-barra {
+            align-self: stretch;
+            width: 1px;
+            background: rgba(255, 255, 255, 0.55);
+            flex-shrink: 0;
+        }
+
+        .brand-bairro {
+            font-size: 0.9rem;
+            font-weight: 400;
+            line-height: 1.15;
+            letter-spacing: 0.01em;
+            text-wrap: balance;
+        }
+
+        /* No telemóvel, entre o hambúrguer e o ecrã inteiro, tudo um pouco
+           mais pequeno. */
         @media (max-width: 640px) {
+            .brand {
+                gap: 9px;
+                margin-right: 16px;
+            }
             .brand-name .logotipo {
                 height: 19px;
             }
-        }
-
-        .brand-subtitle {
-            font-size: 0.7rem;
-            color: var(--color-text-muted);
-            font-weight: 400;
-            letter-spacing: 0.02em;
+            .brand-bairro {
+                font-size: 0.7rem;
+            }
         }
 
 
@@ -2314,60 +2320,15 @@
                 <line x1="19" y1="5" x2="5" y2="19"></line>
             </svg>
         </button>
+        <!-- O logótipo não muda de língua, mas diz-se na de quem lê a quem
+             usa leitor de ecrã ("Malha Viva", "Living Mesh"); o nome do
+             bairro vai escrito, também na língua de quem lê. -->
         <div class="brand">
-            <div class="brand-text">
-                <span class="brand-name adaptavel"></span>
-            </div>
+            <span class="brand-name adaptavel" id="nome-do-site" role="img" aria-label="Malha Viva" data-i18n-aria="site.nome">Malha Viva</span>
+            <span class="brand-barra" aria-hidden="true"></span>
+            <span class="brand-bairro adaptavel" data-i18n="cab.bairro">Bairro de Penajóia</span>
         </div>
-        <script>
-        /**
-         * O nome do cabeçalho vai trocando, de cinco em cinco segundos,
-         * entre o do projecto e o do bairro: esbate-se, muda, e volta.
-         * O do projecto é o logótipo, que não muda de língua mas se diz na
-         * de quem lê a quem usa leitor de ecrã ("Malha Viva", "Living
-         * Mesh"); o do bairro vai escrito, também na língua de quem lê
-         * ("Bairro de Penajóia", "Penajóia neighbourhood"). Os dois mudam
-         * logo se se trocar de língua. Quem pediu ao sistema menos
-         * movimento vê a troca sem o esbater.
-         */
-        (function () {
-            const nome = document.querySelector('#header .brand-name');
-            if (!nome) return;
-            const diz = (chave, alternativa) => (window.Idiomas && window.Idiomas.t(chave)) || alternativa;
-            const NOMES = [
-                () => diz('site.nome', 'Malha Viva'),
-                () => diz('cab.bairro', 'Bairro de Penajóia')
-            ];
-            let qual = 0;
-            const mostrar = () => {
-                if (qual === 0 && window.Logotipo) {
-                    window.Logotipo.desenhar(nome);
-                    nome.setAttribute('role', 'img');
-                    nome.setAttribute('aria-label', NOMES[0]());
-                } else {
-                    nome.textContent = NOMES[qual]();
-                    nome.removeAttribute('role');
-                    nome.removeAttribute('aria-label');
-                }
-            };
-            mostrar();
-            const ESBATER_MS = 400;
-            const semMovimento = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-            setInterval(() => {
-                qual = (qual + 1) % NOMES.length;
-                if (semMovimento) {
-                    mostrar();
-                    return;
-                }
-                nome.classList.add('a-trocar');
-                setTimeout(() => {
-                    mostrar();
-                    nome.classList.remove('a-trocar');
-                }, ESBATER_MS);
-            }, 5000);
-            window.addEventListener('idiomamudou', mostrar);
-        })();
-        </script>
+        <script>window.Logotipo && window.Logotipo.desenhar(document.getElementById('nome-do-site'));</script>
 
         <div id="lado-direito" style="display: flex; align-items: center; gap: 8px; margin-left: auto;">
         <div id="acoes-do-cabecalho" style="display: flex; align-items: center; gap: 8px;">

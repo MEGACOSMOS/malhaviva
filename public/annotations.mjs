@@ -4099,10 +4099,9 @@ const MEDIR_PECAS_A_CADA_MS = 1000;
 /**
  * As caixas das peças do site que estão à vista por cima do bairro.
  *
- * Cada peça conta com o maior tamanho que já teve: o nome do cabeçalho vai
- * trocando entre "Malha Viva" e "Bairro de Penajóia" (ver index.html), e
- * uma miniatura ao pé dele ia e vinha a cada troca. As lembranças
- * esquecem-se quando a janela muda de tamanho ou de língua.
+ * Cada peça conta com o maior tamanho que já teve: uma peça que mude de
+ * tamanho por um momento não faz ir e vir a miniatura que está ao pé dela.
+ * As lembranças esquecem-se quando a janela muda de tamanho ou de língua.
  *
  * @param {Map<Element, object>} lembradas - O maior tamanho de cada peça.
  * @returns {{x0: number, y0: number, x1: number, y1: number}[]} As caixas.
