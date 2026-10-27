@@ -68,6 +68,10 @@ B = 2
 ALTURA_DE_CASA = 1.8
 # Até isto acima do chão ainda é chão (lombas, passeios, entulho baixo).
 ALTURA_DE_CHAO = 0.7
+# A chapa vermelha: mais vermelho do que isto (a do Lab) e pelo menos
+# CHAPA_ALTURA acima do chão é telhado, mesmo baixo.
+CHAPA_A = 12
+CHAPA_ALTURA = 0.4
 # O excesso de verde a partir do qual é vegetação.
 VERDE = 0.06
 # A cor da terra batida, no espaço Lab (L de 0 a 100; a e b à volta de 0):
@@ -83,24 +87,44 @@ SOMBRA_FUNDA_L = 30
 CAMPO_LARGURA_M = 4.0
 CAMPO_VERDE = 0.45
 # As falhas na terra batida mais estreitas do que isto (uma laje, uma sombra,
-# um carro) enchem-se, se forem de chão livre.
+# um carro) enchem-se, se forem de chão livre ou da beira de um telhado
+# (até BEIRAL_M para dentro dele).
 FALHA_M = 3.0
+BEIRAL_M = 0.6
+# Um beco: chão livre pelo menos isto mais fundo do que o que fica a 1,5 m
+# dele, e com pelo menos BECO_M2 de área.
+BECO_FUNDO_M = 1.0
+BECO_M2 = 10.0
 # Os buracos na terra mais pequenos do que isto são carros, postes, gente:
 # tapam-se. As manchas de terra mais pequenas do que isto não levam a lado
 # nenhum: saem.
 BURACO_M2 = 25.0
 MANCHA_M2 = 60.0
-# O traçado de cada troço alisa-se com esta largura (sem os ziguezagues do
-# desenho ponto a ponto).
-ALISAR_M = 2.0
+# O traçado de cada troço alisa-se tanto mais quanto mais larga é a rua: o
+# alisamento vai de ALISAR_MIN_M (num beco) a ALISAR_MAX_M, nunca mais do que
+# a largura da rua, para a linha não sair dela.
+ALISAR_MIN_M = 2.0
+ALISAR_MAX_M = 5.0
 # Um caminho interrompido junta-se a outro troço se a falha tiver até isto
 # de comprimento e não passar por baixo de mais de PONTE_TELHADO de telhado.
+# Se a ponte seguir em frente, na direção do próprio caminho (até
+# PONTE_FRENTE_GRAUS para o lado), pode ser mais comprida e passar por baixo
+# de mais telhado: é um beco que continua por baixo de um beiral.
 PONTE_M = 6.0
 PONTE_TELHADO = 0.4
-# Os pedaços da rede separados do resto juntam-se a ela por pontes até isto,
-# e as pontas de um caminho de terra a uma estrada até ESTRADA_M.
+PONTE_FRENTE_M = 9.0
+PONTE_FRENTE_TELHADO = 1.5
+PONTE_FRENTE_GRAUS = 35
+# Os pedaços da rede separados do resto juntam-se a ela por pontes até isto
+# (até LIGAR_LIVRE_M se a ponte for quase toda por chão livre), e as pontas
+# de um caminho de terra a uma estrada até ESTRADA_M.
 LIGAR_M = 12.0
+LIGAR_TELHADO = 1.0
+LIGAR_LIVRE_M = 20.0
 ESTRADA_M = 15.0
+# Uma ponte mais comprida do que isto sai se houver outro caminho entre as
+# pontas dela que não seja mais do que o triplo (ou mais 60 m).
+ATALHO_M = 8.0
 RUA_LARGURA = 2.6
 # Uma casa não vai além disto do seu ponto (os telhados colados não têm
 # sempre aresta entre eles).
@@ -181,6 +205,9 @@ def terreno(Zmin, valido, cell):
     v5 = cv2.morphologyEx(baixo, cv2.MORPH_CLOSE, disco(5)) - baixo
     v10 = cv2.morphologyEx(baixo, cv2.MORPH_CLOSE, disco(10)) - baixo
     vala = valido & ((v10 > 1.5) | (v5 > 1.0))
+    # A fundura de cada sítio em relação ao que o rodeia a 1,5 m: os becos
+    # entre filas de casas são corredores fundos e estreitos.
+    estreito = np.where(valido, cv2.morphologyEx(baixo, cv2.MORPH_CLOSE, disco(3)) - baixo, 0)
     # O chão aberto: o filtro morfológico progressivo (janelas cada vez
     # maiores, com a tolerância a subir com o declive).
     aberto = valido.copy()
@@ -200,7 +227,7 @@ def terreno(Zmin, valido, cell):
     dB = cv2.GaussianBlur(encher(Zmin, semente), (0, 0), 1.0 / cell)
     rente = valido & (np.abs(Zmin - dB) < 0.6)
     dC = cv2.GaussianBlur(encher(Zmin, rente), (0, 0), 1.0 / cell)
-    return dC, vala
+    return dC, vala, estreito
 
 
 # ------------------------------------------------------------- máscaras ---
@@ -221,8 +248,9 @@ def disco(metros, cell):
     return cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (d, d))
 
 
-def terra_batida(col, rente, verde, edif, vala, cell):
-    """Onde há terra batida: o chão por onde se anda no bairro."""
+def terra_batida(col, rente, verde, edif, vala, estreito, cell):
+    """Onde se anda no bairro: a terra batida das ruas e dos largos, e os
+    becos entre as filas de casas."""
     m2 = 1 / (cell * cell)
     # A cor de cada sítio vista um pouco de longe (uns 25 cm), sem o grão
     # das pedras e das sombras pequenas.
@@ -237,10 +265,13 @@ def terra_batida(col, rente, verde, edif, vala, cell):
     terra = livre & (ao_sol | (vala & (a_sombra | sombra_funda)))
     # Um caminho de terra não acaba por ter, uns metros, uma laje de
     # cimento, uma sombra ou um carro por cima: as falhas estreitas entre
-    # bocados de terra enchem-se, mas só por chão livre (nunca por baixo de
-    # um telhado nem pelo mato).
+    # bocados de terra enchem-se, mas só por chão livre — ou pela beira de
+    # um telhado, que de cima tapa a entrada de muitos becos (o beiral passa
+    # por cima do beco). Nunca pelo meio de uma casa nem pelo mato.
+    longe_do_livre = cv2.distanceTransform((~livre).astype(np.uint8), cv2.DIST_L2, 5) * cell
+    beiral = edif & (longe_do_livre <= BEIRAL_M)
     fechado = cv2.morphologyEx(terra.astype(np.uint8), cv2.MORPH_CLOSE, disco(FALHA_M, cell)) > 0
-    terra |= fechado & livre
+    terra |= fechado & (livre | beiral)
     u8 = cv2.morphologyEx(terra.astype(np.uint8), cv2.MORPH_OPEN, disco(0.6, cell))
     u8 = cv2.morphologyEx(u8, cv2.MORPH_CLOSE, disco(1.2, cell))
     terra = sem_buracos(u8 > 0, int(BURACO_M2 * m2))
@@ -250,8 +281,18 @@ def terra_batida(col, rente, verde, edif, vala, cell):
     verdura = cv2.GaussianBlur(verde.astype(np.float32), (0, 0), 6 / cell) > CAMPO_VERDE
     campo = cv2.dilate((largo & verdura).astype(np.uint8), disco(0.8, cell)) > 0
     terra &= ~campo
+    # Os becos: corredores de chão livre, fundos e estreitos, entre filas de
+    # casas. Estão quase sempre à sombra, e por isso não se reconhecem pela
+    # cor da terra: reconhecem-se pela forma.
+    becos = livre & (estreito > BECO_FUNDO_M)
+    becos = cv2.morphologyEx(becos.astype(np.uint8), cv2.MORPH_OPEN, disco(0.4, cell)) > 0
+    becos = sem_pequenos(becos, int(BECO_M2 * m2))
+    terra = cv2.morphologyEx((terra | becos).astype(np.uint8), cv2.MORPH_CLOSE, disco(0.8, cell)) > 0
+    terra = sem_buracos(terra, int(BURACO_M2 * m2))
     terra = sem_pequenos(terra, int(MANCHA_M2 * m2))
-    return cv2.GaussianBlur(terra.astype(np.float32), (0, 0), 0.6 / cell) > 0.5
+    # Um alisamento leve da beira: mais do que isto apagava os becos mais
+    # estreitos (a suavidade do traçado vem depois, das linhas).
+    return cv2.GaussianBlur(terra.astype(np.float32), (0, 0), 0.3 / cell) > 0.5
 
 
 # ---------------------------------------------------------------- rede ----
@@ -401,39 +442,65 @@ def telhado_no_caminho(a, b, edif, cell):
     return v.mean() * L * cell
 
 
-def impedido(a, b, edif, verde, cell):
-    """Se uma ponte de a a b passaria por baixo de um telhado ou pelo meio do
-    mato — sítios por onde não há caminho."""
+def impedido(a, b, edif, verde, cell, telhado=PONTE_TELHADO):
+    """Se uma ponte de a a b passaria por baixo de um telhado (mais do que
+    'telhado' metros) ou pelo meio do mato — sítios por onde não há caminho."""
     L = np.hypot(*(b - a)) * cell
-    return (telhado_no_caminho(a, b, edif, cell) > PONTE_TELHADO
+    return (telhado_no_caminho(a, b, edif, cell) > telhado
             or (L > 2 and telhado_no_caminho(a, b, verde, cell) > 0.6 * L))
 
 
+def rumo_da_ponta(G, n, cell):
+    """Para onde aponta um caminho que acaba no nó n (vetor unitário, na
+    grelha), medido nos últimos 3 metros dele."""
+    _, outro, d = next(iter(G.edges(n, data=True)))
+    pts = orientar(np.asarray(d["pts"], float), np.asarray(G.nodes[outro]["o"], float))
+    fim = pts[-1]
+    acum = np.concatenate([[0], np.cumsum(np.hypot(*np.diff(pts[::-1], axis=0).T))])
+    atras = pts[::-1][min(len(pts) - 1, int(np.searchsorted(acum, 3 / cell)))]
+    v = fim - atras
+    nv = np.hypot(*v)
+    return v / nv if nv > 1e-6 else None
+
+
 def pontes(G, edif, verde, cell, proximo):
-    """Junta os caminhos interrompidos (por um carro, uma sombra funda) ao
-    troço mais perto, se a falha for curta e não passar por baixo de um
-    telhado nem pelo mato."""
+    """Junta os caminhos interrompidos (por um carro, uma sombra funda, o
+    beiral de um telhado) ao troço mais perto. Uma ponte para o lado é
+    curta e não passa por baixo de telhado nenhum; uma que segue em frente,
+    na direção do próprio caminho, pode ser um pouco mais comprida e passar
+    por baixo de um beiral. Nunca pelo mato."""
     pts, quem = densos(G, 0.5 / cell)
     arvore = cKDTree(pts)
     feitas = 0
+    cos_frente = math.cos(math.radians(PONTE_FRENTE_GRAUS))
     for n in [n for n in G.nodes if G.degree(n) == 1]:
         if n not in G or G.degree(n) != 1:
             continue
         o = np.asarray(G.nodes[n]["o"], float)
+        rumo = rumo_da_ponta(G, n, cell)
         perto = nx.single_source_dijkstra_path_length(G, n, cutoff=12 / cell, weight=lambda a, b, d: min(
             comprimento(np.asarray(e["pts"], float)) for e in d.values()))
         melhor = None
-        for j in arvore.query_ball_point(o, PONTE_M / cell):
+        for j in arvore.query_ball_point(o, PONTE_FRENTE_M / cell):
             u, v, k, i = quem[j]
             if u in perto and v in perto:
                 continue
             if not G.has_edge(u, v, k):
                 continue
-            L = np.hypot(*(pts[j] - o))
-            if L < 1e-6 or impedido(o, pts[j], edif, verde, cell):
+            w = pts[j] - o
+            L = np.hypot(*w)
+            if L < 1e-6:
                 continue
-            if melhor is None or L < melhor[0]:
-                melhor = (L, j)
+            em_frente = rumo is not None and float(np.dot(w / L, rumo)) >= cos_frente
+            if em_frente:
+                if impedido(o, pts[j], edif, verde, cell, PONTE_FRENTE_TELHADO):
+                    continue
+            elif L > PONTE_M / cell or impedido(o, pts[j], edif, verde, cell):
+                continue
+            # Em frente conta como mais perto: é o caminho a continuar.
+            nota = L * (0.6 if em_frente else 1.0)
+            if melhor is None or nota < melhor[0]:
+                melhor = (nota, j)
         if melhor is None:
             continue
         u, v, k, i = quem[melhor[1]]
@@ -446,9 +513,10 @@ def pontes(G, edif, verde, cell, proximo):
     return feitas
 
 
-def ligar_pedacos(G, edif, verde, cell, proximo):
+def ligar_pedacos(G, edif, verde, livre, cell, proximo):
     """Os pedaços da rede soltos do resto ligam-se a ele pela ponte mais
-    curta que não passe por baixo de um telhado nem pelo mato."""
+    curta que não passe por baixo de mais do que um beiral nem pelo mato —
+    até LIGAR_M, ou até LIGAR_LIVRE_M se for quase toda por chão livre."""
     ligados = 0
     while True:
         comps = sorted(nx.connected_components(G), key=lambda c: -sum(
@@ -463,12 +531,17 @@ def ligar_pedacos(G, edif, verde, cell, proximo):
             cp, cq = densos(G.subgraph(comp), 0.5 / cell)
             if not len(cp):
                 continue
-            dist, j = arvore.query(cp, distance_upper_bound=LIGAR_M / cell)
+            dist, j = arvore.query(cp, distance_upper_bound=LIGAR_LIVRE_M / cell)
             ordem = np.argsort(dist)
             for a in ordem:
                 if not np.isfinite(dist[a]):
                     break
-                if impedido(cp[a], pts[j[a]], edif, verde, cell):
+                L = dist[a] * cell
+                if L <= LIGAR_M:
+                    if impedido(cp[a], pts[j[a]], edif, verde, cell, LIGAR_TELHADO):
+                        continue
+                elif (impedido(cp[a], pts[j[a]], edif, verde, cell)
+                      or telhado_no_caminho(cp[a], pts[j[a]], livre, cell) < 0.8 * L):
                     continue
                 u1, v1, k1, i1 = cq[a]
                 u2, v2, k2, i2 = quem[j[a]]
@@ -484,6 +557,34 @@ def ligar_pedacos(G, edif, verde, cell, proximo):
         if not feito:
             break
     return ligados
+
+
+def tirar_atalhos(G, cell):
+    """As pontes compridas são as menos certas. Uma que não faça falta — há
+    outro caminho entre as duas pontas dela, não muito mais comprido — sai:
+    era só um atalho, e podia ser por onde não se passa."""
+    def peso(a, b, d):
+        return min(comprimento(np.asarray(e["pts"], float)) for e in d.values())
+
+    pontes_compridas = sorted(
+        ((comprimento(d["pts"]) * cell, u, v, k) for u, v, k, d in G.edges(keys=True, data=True)
+         if d.get("tipo") == "ligacao" and comprimento(d["pts"]) * cell > ATALHO_M),
+        reverse=True)
+    tiradas = 0
+    for L, u, v, k in pontes_compridas:
+        if not G.has_edge(u, v, k):
+            continue
+        dados = dict(G.edges[u, v, k])
+        G.remove_edge(u, v, k)
+        try:
+            outro = nx.dijkstra_path_length(G, u, v, weight=peso) * cell
+        except nx.NetworkXNoPath:
+            outro = math.inf
+        if outro <= max(3 * L, L + 60):
+            tiradas += 1
+        else:
+            G.add_edge(u, v, k, **dados)
+    return tiradas
 
 
 # ------------------------------------------------------------ estradas ---
@@ -633,7 +734,7 @@ def main():
     del S, rgb
     tempo(t0, "dados")
 
-    chao, vala = terreno(Zmin, valido, cell)
+    chao, vala, estreito = terreno(Zmin, valido, cell)
     nd = np.where(valido, Zmin - chao, np.nan)
     ndm = np.where(valido, Zmed - chao, np.nan)
     tempo(t0, "terreno")
@@ -642,9 +743,16 @@ def main():
     verde = (2 * g_ - r_ - b_) / (r_ + g_ + b_ + 1e-3) > VERDE
     m2 = 1 / (cell * cell)
     edif = mk & (ndm > ALTURA_DE_CASA) & ~verde
+    # A chapa vermelha dos telhados reconhece-se pela cor: nenhum chão é tão
+    # vermelho. Uma casa baixa, ou numa encosta onde o chão por baixo dela
+    # fica mal medido, é casa na mesma, desde que fique um pouco acima dele.
+    lab = cv2.cvtColor(cv2.GaussianBlur(col, (0, 0), 0.25 / cell).astype(np.uint8), cv2.COLOR_RGB2LAB).astype(np.float32)
+    chapa = (lab[..., 1] - 128 > CHAPA_A) & (lab[..., 0] * 100 / 255 > 20) & (ndm > CHAPA_ALTURA)
+    edif |= mk & chapa & ~verde
     edif = sem_pequenos(edif, int(6 * m2))
     rente = mk & valido & (nd < ALTURA_DE_CHAO)
-    andavel = terra_batida(col, rente, verde, edif, vala, cell) & mk
+    livre = rente & ~verde & ~edif
+    andavel = terra_batida(col, rente, verde, edif, vala, estreito, cell) & mk
     tempo(t0, "terra batida: %.1f ha" % (andavel.sum() * cell * cell / 1e4))
 
     meia_largura = cv2.distanceTransform(andavel.astype(np.uint8), cv2.DIST_L2, 5) * cell
@@ -683,7 +791,7 @@ def main():
         d["largura"] = float(np.median(meia_largura[pp[:, 0], pp[:, 1]]) * 2)
         if d.get("tipo") != "ligacao":
             d["tipo"] = "rua" if d["largura"] >= RUA_LARGURA else "beco"
-        liso = alisar(d["pts"], ALISAR_M / cell)
+        liso = alisar(d["pts"], min(ALISAR_MAX_M, max(ALISAR_MIN_M, 1.5 * d["largura"])) / cell)
         d["pts"] = cv2.approxPolyDP(liso[:, ::-1].astype(np.float32).reshape(-1, 1, 2), 0.1 / cell, False)[:, 0, ::-1].astype(float)
 
     # As estradas públicas, do OpenStreetMap, e as ligações a elas.
@@ -694,13 +802,24 @@ def main():
     estradas, nos_osm, usos = ler_estradas(para_grelha)
     n_est = juntar_estradas(G, estradas, nos_osm, usos, edif, verde, cell, proximo)
     tempo(t0, "caminhos de terra ligados às estradas: %d" % n_est)
-    n_lig = ligar_pedacos(G, edif, verde, cell, proximo)
+    n_lig = ligar_pedacos(G, edif, verde, livre, cell, proximo)
     tempo(t0, "pedaços ligados: %d" % n_lig)
+    # Com tudo junto, as pontas que ainda acabam no vazio procuram outra vez
+    # onde continuar (agora também noutro pedaço que entretanto se ligou).
+    n_pontes2 = pontes(G, edif, verde, cell, proximo)
+    tempo(t0, "mais pontes em caminhos interrompidos: %d" % n_pontes2)
+    n_atalhos = tirar_atalhos(G, cell)
+    tempo(t0, "pontes compridas que eram só atalhos, tiradas: %d" % n_atalhos)
     # Só fica a rede que está toda ligada: um bocado solto não leva a lado
     # nenhum, e uma casa presa a ele ficava sem percurso. As casas que lá
     # estavam ligam-se à rede grande, mais longe.
-    comps = sorted(nx.connected_components(G), key=lambda c: -sum(
-        comprimento(d["pts"]) for _, _, d in G.subgraph(c).edges(data=True) if not d.get("osm")))
+    def de_terra(c):
+        return sum(comprimento(d["pts"]) for _, _, d in G.subgraph(c).edges(data=True) if not d.get("osm")) * cell
+
+    comps = sorted(nx.connected_components(G), key=lambda c: -de_terra(c))
+    soltos = [de_terra(c) for c in comps[1:]]
+    tempo(t0, "bocados soltos que saem: %d, %.0f m (o maior %.0f m)" % (
+        len(soltos), sum(soltos), max(soltos) if soltos else 0))
     for comp in comps[1:]:
         G.remove_nodes_from(comp)
     juntar_grau_2(G)

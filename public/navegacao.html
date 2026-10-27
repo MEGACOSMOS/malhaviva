@@ -1182,10 +1182,10 @@
         const minutos = (metros) => Math.max(1, Math.round(metros / METROS_POR_MINUTO));
 
         // A linha desenhada, sem cantos onde os troços se juntam: cada canto
-        // é cortado duas vezes por um quarto de cada lado (o corte de
+        // é cortado três vezes por um quarto de cada lado (o corte de
         // Chaikin). O princípio e o fim ficam onde estão. Só o desenho muda;
         // as contas do percurso são feitas com os pontos de origem.
-        const alisarLinha = (pontos, voltas = 2) => {
+        const alisarLinha = (pontos, voltas = 3) => {
             let p = pontos;
             for (let v = 0; v < voltas && p.length > 2; v++) {
                 const q = [p[0]];
