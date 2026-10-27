@@ -1,0 +1,1490 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <link rel="icon" href="/favicon.ico" sizes="32x32">
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+    <script src="/icone.js?v=1" defer></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title data-i18n-titulo="nav.separador">Navegação</title>
+    <script src="/idiomas.js?v=41"></script>
+    <script src="/logotipo.js?v=1"></script>
+    <script src="/quadrado-de-espera.js?v=4"></script>
+    <!-- O aviso de "está a demorar" e a tecla de tentar de novo, os
+         mesmos em todo o site. -->
+    <script src="/rede-de-seguranca.js?v=3"></script>
+    <script src="/comando-paginas.js?v=7" defer></script>
+    <!-- O mapa que se arrasta e aproxima: o Leaflet, servido daqui mesmo,
+         com a versão no nome do ficheiro (ver _headers). -->
+    <link rel="stylesheet" href="/motor/leaflet-1.9.4.css">
+    <script src="/motor/leaflet-1.9.4.js"></script>
+    <style>
+        /* A letra do site: a Liberation Mono, servida daqui mesmo (ficheiros
+           em /fonts, licença SIL Open Font). */
+        @font-face {
+            font-family: 'Liberation Mono';
+            src: url('/fonts/LiberationMono-Regular.ttf') format('truetype');
+            font-weight: 100 500;
+            font-style: normal;
+            font-display: swap;
+        }
+        @font-face {
+            font-family: 'Liberation Mono';
+            src: url('/fonts/LiberationMono-Bold.ttf') format('truetype');
+            font-weight: 600 900;
+            font-style: normal;
+            font-display: swap;
+        }
+
+        :root {
+            /* O véu das barras que pairam por cima do mapa, o mesmo do
+               Mapa dos Bairros: escuro junto à borda do ecrã e a
+               desfazer-se para dentro. */
+            --veu-forte: rgba(5, 5, 10, 0.8);
+            --veu-medio: rgba(5, 5, 10, 0.45);
+            --veu-nenhum: rgba(5, 5, 10, 0);
+            --folga-cima: 16px;
+            --folga-lado: 24px;
+            --fundo: #05050a;
+            --fio: rgba(255, 255, 255, 0.15);
+            --painel: 340px;
+        }
+
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+        }
+        body {
+            background: var(--fundo);
+            overflow: hidden;
+            font-family: 'Liberation Mono', 'Courier New', monospace;
+            color: #ffffff;
+        }
+        button, input, a {
+            font-family: inherit;
+        }
+        [hidden] {
+            display: none !important;
+        }
+        /* Só para quem ouve a página. */
+        .so-leitor {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            overflow: hidden;
+            clip: rect(0 0 0 0);
+            white-space: nowrap;
+        }
+
+        /* ---- O mapa ----
+           Enche a janela toda: a fotografia de satélite por baixo, o
+           ortofotomapa do bairro por cima dela. */
+        #mapa {
+            position: absolute;
+            inset: 0;
+            background: var(--fundo);
+        }
+        #mapa.leaflet-container {
+            font-family: 'Liberation Mono', 'Courier New', monospace;
+            background: var(--fundo);
+        }
+        #mapa:focus {
+            outline: none;
+        }
+        #mapa:focus-visible {
+            outline: 2px solid rgba(255, 255, 255, 0.95);
+            outline-offset: -4px;
+        }
+
+        /* ---- A barra de cima ----
+           O logótipo (que volta ao bairro), o fio a prumo e o nome da
+           página, com o véu por trás; à direita, o caminho de volta. */
+        .barra-do-titulo {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            box-sizing: border-box;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: var(--folga-cima) var(--folga-lado) 34px;
+            background: linear-gradient(to bottom, var(--veu-forte), var(--veu-medio) 55%, var(--veu-nenhum));
+            pointer-events: none;
+        }
+        .barra-do-titulo > * {
+            pointer-events: auto;
+        }
+        .marca {
+            display: flex;
+            align-items: center;
+            color: #ffffff;
+            text-decoration: none;
+            flex-shrink: 0;
+        }
+        .marca .logotipo {
+            height: 22px;
+        }
+        .marca-barra {
+            align-self: stretch;
+            width: 1px;
+            margin: 2px 0;
+            background: rgba(255, 255, 255, 0.55);
+            flex-shrink: 0;
+        }
+        #titulo {
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            min-height: 41px;
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+        #titulo svg {
+            flex-shrink: 0;
+        }
+        .voltar {
+            margin-left: auto;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: #ffffff;
+            text-decoration: none;
+            font-size: 0.8rem;
+            padding: 8px 12px;
+            border: 2.5px solid var(--fio);
+            background: transparent;
+            transition: background 0.15s ease;
+            white-space: nowrap;
+        }
+        @media (hover: hover) {
+            .voltar:hover {
+                background: var(--fundo);
+            }
+        }
+        .marca:focus-visible, .voltar:focus-visible {
+            outline: 2px solid rgba(255, 255, 255, 0.95);
+            outline-offset: 2px;
+        }
+
+        /* ---- O painel ----
+           A pergunta, as casas que respondem ao que se escreve, e, com uma
+           casa escolhida, o percurso por palavras. Uma caixa do fundo do
+           site, como os menus do bairro. */
+        #painel {
+            position: absolute;
+            top: 84px;
+            left: var(--folga-lado);
+            z-index: 1001;
+            box-sizing: border-box;
+            width: var(--painel);
+            max-height: calc(100% - 84px - 96px);
+            overflow-y: auto;
+            padding: 16px;
+            background: linear-gradient(to bottom, rgba(255, 255, 255, 0.05), transparent), var(--fundo);
+            border: 1px solid var(--fio);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+            scrollbar-width: thin;
+            scrollbar-color: rgba(255, 255, 255, 0.25) transparent;
+        }
+        #pergunta {
+            display: block;
+            margin-bottom: 10px;
+            font-size: 0.95rem;
+            font-weight: 600;
+        }
+        .campo {
+            display: flex;
+            gap: 8px;
+        }
+        #numero {
+            flex: 1 1 auto;
+            min-width: 0;
+            box-sizing: border-box;
+            background: rgba(0, 0, 0, 0.4);
+            color: #ffffff;
+            border: 2.5px solid var(--fio);
+            border-radius: 0;
+            padding: 9px 12px;
+            font-size: 1.05rem;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+        }
+        #numero::placeholder {
+            color: rgba(255, 255, 255, 0.4);
+            text-transform: none;
+            letter-spacing: 0;
+        }
+        #numero:focus {
+            outline: none;
+            border-color: rgba(255, 255, 255, 0.55);
+        }
+        .botao {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            background: transparent;
+            color: #ffffff;
+            border: 2.5px solid var(--fio);
+            border-radius: 0;
+            padding: 8px 12px;
+            font-size: 0.8rem;
+            text-decoration: none;
+            cursor: pointer;
+            transition: background 0.15s ease;
+        }
+        @media (hover: hover) {
+            .botao:hover {
+                background: rgba(255, 255, 255, 0.1);
+            }
+        }
+        .botao:focus-visible, #sugestoes button:focus-visible {
+            outline: 2px solid rgba(255, 255, 255, 0.95);
+            outline-offset: 1px;
+        }
+        .botao.cheio {
+            background: #ffffff;
+            color: var(--fundo);
+            border-color: #ffffff;
+            font-weight: 600;
+        }
+        @media (hover: hover) {
+            .botao.cheio:hover {
+                background: rgba(255, 255, 255, 0.85);
+            }
+        }
+
+        /* As casas que respondem ao que se escreveu: quadrados com o
+           número, lado a lado. */
+        #sugestoes {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin: 10px 0 0;
+            padding: 0;
+            list-style: none;
+        }
+        #sugestoes:empty {
+            display: none;
+        }
+        #sugestoes button {
+            background: transparent;
+            color: #ffffff;
+            border: 2.5px solid var(--fio);
+            border-radius: 0;
+            padding: 5px 9px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: background 0.15s ease;
+        }
+        @media (hover: hover) {
+            #sugestoes button:hover {
+                background: rgba(255, 255, 255, 0.1);
+            }
+        }
+        .aviso {
+            margin: 10px 0 0;
+            font-size: 0.75rem;
+            line-height: 1.5;
+            color: rgba(255, 255, 255, 0.65);
+        }
+        .aviso:empty {
+            display: none;
+        }
+
+        /* A casa escolhida e o percurso. */
+        #resultado {
+            margin-top: 16px;
+            padding-top: 14px;
+            border-top: 1px solid var(--fio);
+        }
+        .casa-escolhida {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+        }
+        #casa-nome {
+            margin: 0;
+            font-size: 1.25rem;
+            font-weight: 700;
+        }
+        #resumo {
+            margin: 4px 0 0;
+            font-size: 0.85rem;
+            color: rgba(255, 255, 255, 0.8);
+        }
+        .botoes {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 12px;
+        }
+        #indicacoes {
+            margin-top: 14px;
+        }
+        #indicacoes summary {
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-weight: 600;
+            list-style: none;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        #indicacoes summary::-webkit-details-marker {
+            display: none;
+        }
+        #indicacoes summary::before {
+            content: "";
+            width: 0;
+            height: 0;
+            border-left: 5px solid #ffffff;
+            border-top: 4px solid transparent;
+            border-bottom: 4px solid transparent;
+            transition: transform 0.15s ease;
+        }
+        #indicacoes[open] summary::before {
+            transform: rotate(90deg);
+        }
+        #indicacoes summary:focus-visible {
+            outline: 2px solid rgba(255, 255, 255, 0.95);
+            outline-offset: 2px;
+        }
+        #passos {
+            margin: 10px 0 0;
+            padding: 0;
+            list-style: none;
+            counter-reset: passo;
+        }
+        #passos li {
+            counter-increment: passo;
+            display: grid;
+            grid-template-columns: 26px 1fr;
+            gap: 8px;
+            padding: 7px 0;
+            font-size: 0.8rem;
+            line-height: 1.45;
+            border-top: 1px solid rgba(255, 255, 255, 0.07);
+            cursor: pointer;
+        }
+        #passos li::before {
+            content: counter(passo);
+            color: rgba(255, 255, 255, 0.5);
+            font-variant-numeric: tabular-nums;
+        }
+        #passos li.chegada {
+            font-weight: 600;
+        }
+
+        /* ---- No mapa ---- */
+        /* O número de cada casa, de perto: no telhado, escrito a branco
+           com uma sombra, para se ler tanto na chapa como no chão. */
+        .rotulo-casa {
+            background: none;
+            border: none;
+        }
+        .rotulo-casa.escondido span {
+            display: none;
+        }
+        .rotulo-casa span {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            padding: 1px 3px;
+            white-space: nowrap;
+            font-size: 11px;
+            font-weight: 600;
+            line-height: 1.2;
+            color: #ffffff;
+            text-shadow: 0 1px 3px rgba(0, 0, 0, 0.95), 0 0 2px rgba(0, 0, 0, 0.95);
+            cursor: pointer;
+        }
+        /* A casa para onde se vai: o número num quadrado branco. */
+        .destino {
+            background: none;
+            border: none;
+        }
+        .destino span {
+            position: absolute;
+            left: 50%;
+            bottom: 6px;
+            transform: translateX(-50%);
+            padding: 3px 7px;
+            white-space: nowrap;
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: var(--fundo);
+            background: #ffffff;
+            border: 2px solid var(--fundo);
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
+        }
+        .destino span::after {
+            content: "";
+            position: absolute;
+            left: 50%;
+            top: 100%;
+            transform: translateX(-50%);
+            border-left: 6px solid transparent;
+            border-right: 6px solid transparent;
+            border-top: 6px solid var(--fundo);
+        }
+        /* Onde o percurso começa: um quadrado com o nome por cima. */
+        .inicio {
+            background: none;
+            border: none;
+        }
+        .inicio .ponto {
+            position: absolute;
+            inset: 0;
+            box-sizing: border-box;
+            background: var(--fundo);
+            border: 3px solid #ffffff;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
+        }
+        .inicio .nome {
+            position: absolute;
+            left: 50%;
+            bottom: calc(100% + 4px);
+            transform: translateX(-50%);
+            white-space: nowrap;
+            font-size: 0.75rem;
+            font-weight: 600;
+            padding: 2px 5px;
+            background: rgba(5, 5, 10, 0.85);
+        }
+        /* Onde a pessoa está, quando deixa o telemóvel dizê-lo. */
+        .voce {
+            background: none;
+            border: none;
+        }
+        .voce .ponto {
+            position: absolute;
+            inset: 0;
+            box-sizing: border-box;
+            border-radius: 50%;
+            background: #ffffff;
+            border: 3px solid var(--fundo);
+            box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.6), 0 1px 4px rgba(0, 0, 0, 0.6);
+        }
+
+        /* ---- A barra dos comandos ----
+           A do Mapa dos Bairros: os créditos e os botões, por cima do fundo
+           do mapa, com o véu virado ao contrário. */
+        .video-controls {
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 1000;
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            gap: 16px;
+            padding: 40px 24px 16px;
+            background: linear-gradient(to top, var(--veu-forte), var(--veu-medio) 60%, var(--veu-nenhum));
+            pointer-events: none;
+        }
+        .video-controls > * {
+            pointer-events: auto;
+        }
+        .controls-right {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        .creditos {
+            flex: 1 1 auto;
+            min-width: 0;
+            text-align: right;
+            font-size: 0.7rem;
+            color: rgba(255, 255, 255, 0.6);
+            text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+        }
+        .creditos a {
+            color: inherit;
+        }
+        .player-btn {
+            background: transparent;
+            border: 2.5px solid var(--fio);
+            color: white;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.15s ease;
+            padding: 8px;
+            border-radius: 0;
+        }
+        @media (hover: hover) {
+            .player-btn:hover {
+                background: var(--fundo);
+            }
+        }
+        .player-btn:disabled {
+            color: #8e8e91;
+            cursor: default;
+        }
+        .player-btn:disabled:hover {
+            background: transparent;
+        }
+        .player-btn.ligado {
+            background: #ffffff;
+            color: var(--fundo);
+            border-color: #ffffff;
+        }
+        .player-btn:focus-visible {
+            outline: 2px solid rgba(255, 255, 255, 0.95);
+            outline-offset: 2px;
+        }
+
+        /* ---- O ecrã de espera ---- */
+        #loading-overlay {
+            position: absolute;
+            inset: 0;
+            background: var(--fundo);
+            z-index: 2000;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 14px;
+            transition: opacity 0.4s ease;
+        }
+        #loading-overlay.escondido {
+            opacity: 0;
+            pointer-events: none;
+        }
+        #loading-overlay .aviso {
+            font-size: 0.85rem;
+        }
+
+        @media (max-width: 900px) {
+            :root {
+                --folga-cima: 12px;
+                --folga-lado: 16px;
+            }
+            #titulo {
+                min-height: 39px;
+                font-size: 0.95rem;
+            }
+            .video-controls {
+                padding: 32px 12px 14px;
+                gap: 10px;
+            }
+            .controls-right {
+                gap: 8px;
+            }
+            .player-btn svg {
+                width: 18px;
+                height: 18px;
+            }
+        }
+        /* No telemóvel o painel vai de lado a lado, por baixo da barra de
+           cima, e as indicações começam dobradas, para o mapa se ver. */
+        @media (max-width: 640px) {
+            .marca .logotipo {
+                height: 19px;
+            }
+            .voltar .texto {
+                display: none;
+            }
+            #painel {
+                top: 66px;
+                left: 12px;
+                right: 12px;
+                width: auto;
+                max-height: calc(100% - 66px - 120px);
+                padding: 12px;
+            }
+            /* Com a casa escolhida, a pergunta já foi respondida: sai, e o
+               resto aperta-se, para o mapa ficar com o ecrã. */
+            body.com-casa #pergunta {
+                display: none;
+            }
+            #resultado {
+                margin-top: 12px;
+                padding-top: 10px;
+            }
+            #casa-nome {
+                font-size: 1.1rem;
+            }
+            .botoes {
+                gap: 6px;
+                margin-top: 10px;
+            }
+            .botoes .botao {
+                font-size: 0.72rem;
+                padding: 6px 8px;
+            }
+            #indicacoes {
+                margin-top: 10px;
+            }
+            .video-controls {
+                flex-wrap: wrap;
+                row-gap: 10px;
+            }
+            .creditos {
+                order: -1;
+                flex-basis: 100%;
+                font-size: 0.6rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="mapa" aria-label="Mapa do Bairro de Penajóia, com o percurso até à casa escolhida" data-i18n-aria="nav.mapa"></div>
+
+    <header class="barra-do-titulo">
+        <a href="/" class="marca" id="marca" aria-label="Voltar ao bairro" title="Voltar ao bairro" data-i18n-aria="nav.voltarBairro" data-i18n-title="nav.voltarBairro"></a>
+        <span class="marca-barra" aria-hidden="true"></span>
+        <h1 id="titulo">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true"><polygon points="12 3.5, 19 20.5, 12 16.5, 5 20.5"></polygon></svg>
+            <span data-i18n="nav.titulo">Navegação</span>
+        </h1>
+        <a href="/" class="voltar">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true"><polyline points="11 5 4 12 11 19"></polyline><line x1="4" y1="12" x2="21" y2="12"></line></svg>
+            <span class="texto" data-i18n="nav.voltarBairro">Voltar ao bairro</span>
+        </a>
+    </header>
+
+    <section id="painel" aria-labelledby="pergunta">
+        <form id="procura" role="search" autocomplete="off">
+            <label id="pergunta" for="numero" data-i18n="nav.pergunta">Para que casa vai?</label>
+            <div class="campo">
+                <input id="numero" type="text" autocapitalize="characters" autocorrect="off" spellcheck="false" enterkeyhint="go" aria-describedby="aviso" aria-controls="sugestoes">
+                <button type="submit" class="botao cheio" id="ir" data-i18n="nav.ir">Ir</button>
+            </div>
+            <ul id="sugestoes" aria-label="Casas com este número" data-i18n-aria="nav.sugestoes"></ul>
+            <p id="aviso" class="aviso" data-i18n="nav.ajuda">As casas são numeradas com uma letra e um número, como A12 ou D31.</p>
+        </form>
+
+        <div id="resultado" hidden>
+            <div class="casa-escolhida">
+                <h2 id="casa-nome"></h2>
+                <button type="button" class="botao" id="outra" data-i18n="nav.outra">Outra casa</button>
+            </div>
+            <p id="resumo" aria-hidden="true"></p>
+            <p id="resumo-leitor" class="so-leitor" aria-live="polite"></p>
+            <p id="nota" class="aviso" aria-live="polite"></p>
+            <div class="botoes">
+                <button type="button" class="botao" id="daqui">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true"><circle cx="12" cy="12" r="6"></circle><line x1="12" y1="1" x2="12" y2="5"></line><line x1="12" y1="19" x2="12" y2="23"></line><line x1="1" y1="12" x2="5" y2="12"></line><line x1="19" y1="12" x2="23" y2="12"></line></svg>
+                    <span data-i18n="nav.daqui">A partir de onde estou</span>
+                </button>
+                <a class="botao" id="como-chegar" target="_blank" rel="noopener" data-i18n="nav.comoChegar">Como chegar à entrada</a>
+                <button type="button" class="botao" id="partilhar"></button>
+            </div>
+            <details id="indicacoes" open>
+                <summary data-i18n="nav.indicacoes">Indicações</summary>
+                <ol id="passos"></ol>
+            </details>
+        </div>
+    </section>
+
+    <div class="video-controls" id="controlos">
+        <div class="creditos" id="creditos"></div>
+        <div class="controls-right">
+            <button class="player-btn" id="onde-estou-btn" title="Onde estou" data-i18n-title="nav.ondeEstou" data-i18n-aria="nav.ondeEstou" aria-label="Onde estou" aria-pressed="false">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true"><circle cx="12" cy="12" r="6"></circle><line x1="12" y1="1" x2="12" y2="5"></line><line x1="12" y1="19" x2="12" y2="23"></line><line x1="1" y1="12" x2="5" y2="12"></line><line x1="19" y1="12" x2="23" y2="12"></line></svg>
+            </button>
+            <button class="player-btn" id="afastar-btn" title="Afastar" data-i18n-title="foto.afastar" data-i18n-aria="foto.afastar" aria-label="Afastar">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><line x1="8" y1="11" x2="14" y2="11"></line><line x1="16.5" y1="16.5" x2="21" y2="21"></line></svg>
+            </button>
+            <button class="player-btn" id="aproximar-btn" title="Aproximar" data-i18n-title="foto.aproximar" data-i18n-aria="foto.aproximar" aria-label="Aproximar">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><line x1="8" y1="11" x2="14" y2="11"></line><line x1="11" y1="8" x2="11" y2="14"></line><line x1="16.5" y1="16.5" x2="21" y2="21"></line></svg>
+            </button>
+            <button class="player-btn" id="fullscreen-btn" title="Ecrã inteiro" data-i18n-title="foto.ecra" data-i18n-aria="foto.ecra" aria-label="Ecrã inteiro"></button>
+        </div>
+    </div>
+
+    <div id="loading-overlay">
+        <div id="espera"></div>
+        <div class="aviso" data-i18n="nav.carregar">A carregar o mapa…</div>
+    </div>
+
+    <script type="module">
+        import { carregarRede, ORTOFOTO, METROS_POR_MINUTO, ESTRADA, RUA, BECO, LIGACAO, normalizar, arredondar } from './navegacao.mjs?v=1';
+        import { SATELITE } from './mapa-dos-bairros.mjs?v=7';
+
+        // O passo dos botões, das teclas e do duplo clique, em níveis do
+        // mapa (cada nível é o dobro do anterior).
+        const PASSO = 1;
+        // Quanto a roda tem de rodar para andar um nível (um estalido de
+        // uma roda de rato dá 100).
+        const RODA_POR_NIVEL = 100;
+        // Quanto demora o zoom a chegar perto de onde se pediu, em segundos.
+        const SUAVIDADE_DO_ZOOM = 0.1;
+        const PASSO_DAS_SETAS = 120;
+        // Até onde se aproxima: o ortofotomapa tem 2,5 cm por ponto, e os
+        // quadrados mais finos 3 cm (ver scripts/navegacao/mosaicos.py).
+        const ZOOM_MAXIMO = 22;
+        const ZOOM_DOS_NUMEROS = 19;
+        // Mais longe do que isto da rede, o percurso não parte de onde a
+        // pessoa está, mas da entrada do bairro mais perto da casa.
+        const LONGE_DO_BAIRRO_M = 400;
+        // Mais longe do que isto da rede, a ligação até ela é a tracejado.
+        const FORA_DA_REDE_M = 12;
+        // Andar isto com o percurso aberto faz refazê-lo a partir de onde
+        // se está.
+        const REFAZER_M = 10;
+        const ESPERA_MAXIMA_MS = 12000;
+
+        const parametros = new URLSearchParams(window.location.search);
+        const diz = (chave, alternativa) => (window.Idiomas && window.Idiomas.t(chave)) || alternativa || '';
+        const preencher = (texto, valores) => texto.replace(/\{(\w+)\}/g, (_, k) => (valores[k] != null ? valores[k] : ''));
+
+        const overlay = document.getElementById('loading-overlay');
+        const entrada = document.getElementById('numero');
+        const sugestoesEl = document.getElementById('sugestoes');
+        const avisoEl = document.getElementById('aviso');
+        const resultadoEl = document.getElementById('resultado');
+        const casaNomeEl = document.getElementById('casa-nome');
+        const resumoEl = document.getElementById('resumo');
+        const resumoLeitorEl = document.getElementById('resumo-leitor');
+        const notaEl = document.getElementById('nota');
+        const passosEl = document.getElementById('passos');
+        const comoChegarEl = document.getElementById('como-chegar');
+        const partilharEl = document.getElementById('partilhar');
+        const daquiEl = document.getElementById('daqui');
+        const ondeEstouEl = document.getElementById('onde-estou-btn');
+        const creditosEl = document.getElementById('creditos');
+        const botaoAproximar = document.getElementById('aproximar-btn');
+        const botaoAfastar = document.getElementById('afastar-btn');
+        const botaoEcra = document.getElementById('fullscreen-btn');
+        const painel = document.getElementById('painel');
+
+        const ICONE_ECRA_INTEIRO = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true"><path d="M8 3H3v5m18 0V3h-5m0 18h5v-5M3 16v5h5"></path></svg>';
+        const ICONE_SAIR_DO_ECRA = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true"><path d="M3 9h6V3 M21 9h-6V3 M21 15h-6v6 M3 15h6v6"></path></svg>';
+
+        if (window.Logotipo) window.Logotipo.desenhar(document.getElementById('marca'));
+        if (window.QuadradoDeEspera) window.QuadradoDeEspera.fazer(document.getElementById('espera'));
+
+        const rede = window.RedeDeSeguranca ? window.RedeDeSeguranca.vigiar({
+            espera: 40,
+            pronto: () => overlay.classList.contains('escondido'),
+            caixa: () => overlay
+        }) : null;
+        const falhou = (chave, textoPt) => {
+            document.getElementById('espera').style.display = 'none';
+            overlay.querySelector('.aviso').style.display = 'none';
+            overlay.classList.remove('escondido');
+            if (rede) rede.avisar(chave, textoPt);
+            else overlay.textContent = diz(chave, textoPt);
+        };
+
+        // As preposições que mudam com a rua ("na Rua", "no Largo"): na
+        // lista das línguas vêm as duas formas, "na|no".
+        const masculina = (rua) => /^(Largo|Beco|Caminho|Passeio|P[áa]tio|Terreiro|Adro|Alto|Cais|Jardim|Bairro)\b/i.test(rua);
+        const prep = (chave, rua) => {
+            const formas = diz(chave, '').split('|');
+            return formas[masculina(rua) ? 1 : 0] || formas[0];
+        };
+
+        // ---- O mapa ----
+        //
+        // Sem os botões nem os créditos do próprio Leaflet: os do site
+        // estão na barra de baixo. O zoom anda aos bocadinhos, como no Mapa
+        // dos Bairros.
+        const ecraFino = L.Browser.retina;
+        const mapa = L.map('mapa', {
+            zoomControl: false,
+            attributionControl: false,
+            zoomSnap: 0,
+            zoomDelta: PASSO,
+            scrollWheelZoom: false,
+            doubleClickZoom: false,
+            keyboard: false,
+            maxZoom: ZOOM_MAXIMO,
+            minZoom: 13
+        });
+        // A fotografia de satélite, por baixo de tudo. Nos ecrãs finos, um
+        // nível mais perto (ver a mesma conta em mapa-dos-bairros.html).
+        const satelite = L.tileLayer(SATELITE.endereco, {
+            maxZoom: ZOOM_MAXIMO + (ecraFino ? 1 : 0),
+            maxNativeZoom: SATELITE.zoomMaximo - (ecraFino ? 1 : 0),
+            detectRetina: true,
+            keepBuffer: 4
+        }).addTo(mapa);
+
+        // ---- O ortofotomapa ----
+        //
+        // Os quadrados que existem vêm numa lista (indice.json): os que
+        // cairiam fora do ortofotomapa não foram feitos, e não se pedem.
+        let quadrados = new Set();
+        const CamadaDoOrtofoto = L.TileLayer.extend({
+            createTile(coords, feito) {
+                const z = this._getZoomForUrl();
+                if (!quadrados.has(z + '/' + coords.x + '/' + coords.y)) {
+                    const vazio = document.createElement('div');
+                    setTimeout(() => feito(null, vazio), 0);
+                    return vazio;
+                }
+                return L.TileLayer.prototype.createTile.call(this, coords, feito);
+            }
+        });
+        let ortofoto = null;
+
+        // ---- Aproximar e afastar (o do Mapa dos Bairros) ----
+        let zoomPedido = 0;
+        let ancora = null;
+        let aDeslizar = false;
+        let instanteAnterior = 0;
+        const pintarBotoesDoZoom = () => {
+            const z = aDeslizar ? zoomPedido : mapa.getZoom();
+            botaoAproximar.disabled = z >= mapa.getMaxZoom() - 0.01;
+            botaoAfastar.disabled = z <= mapa.getMinZoom() + 0.01;
+        };
+        mapa.on('zoomend', pintarBotoesDoZoom);
+        const pararOZoom = () => {
+            if (!aDeslizar) return;
+            aDeslizar = false;
+            mapa._moveEnd(true);
+        };
+        const deslizar = (agora) => {
+            if (!aDeslizar) return;
+            const dt = instanteAnterior ? Math.min(0.1, (agora - instanteAnterior) / 1000) : 1 / 60;
+            instanteAnterior = agora;
+            const atual = mapa.getZoom();
+            const falta = zoomPedido - atual;
+            const chegou = Math.abs(falta) < 0.002;
+            const z = chegou ? zoomPedido : atual + falta * (1 - Math.exp(-dt / SUAVIDADE_DO_ZOOM));
+            const desvio = ancora.ponto.subtract(mapa.getSize().divideBy(2));
+            const centro = mapa.unproject(mapa.project(ancora.sitio, z).subtract(desvio), z);
+            mapa._move(mapa._limitCenter(centro, z, mapa.options.maxBounds), z);
+            if (chegou) pararOZoom();
+            else requestAnimationFrame(deslizar);
+        };
+        const pedirZoom = (novo, ponto) => {
+            if (!aDeslizar) {
+                mapa.stop();
+                zoomPedido = mapa.getZoom();
+            }
+            zoomPedido = Math.min(mapa.getMaxZoom(), Math.max(mapa.getMinZoom(), novo));
+            const p = ponto || mapa.getSize().divideBy(2);
+            ancora = { ponto: p, sitio: mapa.containerPointToLatLng(p) };
+            if (!aDeslizar) {
+                aDeslizar = true;
+                instanteAnterior = 0;
+                mapa._moveStart(true, false);
+                requestAnimationFrame(deslizar);
+            }
+            pintarBotoesDoZoom();
+        };
+        const zoomDeOndeSeParte = () => (aDeslizar ? zoomPedido : mapa.getZoom());
+        botaoAproximar.addEventListener('click', () => pedirZoom(zoomDeOndeSeParte() + PASSO));
+        botaoAfastar.addEventListener('click', () => pedirZoom(zoomDeOndeSeParte() - PASSO));
+        const contentor = mapa.getContainer();
+        contentor.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            const porLinha = e.deltaMode === 1 ? 33 : (e.deltaMode === 2 ? 400 : 1);
+            const rodou = Math.max(-300, Math.min(300, e.deltaY * porLinha));
+            pedirZoom(zoomDeOndeSeParte() - rodou / RODA_POR_NIVEL, mapa.mouseEventToContainerPoint(e));
+        }, { passive: false });
+        contentor.addEventListener('dblclick', (e) => {
+            e.preventDefault();
+            pedirZoom(zoomDeOndeSeParte() + (e.shiftKey ? -PASSO : PASSO), mapa.mouseEventToContainerPoint(e));
+        });
+        contentor.addEventListener('mousedown', pararOZoom, true);
+        contentor.addEventListener('touchstart', pararOZoom, { capture: true, passive: true });
+        window.zoomDaPagina = (passos) => pedirZoom(zoomDeOndeSeParte() + passos * 0.3);
+
+        // O que o painel tapa do mapa, para os enquadramentos não porem
+        // nada debaixo dele: à esquerda no computador, em cima no telemóvel.
+        const folgas = () => {
+            const cima = document.querySelector('.barra-do-titulo').offsetHeight;
+            const baixo = document.getElementById('controlos').offsetHeight;
+            const p = painel.getBoundingClientRect();
+            const estreito = window.innerWidth <= 640;
+            // (Uns pontos a mais de cada lado para o nome da entrada, que
+            // fica por cima do quadrado dela, não sair do ecrã.)
+            return {
+                paddingTopLeft: [estreito ? 40 : p.right + 40, (estreito ? p.bottom : cima) + 24],
+                paddingBottomRight: [40, baixo + 8]
+            };
+        };
+
+        // ---- Começar: a rede e a lista dos quadrados ----
+        let rede_ = null;
+        let limitesDoBairro = null;
+        try {
+            const [r, indice] = await Promise.all([
+                carregarRede(),
+                fetch(ORTOFOTO.indice).then((x) => x.json())
+            ]);
+            rede_ = r;
+            for (const [z, lista] of Object.entries(indice.quadrados)) {
+                for (const [x, y] of lista) quadrados.add(z + '/' + x + '/' + y);
+            }
+            // Os limites do ortofotomapa, tirados dos quadrados do nível de cima.
+            const z0 = indice.niveis[0];
+            const n = 2 ** z0;
+            const lat = (y) => Math.atan(Math.sinh(Math.PI * (1 - 2 * y / n))) * 180 / Math.PI;
+            const xs = indice.quadrados[z0].map((q) => q[0]);
+            const ys = indice.quadrados[z0].map((q) => q[1]);
+            const caixa = L.latLngBounds(
+                [lat(Math.max(...ys) + 1), Math.min(...xs) / n * 360 - 180],
+                [lat(Math.min(...ys)), (Math.max(...xs) + 1) / n * 360 - 180]);
+            limitesDoBairro = L.latLngBounds(rede_.casas.size ? [...rede_.casas.values()].flat().map((c) => c.ponto) : []).pad(0.15);
+            ortofoto = new CamadaDoOrtofoto(ORTOFOTO.endereco, {
+                minNativeZoom: indice.niveis[0] - (ecraFino ? 1 : 0),
+                maxNativeZoom: indice.niveis[1] - (ecraFino ? 1 : 0),
+                maxZoom: ZOOM_MAXIMO + (ecraFino ? 1 : 0),
+                detectRetina: true,
+                bounds: caixa,
+                keepBuffer: 2
+            }).addTo(mapa);
+            mapa.setMaxBounds(caixa.pad(2.5));
+            mapa.options.maxBoundsViscosity = 1;
+        } catch (e) {
+            console.error(e);
+            falhou('nav.erro', 'Não foi possível carregar o mapa.');
+            throw e;
+        }
+
+        // Para quem verifica a página por dentro (as ferramentas do navegador).
+        window.navegacao = { mapa, rede: rede_ };
+
+        const vistaDoBairro = (animar) => {
+            if (animar) mapa.flyToBounds(limitesDoBairro, { ...folgas(), duration: 0.8 });
+            else mapa.fitBounds(limitesDoBairro, { ...folgas(), animate: false });
+        };
+        vistaDoBairro(false);
+        zoomPedido = mapa.getZoom();
+
+        let casaEscolhida = null;
+
+        // ---- Os números das casas, de perto ----
+        //
+        // Tocar num número escolhe essa casa. O da casa escolhida sai: ela
+        // já tem o seu, no quadrado branco.
+        const numeros = L.layerGroup();
+        const rotulos = new Map();
+        const pintarRotulos = () => {
+            for (const [casa, m] of rotulos) {
+                const el = m.getElement();
+                if (el) el.classList.toggle('escondido', casa === casaEscolhida);
+            }
+        };
+        for (const [n, lista] of rede_.casas) {
+            for (const casa of lista) {
+                const m = L.marker(casa.ponto, {
+                    icon: L.divIcon({ className: 'rotulo-casa', html: '<span aria-hidden="true"></span>', iconSize: [0, 0] }),
+                    keyboard: false
+                });
+                m.on('add', () => {
+                    m.getElement().firstChild.textContent = n;
+                    m.getElement().classList.toggle('escondido', casa === casaEscolhida);
+                });
+                m.on('click', () => escolher(casa));
+                numeros.addLayer(m);
+                rotulos.set(casa, m);
+            }
+        }
+        const verNumeros = () => {
+            const ver = mapa.getZoom() >= ZOOM_DOS_NUMEROS;
+            if (ver && !mapa.hasLayer(numeros)) numeros.addTo(mapa);
+            else if (!ver && mapa.hasLayer(numeros)) mapa.removeLayer(numeros);
+        };
+        mapa.on('zoomend', verNumeros);
+        verNumeros();
+
+        // ---- A rede reconhecida, para quem tem o menu de desenvolvedor ----
+        //
+        // As ruas (amarelo), os becos (verde), as estradas (branco) e as
+        // pontes lançadas por baixo de beirais (rosa), e o telhado de cada
+        // casa: para ver de perto se o reconhecimento bate com a fotografia.
+        let camadaDaRede = null;
+        const verRede = () => {
+            let quer = false;
+            try { quer = localStorage.getItem('programador') === 'on'; } catch (e) { /* sem memória */ }
+            if (quer && !camadaDaRede) {
+                const cores = { [ESTRADA]: '#ffffff', [RUA]: '#ffd400', [BECO]: '#00e060', [LIGACAO]: '#ff40ff' };
+                camadaDaRede = L.layerGroup();
+                for (const t of rede_.trocos) {
+                    L.polyline(t.pontos, { color: cores[t.tipo], weight: 2, opacity: 0.9, interactive: false }).addTo(camadaDaRede);
+                }
+                for (const lista of rede_.casas.values()) {
+                    for (const c of lista) {
+                        if (c.contorno) L.polygon(c.contorno, { color: '#3399ff', weight: 1.5, fillOpacity: 0.1, interactive: false }).addTo(camadaDaRede);
+                        L.circleMarker(c.porta, { radius: 3, color: '#ff8800', weight: 2, interactive: false }).addTo(camadaDaRede);
+                    }
+                }
+            }
+            if (camadaDaRede) {
+                if (quer && !mapa.hasLayer(camadaDaRede)) camadaDaRede.addTo(mapa);
+                if (!quer && mapa.hasLayer(camadaDaRede)) mapa.removeLayer(camadaDaRede);
+            }
+        };
+        window.addEventListener('storage', (e) => {
+            if (e.key === 'programador' || e.key === null) verRede();
+        });
+        verRede();
+
+        // ---- Procurar a casa ----
+        const mostrarSugestoes = () => {
+            const lista = rede_.procurar(entrada.value, 12);
+            sugestoesEl.innerHTML = '';
+            for (const n of lista) {
+                const casas = rede_.casas.get(n);
+                casas.forEach((casa, i) => {
+                    const li = document.createElement('li');
+                    const b = document.createElement('button');
+                    b.type = 'button';
+                    b.textContent = casas.length > 1
+                        ? preencher(diz('nav.sitio', '{numero} — sítio {i}'), { numero: n, i: i + 1 })
+                        : n;
+                    b.addEventListener('click', () => escolher(casa));
+                    li.appendChild(b);
+                    sugestoesEl.appendChild(li);
+                });
+            }
+            const q = normalizar(entrada.value);
+            if (!q) avisoEl.textContent = diz('nav.ajuda', 'As casas são numeradas com uma letra e um número, como A12 ou D31.');
+            else if (!lista.length) avisoEl.textContent = preencher(diz('nav.nenhuma', 'Não há nenhuma casa com o número {numero}.'), { numero: q });
+            else if (rede_.casas.has(q) && rede_.casas.get(q).length > 1) {
+                avisoEl.textContent = preencher(diz('nav.repetido', 'O número {numero} aparece em {n} sítios no levantamento: escolha um.'), { numero: q, n: rede_.casas.get(q).length });
+            } else avisoEl.textContent = '';
+        };
+        entrada.addEventListener('input', mostrarSugestoes);
+        // As setas descem do campo para os números, e andam entre eles.
+        entrada.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowDown' && sugestoesEl.firstElementChild) {
+                e.preventDefault();
+                sugestoesEl.querySelector('button').focus();
+            } else if (e.key === 'Escape') {
+                entrada.value = '';
+                mostrarSugestoes();
+            }
+        });
+        sugestoesEl.addEventListener('keydown', (e) => {
+            const botoes = [...sugestoesEl.querySelectorAll('button')];
+            const i = botoes.indexOf(document.activeElement);
+            if (i < 0) return;
+            if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+                e.preventDefault();
+                (botoes[i + 1] || botoes[i]).focus();
+            } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+                e.preventDefault();
+                if (i === 0) entrada.focus();
+                else botoes[i - 1].focus();
+            }
+        });
+        document.getElementById('procura').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const q = normalizar(entrada.value);
+            const casas = rede_.casas.get(q);
+            if (casas && casas.length === 1) escolher(casas[0]);
+            else if (!casas) {
+                const lista = rede_.procurar(entrada.value, 2);
+                if (lista.length === 1 && rede_.casas.get(lista[0]).length === 1) escolher(rede_.casas.get(lista[0])[0]);
+                else mostrarSugestoes();
+            } else mostrarSugestoes();
+        });
+        document.getElementById('outra').addEventListener('click', () => {
+            casaEscolhida = null;
+            document.body.classList.remove('com-casa');
+            pintarRotulos();
+            camadaDoPercurso.clearLayers();
+            resultadoEl.hidden = true;
+            entrada.value = '';
+            mostrarSugestoes();
+            history.replaceState(null, '', window.location.pathname);
+            entrada.focus();
+        });
+
+        // ---- Onde a pessoa está ----
+        //
+        // Só se pergunta ao telemóvel quando a pessoa carrega no botão. Com
+        // a posição, o percurso parte dali e vai-se refazendo à medida que
+        // anda; sem ela (ou longe do bairro), parte da entrada do bairro
+        // mais perto da casa.
+        let vigia = null;
+        let aqui = null;
+        let aquiDoPercurso = null;
+        let marcadorAqui = null;
+        let circuloAqui = null;
+        let seguir = false;
+        const pintarOndeEstou = () => {
+            ondeEstouEl.classList.toggle('ligado', vigia !== null);
+            ondeEstouEl.setAttribute('aria-pressed', vigia !== null ? 'true' : 'false');
+        };
+        const ondeEstou = (centrar) => {
+            if (vigia !== null) {
+                if (aqui && centrar) mapa.setView([aqui.lat, aqui.lon], Math.max(mapa.getZoom(), 19));
+                return;
+            }
+            if (!navigator.geolocation) {
+                notaEl.textContent = diz('nav.semGps', 'Não foi possível saber onde está.');
+                return;
+            }
+            seguir = !!centrar;
+            notaEl.textContent = diz('nav.aProcurar', 'A procurar onde está…');
+            vigia = navigator.geolocation.watchPosition((pos) => {
+                const primeira = !aqui;
+                aqui = { lat: pos.coords.latitude, lon: pos.coords.longitude, precisao: pos.coords.accuracy };
+                const sitio = [aqui.lat, aqui.lon];
+                if (!marcadorAqui) {
+                    circuloAqui = L.circle(sitio, { radius: aqui.precisao, color: '#ffffff', weight: 1, opacity: 0.6, fillOpacity: 0.12, interactive: false }).addTo(mapa);
+                    marcadorAqui = L.marker(sitio, {
+                        icon: L.divIcon({ className: 'voce', html: '<span class="ponto"></span>', iconSize: [18, 18], iconAnchor: [9, 9] }),
+                        keyboard: false,
+                        interactive: false,
+                        zIndexOffset: 2000
+                    }).addTo(mapa);
+                    marcadorAqui.getElement().setAttribute('role', 'img');
+                    marcadorAqui.getElement().setAttribute('aria-label', diz('nav.voce', 'Está aqui'));
+                } else {
+                    marcadorAqui.setLatLng(sitio);
+                    circuloAqui.setLatLng(sitio).setRadius(aqui.precisao);
+                }
+                if (primeira && seguir) mapa.setView(sitio, Math.max(mapa.getZoom(), 19));
+                if (casaEscolhida) {
+                    const mexeu = !aquiDoPercurso || mapa.distance(sitio, [aquiDoPercurso.lat, aquiDoPercurso.lon]) > REFAZER_M;
+                    if (mexeu) tracar(primeira);
+                } else if (primeira) {
+                    notaEl.textContent = '';
+                }
+            }, () => {
+                navigator.geolocation.clearWatch(vigia);
+                vigia = null;
+                pintarOndeEstou();
+                notaEl.textContent = diz('nav.semGps', 'Não foi possível saber onde está.');
+                if (casaEscolhida) tracar(false);
+            }, { enableHighAccuracy: true, maximumAge: 5000, timeout: 30000 });
+            pintarOndeEstou();
+        };
+        ondeEstouEl.addEventListener('click', () => {
+            if (vigia !== null && !aqui) return;
+            if (vigia !== null && aqui) {
+                mapa.setView([aqui.lat, aqui.lon], Math.max(mapa.getZoom(), 19));
+                return;
+            }
+            ondeEstou(true);
+        });
+        daquiEl.addEventListener('click', () => {
+            if (vigia !== null && aqui) tracar(true);
+            else ondeEstou(false);
+        });
+
+        // ---- O percurso ----
+        const camadaDoPercurso = L.layerGroup().addTo(mapa);
+        let passosAtuais = [];
+        let percursoAtual = null;
+
+        const minutos = (metros) => Math.max(1, Math.round(metros / METROS_POR_MINUTO));
+
+        const textoDoPasso = (p, numero) => {
+            const m = { metros: p.metros, numero };
+            const rua = p.rua || '';
+            if (p.acao === 'inicio') {
+                if (p.origem === 'aqui') return diz('nav.p.aqui', 'Comece onde está.');
+                if (rua) return preencher(diz('nav.p.inicioRua', 'Comece {na} {rua}, à entrada do bairro.'), { na: prep('nav.na', rua), rua });
+                return diz('nav.p.inicio', 'Comece na entrada do bairro, o quadrado no mapa.');
+            }
+            if (p.acao === 'chegada') {
+                if (p.longe) return preencher(diz('nav.p.longe', 'A casa {numero} fica a cerca de {metros} m, numa zona que o drone não fotografou: siga a linha a tracejado.'), { numero, metros: p.longe });
+                const chave = { esquerda: 'nav.p.chegadaEsquerda', direita: 'nav.p.chegadaDireita' }[p.lado] || 'nav.p.chegadaFrente';
+                return preencher(diz(chave, 'Chegou: a casa {numero} fica à sua frente.'), m);
+            }
+            const pelaRua = rua ? ' ' + prep('nav.pela', rua) + ' ' + rua : '';
+            const paraRua = rua ? ' ' + prep('nav.para', rua) + ' ' + rua : '';
+            const chaves = {
+                siga: ['nav.p.siga', 'Siga {metros} m{pelaRua}.'],
+                esquerda: ['nav.p.esquerda', 'Vire à esquerda{paraRua} e siga {metros} m.'],
+                direita: ['nav.p.direita', 'Vire à direita{paraRua} e siga {metros} m.'],
+                ligeiraEsquerda: ['nav.p.ligeiraEsquerda', 'Mantenha-se à esquerda{paraRua} e siga {metros} m.'],
+                ligeiraDireita: ['nav.p.ligeiraDireita', 'Mantenha-se à direita{paraRua} e siga {metros} m.'],
+                volta: ['nav.p.volta', 'Volte para trás e siga {metros} m.']
+            }[p.acao] || ['nav.p.siga', 'Siga {metros} m{pelaRua}.'];
+            return preencher(diz(chaves[0], chaves[1]), { ...m, pelaRua, paraRua });
+        };
+
+        const escreverPercurso = () => {
+            if (!casaEscolhida || !percursoAtual) return;
+            const n = casaEscolhida.n;
+            casaNomeEl.textContent = preencher(diz('nav.casa', 'Casa {numero}'), { numero: n });
+            const metros = arredondar(percursoAtual.total);
+            const mins = minutos(percursoAtual.total);
+            resumoEl.textContent = preencher(diz('nav.resumo', '{metros} m · cerca de {minutos} min a pé'), { metros, minutos: mins });
+            const unidade = diz('nav.unidade', 'minuto|minutos').split('|')[mins === 1 ? 0 : 1];
+            resumoLeitorEl.textContent = preencher(diz('nav.resumoLeitor', 'Percurso até à casa {numero}: {metros} metros, cerca de {minutos} {unidade} a pé.'), { numero: n, metros, minutos: mins, unidade });
+            passosEl.innerHTML = '';
+            passosAtuais.forEach((p) => {
+                const li = document.createElement('li');
+                li.textContent = textoDoPasso(p, n);
+                if (p.acao === 'chegada') li.className = 'chegada';
+                // Tocar num passo mostra-o no mapa.
+                li.addEventListener('click', () => {
+                    if (p.sitio) mapa.setView(p.sitio, Math.max(mapa.getZoom(), 20));
+                });
+                passosEl.appendChild(li);
+            });
+            const ent = percursoAtual.entrada;
+            comoChegarEl.hidden = !ent;
+            if (ent) {
+                comoChegarEl.href = 'https://www.google.com/maps/dir/?api=1&destination=' + ent[0].toFixed(6) + ',' + ent[1].toFixed(6);
+            }
+        };
+
+        /**
+         * Traça o percurso até à casa escolhida: de onde a pessoa está, se
+         * se sabe e é perto; da entrada do bairro, se não.
+         *
+         * @param {boolean} enquadrar - Se o mapa vai mostrar o percurso todo.
+         */
+        const tracar = (enquadrar) => {
+            const casa = casaEscolhida;
+            if (!casa) return;
+            let origem = null;
+            let inicio = null;
+            let ligacaoAqui = null;
+            let entradaSitio = null;
+            notaEl.textContent = '';
+            if (aqui) {
+                const perto = rede_.maisPerto(aqui.lat, aqui.lon);
+                if (perto && perto.distancia <= LONGE_DO_BAIRRO_M) {
+                    origem = { troco: perto.troco, ao: perto.ao };
+                    inicio = { tipo: 'aqui' };
+                    if (perto.distancia > FORA_DA_REDE_M) ligacaoAqui = [[aqui.lat, aqui.lon], perto.ponto];
+                    aquiDoPercurso = { lat: aqui.lat, lon: aqui.lon };
+                } else if (perto) {
+                    notaEl.textContent = preencher(diz('nav.longe', 'Está longe do bairro: o percurso começa na entrada mais perto da casa.'), {});
+                }
+            }
+            if (!origem) {
+                const ent = rede_.entradaPara(casa.no);
+                origem = { no: ent ? ent.no : casa.no };
+                inicio = { tipo: 'entrada', rua: ent ? ent.rua : '' };
+                entradaSitio = rede_.nos[origem.no];
+            }
+            const perc = rede_.caminho(origem, casa.no);
+            if (!perc) return;
+            const passos = rede_.indicacoes(perc, casa, inicio);
+            // O sítio de cada passo, para o mostrar ao tocar nele.
+            let s = 0;
+            const pontoEm = (dist) => {
+                let k = 1;
+                while (k < perc.acum.length - 1 && perc.acum[k] < dist) k++;
+                return perc.pontos[Math.min(k, perc.pontos.length - 1)];
+            };
+            for (const p of passos) {
+                if (p.acao === 'inicio') p.sitio = perc.pontos[0];
+                else if (p.acao === 'chegada') p.sitio = casa.porta;
+                else {
+                    p.sitio = pontoEm(s);
+                    s += p.metros;
+                }
+            }
+            const fim = perc.pontos[perc.pontos.length - 1];
+            const ultimo = mapa.distance(fim, casa.porta);
+            percursoAtual = { total: perc.comprimento + ultimo, entrada: entradaSitio };
+            passosAtuais = passos;
+
+            // O desenho: uma linha branca com um contorno escuro, como as
+            // estradas dos mapas, de pontas quadradas como o resto do site.
+            camadaDoPercurso.clearLayers();
+            if (casa.contorno) {
+                L.polygon(casa.contorno, { color: '#ffffff', weight: 2.5, fillColor: '#ffffff', fillOpacity: 0.28, interactive: false }).addTo(camadaDoPercurso);
+            }
+            const linha = [...perc.pontos];
+            const contorno = { color: '#05050a', weight: 9, opacity: 0.85, lineCap: 'square', lineJoin: 'miter', interactive: false };
+            const meio = { color: '#ffffff', weight: 5, opacity: 1, lineCap: 'square', lineJoin: 'miter', interactive: false };
+            if (linha.length > 1) {
+                L.polyline(linha, contorno).addTo(camadaDoPercurso);
+                L.polyline(linha, meio).addTo(camadaDoPercurso);
+            }
+            // Da rede até à porta, e de onde se está até à rede: a tracejado.
+            const tracejado = { color: '#ffffff', weight: 3, opacity: 1, dashArray: '2 8', lineCap: 'square', interactive: false };
+            if (ultimo > 0.5) L.polyline([fim, casa.porta], tracejado).addTo(camadaDoPercurso);
+            if (ligacaoAqui) L.polyline(ligacaoAqui, tracejado).addTo(camadaDoPercurso);
+            // O princípio: a entrada (um quadrado com o nome) ou onde se está.
+            if (inicio.tipo === 'entrada' && linha.length > 1) {
+                const m = L.marker(linha[0], {
+                    icon: L.divIcon({ className: 'inicio', html: '<span class="ponto"></span><span class="nome" aria-hidden="true"></span>', iconSize: [16, 16], iconAnchor: [8, 8] }),
+                    keyboard: false,
+                    interactive: false,
+                    zIndexOffset: 1000
+                }).addTo(camadaDoPercurso);
+                m.getElement().querySelector('.nome').textContent = diz('nav.entrada', 'Entrada');
+                m.getElement().setAttribute('role', 'img');
+                m.getElement().setAttribute('aria-label', diz('nav.entrada', 'Entrada'));
+            }
+            // A casa: o número num quadrado branco, por cima do telhado.
+            const destino = L.marker(casa.ponto, {
+                icon: L.divIcon({ className: 'destino', html: '<span aria-hidden="true"></span>', iconSize: [0, 0] }),
+                keyboard: false,
+                interactive: false,
+                zIndexOffset: 1500
+            }).addTo(camadaDoPercurso);
+            destino.getElement().firstChild.textContent = casa.n;
+            destino.getElement().setAttribute('role', 'img');
+            destino.getElement().setAttribute('aria-label', preencher(diz('nav.casa', 'Casa {numero}'), { numero: casa.n }));
+
+            escreverPercurso();
+            if (enquadrar) {
+                const caixa = L.latLngBounds(linha.concat([casa.porta, casa.ponto], ligacaoAqui || []));
+                mapa.flyToBounds(caixa, { ...folgas(), maxZoom: 20, duration: 0.8 });
+            }
+        };
+
+        /**
+         * Escolhe a casa e traça o percurso até lá.
+         *
+         * @param {object} casa - A casa (de rede.json).
+         */
+        const escolher = (casa) => {
+            casaEscolhida = casa;
+            document.body.classList.add('com-casa');
+            pintarRotulos();
+            entrada.value = casa.n;
+            sugestoesEl.innerHTML = '';
+            const repetidas = rede_.casas.get(casa.n);
+            avisoEl.textContent = repetidas.length > 1
+                ? preencher(diz('nav.repetido', 'O número {numero} aparece em {n} sítios no levantamento: escolha um.'), { numero: casa.n, n: repetidas.length })
+                : '';
+            if (repetidas.length > 1) mostrarSugestoes();
+            resultadoEl.hidden = false;
+            // No telemóvel, as indicações começam dobradas: o mapa primeiro.
+            document.getElementById('indicacoes').open = window.innerWidth > 640;
+            const qual = repetidas.length > 1 ? '&sitio=' + (repetidas.indexOf(casa) + 1) : '';
+            history.replaceState(null, '', window.location.pathname + '?casa=' + encodeURIComponent(casa.n) + qual);
+            tracar(true);
+        };
+
+        // ---- Partilhar ----
+        //
+        // A ligação abre esta página já com a casa escolhida: quem mora no
+        // bairro pode mandá-la a quem o vem visitar. No telemóvel abre a
+        // folha de partilhar do próprio telemóvel; no computador, copia.
+        const podePartilhar = !!navigator.share && window.matchMedia('(pointer: coarse)').matches;
+        const escreverPartilhar = () => {
+            partilharEl.textContent = podePartilhar ? diz('par.botao', 'Partilhar') : diz('par.copiar', 'Copiar ligação');
+        };
+        partilharEl.addEventListener('click', async () => {
+            if (!casaEscolhida) return;
+            const url = window.location.origin + window.location.pathname + window.location.search;
+            const titulo = preencher(diz('nav.casa', 'Casa {numero}'), { numero: casaEscolhida.n }) + ' — ' + diz('cab.bairro', 'Bairro de Penajóia');
+            if (podePartilhar) {
+                try { await navigator.share({ title: titulo, url }); } catch (e) { /* desistiu */ }
+                return;
+            }
+            try {
+                await navigator.clipboard.writeText(url);
+                partilharEl.textContent = diz('par.copiado', 'Ligação copiada');
+                setTimeout(escreverPartilhar, 2000);
+            } catch (e) {
+                window.prompt(diz('par.copiar', 'Copiar ligação'), url);
+            }
+        });
+
+        // ---- Ecrã inteiro ----
+        const pintarBotaoDoEcra = (dentro) => {
+            botaoEcra.innerHTML = dentro ? ICONE_SAIR_DO_ECRA : ICONE_ECRA_INTEIRO;
+        };
+        botaoEcra.addEventListener('click', () => {
+            const alvo = document.documentElement;
+            const entrar = alvo.requestFullscreen || alvo.webkitRequestFullscreen;
+            const sair = document.exitFullscreen || document.webkitExitFullscreen;
+            try {
+                const pedido = (document.fullscreenElement || document.webkitFullscreenElement)
+                    ? sair.call(document)
+                    : entrar.call(alvo);
+                if (pedido && pedido.catch) pedido.catch(() => {});
+            } catch (e) { /* navegador sem ecrã inteiro: fica a janela */ }
+        });
+        document.addEventListener('fullscreenchange', () => pintarBotaoDoEcra(!!document.fullscreenElement));
+
+        // ---- O teclado ----
+        //
+        // Fora do campo do número: o mais e o menos aproximam e afastam, o
+        // zero volta à vista do bairro, as setas andam pelo mapa, o F vai a
+        // ecrã inteiro.
+        window.addEventListener('keydown', (e) => {
+            if (e.altKey || e.ctrlKey || e.metaKey || e.defaultPrevented) return;
+            const onde = e.target;
+            if (onde && (onde.tagName === 'INPUT' || onde.closest('#painel'))) return;
+            const tecla = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+            const setas = {
+                ArrowLeft: [-PASSO_DAS_SETAS, 0],
+                ArrowRight: [PASSO_DAS_SETAS, 0],
+                ArrowUp: [0, -PASSO_DAS_SETAS],
+                ArrowDown: [0, PASSO_DAS_SETAS]
+            };
+            if (setas[tecla]) {
+                e.preventDefault();
+                pararOZoom();
+                mapa.panBy(setas[tecla]);
+            } else if (tecla === '+' || tecla === '=') {
+                pedirZoom(zoomDeOndeSeParte() + PASSO);
+            } else if (tecla === '-' || tecla === '_') {
+                pedirZoom(zoomDeOndeSeParte() - PASSO);
+            } else if (tecla === '0' || tecla === 'r') {
+                pararOZoom();
+                vistaDoBairro(true);
+            } else if (tecla === 'f') {
+                botaoEcra.click();
+            }
+        });
+
+        // ---- Os textos que mudam com a língua ----
+        const escreverTextos = () => {
+            entrada.placeholder = diz('nav.exemplo', 'Número da casa, p. ex. D31');
+            creditosEl.innerHTML = '';
+            const partes = preencher(diz('nav.creditos', 'Ortofotomapa e ruas: voo de drone de 15 de fevereiro de 2026 · Satélite: {satelite} · Estradas à volta: {osm}'), { satelite: SATELITE.creditos, osm: '\u0000' }).split('\u0000');
+            creditosEl.append(partes[0]);
+            if (partes.length > 1) {
+                const a = document.createElement('a');
+                a.href = 'https://www.openstreetmap.org/copyright';
+                a.target = '_blank';
+                a.rel = 'noopener';
+                a.textContent = '© OpenStreetMap';
+                creditosEl.append(a, partes[1]);
+            }
+            escreverPartilhar();
+            if (!entrada.value) mostrarSugestoes();
+            escreverPercurso();
+        };
+        window.addEventListener('idiomamudou', escreverTextos);
+
+        // ---- O ecrã de espera ----
+        let pedidos = 0;
+        let falhados = 0;
+        satelite.on('tileloadstart', () => { pedidos++; });
+        satelite.on('tileerror', () => { falhados++; });
+        let aberto = false;
+        const abrir = () => {
+            if (aberto) return;
+            aberto = true;
+            overlay.classList.add('escondido');
+            pintarBotoesDoZoom();
+        };
+        satelite.once('load', () => abrir());
+        setTimeout(abrir, ESPERA_MAXIMA_MS);
+
+        // ---- Começar ----
+        pintarBotaoDoEcra(!!document.fullscreenElement);
+        if (window.Idiomas) window.Idiomas.aplicar(document);
+        escreverTextos();
+        pintarBotoesDoZoom();
+        pintarOndeEstou();
+        // Uma ligação com a casa já escolhida (?casa=D31).
+        const pedida = normalizar(parametros.get('casa') || '');
+        if (pedida && rede_.casas.has(pedida)) {
+            const lista = rede_.casas.get(pedida);
+            const i = Math.max(0, Math.min(lista.length - 1, (parseInt(parametros.get('sitio'), 10) || 1) - 1));
+            escolher(lista[i]);
+        } else if (pedida) {
+            entrada.value = pedida;
+            mostrarSugestoes();
+        }
+    </script>
+</body>
+</html>
