@@ -244,10 +244,14 @@ function sairDoEcraInteiroDo(modal) {
 AnnotationController.prototype.initialize = function() {
     this.annotations = [
         {
-            // Por cima do Retroceder, a prumo: no mesmo plano a direito à
-            // frente da câmara de entrada, e por isso, como ele, ao meio do
-            // ecrã de lado a lado.
-            position: new pc.Vec3(14.94, 150, 5.35),
+            // No céu, entre o Retroceder (à esquerda) e o Mapa dos Bairros
+            // (à direita), os três numa fila à mesma altura. Está no plano a
+            // direito à frente da câmara de entrada, e por isso ao abrir o
+            // site fica ao meio do ecrã, de lado a lado, seja qual for a
+            // largura dele. Os outros dois estão à mesma altura e à mesma
+            // distância da câmara, 50 m para cada lado: no ecrã ficam os
+            // três na mesma linha.
+            position: new pc.Vec3(14.94, 80, 5.35),
             label: "Olho de Águia",
             is360: true,
             isImage: true,
@@ -262,11 +266,8 @@ AnnotationController.prototype.initialize = function() {
             // As fotografias de satélite do bairro, de 2009 até hoje, a
             // passar umas atrás das outras (ver timelapse.html). Abre no
             // mesmo palco do Olho de Águia, como paragem avulsa, e fica no
-            // céu por baixo dele: o olho fica acima do ecrã de quem entra no
-            // site, e este tem de se ver logo. Está no plano a direito à
-            // frente da câmara de entrada, e por isso ao abrir o site fica
-            // ao meio do ecrã, de lado a lado, seja qual for a largura dele.
-            position: new pc.Vec3(14.94, 80, 5.35),
+            // céu mesmo ao lado dele, à esquerda.
+            position: new pc.Vec3(-32.13, 80, -11.51),
             label: "Retroceder",
             is360: true,
             isImage: true,
@@ -275,11 +276,9 @@ AnnotationController.prototype.initialize = function() {
         },
         {
             // Os 27 bairros de barracas da Grande Lisboa, num mapa de
-            // satélite (ver mapa-dos-bairros.html). Fica no céu, mesmo ao
-            // lado do Retroceder, à direita dele: à mesma altura e à mesma
-            // distância da câmara de entrada, 50 m para o lado dela. Abre no
-            // mesmo palco e com a mesma cor do Olho de Águia, como paragem
-            // avulsa.
+            // satélite (ver mapa-dos-bairros.html). Fica no céu mesmo ao
+            // lado do Olho de Águia, à direita. Abre no mesmo palco e com a
+            // mesma cor do Olho de Águia, como paragem avulsa.
             position: new pc.Vec3(62.01, 80, 22.21),
             label: "Mapa dos Bairros",
             is360: true,
