@@ -5,7 +5,9 @@
 # Os passos, por ordem (cada um lê o que o anterior deixou):
 #
 #     python -P scripts/navegacao/alturas.py      # as alturas, do modelo 3D
-#     python -P scripts/navegacao/reconhecer.py   # as ruas e as casas
+#     python -P scripts/navegacao/ruas.py         # as ruas desenhadas, do Illustrator
+#     python -P scripts/navegacao/estradas.py     # as estradas à volta, do OpenStreetMap
+#     python -P scripts/navegacao/reconhecer.py   # a rede e as casas
 #     python -P scripts/navegacao/mosaicos.py     # o ortofotomapa para o mapa
 #
 # O "-P", e não o "-I": com o "-I" o Python esquece as bibliotecas
@@ -23,6 +25,7 @@ ORTOFOTO = os.path.join(PROJECTO, "Imagens", "Ortofotomapa", "Ortofotomapa Penaj
 REGISTO = os.path.join(PROJECTO, "Imagens", "Ortofotomapa", "processo", "registo.json")
 PLY = os.path.join(PROJECTO, "3D", "Mapa", "Gaussian Splats", "PLY", "gs_full.ply")
 CASAS = os.path.join(PROJECTO, "SIG", "Base de Dados", "Números de Casas", "casas.shp")
+RUAS_AI = os.path.join(PROJECTO, "SIG", "Traçado de Ruas", "Malha Viva - Ruas.ai")
 
 # O que se calcula pelo caminho e não vai para o site (as alturas pesam
 # perto de 200 MB): fica numa pasta de rascunho do sistema.
