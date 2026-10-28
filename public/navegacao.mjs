@@ -3,11 +3,12 @@
  * contas de um percurso até uma delas.
  *
  * A rede (public/navegacao/rede.json) é feita por
- * scripts/navegacao/reconhecer.py. As ruas, os becos e os telhados das casas
- * são reconhecidos no ortofotomapa e nas alturas do voo de drone de
- * 15-02-2026; os números das casas vêm do levantamento feito no bairro (só o
- * número e o sítio de cada uma); as estradas de fora do bairro, do
- * OpenStreetMap.
+ * scripts/navegacao/reconhecer.py. As ruas do bairro são as que foram
+ * desenhadas à mão sobre o ortofotomapa do voo de drone de 15-02-2026 (ver
+ * scripts/navegacao/ruas.py); os telhados das casas são reconhecidos no
+ * ortofotomapa e nas alturas do mesmo voo; os números das casas vêm do
+ * levantamento feito no bairro (só o número e o sítio de cada uma); as
+ * estradas de fora do bairro, do OpenStreetMap.
  *
  * Aqui não se mexe na página: são só contas. Quem desenha é
  * navegacao.html.
@@ -30,8 +31,8 @@ export const RUA = 1;
 export const BECO = 2;
 export const LIGACAO = 3;
 
-// As pontes que o reconhecimento lançou por baixo de um beiral ou de uma
-// árvore são as menos certas: o percurso só passa por elas se poupar.
+// As ligações das ruas desenhadas às estradas (do fim da rua ao meio da
+// estrada) contam um pouco mais: o percurso não as usa como atalho.
 const CUSTO_DA_LIGACAO = 1.3;
 
 // O que conta como virar: o ângulo entre por onde se vinha e por onde se

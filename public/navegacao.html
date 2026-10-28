@@ -8,7 +8,7 @@
     <script src="/icone.js?v=1" defer></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title data-i18n-titulo="nav.separador">Navegação</title>
-    <script src="/idiomas.js?v=42"></script>
+    <script src="/idiomas.js?v=43"></script>
     <script src="/logotipo.js?v=1"></script>
     <script src="/quadrado-de-espera.js?v=4"></script>
     <!-- O aviso de "está a demorar" e a tecla de tentar de novo, os
@@ -711,7 +711,7 @@
     </div>
 
     <script type="module">
-        import { carregarRede, ORTOFOTO, METROS_POR_MINUTO, ESTRADA, RUA, BECO, LIGACAO, normalizar, arredondar } from './navegacao.mjs?v=3';
+        import { carregarRede, ORTOFOTO, METROS_POR_MINUTO, ESTRADA, RUA, BECO, LIGACAO, normalizar, arredondar } from './navegacao.mjs?v=4';
         import { SATELITE } from './mapa-dos-bairros.mjs?v=7';
 
         // O passo dos botões, das teclas e do duplo clique, em níveis do
@@ -905,10 +905,31 @@
             const estreito = window.innerWidth <= 640;
             // (Uns pontos a mais de cada lado para o nome da entrada, que
             // fica por cima do quadrado dela, não sair do ecrã.)
-            return {
-                paddingTopLeft: [estreito ? 40 : p.right + 40, (estreito ? p.bottom : cima) + 24],
-                paddingBottomRight: [40, baixo + 8]
-            };
+            const cimaEsq = [estreito ? 40 : p.right + 40, (estreito ? p.bottom : cima) + 24];
+            const baixoDir = [40, baixo + 8];
+            // Nunca mais folga do que o mapa tem: num ecrã baixo (um
+            // telemóvel deitado) com o painel aberto, sobrava mapa nenhum, e
+            // o enquadramento falhava. Fica sempre pelo menos um terço dele.
+            const tamanho = mapa.getSize();
+            [[0, tamanho.x], [1, tamanho.y]].forEach(([i, total]) => {
+                const soma = cimaEsq[i] + baixoDir[i];
+                const maximo = total * 2 / 3;
+                if (soma > maximo) {
+                    cimaEsq[i] *= maximo / soma;
+                    baixoDir[i] *= maximo / soma;
+                }
+            });
+            return { paddingTopLeft: cimaEsq, paddingBottomRight: baixoDir };
+        };
+
+        // Leva o mapa a mostrar uma caixa, entre as barras e o painel: a voar,
+        // ou de uma vez. Um mapa sem tamanho (a página aberta numa moldura
+        // escondida) não pode voar — as contas do voo dividem pelo tamanho —
+        // e vai de uma vez.
+        const mostrarNoMapa = (caixa, opcoes, animar) => {
+            const tamanho = mapa.getSize();
+            if (animar && tamanho.x > 0 && tamanho.y > 0) mapa.flyToBounds(caixa, { ...folgas(), ...opcoes, duration: 0.8 });
+            else mapa.fitBounds(caixa, { ...folgas(), ...opcoes, animate: false });
         };
 
         // ---- Começar: a rede e a lista dos quadrados ----
@@ -953,8 +974,7 @@
         window.navegacao = { mapa, rede: rede_ };
 
         const vistaDoBairro = (animar) => {
-            if (animar) mapa.flyToBounds(limitesDoBairro, { ...folgas(), duration: 0.8 });
-            else mapa.fitBounds(limitesDoBairro, { ...folgas(), animate: false });
+            mostrarNoMapa(limitesDoBairro, {}, animar);
         };
         vistaDoBairro(false);
         zoomPedido = mapa.getZoom();
@@ -996,11 +1016,12 @@
         mapa.on('zoomend', verNumeros);
         verNumeros();
 
-        // ---- A rede reconhecida, para quem tem o menu de desenvolvedor ----
+        // ---- A rede, para quem tem o menu de desenvolvedor ----
         //
-        // As ruas (amarelo), os becos (verde), as estradas (branco) e as
-        // pontes lançadas por baixo de beirais (rosa), e o telhado de cada
-        // casa: para ver de perto se o reconhecimento bate com a fotografia.
+        // As ruas desenhadas (amarelo as largas, verde as estreitas), as
+        // estradas (branco) e as ligações das ruas às estradas (rosa), e o
+        // telhado reconhecido de cada casa, com a porta: para ver de perto se
+        // tudo bate com a fotografia.
         let camadaDaRede = null;
         const verRede = () => {
             let quer = false;
@@ -1211,10 +1232,9 @@
             }
             if (p.acao === 'chegada') {
                 // Longe da rede: fora da zona do drone (as F), ou dentro dela
-                // mas por um caminho que de cima não se vê (debaixo dos
-                // beirais, entre casas).
+                // mas longe das ruas desenhadas (para dentro de um quarteirão).
                 if (p.longe && p.fora) return preencher(diz('nav.p.longe', 'A casa {numero} fica a cerca de {metros} m, numa zona que o drone não fotografou: siga a linha a tracejado.'), { numero, metros: p.longe });
-                if (p.longe) return preencher(diz('nav.p.longeDentro', 'A casa {numero} fica a cerca de {metros} m, por um caminho que não se vê de cima: siga a linha a tracejado.'), { numero, metros: p.longe });
+                if (p.longe) return preencher(diz('nav.p.longeDentro', 'A casa {numero} fica a cerca de {metros} m daqui, na direção da linha a tracejado.'), { numero, metros: p.longe });
                 const chave = { esquerda: 'nav.p.chegadaEsquerda', direita: 'nav.p.chegadaDireita' }[p.lado] || 'nav.p.chegadaFrente';
                 return preencher(diz(chave, 'Chegou: a casa {numero} fica à sua frente.'), m);
             }
@@ -1355,7 +1375,7 @@
             escreverPercurso();
             if (enquadrar) {
                 const caixa = L.latLngBounds(linha.concat([casa.porta, casa.ponto], ligacaoAqui || []));
-                mapa.flyToBounds(caixa, { ...folgas(), maxZoom: 20, duration: 0.8 });
+                mostrarNoMapa(caixa, { maxZoom: 20 }, true);
             }
         };
 
@@ -1462,7 +1482,7 @@
         const escreverTextos = () => {
             entrada.placeholder = diz('nav.exemplo', 'Número da casa, p. ex. D31');
             creditosEl.innerHTML = '';
-            const partes = preencher(diz('nav.creditos', 'Ortofotomapa e ruas: voo de drone de 15 de fevereiro de 2026 · Satélite: {satelite} · Estradas à volta: {osm}'), { satelite: SATELITE.creditos, osm: '\u0000' }).split('\u0000');
+            const partes = preencher(diz('nav.creditos', 'Ortofotomapa: voo de drone de 15 de fevereiro de 2026, com as ruas desenhadas por cima · Satélite: {satelite} · Estradas à volta: {osm}'), { satelite: SATELITE.creditos, osm: '\u0000' }).split('\u0000');
             creditosEl.append(partes[0]);
             if (partes.length > 1) {
                 const a = document.createElement('a');
