@@ -7,6 +7,27 @@ describe("servidor do Malha Viva", () => {
 		expect(response.status).toBe(404);
 	});
 
+	// O endereço de cada casa abre a navegação até ela: ver src/index.ts.
+	describe("o endereço de uma casa", () => {
+		it("abre a navegação, com o nome da casa no título", async () => {
+			for (const [caminho, nome] of [["/casa/D31", "Casa D31"], ["/casa/a20.1", "Casa A20.1"], ["/casa/D30/2/", "Casa D30"]]) {
+				const response = await SELF.fetch("http://example.com" + caminho);
+				expect(response.status, caminho).toBe(200);
+				const html = await response.text();
+				expect(html, caminho).toContain(`<title data-i18n-titulo="nav.separador">${nome} — Bairro de Penajóia</title>`);
+				expect(html, caminho).toContain(`property="og:title" content="${nome} — Bairro de Penajóia"`);
+				expect(html, caminho).toContain("/navegacao.mjs");
+			}
+		});
+
+		it("não confunde outros endereços com o de uma casa", async () => {
+			for (const caminho of ["/casa", "/casa/", "/casa/D31/0", "/casa/D31/x", "/casa/um-numero-comprido-demais"]) {
+				const response = await SELF.fetch("http://example.com" + caminho);
+				expect(response.status, caminho).toBe(404);
+			}
+		});
+	});
+
 	// O Chrome pré-carrega em segundo plano a página que prevê que vai abrir.
 	// O motor 3D, a arrancar assim, deixa o separador preso: ver src/index.ts.
 	describe("pré-carregamento do Chrome (prerender)", () => {
