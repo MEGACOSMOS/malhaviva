@@ -1,8 +1,9 @@
 /**
  * A navegação no bairro em 3D: o percurso até uma casa por cima do bairro
  * de Gaussian splats — a linha pelas ruas, o número da casa por cima do
- * telhado, a entrada (ou, com a localização ligada, quem está a ver)
- * marcada — e a câmara a ir até um sítio de onde se vê tudo.
+ * telhado, a entrada marcada (ou, com a localização ligada, uma seta onde
+ * está quem vê, que vai pelo caminho à medida que se anda) — e a câmara a
+ * ir até um sítio de onde se vê tudo.
  *
  * As contas do percurso são as de navegacao.mjs; aqui só se desenha. As
  * ruas e as casas vêm em graus (latitude e longitude); a cena do site tem
@@ -34,6 +35,8 @@ const PONTO = 4;
 const CONTORNO_DO_PONTO = 7;
 const ENTRE_PONTOS = 10;
 const BRANCO = '#ffffff';
+// O caminho já andado, com a localização ligada.
+const ANDADO = '#8e8e96';
 const ESCURO = '#05050a';
 const OPACIDADE_DO_ESCURO = 0.85;
 // O que fica a menos disto à frente da câmara, em metros, não se desenha:
@@ -66,6 +69,13 @@ const INCLINACAO_DE_PERTO = 42;
 // pontinhos até ao caminho se ele ficar a mais de FORA_DA_REDE_M.
 const LONGE_DO_BAIRRO_M = 400;
 const FORA_DA_REDE_M = 12;
+// A seguir o percurso: a menos de ENCOSTAR_M do caminho, a seta passa a ir
+// em cima dele; a mais de DESVIO_M, a pessoa saiu dele, e o percurso
+// refaz-se a partir de onde ela está. Onde ela vai procura-se primeiro à
+// frente de onde já ia (até ATRAS_M para trás).
+const ENCOSTAR_M = 8;
+const DESVIO_M = 30;
+const ATRAS_M = 15;
 
 const RAIO_DA_TERRA = 6378137;
 
@@ -502,7 +512,7 @@ export async function prepararNavegacao3D(app, opcoes) {
     //
     // Tudo numa camada da página por cima do bairro: a linha num desenho
     // (svg) do tamanho do ecrã, e os marcadores — o número da casa, a
-    // entrada, quem está a ver — como os dos testemunhos (ver
+    // entrada, a seta de quem está a ver — como os dos testemunhos (ver
     // annotations.mjs). Carregar num marcador leva a câmara a vê-lo de
     // perto. Para quem não vê o ecrã têm um nome que diz o que são, são
     // botões na fila do Tab, e saem dela (aria-hidden, tabindex -1) quando
@@ -528,13 +538,16 @@ export async function prepararNavegacao3D(app, opcoes) {
         desenho.appendChild(p);
         return p;
     };
-    // Os contornos primeiro, por baixo dos dois brancos.
+    // Por esta ordem: os contornos por baixo, e por cima deles o caminho já
+    // andado (cinzento), o que falta (branco) e os pontinhos.
     const tracos = {
-        linha: [traco(CONTORNO, ESCURO, OPACIDADE_DO_ESCURO, false), traco(LINHA, BRANCO, 1, false)],
-        pontinhos: [traco(CONTORNO_DO_PONTO, ESCURO, OPACIDADE_DO_ESCURO, true), traco(PONTO, BRANCO, 1, true)]
+        contorno: [traco(CONTORNO, ESCURO, OPACIDADE_DO_ESCURO, false)],
+        fundoDosPontinhos: [traco(CONTORNO_DO_PONTO, ESCURO, OPACIDADE_DO_ESCURO, true)],
+        andado: [traco(LINHA, ANDADO, 1, false)],
+        falta: [traco(LINHA, BRANCO, 1, false)],
+        pontinhos: [traco(PONTO, BRANCO, 1, true)]
     };
-    desenho.insertBefore(tracos.pontinhos[0], tracos.linha[1]);
-    const escritos = { linha: '', pontinhos: '' };
+    const escritos = {};
     const escrever = (qual, d) => {
         if (escritos[qual] === d) return;
         escritos[qual] = d;
@@ -595,6 +608,15 @@ export async function prepararNavegacao3D(app, opcoes) {
         }
         return d;
     };
+    // A linha partida onde a pessoa vai: o pedaço já andado e o que falta.
+    const partirLinha = (distancia) => {
+        const { linha, acum } = atual;
+        if (!(distancia > 0)) return [[], linha];
+        const { ponto } = naLinha(distancia);
+        let k = 1;
+        while (k < acum.length - 1 && acum[k] < distancia) k++;
+        return [linha.slice(0, k).concat([ponto]), [ponto].concat(linha.slice(k))];
+    };
 
     const fazerMarcador = (classe, texto, ponto, acao) => {
         const el = document.createElement('div');
@@ -616,7 +638,7 @@ export async function prepararNavegacao3D(app, opcoes) {
         camada.appendChild(el);
         return { el, rotulo, ponto, visto: false };
     };
-    // Os do percurso (a entrada, se ele começar nela, e a casa), e o de
+    // Os do percurso (a entrada, se ele começar nela, e a casa), e a seta de
     // quem está a ver, que fica enquanto a localização estiver ligada.
     let marcadores = { entrada: null, casa: null };
     let voce = null;
@@ -629,10 +651,7 @@ export async function prepararNavegacao3D(app, opcoes) {
         if (marcadores.casa) {
             marcadores.casa.el.setAttribute('aria-label', preencher(diz('nav.marcadorCasa', 'Casa {numero}, onde acaba o percurso'), { numero }));
         }
-        if (voce) {
-            voce.el.setAttribute('aria-label', diz('nav.marcadorVoce', 'Está aqui: o sítio onde está agora'));
-            voce.rotulo.textContent = diz('nav.voce', 'Está aqui');
-        }
+        if (voce) voce.el.setAttribute('aria-label', diz('nav.marcadorVoce', 'Está aqui: o sítio onde está agora'));
     };
     const tirarMarcadores = () => {
         for (const m of Object.values(marcadores)) if (m) m.el.remove();
@@ -644,8 +663,18 @@ export async function prepararNavegacao3D(app, opcoes) {
         const todos = [marcadores.entrada, marcadores.casa, voce].filter(Boolean);
         if (!atual && !todos.length) return;
         prepararEcra();
-        escrever('linha', atual ? caminhoNoEcra(atual.linha) : '');
-        escrever('pontinhos', atual ? atual.pontinhos.map(caminhoNoEcra).join('') : '');
+        if (atual) {
+            const [andado, falta] = partirLinha(atual.feito);
+            escrever('contorno', caminhoNoEcra(atual.linha));
+            escrever('andado', andado.length > 1 ? caminhoNoEcra(andado) : '');
+            escrever('falta', caminhoNoEcra(falta));
+            const pontinhos = atual.encostado ? atual.ateCasa : atual.ateCasa.concat(atual.daquiAteAoCaminho);
+            const d = pontinhos.map(caminhoNoEcra).join('');
+            escrever('pontinhos', d);
+            escrever('fundoDosPontinhos', d);
+        } else {
+            for (const qual of Object.keys(tracos)) escrever(qual, '');
+        }
         for (const m of todos) {
             const c = naCamara(m.ponto);
             const s = c[2] > 1 ? noEcra(c) : null;
@@ -664,7 +693,18 @@ export async function prepararNavegacao3D(app, opcoes) {
                     if (m.el === document.activeElement) m.el.blur();
                 }
             }
-            if (ve) m.el.style.transform = 'translate3d(' + s[0].toFixed(1) + 'px, ' + s[1].toFixed(1) + 'px, 0)';
+            if (!ve) continue;
+            m.el.style.transform = 'translate3d(' + s[0].toFixed(1) + 'px, ' + s[1].toFixed(1) + 'px, 0)';
+            // A seta vira-se para onde o caminho vai, no ecrã: do sítio dela
+            // a um ponto uns metros à frente.
+            if (m.rumo) {
+                const adiante = naCamara([m.ponto[0] + m.rumo[0] * 3, m.ponto[1], m.ponto[2] + m.rumo[1] * 3]);
+                if (adiante[2] > 1) {
+                    const t = noEcra(adiante);
+                    const graus = Math.atan2(t[1] - s[1], t[0] - s[0]) * 180 / Math.PI + 90;
+                    m.rotulo.style.transform = 'rotate(' + graus.toFixed(1) + 'deg)';
+                }
+            }
         }
     });
 
@@ -675,25 +715,84 @@ export async function prepararNavegacao3D(app, opcoes) {
         return [f.x / n, f.z / n];
     };
 
+    // O sítio do caminho mais perto de um ponto (x, z): a distância a ele,
+    // e quantos metros do caminho ficam para trás. Procura-se primeiro à
+    // frente de onde a pessoa já ia, para um caminho que volta a passar
+    // perto de si próprio não a fazer saltar para a volta errada.
+    const noCaminho = (x, z, desde) => {
+        const { linha, acum } = atual;
+        let melhor = null;
+        let melhorAFrente = null;
+        for (let i = 0; i < linha.length - 1; i++) {
+            const a = linha[i];
+            const b = linha[i + 1];
+            const dx = b[0] - a[0];
+            const dz = b[2] - a[2];
+            const L2 = dx * dx + dz * dz;
+            const u = L2 ? Math.max(0, Math.min(1, ((x - a[0]) * dx + (z - a[2]) * dz) / L2)) : 0;
+            const d = Math.hypot(x - (a[0] + u * dx), z - (a[2] + u * dz));
+            const s = acum[i] + u * Math.sqrt(L2);
+            if (!melhor || d < melhor.d) melhor = { d, s };
+            if (s >= desde - ATRAS_M && (!melhorAFrente || d < melhorAFrente.d)) melhorAFrente = { d, s };
+        }
+        return melhorAFrente && melhorAFrente.d <= DESVIO_M ? melhorAFrente : melhor;
+    };
+
     /**
-     * Põe no bairro o sítio de quem está a ver (com a localização ligada),
-     * se for no bairro ou perto dele.
+     * Põe no bairro a seta de quem está a ver (com a localização ligada),
+     * se for no bairro ou perto dele. A seguir um percurso que começou onde
+     * a pessoa estava, a seta vai pelo caminho, virada para onde ele segue,
+     * e o que fica para trás passa a cinzento.
      *
      * @param {number} lat
      * @param {number} lon
-     * @returns {boolean} Se ficou no bairro (se não, não se mostra).
+     * @returns {{longe: boolean, fora: boolean, feito: number}} Se a pessoa
+     *     está longe do bairro; se saiu do caminho (está a mais de DESVIO_M
+     *     dele, e o percurso tem de ser refeito); e quantos metros do
+     *     percurso já andou.
      */
     const mostrarVoce = (lat, lon) => {
         const perto = rede.maisPerto(lat, lon);
         if (!perto || perto.distancia > LONGE_DO_BAIRRO_M) {
             tirarVoce();
-            return false;
+            return { longe: true, fora: false, feito: 0 };
         }
-        const ponto = noChao(naCena([lat, lon]), 1);
-        if (voce) voce.ponto = ponto;
-        else voce = fazerMarcador('voce-3d', '', ponto, () => verDePerto(voce.ponto, frenteDaCamara()));
+        const [x, z] = naCena([lat, lon]);
+        let ponto = noChao([x, z], 0.6);
+        let rumo = null;
+        let fora = false;
+        let feito = 0;
+        if (atual && atual.daqui) {
+            const sitio = noCaminho(x, z, atual.feito);
+            fora = sitio.d > DESVIO_M;
+            if (!fora) {
+                // Já no caminho, ou quase: a seta fica nele.
+                const { ponto: noSitio, u } = naLinha(sitio.s);
+                if (sitio.d <= ENCOSTAR_M || atual.encostado) {
+                    ponto = [noSitio[0], noSitio[1] + 0.25, noSitio[2]];
+                    atual.encostado = true;
+                }
+                rumo = u;
+                atual.feito = sitio.s;
+                feito = sitio.s * atual.comprimento / Math.max(1, atual.acum[atual.acum.length - 1]);
+            }
+        }
+        if (!rumo) {
+            // Fora do caminho: virada para o princípio dele, se houver um.
+            const alvo = atual ? atual.linha[0] : null;
+            const dx = alvo ? alvo[0] - x : 0;
+            const dz = alvo ? alvo[2] - z : 0;
+            const n = Math.hypot(dx, dz);
+            rumo = n > 1 ? [dx / n, dz / n] : frenteDaCamara();
+        }
+        if (!voce) {
+            voce = fazerMarcador('seta-3d', '', ponto, () => verDePerto(voce.ponto, voce.rumo));
+            voce.rotulo.innerHTML = '<svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><polygon points="12 2, 18.6 21.5, 12 16.6, 5.4 21.5"></polygon></svg>';
+        }
+        voce.ponto = ponto;
+        voce.rumo = rumo;
         nomear();
-        return true;
+        return { longe: false, fora, feito };
     };
     const tirarVoce = () => {
         if (voce) voce.el.remove();
@@ -711,8 +810,9 @@ export async function prepararNavegacao3D(app, opcoes) {
      *     disser).
      * @returns {object|null} O percurso: `passos` (as indicações, ver
      *     Rede.indicacoes, cada uma com `desde`), `metros`, `minutos`,
-     *     `entrada` (o sítio da entrada, [lat, lon], se começar nela) e
-     *     `longe` (se a pessoa está longe de mais para começar onde está).
+     *     `entrada` (o sítio da entrada, [lat, lon], se começar nela),
+     *     `daqui` (se começa onde a pessoa está) e `longe` (se a pessoa
+     *     está longe de mais para começar onde está).
      */
     const mostrar = (casa, { aqui = null, enquadrar: mover = true } = {}) => {
         let origem = null;
@@ -753,11 +853,11 @@ export async function prepararNavegacao3D(app, opcoes) {
         const telhado = casa.alto != null ? casa.alto + ACIMA_DO_TELHADO : chaoEm(cx, cz) + ACIMA_DO_CHAO_SEM_TELHADO;
         const alvo = [cx, telhado, cz];
         // A pontinhos: do fim da linha ao meio da casa (se ela não ficar
-        // mesmo ao pé), e de onde a pessoa está até ao caminho.
+        // mesmo ao pé), e de onde a pessoa está até ao caminho (até ela lá
+        // chegar).
         const fim = linha[linha.length - 1];
-        const pontinhos = [];
-        if (Math.hypot(cx - fim[0], cz - fim[2]) > 3) pontinhos.push(peloChao([fim[0], fim[2]], [cx, cz]));
-        if (ligacao) pontinhos.push(peloChao(ligacao[0], ligacao[1]));
+        const ateCasa = Math.hypot(cx - fim[0], cz - fim[2]) > 3 ? [peloChao([fim[0], fim[2]], [cx, cz])] : [];
+        const daquiAteAoCaminho = ligacao ? [peloChao(ligacao[0], ligacao[1])] : [];
 
         const porta = naCena(casa.porta);
         const total = perc.comprimento + Math.hypot(porta[0] - fim[0], porta[1] - fim[2]);
@@ -767,16 +867,22 @@ export async function prepararNavegacao3D(app, opcoes) {
             linha,
             acum,
             alvo,
-            pontinhos,
+            ateCasa,
+            daquiAteAoCaminho,
             comprimento: perc.comprimento,
             metros: arredondar(total),
+            total,
             minutos: Math.max(1, Math.round(total / METROS_POR_MINUTO)),
             entrada: inicio.tipo === 'entrada' ? perc.pontos[0] : null,
             daqui: inicio.tipo === 'aqui',
             longe,
             // De onde a pessoa está, quando o percurso começa aí: entra no
             // enquadramento.
-            aqui: ligacao ? noChao(ligacao[0], 1) : null
+            aqui: ligacao ? noChao(ligacao[0], 1) : null,
+            // Quanto do caminho (alisado) já ficou para trás, e se a seta já
+            // está em cima dele.
+            feito: 0,
+            encostado: !ligacao
         };
 
         tirarMarcadores();
@@ -792,8 +898,7 @@ export async function prepararNavegacao3D(app, opcoes) {
     const limpar = () => {
         tirarMarcadores();
         atual = null;
-        escrever('linha', '');
-        escrever('pontinhos', '');
+        for (const qual of Object.keys(tracos)) escrever(qual, '');
     };
 
     return { mostrar, limpar, enquadrar, verPasso, mostrarVoce, tirarVoce, mudarLingua: nomear, atual: () => atual };

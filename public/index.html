@@ -143,7 +143,7 @@
 
     <!-- As línguas do site. Fica antes de tudo o resto para o texto
          nascer já na língua certa, sem piscar em português primeiro. -->
-    <script src="/idiomas.js?v=46"></script>
+    <script src="/idiomas.js?v=47"></script>
     <script src="/legendas.js?v=2"></script>
 
     <!-- O quadrado de espera, o mesmo em todo o site. Fica antes de o
@@ -633,7 +633,7 @@
         }
         
         /* Sem caixa nenhuma até o rato lá chegar. */
-        #github-btn, #definicoes-btn, #dev-btn, #idioma-btn, #help-btn, #creditos-btn, #fullscreen-main-btn, #vr-btn, #partilhar-btn-gaveta, #navegacao-btn, #pesquisa-abrir, #pesquisa-fechar {
+        #github-btn, #definicoes-btn, #dev-btn, #idioma-btn, #help-btn, #creditos-btn, #fullscreen-main-btn, #vr-btn, #partilhar-btn-gaveta, #pesquisa-abrir, #pesquisa-fechar {
             background: transparent;
             border: 0;
             width: 40px;
@@ -683,25 +683,26 @@
         }
 
         /* ─── A pesquisa das casas ───
-           No cabeçalho, à esquerda dos ícones: escreve-se o número de uma
-           casa (D31) e o bairro mostra o percurso até lá. No computador é
-           um campo sempre à vista, vestido como os menus; no telemóvel, uma
-           lupa entre os ícones da direita, que abre a barra por cima do
-           cabeçalho todo. */
+           Ao meio do cabeçalho: escreve-se o número de uma casa (D31) e o
+           bairro mostra o percurso até lá. Um campo sempre à vista, vestido
+           como os menus, centrado na largura do ecrã — por isso conta a
+           partir do cabeçalho, e a caixa que o tem não ocupa lugar nenhum
+           na fila dos ícones (display: contents). */
         #pesquisa-casas {
-            position: relative;
-            display: flex;
-            align-items: center;
+            display: contents;
         }
         #pesquisa-abrir {
             display: none;
         }
         #pesquisa-campo {
-            position: relative;
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
             display: flex;
             align-items: center;
             gap: 8px;
-            width: 200px;
+            width: 280px;
         }
         .pesquisa-lupa {
             position: absolute;
@@ -812,69 +813,70 @@
             white-space: nowrap;
         }
 
-        /* Sem largura para o campo ao lado do nome do bairro e dos ícones
-           (num computador estreito, num tablet, num telemóvel), a
-           pesquisa é a lupa, um ícone entre os outros: abre a barra por
-           cima do cabeçalho, e a lista das casas por baixo dela. */
-        @media (max-width: 960px) {
-            #pesquisa-abrir {
-                display: flex;
-            }
-            #pesquisa-campo {
-                position: fixed;
-                top: 0;
-                left: 0;
-                right: 0;
-                z-index: 5;
-                display: none;
-                width: auto;
-                height: 72px;
-                box-sizing: border-box;
-                padding: 16px 16px 16px 24px;
-                background: #05050a;
-                border-bottom: 1px solid rgba(255, 255, 255, 0.15);
-            }
-            #pesquisa-casas.aberta #pesquisa-campo {
-                display: flex;
-            }
-            .pesquisa-lupa {
-                left: 35px;
-            }
-            /* 16 pontos: com menos, o telemóvel aproxima a página toda
-               ao tocar no campo. */
-            #pesquisa-numero {
-                height: 40px;
-                font-size: 16px;
-            }
-            #pesquisa-fechar {
-                display: flex;
-            }
-            #pesquisa-lista {
-                position: fixed;
-                top: 72px;
-                left: 24px;
-                right: auto;
-                width: min(360px, calc(100% - 48px));
-                max-height: calc(100% - 96px);
-            }
-            #pesquisa-sugestoes li {
-                padding: 11px 14px;
-                font-size: 0.95rem;
-            }
-            #pesquisa-nada {
-                padding: 11px 14px;
-                font-size: 0.85rem;
-            }
+        /* Sem lugar para o campo ao meio, entre o nome do bairro e os
+           ícones (num computador estreito, num tablet, num telemóvel, ou
+           numa língua de nomes compridos), a pesquisa é a lupa, um ícone
+           entre os outros: abre a barra por cima do cabeçalho, e a lista
+           das casas por baixo dela. Quem decide é arrumarPesquisa, que
+           mede o lugar que há (ver a pesquisa, mais abaixo). */
+        #header.pesquisa-na-lupa #pesquisa-abrir {
+            display: flex;
+        }
+        #header.pesquisa-na-lupa #pesquisa-campo {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 5;
+            display: none;
+            transform: none;
+            width: auto;
+            height: 72px;
+            box-sizing: border-box;
+            padding: 16px 16px 16px 24px;
+            background: #05050a;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+        }
+        #header.pesquisa-na-lupa #pesquisa-casas.aberta #pesquisa-campo {
+            display: flex;
+        }
+        #header.pesquisa-na-lupa .pesquisa-lupa {
+            left: 35px;
+        }
+        /* 16 pontos: com menos, o telemóvel aproxima a página toda ao tocar
+           no campo. */
+        #header.pesquisa-na-lupa #pesquisa-numero {
+            height: 40px;
+            font-size: 16px;
+        }
+        #header.pesquisa-na-lupa #pesquisa-fechar {
+            display: flex;
+        }
+        #header.pesquisa-na-lupa #pesquisa-lista {
+            position: fixed;
+            top: 72px;
+            left: 24px;
+            right: auto;
+            width: min(360px, calc(100% - 48px));
+            max-height: calc(100% - 96px);
+        }
+        #header.pesquisa-na-lupa #pesquisa-sugestoes li {
+            padding: 11px 14px;
+            font-size: 0.95rem;
+        }
+        #header.pesquisa-na-lupa #pesquisa-nada {
+            padding: 11px 14px;
+            font-size: 0.85rem;
         }
         @media (max-width: 640px) {
-            #pesquisa-campo {
+            #header.pesquisa-na-lupa #pesquisa-campo {
                 height: 64px;
                 padding: 12px 8px 12px 16px;
             }
-            .pesquisa-lupa {
+            #header.pesquisa-na-lupa .pesquisa-lupa {
                 left: 27px;
             }
-            #pesquisa-lista {
+            #header.pesquisa-na-lupa #pesquisa-lista {
                 top: 64px;
                 left: 0;
                 right: 0;
@@ -883,11 +885,11 @@
                 border-left: 0;
                 border-right: 0;
             }
-            #pesquisa-sugestoes li {
+            #header.pesquisa-na-lupa #pesquisa-sugestoes li {
                 padding: 12px 16px;
                 font-size: 1rem;
             }
-            #pesquisa-nada {
+            #header.pesquisa-na-lupa #pesquisa-nada {
                 padding: 12px 16px;
             }
         }
@@ -1092,6 +1094,17 @@
         #percurso-passos li.chegada {
             font-weight: 600;
         }
+        /* Com a localização ligada, a andar: os passos que ficaram para
+           trás esbatem-se, e o passo em que se vai fica marcado. */
+        #percurso-passos li.feito {
+            opacity: 0.4;
+        }
+        #percurso-passos li.agora {
+            font-weight: 600;
+        }
+        #percurso-passos li.agora::before {
+            color: #ffffff;
+        }
         @media (max-width: 640px) {
             #percurso-painel {
                 top: auto;
@@ -1130,7 +1143,7 @@
         }
         .destino-3d,
         .inicio-3d,
-        .voce-3d {
+        .seta-3d {
             position: absolute;
             left: 0;
             top: 0;
@@ -1142,7 +1155,7 @@
         }
         .destino-3d.fora,
         .inicio-3d.fora,
-        .voce-3d.fora {
+        .seta-3d.fora {
             opacity: 0;
             pointer-events: none;
         }
@@ -1183,21 +1196,33 @@
             border: 3px solid #ffffff;
             box-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
         }
-        .voce-3d::before {
-            content: "";
+        /* Quem está a ver, com a localização ligada: uma seta de navegação
+           branca num disco escuro de aro branco, virada para onde o caminho
+           segue (ver navegacao-3d.mjs). */
+        .seta-3d > span {
             position: absolute;
-            left: -9px;
-            top: -9px;
-            width: 18px;
-            height: 18px;
+            left: -19px;
+            top: -19px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 38px;
+            height: 38px;
             box-sizing: border-box;
             border-radius: 50%;
-            background: #ffffff;
-            border: 3px solid #05050a;
-            box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.55), 0 1px 4px rgba(0, 0, 0, 0.6);
+            background: #05050a;
+            border: 2.5px solid #ffffff;
+            box-shadow: 0 1px 6px rgba(0, 0, 0, 0.6);
+            transform-origin: 50% 50%;
         }
-        .inicio-3d > span,
-        .voce-3d > span {
+        .seta-3d svg {
+            display: block;
+            margin-top: -2px;
+        }
+        .seta-3d polygon {
+            fill: #ffffff;
+        }
+        .inicio-3d > span {
             position: absolute;
             left: 0;
             bottom: 12px;
@@ -1209,12 +1234,9 @@
             color: #ffffff;
             background: rgba(5, 5, 10, 0.85);
         }
-        .voce-3d > span {
-            bottom: 15px;
-        }
         .destino-3d:focus-visible > span,
         .inicio-3d:focus-visible > span,
-        .voce-3d:focus-visible > span {
+        .seta-3d:focus-visible > span {
             outline: 2px solid #ffffff;
             outline-offset: 2px;
         }
@@ -2902,11 +2924,12 @@
 
         <div id="lado-direito" style="display: flex; align-items: center; gap: 8px; margin-left: auto;">
         <!-- A pesquisa das casas: escreve-se o número de uma casa (D31) e o
-             bairro mostra o percurso até lá, desde a entrada (ver
-             navegacao-3d.mjs). Uma caixa de escolha com a lista das casas
-             que respondem, que se percorre com as setas e o Enter. No
-             telemóvel é a lupa, que abre a barra por cima do cabeçalho. -->
-        <div id="pesquisa-casas" role="search" aria-label="Pesquisar casa" data-i18n-aria="pesq.procurar">
+             bairro mostra o percurso até lá (ver navegacao-3d.mjs). Uma
+             caixa de escolha com a lista das casas que respondem, que se
+             percorre com as setas e o Enter, ao meio do cabeçalho. Sem
+             lugar para ela ao meio, é a lupa, que abre a barra por cima do
+             cabeçalho. -->
+        <div id="pesquisa-casas">
             <button type="button" id="pesquisa-abrir" class="adaptavel" aria-label="Pesquisar casa" title="Pesquisar casa" data-i18n-aria="pesq.procurar" data-i18n-title="pesq.procurar" aria-expanded="false" aria-controls="pesquisa-campo">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true">
                     <circle cx="10.5" cy="10.5" r="6.5"></circle>
@@ -2914,7 +2937,7 @@
                 </svg>
                 <span class="rotulo-icone" aria-hidden="true" data-i18n="pesq.curto">Pesquisar casa</span>
             </button>
-            <div id="pesquisa-campo">
+            <div id="pesquisa-campo" role="search" aria-label="Pesquisar casa" data-i18n-aria="pesq.procurar">
                 <svg class="pesquisa-lupa" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true">
                     <circle cx="10.5" cy="10.5" r="6.5"></circle>
                     <line x1="15.5" y1="15.5" x2="21" y2="21"></line>
@@ -3109,23 +3132,6 @@
                     </div>
                 </div>
             </div>
-
-            <!-- A navegação: como chegar a uma casa do bairro. Abre a
-                 pesquisa das casas (a barra do cabeçalho, ou a da lupa), e o
-                 percurso desenha-se no bairro (ver navegacao-3d.mjs). Uma
-                 seta de navegação a apontar para cima, a ponta de uma
-                 bússola: um bico de seta com um entalhe em baixo, só em
-                 contorno, no traço dos outros ícones. É o mais à esquerda
-                 de todos, menos o de desenvolvedor, que fica sempre na
-                 ponta (e só aparece a quem o liga): para quem visita, é o
-                 primeiro ícone do cabeçalho, e o primeiro da gaveta no
-                 telemóvel. -->
-            <button type="button" id="navegacao-btn" class="adaptavel" aria-label="Navegação" title="Navegação" data-i18n-aria="cab.navegacao" data-i18n-title="cab.navegacao" aria-controls="pesquisa-numero">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true">
-                    <polygon points="12 3.5, 19 20.5, 12 16.5, 5 20.5"></polygon>
-                </svg>
-                <span class="rotulo-icone" aria-hidden="true" data-i18n="cab.navegacao">Navegação</span>
-            </button>
 
         <!-- Quatro setas a apontar para fora, ligadas por uma cruz ao
              meio, como o cursor de mover do Windows: é o ícone dos
@@ -4852,6 +4858,9 @@ void modifySplatColor(vec3 center, inout vec4 color) {
             window.addEventListener('idiomamudou', pedir);
             const oculos = document.getElementById('vr-btn');
             if (oculos) new MutationObserver(pedir).observe(oculos, { attributes: true, attributeFilter: ['style'] });
+            // A pesquisa passa a lupa, ou volta ao meio (ver arrumarPesquisa):
+            // o nome da lupa entra ou sai da fila.
+            new MutationObserver(pedir).observe(document.getElementById('header'), { attributes: true, attributeFilter: ['class'] });
         })();
         const abrirGaveta = (aberta) => {
             headerEl.classList.toggle('gaveta-aberta', aberta);
@@ -5703,12 +5712,11 @@ void modifySplatColor(vec3 center, inout vec4 color) {
         const passosEl = document.getElementById('percurso-passos');
         const creditosEl = document.getElementById('percurso-creditos');
         const noTelemovel = window.matchMedia('(max-width: 640px)');
-        // Até esta largura a pesquisa é a lupa, que abre a barra por cima do
-        // cabeçalho (ver o estilo de #pesquisa-campo).
-        const aLupa = window.matchMedia('(max-width: 960px)');
-        // Com a localização ligada, o percurso refaz-se a partir de onde a
-        // pessoa está quando ela andar mais do que isto, em metros.
-        const REFAZER_M = 10;
+        const cabecalho = document.getElementById('header');
+        const campoEl = document.getElementById('pesquisa-campo');
+        // Se a pesquisa é a lupa, que abre a barra por cima do cabeçalho
+        // (ver arrumarPesquisa).
+        const emLupa = () => cabecalho.classList.contains('pesquisa-na-lupa');
 
         // ---- As ruas e as casas ----
         let contas = null;
@@ -5745,7 +5753,7 @@ void modifySplatColor(vec3 center, inout vec4 color) {
         let pedidoDo3D = null;
         const prepararO3D = () => {
             if (!pedidoDo3D) {
-                pedidoDo3D = Promise.all([lerRede(), whenReady('pc-app'), import('./navegacao-3d.mjs?v=2')])
+                pedidoDo3D = Promise.all([lerRede(), whenReady('pc-app'), import('./navegacao-3d.mjs?v=3')])
                     .then(([r, { app }, m]) => m.prepararNavegacao3D(app, {
                         rede: r,
                         camara: app.root.findByName('camera'),
@@ -5827,15 +5835,6 @@ void modifySplatColor(vec3 center, inout vec4 color) {
             fecharPesquisa();
             abrirEl.focus();
         });
-        // O ícone da navegação, no cabeçalho, abre a pesquisa: é por ela que
-        // se começa. Na gaveta do telemóvel, a gaveta fecha-se primeiro.
-        document.getElementById('navegacao-btn').addEventListener('click', () => {
-            document.getElementById('header').classList.remove('gaveta-aberta');
-            const menu = document.getElementById('menu-btn');
-            if (menu) menu.setAttribute('aria-expanded', 'false');
-            if (aLupa.matches) abrirPesquisa();
-            else campo.focus();
-        });
 
         campo.addEventListener('focus', () => {
             lerRede().then(() => {
@@ -5852,7 +5851,7 @@ void modifySplatColor(vec3 center, inout vec4 color) {
             // Ao sair do campo, a lista sai também — e a barra da lupa, se
             // ficou vazia.
             fecharLista();
-            if (aLupa.matches && !campo.value.trim()) fecharPesquisa();
+            if (emLupa() && !campo.value.trim()) fecharPesquisa();
         });
         // Um toque na lista não tira o campo do teclado: escolhe-se sem que
         // a lista feche antes de o toque chegar.
@@ -5888,11 +5887,12 @@ void modifySplatColor(vec3 center, inout vec4 color) {
         // ---- O percurso ----
         let escolhida = null;
         let percurso = null;
-        // Com a localização ligada: onde a pessoa está, de onde partiu o
-        // percurso que está desenhado, o pedido ao telemóvel, e se ele não
-        // conseguiu saber.
+        // Com a localização ligada: onde a pessoa está, quanto do percurso
+        // já andou (em metros), o passo em que vai, o pedido ao telemóvel, e
+        // se ele não conseguiu saber.
         let aqui = null;
-        let aquiDoPercurso = null;
+        let progresso = 0;
+        let passoAgora = -1;
         let vigia = null;
         let semLocalizacao = false;
         let tituloDeAntes = null;
@@ -5927,13 +5927,45 @@ void modifySplatColor(vec3 center, inout vec4 color) {
         const escreverTitulo = () => {
             if (escolhida) document.title = preencher(diz('nav.casa', 'Casa {numero}'), { numero: escolhida.n }) + ' — ' + diz('site.nome', 'Malha Viva');
         };
+        // O resumo: quanto se anda; a andar, com a localização ligada,
+        // quanto falta.
+        const escreverResumo = () => {
+            if (!percurso) return;
+            if (percurso.daqui && progresso > 5) {
+                const falta = Math.max(0, percurso.total - progresso);
+                resumoEl.textContent = preencher(diz('nav.faltam', 'Faltam {metros} m · cerca de {minutos} min a pé'), { metros: contas.arredondar(falta), minutos: Math.max(1, Math.round(falta / contas.METROS_POR_MINUTO)) });
+            } else {
+                resumoEl.textContent = preencher(diz('nav.resumo', '{metros} m · cerca de {minutos} min a pé'), { metros: percurso.metros, minutos: percurso.minutos });
+            }
+        };
+        // A andar, com a localização ligada: os passos que ficaram para trás
+        // esbatem-se, o passo em que se vai fica marcado — e é dito a quem
+        // ouve a página, quando muda.
+        const escreverProgresso = () => {
+            if (!percurso) return;
+            escreverResumo();
+            const lis = [...passosEl.children];
+            const andar = percurso.daqui && progresso > 0;
+            let agora = -1;
+            percurso.passos.forEach((p, i) => {
+                const acaba = p.acao === 'chegada' ? Infinity : p.acao === 'inicio' ? 0 : p.desde + (p.metros || 0);
+                const feito = andar && acaba <= progresso;
+                if (lis[i]) lis[i].classList.toggle('feito', feito);
+                if (andar && !feito && agora < 0) agora = i;
+            });
+            lis.forEach((li, i) => li.classList.toggle('agora', i === agora));
+            if (agora !== passoAgora) {
+                passoAgora = agora;
+                if (agora >= 0 && lis[agora]) resumoLeitorEl.textContent = lis[agora].textContent;
+            }
+        };
         const escreverPercurso = () => {
             escreverNota();
             if (!escolhida || !percurso) return;
             const n = escolhida.n;
             casaEl.textContent = preencher(diz('nav.casa', 'Casa {numero}'), { numero: n });
+            escreverResumo();
             const { metros, minutos } = percurso;
-            resumoEl.textContent = preencher(diz('nav.resumo', '{metros} m · cerca de {minutos} min a pé'), { metros, minutos });
             const unidade = diz('nav.unidade', 'minuto|minutos').split('|')[minutos === 1 ? 0 : 1];
             resumoLeitorEl.textContent = preencher(diz('nav.resumoLeitor', 'Percurso até à casa {numero}: {metros} metros, cerca de {minutos} {unidade} a pé.'), { numero: n, metros, minutos, unidade });
             // Para quem vem de fora: como chegar de carro ou de transportes
@@ -5955,6 +5987,8 @@ void modifySplatColor(vec3 center, inout vec4 color) {
                 li.appendChild(b);
                 passosEl.appendChild(li);
             });
+            passoAgora = -1;
+            escreverProgresso();
             escreverPartilhar();
         };
 
@@ -5963,7 +5997,7 @@ void modifySplatColor(vec3 center, inout vec4 color) {
         const tracar = (enquadrar) => {
             if (!escolhida || !nav) return;
             percurso = nav.mostrar(escolhida, { aqui, enquadrar });
-            aquiDoPercurso = aqui;
+            progresso = aqui ? nav.mostrarVoce(aqui.lat, aqui.lon).feito : 0;
             escreverPercurso();
         };
 
@@ -5995,7 +6029,7 @@ void modifySplatColor(vec3 center, inout vec4 color) {
             escolhida = casa;
             campo.value = casa.n;
             fecharLista();
-            if (aLupa.matches) {
+            if (emLupa()) {
                 fecharPesquisa();
                 campo.blur();
             }
@@ -6021,7 +6055,6 @@ void modifySplatColor(vec3 center, inout vec4 color) {
                 return;
             }
             if (escolhida !== casa) return;
-            if (aqui) nav.mostrarVoce(aqui.lat, aqui.lon);
             tracar(true);
         };
 
@@ -6030,11 +6063,6 @@ void modifySplatColor(vec3 center, inout vec4 color) {
         // Pedida ao telemóvel (ou ao computador) só quando a pessoa carrega
         // no botão, e só enquanto há um percurso à vista. Fica aqui: o sítio
         // de quem vê não é mandado a lado nenhum.
-        const distanciaEntre = (a, b) => {
-            const pa = rede.plano([a.lat, a.lon]);
-            const pb = rede.plano([b.lat, b.lon]);
-            return Math.hypot(pa[0] - pb[0], pa[1] - pb[1]);
-        };
         const ligarLocalizacao = () => {
             if (vigia !== null) return;
             semLocalizacao = false;
@@ -6048,11 +6076,18 @@ void modifySplatColor(vec3 center, inout vec4 color) {
                 aqui = { lat: pos.coords.latitude, lon: pos.coords.longitude };
                 semLocalizacao = false;
                 if (!nav) return;
-                nav.mostrarVoce(aqui.lat, aqui.lon);
-                // O percurso refaz-se ao ligar, e depois quando a pessoa
-                // andar; a câmara só vai até ele da primeira vez.
-                if (primeira || !aquiDoPercurso || distanciaEntre(aqui, aquiDoPercurso) > REFAZER_M) tracar(primeira);
-                else escreverNota();
+                // A seta vai pelo caminho. O percurso refaz-se ao ligar (e a
+                // câmara vai até ele), quando a pessoa sai do caminho, e
+                // quando chega perto do bairro ou se afasta dele de mais.
+                const ali = nav.mostrarVoce(aqui.lat, aqui.lon);
+                const daEntrada = !percurso || !percurso.daqui;
+                if (primeira || ali.fora || ali.longe !== daEntrada) {
+                    tracar(primeira || (daEntrada && !ali.longe));
+                } else {
+                    progresso = ali.feito;
+                    escreverProgresso();
+                    escreverNota();
+                }
             }, (erro) => {
                 // A pessoa não deixou: a localização desliga-se.
                 if (erro && erro.code === erro.PERMISSION_DENIED) {
@@ -6075,7 +6110,7 @@ void modifySplatColor(vec3 center, inout vec4 color) {
             if (vigia !== null) navigator.geolocation.clearWatch(vigia);
             vigia = null;
             aqui = null;
-            aquiDoPercurso = null;
+            progresso = 0;
             if (nav) nav.tirarVoce();
             escreverLocalizacao();
             if (refazer) tracar(true);
@@ -6144,7 +6179,7 @@ void modifySplatColor(vec3 center, inout vec4 color) {
                     // diz que não há.
                     campo.value = pedida ? pedida.numero : '';
                     mudarEndereco(null);
-                    if (aLupa.matches) abrirPesquisa();
+                    if (emLupa()) abrirPesquisa();
                     else campo.focus();
                     return;
                 }
@@ -6166,6 +6201,51 @@ void modifySplatColor(vec3 center, inout vec4 color) {
                 }
             }).catch(() => {});
         }
+
+        // ---- Ao meio, ou a lupa ----
+        //
+        // A barra fica ao meio do cabeçalho se aí não tocar no nome do
+        // bairro nem nos ícones. Mede-se sempre com ela ao meio (a lupa
+        // muda o lugar dos ícones), e só se volta a pô-la ao meio com folga
+        // (FOLGA_PARA_VOLTAR): sem isso, à beira da medida, saltava de uma
+        // forma para a outra.
+        const AFASTAMENTO = 24;
+        const FOLGA_PARA_VOLTAR = 40;
+        const marca = cabecalho.querySelector('.brand');
+        const ladoDireito = document.getElementById('lado-direito');
+        const arrumarPesquisa = () => {
+            const estava = emLupa();
+            let lupa = noTelemovel.matches;
+            if (!lupa) {
+                cabecalho.classList.remove('pesquisa-na-lupa');
+                const metade = campoEl.offsetWidth / 2;
+                const meio = cabecalho.clientWidth / 2;
+                const folga = Math.min(meio - metade - marca.getBoundingClientRect().right,
+                    ladoDireito.getBoundingClientRect().left - (meio + metade));
+                lupa = folga < AFASTAMENTO + (estava ? FOLGA_PARA_VOLTAR : 0);
+            }
+            cabecalho.classList.toggle('pesquisa-na-lupa', lupa);
+            if (lupa === estava) return;
+            // A barra sai de onde estava: aberta ou com a lista, fecha-se.
+            caixa.classList.remove('aberta');
+            abrirEl.setAttribute('aria-expanded', 'false');
+            fecharLista();
+        };
+        let arrumacao = 0;
+        const pedirArrumacao = () => {
+            if (arrumacao) return;
+            arrumacao = requestAnimationFrame(() => {
+                arrumacao = 0;
+                arrumarPesquisa();
+            });
+        };
+        arrumarPesquisa();
+        if (document.fonts && document.fonts.ready) document.fonts.ready.then(pedirArrumacao);
+        window.addEventListener('resize', pedirArrumacao);
+        window.addEventListener('idiomamudou', pedirArrumacao);
+        // O botão dos óculos aparece mais tarde, quando se sabe que há óculos.
+        const oculos = document.getElementById('vr-btn');
+        if (oculos) new MutationObserver(pedirArrumacao).observe(oculos, { attributes: true, attributeFilter: ['style'] });
 
         // ---- As línguas ----
         const escreverCampo = () => {

@@ -49,7 +49,6 @@
             'cab.cartao': 'Óculos de cartão',
             'cab.sairCartao': 'Sair dos óculos',
             'cab.ecra': 'Ecrã Inteiro',
-            'cab.navegacao': 'Navegação',
 
             'def.qualidade': 'Qualidade Gráfica',
             'def.auto': 'Automático (Recomendado)',
@@ -155,6 +154,7 @@
             'nav.sitio': '{numero} — sítio {i}',
             'nav.casa': 'Casa {numero}',
             'nav.resumo': '{metros} m · cerca de {minutos} min a pé',
+            'nav.faltam': 'Faltam {metros} m · cerca de {minutos} min a pé',
             'nav.resumoLeitor': 'Percurso até à casa {numero}: {metros} metros, cerca de {minutos} {unidade} a pé.',
             'nav.unidade': 'minuto|minutos',
             'nav.aProcurar': 'A procurar onde está…',
@@ -326,7 +326,6 @@
             'cab.cartao': 'Cardboard headset',
             'cab.sairCartao': 'Leave the headset',
             'cab.ecra': 'Fullscreen',
-            'cab.navegacao': 'Navigation',
 
             'def.qualidade': 'Graphics Quality',
             'def.auto': 'Automatic (Recommended)',
@@ -426,6 +425,7 @@
             'nav.sitio': '{numero} — place {i}',
             'nav.casa': 'House {numero}',
             'nav.resumo': '{metros} m · about {minutos} min on foot',
+            'nav.faltam': '{metros} m to go · about {minutos} min on foot',
             'nav.resumoLeitor': 'Route to house {numero}: {metros} metres, about {minutos} {unidade} on foot.',
             'nav.unidade': 'minute|minutes',
             'nav.aProcurar': 'Finding where you are…',
@@ -594,7 +594,6 @@
             'cab.cartao': 'Gafas de cartón',
             'cab.sairCartao': 'Salir de las gafas',
             'cab.ecra': 'Pantalla completa',
-            'cab.navegacao': 'Navegación',
 
             'def.qualidade': 'Calidad Gráfica',
             'def.auto': 'Automático (Recomendado)',
@@ -694,6 +693,7 @@
             'nav.sitio': '{numero} — sitio {i}',
             'nav.casa': 'Casa {numero}',
             'nav.resumo': '{metros} m · unos {minutos} min a pie',
+            'nav.faltam': 'Faltan {metros} m · unos {minutos} min a pie',
             'nav.resumoLeitor': 'Recorrido hasta la casa {numero}: {metros} metros, unos {minutos} {unidade} a pie.',
             'nav.unidade': 'minuto|minutos',
             'nav.aProcurar': 'Buscando dónde está…',
@@ -862,7 +862,6 @@
             'cab.cartao': 'Óklus di karton',
             'cab.sairCartao': 'Sai di óklus',
             'cab.ecra': 'Ekran interu',
-            'cab.navegacao': 'Navegason',
 
             'def.qualidade': 'Kualidadi di imajen',
             'def.auto': 'Automátiku (Rekumendadu)',
@@ -962,6 +961,7 @@
             'nav.sitio': '{numero} — lugar {i}',
             'nav.casa': 'Kaza {numero}',
             'nav.resumo': '{metros} m · más ô ménus {minutos} min a pé',
+            'nav.faltam': 'Falta {metros} m · más ô ménus {minutos} min a pé',
             'nav.resumoLeitor': 'Kaminhu ti kaza {numero}: {metros} métru, más ô ménus {minutos} {unidade} a pé.',
             'nav.unidade': 'minutu|minutu',
             'nav.aProcurar': 'Ta djobe undi ki bu sta…',
