@@ -35,8 +35,10 @@
 #
 #     python -P scripts/navegacao/reconhecer.py
 #
-# Grava public/navegacao/rede.json, que é o que a página da navegação lê, e
-# umas imagens de verificação na pasta de rascunho (rede.jpg, classes.jpg).
+# Grava public/navegacao/rede.json, que é o que a página da navegação lê;
+# public/navegacao/chao.bin, o chão do bairro na cena 3D do site, para o
+# percurso assentar nele (ver public/navegacao-3d.mjs); e umas imagens de
+# verificação na pasta de rascunho (rede.jpg, classes.jpg).
 # Do levantamento das casas só sai o número e o sítio: os nomes, os
 # telefones e as notas de quem lá mora ficam onde estão, fora do site.
 #
@@ -52,7 +54,7 @@ from scipy.spatial import cKDTree
 from skimage.segmentation import watershed
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from comum import AQUI, CASAS, ORTOFOTO, RASCUNHO, SAIDA, grelha, geograficas, mercator
+from comum import ALTURA_DA_CENA, AQUI, CASAS, ORTOFOTO, REGISTO, RASCUNHO, SAIDA, grelha, geograficas, mercator
 
 warnings.filterwarnings("ignore", category=RuntimeWarning)
 
@@ -105,6 +107,10 @@ ESPIGAO_M = 1.5
 RUA_LARGURA = 2.6
 # O traçado guardado de cada rua não se afasta mais do que isto do desenho.
 SIMPLIFICAR_M = 0.05
+# O chão do bairro na cena 3D: uma altura por cada PASSO_DO_CHAO metros.
+PASSO_DO_CHAO = 2.0
+# O telhado de uma casa é o mais alto do que fica a menos disto do ponto dela.
+RAIO_DO_TELHADO_M = 1.5
 # Uma casa não vai além disto do seu ponto (os telhados colados não têm
 # sempre aresta entre eles).
 RAIO_DA_CASA = 8.0
@@ -588,6 +594,60 @@ def reconhecer_casas(casas, edif, andavel, ndm, col, cell, para_grelha):
     return resultado
 
 
+# --------------------------------------------------------------- a cena ----
+
+def chao_da_cena(chao, E0, N1, p):
+    """O chão do bairro na cena 3D do site: uma grelha de PASSO_DO_CHAO
+    metros em x (leste) e z (sul) da cena, com a altura (o y da cena) de
+    cada ponto. Grava-se em public/navegacao/chao.bin, em centímetros acima
+    de uma base, como números de 16 bits; o que é preciso para o ler vai em
+    rede.json. Fora da zona do ortofotomapa repete-se a altura da beira."""
+    reg = json.load(open(REGISTO))
+    s, R, t = reg["s"], np.array(reg["R"]), np.array(reg["t"])
+    Hc, Wc = chao.shape
+
+    def na_cena(E, N):
+        a, b = (E - t[0]) / s, (N - t[1]) / s
+        return R[0, 0] * a + R[1, 0] * b, -(R[0, 1] * a + R[1, 1] * b)
+
+    cantos = [na_cena(E0 + c * p * B, N1 - r * p * B) for r, c in ((0, 0), (0, Wc), (Hc, 0), (Hc, Wc))]
+    x0 = math.floor(min(x for x, _ in cantos))
+    z0 = math.floor(min(z for _, z in cantos))
+    nx = int(math.ceil((max(x for x, _ in cantos) - x0) / PASSO_DO_CHAO)) + 1
+    nz = int(math.ceil((max(z for _, z in cantos) - z0) / PASSO_DO_CHAO)) + 1
+    X, Z = np.meshgrid(x0 + np.arange(nx) * PASSO_DO_CHAO, z0 + np.arange(nz) * PASSO_DO_CHAO)
+    Y = -Z
+    E = s * (R[0, 0] * X + R[0, 1] * Y) + t[0]
+    N = s * (R[1, 0] * X + R[1, 1] * Y) + t[1]
+    col = ((E - E0) / (p * B) - 0.5).astype(np.float32)
+    lin = ((N1 - N) / (p * B) - 0.5).astype(np.float32)
+    altura = cv2.remap(chao.astype(np.float32), col, lin, cv2.INTER_LINEAR,
+                       borderMode=cv2.BORDER_REPLICATE) + ALTURA_DA_CENA
+    base = math.floor(float(altura.min()))
+    cm = np.round((altura - base) * 100).astype("<i2")
+    os.makedirs(SAIDA, exist_ok=True)
+    cm.tofile(os.path.join(SAIDA, "chao.bin"))
+    return dict(registo=dict(s=s, R=R.tolist(), t=t.tolist()),
+                chao=dict(ficheiro="/navegacao/chao.bin", x0=x0, z0=z0, passo=PASSO_DO_CHAO,
+                          colunas=nx, linhas=nz, base=base, escala=0.01))
+
+
+def alto_do_telhado(Zmed, r, c, cell):
+    """A altura (y da cena) do telhado de uma casa: o mais alto da superfície
+    a menos de RAIO_DO_TELHADO_M do ponto dela."""
+    raio = RAIO_DO_TELHADO_M / cell
+    H, W = Zmed.shape
+    r0, r1 = int(max(0, r - raio)), int(min(H, r + raio + 1))
+    c0, c1 = int(max(0, c - raio)), int(min(W, c + raio + 1))
+    if r1 <= r0 or c1 <= c0:
+        return None
+    bloco = Zmed[r0:r1, c0:c1]
+    yy, xx = np.mgrid[r0:r1, c0:c1]
+    perto = (yy - r) ** 2 + (xx - c) ** 2 <= raio ** 2
+    valores = bloco[perto & np.isfinite(bloco)]
+    return round(float(valores.max()) + ALTURA_DA_CENA, 2) if valores.size else None
+
+
 # ---------------------------------------------------------------- tudo ----
 
 def main():
@@ -720,20 +780,25 @@ def main():
     for c, ((numero, lon, lat), tel, (porta, j, dist)) in enumerate(zip(casas, telhados, portas)):
         # Fora da zona que o drone fotografou (as F): ali não há ruas
         # desenhadas, só as estradas.
-        r, cc = (int(round(x)) for x in para_grelha(lon, lat))
+        rf, cf = para_grelha(lon, lat)
+        r, cc = int(round(rf)), int(round(cf))
         fora = not (0 <= r < Hc and 0 <= cc < Wc and mk[r, cc])
         casas_saida.setdefault(numero, []).append(dict(
-            no=no_da_casa[c], porta=porta, dist=dist, lon=lon, lat=lat, telhado=tel, fora=fora))
+            no=no_da_casa[c], porta=porta, dist=dist, lon=lon, lat=lat, telhado=tel, fora=fora,
+            alto=None if fora else alto_do_telhado(Zmed, rf, cf, cell)))
     tempo(t0, "portas ligadas à rede")
 
-    escrever(G, casas_saida, E0, N1, p, cell)
+    cena = chao_da_cena(chao, E0, N1, p)
+    tempo(t0, "chão da cena 3D: %d x %d pontos de %.0f m" % (cena["chao"]["colunas"], cena["chao"]["linhas"], PASSO_DO_CHAO))
+    escrever(G, casas_saida, E0, N1, p, cell, cena)
     tempo(t0, "rede.json escrita")
     verificar(G, casas_saida, col, edif, andavel, verde, mk, cell)
     tempo(t0, "imagens de verificação")
 
 
-def escrever(G, casas, E0, N1, p, cell):
-    """public/navegacao/rede.json: nós, troços e casas, em graus."""
+def escrever(G, casas, E0, N1, p, cell, cena):
+    """public/navegacao/rede.json: nós, troços e casas, em graus; e, para o
+    bairro em 3D, a passagem dos graus para a cena e o chão dela."""
     def geo(r, c):
         lon, lat = geograficas(E0 + (c + 0.5) * p * B, N1 - (r + 0.5) * p * B)
         return [round(lat, 7), round(lon, 7)]
@@ -765,6 +830,8 @@ def escrever(G, casas, E0, N1, p, cell):
                 item["longe"] = round(c["dist"], 1)
             if c["fora"]:
                 item["fora"] = 1
+            if c["alto"] is not None:
+                item["alto"] = c["alto"]
             # (O contorno do telhado serve só para achar a porta: o mapa não
             # o desenha, e não vai para o site.)
             saida_casas.append(item)
@@ -774,7 +841,7 @@ def escrever(G, casas, E0, N1, p, cell):
         fonte="Ruas desenhadas à mão sobre o ortofotomapa do voo de drone de 15-02-2026; casas reconhecidas "
               "no ortofotomapa e no modelo 3D do mesmo voo; numeração das casas do levantamento do bairro; "
               "estradas de fora do bairro © contribuidores do OpenStreetMap (ODbL)",
-        tipos=tipos, nomes=nomes, nos=nos, trocos=trocos, casas=saida_casas)
+        tipos=tipos, nomes=nomes, nos=nos, trocos=trocos, casas=saida_casas, cena=cena)
     with open(os.path.join(SAIDA, "rede.json"), "w", encoding="utf8") as f:
         json.dump(dados, f, ensure_ascii=False, separators=(",", ":"))
 

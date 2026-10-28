@@ -22,7 +22,7 @@
     <meta property="og:image:width" content="1200">
     <meta property="og:image:height" content="630">
     <meta name="twitter:card" content="summary_large_image">
-    <script src="/idiomas.js?v=44"></script>
+    <script src="/idiomas.js?v=45"></script>
     <script src="/logotipo.js?v=1"></script>
     <script src="/quadrado-de-espera.js?v=4"></script>
     <!-- O aviso de "está a demorar" e a tecla de tentar de novo, os
@@ -680,7 +680,7 @@
 
     <script type="module">
         import * as maplibregl from '/motor/maplibre-gl-6.16.0/maplibre-gl.mjs';
-        import { carregarRede, ORTOFOTO, METROS_POR_MINUTO, ESTRADA, RUA, BECO, LIGACAO, normalizar, arredondar, alisar, casaPedida, enderecoDaCasa } from '/navegacao.mjs?v=5';
+        import { carregarRede, ORTOFOTO, METROS_POR_MINUTO, ESTRADA, RUA, BECO, LIGACAO, normalizar, arredondar, alisar, casaPedida, enderecoDaCasa, preencher, textoDoPasso as passoPorPalavras } from '/navegacao.mjs?v=6';
         import { SATELITE } from '/mapa-dos-bairros.mjs?v=7';
 
         // A inclinação do mapa, em graus (0 é a pique, de cima): a vista
@@ -712,7 +712,6 @@
         const ESPERA_MAXIMA_MS = 12000;
 
         const diz = (chave, alternativa) => (window.Idiomas && window.Idiomas.t(chave)) || alternativa || '';
-        const preencher = (texto, valores) => texto.replace(/\{(\w+)\}/g, (_, k) => (valores[k] != null ? valores[k] : ''));
 
         const overlay = document.getElementById('loading-overlay');
         const entrada = document.getElementById('numero');
@@ -751,14 +750,6 @@
             overlay.classList.remove('escondido');
             if (rede) rede.avisar(chave, textoPt);
             else overlay.textContent = diz(chave, textoPt);
-        };
-
-        // As preposições que mudam com a rua ("na Rua", "no Largo"): na
-        // lista das línguas vêm as duas formas, "na|no".
-        const masculina = (rua) => /^(Largo|Beco|Caminho|Passeio|P[áa]tio|Terreiro|Adro|Alto|Cais|Jardim|Bairro)\b/i.test(rua);
-        const prep = (chave, rua) => {
-            const formas = diz(chave, '').split('|');
-            return formas[masculina(rua) ? 1 : 0] || formas[0];
         };
 
         // ---- Contas com sítios ----
@@ -1311,34 +1302,9 @@
 
         const minutos = (metros) => Math.max(1, Math.round(metros / METROS_POR_MINUTO));
 
-        const textoDoPasso = (p, numero) => {
-            const m = { metros: p.metros, numero };
-            const rua = p.rua || '';
-            if (p.acao === 'inicio') {
-                if (p.origem === 'aqui') return diz('nav.p.aqui', 'Comece onde está.');
-                if (rua) return preencher(diz('nav.p.inicioRua', 'Comece {na} {rua}, à entrada do bairro.'), { na: prep('nav.na', rua), rua });
-                return diz('nav.p.inicio', 'Comece na entrada do bairro, o quadrado no mapa.');
-            }
-            if (p.acao === 'chegada') {
-                // Longe da rede: fora da zona do drone (as F), ou dentro dela
-                // mas longe das ruas desenhadas (para dentro de um quarteirão).
-                if (p.longe && p.fora) return preencher(diz('nav.p.longe', 'A casa {numero} fica a cerca de {metros} m, numa zona que o drone não fotografou: siga a linha a tracejado.'), { numero, metros: p.longe });
-                if (p.longe) return preencher(diz('nav.p.longeDentro', 'A casa {numero} fica a cerca de {metros} m daqui, na direção da linha a tracejado.'), { numero, metros: p.longe });
-                const chave = { esquerda: 'nav.p.chegadaEsquerda', direita: 'nav.p.chegadaDireita' }[p.lado] || 'nav.p.chegadaFrente';
-                return preencher(diz(chave, 'Chegou: a casa {numero} fica à sua frente.'), m);
-            }
-            const pelaRua = rua ? ' ' + prep('nav.pela', rua) + ' ' + rua : '';
-            const paraRua = rua ? ' ' + prep('nav.para', rua) + ' ' + rua : '';
-            const chaves = {
-                siga: ['nav.p.siga', 'Siga {metros} m{pelaRua}.'],
-                esquerda: ['nav.p.esquerda', 'Vire à esquerda{paraRua} e siga {metros} m.'],
-                direita: ['nav.p.direita', 'Vire à direita{paraRua} e siga {metros} m.'],
-                ligeiraEsquerda: ['nav.p.ligeiraEsquerda', 'Mantenha-se à esquerda{paraRua} e siga {metros} m.'],
-                ligeiraDireita: ['nav.p.ligeiraDireita', 'Mantenha-se à direita{paraRua} e siga {metros} m.'],
-                volta: ['nav.p.volta', 'Volte para trás e siga {metros} m.']
-            }[p.acao] || ['nav.p.siga', 'Siga {metros} m{pelaRua}.'];
-            return preencher(diz(chaves[0], chaves[1]), { ...m, pelaRua, paraRua });
-        };
+        // Os passos por palavras: as mesmas frases do bairro em 3D (ver
+        // textoDoPasso, em navegacao.mjs).
+        const textoDoPasso = (p, numero) => passoPorPalavras(p, numero, diz);
 
         // O título do separador: a casa, quando há uma ("Casa D31 — Malha
         // Viva"); senão, o da página.

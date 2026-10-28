@@ -78,6 +78,56 @@ export function ordemDoNumero(a, b) {
     return pa[1] - pb[1] || pa[2] - pb[2] || (a < b ? -1 : a > b ? 1 : 0);
 }
 
+/** Um texto com os {nomes} trocados pelos valores. */
+export function preencher(texto, valores) {
+    return texto.replace(/\{(\w+)\}/g, (_, k) => (valores[k] != null ? valores[k] : ''));
+}
+
+/**
+ * Um passo das indicações, por palavras, na língua de quem lê.
+ *
+ * @param {object} p - O passo (de Rede.indicacoes).
+ * @param {string} numero - O número da casa.
+ * @param {(chave: string, alternativa: string) => string} diz - O texto de
+ *     uma chave das línguas (ver idiomas.js).
+ * @returns {string} O passo.
+ */
+export function textoDoPasso(p, numero, diz) {
+    // As preposições que mudam com a rua ("na Rua", "no Largo"): na lista
+    // das línguas vêm as duas formas, "na|no".
+    const masculina = (rua) => /^(Largo|Beco|Caminho|Passeio|P[áa]tio|Terreiro|Adro|Alto|Cais|Jardim|Bairro)\b/i.test(rua);
+    const prep = (chave, rua) => {
+        const formas = diz(chave, '').split('|');
+        return formas[masculina(rua) ? 1 : 0] || formas[0];
+    };
+    const m = { metros: p.metros, numero };
+    const rua = p.rua || '';
+    if (p.acao === 'inicio') {
+        if (p.origem === 'aqui') return diz('nav.p.aqui', 'Comece onde está.');
+        if (rua) return preencher(diz('nav.p.inicioRua', 'Comece {na} {rua}, à entrada do bairro.'), { na: prep('nav.na', rua), rua });
+        return diz('nav.p.inicio', 'Comece na entrada do bairro, o quadrado no mapa.');
+    }
+    if (p.acao === 'chegada') {
+        // Longe da rede: fora da zona do drone (as F), ou dentro dela mas
+        // longe das ruas desenhadas (para dentro de um quarteirão).
+        if (p.longe && p.fora) return preencher(diz('nav.p.longe', 'A casa {numero} fica a cerca de {metros} m, numa zona que o drone não fotografou: siga a linha a tracejado.'), { numero, metros: p.longe });
+        if (p.longe) return preencher(diz('nav.p.longeDentro', 'A casa {numero} fica a cerca de {metros} m daqui, na direção da linha a tracejado.'), { numero, metros: p.longe });
+        const chave = { esquerda: 'nav.p.chegadaEsquerda', direita: 'nav.p.chegadaDireita' }[p.lado] || 'nav.p.chegadaFrente';
+        return preencher(diz(chave, 'Chegou: a casa {numero} fica à sua frente.'), m);
+    }
+    const pelaRua = rua ? ' ' + prep('nav.pela', rua) + ' ' + rua : '';
+    const paraRua = rua ? ' ' + prep('nav.para', rua) + ' ' + rua : '';
+    const chaves = {
+        siga: ['nav.p.siga', 'Siga {metros} m{pelaRua}.'],
+        esquerda: ['nav.p.esquerda', 'Vire à esquerda{paraRua} e siga {metros} m.'],
+        direita: ['nav.p.direita', 'Vire à direita{paraRua} e siga {metros} m.'],
+        ligeiraEsquerda: ['nav.p.ligeiraEsquerda', 'Mantenha-se à esquerda{paraRua} e siga {metros} m.'],
+        ligeiraDireita: ['nav.p.ligeiraDireita', 'Mantenha-se à direita{paraRua} e siga {metros} m.'],
+        volta: ['nav.p.volta', 'Volte para trás e siga {metros} m.']
+    }[p.acao] || ['nav.p.siga', 'Siga {metros} m{pelaRua}.'];
+    return preencher(diz(chaves[0], chaves[1]), { ...m, pelaRua, paraRua });
+}
+
 /**
  * A casa que um endereço pede: /casa/D31 (ou /casa/D31/2, o segundo sítio
  * de um número repetido no levantamento), ou, à moda antiga,
@@ -229,6 +279,9 @@ export class Rede {
         this.tipos = dados.tipos;
         this.nomes = dados.nomes || [];
         this.nos = dados.nos;
+        // A passagem dos graus para a cena do bairro em 3D, e o chão dela
+        // (ver navegacao-3d.mjs).
+        this.cena = dados.cena || null;
         // Um plano em metros à volta do bairro: a esta escala a Terra é
         // plana, e as contas ficam simples.
         let somaLat = 0;

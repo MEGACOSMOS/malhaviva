@@ -27,6 +27,15 @@ PLY = os.path.join(PROJECTO, "3D", "Mapa", "Gaussian Splats", "PLY", "gs_full.pl
 CASAS = os.path.join(PROJECTO, "SIG", "Base de Dados", "Números de Casas", "casas.shp")
 RUAS_AI = os.path.join(PROJECTO, "SIG", "Traçado de Ruas", "Malha Viva - Ruas.ai")
 
+# A cena do bairro em 3D, no site, é o modelo optimizado (gs_optimizado.ply)
+# com os eixos trocados: cena = (x, -y, -z) dele. Na horizontal coincide com
+# o modelo completo (x da cena = leste, z da cena = -norte); na vertical, o y
+# da cena fica ALTURA_DA_CENA metros acima do z do modelo completo. Medido
+# em 2026-10-28 com dois milhões de manchas do optimizado contra a
+# superfície do completo: a moda da diferença é 52,985 m (90 % entre 51,8 e
+# 53,0, os de baixo sendo manchas por baixo da superfície).
+ALTURA_DA_CENA = 52.99
+
 # O que se calcula pelo caminho e não vai para o site (as alturas pesam
 # perto de 200 MB): fica numa pasta de rascunho do sistema.
 RASCUNHO = os.path.join(tempfile.gettempdir(), "malhaviva-navegacao")

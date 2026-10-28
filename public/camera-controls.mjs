@@ -1747,6 +1747,57 @@ class CameraControls extends Script {
     }
 
     /**
+     * Leva a câmara, a deslizar, até um sítio e uma maneira de olhar — a
+     * mesma viagem de quando se carrega num ponto do bairro (a curva que
+     * começa e acaba devagar), mas para onde se quiser e virada para onde
+     * se quiser. Usa-a a navegação, para mostrar o percurso até uma casa
+     * (ver navegacao-3d.mjs). Como no `recenter`, os limites do terreno
+     * desarmam-se, para a câmara poder ficar fora do bairro a olhar para
+     * ele; voltam a armar-se quando ela entrar.
+     *
+     * @param {Vec3} posicao - Para onde vai a câmara.
+     * @param {number} inclinacao - Quanto olha para baixo (graus negativos)
+     * ou para cima.
+     * @param {number} rumo - Para onde olha, em graus (o mesmo ângulo da
+     * câmara à volta da vertical).
+     * @param {number} [duracao] - Quanto demora, em segundos.
+     */
+    viajar(posicao, inclinacao, rumo, duracao = 1.6) {
+        this._boundsArmed = false;
+        this._entryLimit = null;
+        this._lastInsideValid = false;
+        const angulos = this._pose.angles;
+        let inclinacao0 = angulos.x;
+        while (inclinacao0 > 180) inclinacao0 -= 360;
+        while (inclinacao0 < -180) inclinacao0 += 360;
+        // Vira-se pelo lado mais curto.
+        let rumo1 = rumo;
+        while (rumo1 - angulos.y > 180) rumo1 -= 360;
+        while (rumo1 - angulos.y < -180) rumo1 += 360;
+        this._setMode('fly');
+        this._viagem = {
+            de: this._pose.position.clone(),
+            para: posicao.clone(),
+            sitio: null,
+            inclinacao0,
+            inclinacao1: math.clamp(inclinacao, -89, 89),
+            rumo0: angulos.y,
+            rumo1,
+            t: 0,
+            duracao: Math.max(0.1, duracao)
+        };
+    }
+
+    /**
+     * A altura mais alta a que a câmara pode andar (a da vista de abertura).
+     *
+     * @returns {number} A altura, ou Infinity se ainda não se sabe.
+     */
+    alturaMaxima() {
+        return this._initialY !== undefined ? this._initialY : Infinity;
+    }
+
+    /**
      * @param {number} dt - The time delta.
      */
     update(dt) {

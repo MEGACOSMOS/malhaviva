@@ -143,7 +143,7 @@
 
     <!-- As línguas do site. Fica antes de tudo o resto para o texto
          nascer já na língua certa, sem piscar em português primeiro. -->
-    <script src="/idiomas.js?v=44"></script>
+    <script src="/idiomas.js?v=45"></script>
     <script src="/legendas.js?v=2"></script>
 
     <!-- O quadrado de espera, o mesmo em todo o site. Fica antes de o
@@ -633,7 +633,7 @@
         }
         
         /* Sem caixa nenhuma até o rato lá chegar. */
-        #github-btn, #definicoes-btn, #dev-btn, #idioma-btn, #help-btn, #creditos-btn, #fullscreen-main-btn, #vr-btn, #partilhar-btn-gaveta, #navegacao-btn {
+        #github-btn, #definicoes-btn, #dev-btn, #idioma-btn, #help-btn, #creditos-btn, #fullscreen-main-btn, #vr-btn, #partilhar-btn-gaveta, #navegacao-btn, #pesquisa-abrir, #pesquisa-fechar {
             background: transparent;
             border: 0;
             width: 40px;
@@ -680,6 +680,475 @@
             #acoes-do-cabecalho {
                 gap: 22px !important;
             }
+        }
+
+        /* ─── A pesquisa das casas ───
+           No cabeçalho, à esquerda dos ícones: escreve-se o número de uma
+           casa (D31) e o bairro mostra o percurso até lá. No computador é
+           um campo sempre à vista, vestido como os menus; no telemóvel, uma
+           lupa entre os ícones da direita, que abre a barra por cima do
+           cabeçalho todo. */
+        #pesquisa-casas {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+        #pesquisa-abrir {
+            display: none;
+        }
+        #pesquisa-campo {
+            position: relative;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            width: 200px;
+        }
+        .pesquisa-lupa {
+            position: absolute;
+            left: 11px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: rgba(255, 255, 255, 0.75);
+            pointer-events: none;
+        }
+        #pesquisa-numero {
+            flex: 1 1 auto;
+            min-width: 0;
+            height: 38px;
+            box-sizing: border-box;
+            padding: 0 10px 0 35px;
+            background: rgba(5, 5, 10, 0.7);
+            color: #ffffff;
+            border: 2.5px solid #505054;
+            border-radius: 0;
+            font: inherit;
+            font-size: 0.85rem;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+            transition: border-color 0.15s ease, background 0.15s ease;
+        }
+        #pesquisa-numero::placeholder {
+            color: rgba(255, 255, 255, 0.6);
+            letter-spacing: 0.02em;
+            text-transform: none;
+        }
+        #pesquisa-numero:focus {
+            outline: none;
+            border-color: rgba(255, 255, 255, 0.75);
+            background: #05050a;
+        }
+        @media (hover: hover) {
+            #pesquisa-numero:hover {
+                background: #05050a;
+            }
+        }
+        #pesquisa-fechar {
+            display: none;
+        }
+        /* As casas que respondem ao que se escreveu, numa caixa por baixo
+           do campo, a de cima já escolhida para o Enter. */
+        #pesquisa-lista {
+            position: absolute;
+            top: calc(100% + 6px);
+            left: 0;
+            right: 0;
+            box-sizing: border-box;
+            max-height: min(60vh, 380px);
+            overflow-y: auto;
+            background: linear-gradient(to bottom, rgba(255, 255, 255, 0.05), transparent), #05050a;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+            scrollbar-width: thin;
+            scrollbar-color: rgba(255, 255, 255, 0.25) transparent;
+        }
+        #pesquisa-lista[hidden] {
+            display: none;
+        }
+        #pesquisa-sugestoes {
+            margin: 0;
+            padding: 4px 0;
+            list-style: none;
+        }
+        #pesquisa-sugestoes:empty {
+            display: none;
+        }
+        #pesquisa-sugestoes li {
+            padding: 8px 12px;
+            font-size: 0.85rem;
+            white-space: nowrap;
+            cursor: pointer;
+        }
+        #pesquisa-sugestoes li.ativa {
+            background: rgba(255, 255, 255, 0.12);
+        }
+        @media (hover: hover) {
+            #pesquisa-sugestoes li:hover {
+                background: rgba(255, 255, 255, 0.12);
+            }
+        }
+        #pesquisa-sugestoes .onde {
+            margin-left: 6px;
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 0.8em;
+        }
+        #pesquisa-nada {
+            margin: 0;
+            padding: 10px 12px;
+            font-size: 0.78rem;
+            line-height: 1.45;
+            color: rgba(255, 255, 255, 0.75);
+        }
+        #pesquisa-nada:empty {
+            display: none;
+        }
+        /* O que só se ouve: quem usa leitor de ecrã fica a saber o que a
+           pesquisa encontrou, sem isso aparecer escrito duas vezes. */
+        .so-leitor {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            overflow: hidden;
+            clip: rect(0 0 0 0);
+            white-space: nowrap;
+        }
+
+        /* Sem largura para o campo ao lado do nome do bairro e dos ícones
+           (num computador estreito, num tablet, num telemóvel), a
+           pesquisa é a lupa, um ícone entre os outros: abre a barra por
+           cima do cabeçalho, e a lista das casas por baixo dela. */
+        @media (max-width: 960px) {
+            #pesquisa-abrir {
+                display: flex;
+            }
+            #pesquisa-campo {
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                z-index: 5;
+                display: none;
+                width: auto;
+                height: 72px;
+                box-sizing: border-box;
+                padding: 16px 16px 16px 24px;
+                background: #05050a;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+            }
+            #pesquisa-casas.aberta #pesquisa-campo {
+                display: flex;
+            }
+            .pesquisa-lupa {
+                left: 35px;
+            }
+            /* 16 pontos: com menos, o telemóvel aproxima a página toda
+               ao tocar no campo. */
+            #pesquisa-numero {
+                height: 40px;
+                font-size: 16px;
+            }
+            #pesquisa-fechar {
+                display: flex;
+            }
+            #pesquisa-lista {
+                position: fixed;
+                top: 72px;
+                left: 24px;
+                right: auto;
+                width: min(360px, calc(100% - 48px));
+                max-height: calc(100% - 96px);
+            }
+            #pesquisa-sugestoes li {
+                padding: 11px 14px;
+                font-size: 0.95rem;
+            }
+            #pesquisa-nada {
+                padding: 11px 14px;
+                font-size: 0.85rem;
+            }
+        }
+        @media (max-width: 640px) {
+            #pesquisa-campo {
+                height: 64px;
+                padding: 12px 8px 12px 16px;
+            }
+            .pesquisa-lupa {
+                left: 27px;
+            }
+            #pesquisa-lista {
+                top: 64px;
+                left: 0;
+                right: 0;
+                width: auto;
+                max-height: calc(100% - 80px);
+                border-left: 0;
+                border-right: 0;
+            }
+            #pesquisa-sugestoes li {
+                padding: 12px 16px;
+                font-size: 1rem;
+            }
+            #pesquisa-nada {
+                padding: 12px 16px;
+            }
+        }
+
+        /* ─── O percurso até à casa procurada ───
+           Uma caixa do fundo do site, como os menus: a casa, quanto se
+           anda, e as indicações passo a passo (cada passo leva a câmara a
+           vê-lo de perto). No computador fica à esquerda, por baixo do
+           cabeçalho; no telemóvel, em baixo, com as indicações dobradas
+           para o bairro se ver. */
+        #percurso-painel {
+            position: fixed;
+            top: 84px;
+            left: 24px;
+            z-index: 90;
+            box-sizing: border-box;
+            width: 300px;
+            max-height: calc(100% - 84px - 180px);
+            overflow-y: auto;
+            padding: 14px 16px 16px;
+            background: linear-gradient(to bottom, rgba(255, 255, 255, 0.05), transparent), #05050a;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+            scrollbar-width: thin;
+            scrollbar-color: rgba(255, 255, 255, 0.25) transparent;
+        }
+        #percurso-painel[hidden] {
+            display: none;
+        }
+        .percurso-topo {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+        }
+        #percurso-casa {
+            margin: 0;
+            font-size: 1.15rem;
+            font-weight: 700;
+        }
+        #percurso-fechar {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            width: 32px;
+            height: 32px;
+            margin: -6px -8px -6px 0;
+            padding: 0;
+            background: transparent;
+            border: 0;
+            color: rgba(255, 255, 255, 0.75);
+            cursor: pointer;
+            transition: color 0.15s ease;
+        }
+        @media (hover: hover) {
+            #percurso-fechar:hover {
+                color: #ffffff;
+            }
+        }
+        #percurso-resumo {
+            margin: 4px 0 0;
+            font-size: 0.85rem;
+            color: rgba(255, 255, 255, 0.8);
+        }
+        .percurso-botoes {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 12px;
+        }
+        .percurso-botao {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            background: transparent;
+            color: #ffffff;
+            border: 2.5px solid #505054;
+            border-radius: 0;
+            padding: 6px 10px;
+            font: inherit;
+            font-size: 0.78rem;
+            text-decoration: none;
+            cursor: pointer;
+            transition: background 0.15s ease;
+        }
+        @media (hover: hover) {
+            .percurso-botao:hover {
+                background: rgba(255, 255, 255, 0.1);
+            }
+        }
+        #percurso-fechar:focus-visible,
+        .percurso-botao:focus-visible,
+        #percurso-indicacoes summary:focus-visible,
+        #percurso-passos button:focus-visible {
+            outline: 2px solid rgba(255, 255, 255, 0.95);
+            outline-offset: 1px;
+        }
+        #percurso-indicacoes {
+            margin-top: 14px;
+        }
+        #percurso-indicacoes summary {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            list-style: none;
+            cursor: pointer;
+        }
+        #percurso-indicacoes summary::-webkit-details-marker {
+            display: none;
+        }
+        #percurso-indicacoes summary::before {
+            content: "";
+            width: 0;
+            height: 0;
+            border-left: 5px solid #ffffff;
+            border-top: 4px solid transparent;
+            border-bottom: 4px solid transparent;
+            transition: transform 0.15s ease;
+        }
+        #percurso-indicacoes[open] summary::before {
+            transform: rotate(90deg);
+        }
+        #percurso-passos {
+            margin: 10px 0 0;
+            padding: 0;
+            list-style: none;
+            counter-reset: passo;
+        }
+        #percurso-passos li {
+            counter-increment: passo;
+            display: grid;
+            grid-template-columns: 22px 1fr;
+            gap: 6px;
+            padding: 7px 0;
+            font-size: 0.8rem;
+            line-height: 1.45;
+            border-top: 1px solid rgba(255, 255, 255, 0.07);
+        }
+        #percurso-passos li::before {
+            content: counter(passo);
+            color: rgba(255, 255, 255, 0.5);
+            font-variant-numeric: tabular-nums;
+        }
+        #percurso-passos button {
+            padding: 0;
+            background: transparent;
+            border: 0;
+            color: inherit;
+            font: inherit;
+            text-align: left;
+            cursor: pointer;
+        }
+        @media (hover: hover) {
+            #percurso-passos button:hover {
+                text-decoration: underline;
+                text-underline-offset: 3px;
+            }
+        }
+        #percurso-passos li.chegada {
+            font-weight: 600;
+        }
+        @media (max-width: 640px) {
+            #percurso-painel {
+                top: auto;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                width: auto;
+                max-height: 55%;
+                padding: 12px 16px calc(14px + env(safe-area-inset-bottom, 0px));
+                border-left: 0;
+                border-right: 0;
+                border-bottom: 0;
+            }
+        }
+
+        /* No bairro, por cima do percurso: a casa para onde se vai, o
+           número num quadrado branco com um bico a apontar para o telhado;
+           e a entrada, um quadrado com o nome por cima — os mesmos do mapa
+           da navegação. São postos no sítio a cada imagem (ver
+           navegacao-3d.mjs). */
+        #percurso-3d {
+            position: absolute;
+            inset: 0;
+            z-index: 10;
+            overflow: hidden;
+            pointer-events: none;
+        }
+        .destino-3d,
+        .inicio-3d {
+            position: absolute;
+            left: 0;
+            top: 0;
+            will-change: transform;
+            pointer-events: auto;
+            cursor: pointer;
+            outline: none;
+            transition: opacity 0.2s ease;
+        }
+        .destino-3d.fora,
+        .inicio-3d.fora {
+            opacity: 0;
+            pointer-events: none;
+        }
+        .destino-3d > span {
+            position: absolute;
+            left: 0;
+            bottom: 0;
+            z-index: 1;
+            transform: translate(-50%, -8px);
+            padding: 3px 8px;
+            white-space: nowrap;
+            font-size: 0.95rem;
+            font-weight: 700;
+            color: #05050a;
+            background: #ffffff;
+            border: 2px solid #05050a;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
+        }
+        .destino-3d > span::after {
+            content: "";
+            position: absolute;
+            left: 50%;
+            top: 100%;
+            transform: translateX(-50%);
+            border-left: 7px solid transparent;
+            border-right: 7px solid transparent;
+            border-top: 7px solid #05050a;
+        }
+        .inicio-3d::before {
+            content: "";
+            position: absolute;
+            left: -8px;
+            top: -8px;
+            width: 16px;
+            height: 16px;
+            box-sizing: border-box;
+            background: #05050a;
+            border: 3px solid #ffffff;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
+        }
+        .inicio-3d > span {
+            position: absolute;
+            left: 0;
+            bottom: 12px;
+            transform: translateX(-50%);
+            padding: 2px 5px;
+            white-space: nowrap;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: #ffffff;
+            background: rgba(5, 5, 10, 0.85);
+        }
+        .destino-3d:focus-visible > span,
+        .inicio-3d:focus-visible > span {
+            outline: 2px solid #ffffff;
+            outline-offset: 2px;
         }
 
         /* Os ícones que abrem um menu levam um bico de seta pequeno à
@@ -1072,6 +1541,8 @@
         body.em-cartao #partilhar-btn,
         body.em-cartao #partilhar-menu,
         body.em-cartao #legenda-mapa,
+        body.em-cartao #percurso-painel,
+        body.em-cartao #percurso-3d,
         body.em-cartao #camera-stuck-popup {
             display: none !important;
         }
@@ -2339,6 +2810,39 @@
         <script>window.Logotipo && window.Logotipo.desenhar(document.getElementById('nome-do-site'));</script>
 
         <div id="lado-direito" style="display: flex; align-items: center; gap: 8px; margin-left: auto;">
+        <!-- A pesquisa das casas: escreve-se o número de uma casa (D31) e o
+             bairro mostra o percurso até lá, desde a entrada (ver
+             navegacao-3d.mjs). Uma caixa de escolha com a lista das casas
+             que respondem, que se percorre com as setas e o Enter. No
+             telemóvel é a lupa, que abre a barra por cima do cabeçalho. -->
+        <div id="pesquisa-casas" role="search" aria-label="Procurar uma casa" data-i18n-aria="pesq.procurar">
+            <button type="button" id="pesquisa-abrir" class="adaptavel" aria-label="Procurar uma casa" title="Procurar uma casa" data-i18n-aria="pesq.procurar" data-i18n-title="pesq.procurar" aria-expanded="false" aria-controls="pesquisa-campo">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true">
+                    <circle cx="10.5" cy="10.5" r="6.5"></circle>
+                    <line x1="15.5" y1="15.5" x2="21" y2="21"></line>
+                </svg>
+                <span class="rotulo-icone" aria-hidden="true" data-i18n="pesq.curto">Procurar</span>
+            </button>
+            <div id="pesquisa-campo">
+                <svg class="pesquisa-lupa" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true">
+                    <circle cx="10.5" cy="10.5" r="6.5"></circle>
+                    <line x1="15.5" y1="15.5" x2="21" y2="21"></line>
+                </svg>
+                <input id="pesquisa-numero" type="text" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="pesquisa-sugestoes" aria-label="Número da casa" data-i18n-aria="pesq.rotulo" placeholder="Procurar uma casa" autocomplete="off" autocapitalize="characters" autocorrect="off" spellcheck="false" enterkeyhint="search">
+                <button type="button" id="pesquisa-fechar" class="adaptavel" aria-label="Fechar a pesquisa" title="Fechar a pesquisa" data-i18n-aria="pesq.fechar" data-i18n-title="pesq.fechar">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true">
+                        <line x1="5" y1="5" x2="19" y2="19"></line>
+                        <line x1="19" y1="5" x2="5" y2="19"></line>
+                    </svg>
+                </button>
+                <div id="pesquisa-lista" hidden>
+                    <ul id="pesquisa-sugestoes" role="listbox" aria-label="Casas com este número" data-i18n-aria="nav.sugestoes"></ul>
+                    <p id="pesquisa-nada"></p>
+                </div>
+            </div>
+            <p id="pesquisa-anuncio" class="so-leitor" aria-live="polite"></p>
+        </div>
+
         <div id="acoes-do-cabecalho" style="display: flex; align-items: center; gap: 8px;">
             <div class="settings" id="dev-menu-container">
                 <button id="dev-btn" class="adaptavel" title="Menu de Desenvolvedor">
@@ -2729,6 +3233,31 @@
     <div id="map-scale"><span></span></div>
 
     <!-- A legenda do mapa: que marcador é que quer dizer o quê. -->
+    <!-- O percurso até à casa procurada (ver a pesquisa, no cabeçalho, e
+         navegacao-3d.mjs): a casa, quanto se anda, e as indicações. -->
+    <section id="percurso-painel" aria-labelledby="percurso-casa" hidden>
+        <div class="percurso-topo">
+            <h2 id="percurso-casa"></h2>
+            <button type="button" id="percurso-fechar" aria-label="Tirar o percurso" title="Tirar o percurso" data-i18n-aria="pesq.tirar" data-i18n-title="pesq.tirar">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true">
+                    <line x1="5" y1="5" x2="19" y2="19"></line>
+                    <line x1="19" y1="5" x2="5" y2="19"></line>
+                </svg>
+            </button>
+        </div>
+        <p id="percurso-resumo" aria-hidden="true"></p>
+        <p id="percurso-resumo-leitor" class="so-leitor" aria-live="polite"></p>
+        <div class="percurso-botoes">
+            <button type="button" class="percurso-botao" id="percurso-ver" data-i18n="pesq.verTudo">Ver o percurso todo</button>
+            <a class="percurso-botao" id="percurso-mapa" href="/navegacao" data-i18n="pesq.abrirMapa">Abrir no mapa</a>
+            <button type="button" class="percurso-botao" id="percurso-partilhar"></button>
+        </div>
+        <details id="percurso-indicacoes" open>
+            <summary data-i18n="nav.indicacoes">Indicações</summary>
+            <ol id="percurso-passos"></ol>
+        </details>
+    </section>
+
     <ul id="legenda-mapa" aria-label="Legenda do mapa" data-i18n-aria="leg.titulo">
         <li class="legenda-linha" data-tipo="testemunho">
             <span class="legenda-marcador testemunho" aria-hidden="true">
@@ -3413,7 +3942,7 @@
 
         <!-- Assets -->
         <pc-asset id="splat-scene" src="splat/lod-meta.json" type="gsplat"></pc-asset>
-        <pc-asset id="camera-controls-script" src="./camera-controls.mjs?v=48" type="script"></pc-asset>
+        <pc-asset id="camera-controls-script" src="./camera-controls.mjs?v=49" type="script"></pc-asset>
         <pc-asset id="camera-coords-script" src="./coords.mjs?v=7" type="script"></pc-asset>
         <pc-asset id="annotations-script" src="./annotations.mjs?v=115" type="script"></pc-asset>
         <pc-asset id="measure-script" src="./measure.mjs?v=1" type="script"></pc-asset>
@@ -5030,6 +5559,320 @@ void modifySplatColor(vec3 center, inout vec4 color) {
                     controls.recenter(new Vec3(-144.27, 63.28, 129.01), new Vec3(0, 0, 0));
                 }
             }
+        });
+    </script>
+
+    <!-- A pesquisa das casas e o percurso até elas, no bairro em 3D (ver
+         navegacao-3d.mjs). As ruas e o chão do bairro só se pedem quando
+         alguém vai procurar: não pesam no arranque. -->
+    <script type="module">
+        import { whenReady } from '@playcanvas/web-components';
+
+        const diz = (chave, alternativa) => (window.Idiomas && window.Idiomas.t(chave)) || alternativa || '';
+        const preencher = (texto, valores) => texto.replace(/\{(\w+)\}/g, (_, k) => (valores[k] != null ? valores[k] : ''));
+        const caixa = document.getElementById('pesquisa-casas');
+        const campo = document.getElementById('pesquisa-numero');
+        const abrirEl = document.getElementById('pesquisa-abrir');
+        const fecharEl = document.getElementById('pesquisa-fechar');
+        const listaEl = document.getElementById('pesquisa-lista');
+        const sugestoesEl = document.getElementById('pesquisa-sugestoes');
+        const nadaEl = document.getElementById('pesquisa-nada');
+        const anuncioEl = document.getElementById('pesquisa-anuncio');
+        const painel = document.getElementById('percurso-painel');
+        const casaEl = document.getElementById('percurso-casa');
+        const resumoEl = document.getElementById('percurso-resumo');
+        const resumoLeitorEl = document.getElementById('percurso-resumo-leitor');
+        const indicacoesEl = document.getElementById('percurso-indicacoes');
+        const passosEl = document.getElementById('percurso-passos');
+        const mapaEl = document.getElementById('percurso-mapa');
+        const partilharEl = document.getElementById('percurso-partilhar');
+        const noTelemovel = window.matchMedia('(max-width: 640px)');
+        // Até esta largura a pesquisa é a lupa, que abre a barra por cima do
+        // cabeçalho (ver o estilo de #pesquisa-campo).
+        const aLupa = window.matchMedia('(max-width: 960px)');
+
+        // ---- As ruas e as casas ----
+        let contas = null;
+        let rede = null;
+        let pedidoDaRede = null;
+        const lerRede = () => {
+            if (!pedidoDaRede) {
+                pedidoDaRede = import('./navegacao.mjs?v=6').then(async (m) => {
+                    contas = m;
+                    rede = await m.carregarRede();
+                    return rede;
+                });
+                pedidoDaRede.catch(() => { pedidoDaRede = null; });
+            }
+            return pedidoDaRede;
+        };
+
+        // O que tapa o bairro: o cabeçalho em cima, e o painel do percurso
+        // (à esquerda no computador, em baixo no telemóvel). A câmara
+        // enquadra o percurso no que sobra.
+        const folgas = () => {
+            // Em baixo, no computador, o botão de partilhar e a escala.
+            const f = { esquerda: 0, cima: document.getElementById('header').getBoundingClientRect().bottom + 12, direita: 0, baixo: 96 };
+            if (!painel.hidden) {
+                const p = painel.getBoundingClientRect();
+                if (noTelemovel.matches) f.baixo = Math.max(f.baixo, window.innerHeight - p.top);
+                else f.esquerda = p.right;
+            }
+            return f;
+        };
+
+        // ---- O bairro em 3D ----
+        let pedidoDo3D = null;
+        const prepararO3D = () => {
+            if (!pedidoDo3D) {
+                pedidoDo3D = Promise.all([lerRede(), whenReady('pc-app'), import('./navegacao-3d.mjs?v=1')])
+                    .then(([r, { app }, m]) => m.prepararNavegacao3D(app, {
+                        rede: r,
+                        camara: app.root.findByName('camera'),
+                        diz,
+                        folgas
+                    }));
+                pedidoDo3D.catch(() => { pedidoDo3D = null; });
+            }
+            return pedidoDo3D;
+        };
+
+        // ---- A lista das casas que respondem ----
+        //
+        // Uma caixa de escolha: o campo diz qual das casas da lista está
+        // escolhida (aria-activedescendant), as setas mudam-na e o Enter
+        // leva-a. Um número que está em mais de um sítio do levantamento
+        // aparece uma vez por sítio.
+        let opcoes = [];
+        let ativa = -1;
+        const marcarAtiva = (i) => {
+            ativa = i;
+            [...sugestoesEl.children].forEach((li, k) => {
+                li.classList.toggle('ativa', k === i);
+                li.setAttribute('aria-selected', k === i ? 'true' : 'false');
+                if (k === i) li.scrollIntoView({ block: 'nearest' });
+            });
+            if (i >= 0) campo.setAttribute('aria-activedescendant', 'pesquisa-opcao-' + i);
+            else campo.removeAttribute('aria-activedescendant');
+        };
+        const fecharLista = () => {
+            listaEl.hidden = true;
+            campo.setAttribute('aria-expanded', 'false');
+            campo.removeAttribute('aria-activedescendant');
+        };
+        const mostrarLista = () => {
+            if (!rede) return;
+            const q = contas.normalizar(campo.value);
+            opcoes = [];
+            for (const n of rede.procurar(campo.value, 10)) {
+                const casas = rede.casas.get(n);
+                casas.forEach((casa, i) => opcoes.push({ casa, texto: casas.length > 1 ? preencher(diz('nav.sitio', '{numero} — sítio {i}'), { numero: n, i: i + 1 }) : n }));
+            }
+            sugestoesEl.innerHTML = '';
+            opcoes.forEach((o, k) => {
+                const li = document.createElement('li');
+                li.id = 'pesquisa-opcao-' + k;
+                li.setAttribute('role', 'option');
+                li.textContent = o.texto;
+                li.addEventListener('click', () => escolher(o.casa));
+                sugestoesEl.appendChild(li);
+            });
+            let nota = '';
+            if (!q) nota = diz('nav.ajuda', 'As casas são numeradas com uma letra e um número, como A12 ou D31.');
+            else if (!opcoes.length) nota = preencher(diz('nav.nenhuma', 'Não há nenhuma casa com o número {numero}.'), { numero: q });
+            else if (rede.casas.has(q) && rede.casas.get(q).length > 1) {
+                nota = preencher(diz('nav.repetido', 'O número {numero} aparece em {n} sítios no levantamento: escolha um.'), { numero: q, n: rede.casas.get(q).length });
+            }
+            nadaEl.textContent = nota;
+            // A quem ouve, só o que não se percebe pela lista: que não há.
+            anuncioEl.textContent = q && !opcoes.length ? nota : '';
+            listaEl.hidden = false;
+            campo.setAttribute('aria-expanded', opcoes.length ? 'true' : 'false');
+            marcarAtiva(opcoes.length ? 0 : -1);
+        };
+
+        const abrirPesquisa = () => {
+            caixa.classList.add('aberta');
+            abrirEl.setAttribute('aria-expanded', 'true');
+            campo.focus();
+        };
+        const fecharPesquisa = () => {
+            caixa.classList.remove('aberta');
+            abrirEl.setAttribute('aria-expanded', 'false');
+            fecharLista();
+        };
+        abrirEl.addEventListener('click', abrirPesquisa);
+        fecharEl.addEventListener('click', () => {
+            fecharPesquisa();
+            abrirEl.focus();
+        });
+
+        campo.addEventListener('focus', () => {
+            lerRede().then(() => {
+                if (document.activeElement === campo) mostrarLista();
+            }).catch(() => {
+                nadaEl.textContent = diz('nav.erro', 'Não foi possível carregar o mapa.');
+                listaEl.hidden = false;
+            });
+            // O chão do bairro, entretanto: quando se escolher, já cá está.
+            prepararO3D().catch(() => {});
+        });
+        campo.addEventListener('input', mostrarLista);
+        campo.addEventListener('blur', () => {
+            // Ao sair do campo, a lista sai também — e a barra da lupa, se
+            // ficou vazia.
+            fecharLista();
+            if (aLupa.matches && !campo.value.trim()) fecharPesquisa();
+        });
+        // Um toque na lista não tira o campo do teclado: escolhe-se sem que
+        // a lista feche antes de o toque chegar.
+        listaEl.addEventListener('pointerdown', (e) => e.preventDefault());
+
+        // As teclas escritas no campo são do campo: sem isto, o D de "D31"
+        // e o A de "A12" andavam com a câmara pelo bairro (os comandos dela
+        // ouvem as teclas na janela inteira).
+        campo.addEventListener('keyup', (e) => e.stopPropagation());
+        campo.addEventListener('keydown', (e) => {
+            e.stopPropagation();
+            if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+                e.preventDefault();
+                if (listaEl.hidden) mostrarLista();
+                else if (opcoes.length) {
+                    const passo = e.key === 'ArrowDown' ? 1 : -1;
+                    marcarAtiva((ativa + passo + opcoes.length) % opcoes.length);
+                }
+            } else if (e.key === 'Enter') {
+                e.preventDefault();
+                if (listaEl.hidden) mostrarLista();
+                else if (opcoes[ativa]) escolher(opcoes[ativa].casa);
+            } else if (e.key === 'Escape') {
+                e.preventDefault();
+                if (!listaEl.hidden) fecharLista();
+                else if (caixa.classList.contains('aberta')) {
+                    fecharPesquisa();
+                    abrirEl.focus();
+                } else campo.blur();
+            }
+        });
+
+        // ---- O percurso ----
+        let escolhida = null;
+        let percurso = null;
+
+        const escreverPartilhar = () => {
+            partilharEl.textContent = podePartilhar ? diz('nav.partilharCasa', 'Partilhar a ligação desta casa') : diz('nav.copiarCasa', 'Copiar a ligação desta casa');
+        };
+        const escreverPercurso = () => {
+            if (!escolhida || !percurso) return;
+            const n = escolhida.n;
+            casaEl.textContent = preencher(diz('nav.casa', 'Casa {numero}'), { numero: n });
+            const { metros, minutos } = percurso;
+            resumoEl.textContent = preencher(diz('nav.resumo', '{metros} m · cerca de {minutos} min a pé'), { metros, minutos });
+            const unidade = diz('nav.unidade', 'minuto|minutos').split('|')[minutos === 1 ? 0 : 1];
+            resumoLeitorEl.textContent = preencher(diz('nav.resumoLeitor', 'Percurso até à casa {numero}: {metros} metros, cerca de {minutos} {unidade} a pé.'), { numero: n, metros, minutos, unidade });
+            passosEl.innerHTML = '';
+            percurso.passos.forEach((p) => {
+                const li = document.createElement('li');
+                if (p.acao === 'chegada') li.className = 'chegada';
+                // Carregar num passo leva a câmara a vê-lo de perto.
+                const b = document.createElement('button');
+                b.type = 'button';
+                b.textContent = contas.textoDoPasso(p, n, diz);
+                b.addEventListener('click', () => {
+                    prepararO3D().then((nav) => nav.verPasso(p));
+                });
+                li.appendChild(b);
+                passosEl.appendChild(li);
+            });
+            escreverPartilhar();
+        };
+
+        /**
+         * Escolhe uma casa: o painel abre com o percurso, e o bairro
+         * mostra-o, com a câmara a ir até onde se vê tudo.
+         *
+         * @param {object} casa - A casa (de rede.json).
+         */
+        const escolher = async (casa) => {
+            escolhida = casa;
+            campo.value = casa.n;
+            fecharLista();
+            if (aLupa.matches) {
+                fecharPesquisa();
+                campo.blur();
+            }
+            const sitios = rede.casas.get(casa.n);
+            mapaEl.href = contas.enderecoDaCasa(casa.n, sitios.indexOf(casa) + 1, sitios.length);
+            // O painel abre já (no telemóvel com as indicações dobradas,
+            // para o bairro se ver); o percurso chega quando o bairro
+            // estiver pronto para o desenhar.
+            casaEl.textContent = preencher(diz('nav.casa', 'Casa {numero}'), { numero: casa.n });
+            // Uma linha guardada para o resumo: o painel fica já da altura
+            // com que vai ficar, e a câmara enquadra o percurso no que ele
+            // deixa livre.
+            resumoEl.textContent = ' ';
+            passosEl.innerHTML = '';
+            indicacoesEl.open = !noTelemovel.matches;
+            painel.hidden = false;
+            let nav;
+            try {
+                nav = await prepararO3D();
+            } catch (e) {
+                resumoEl.textContent = diz('nav.erro', 'Não foi possível carregar o mapa.');
+                return;
+            }
+            if (escolhida !== casa) return;
+            percurso = nav.mostrar(casa);
+            escreverPercurso();
+        };
+
+        const tirarPercurso = () => {
+            escolhida = null;
+            percurso = null;
+            painel.hidden = true;
+            campo.value = '';
+            if (pedidoDo3D) pedidoDo3D.then((nav) => nav.limpar()).catch(() => {});
+        };
+        document.getElementById('percurso-fechar').addEventListener('click', tirarPercurso);
+        document.getElementById('percurso-ver').addEventListener('click', () => {
+            prepararO3D().then((nav) => nav.enquadrar());
+        });
+
+        // A ligação da casa (malhaviva.pt/casa/D31) abre o mapa da
+        // navegação com o percurso: é o que os moradores mandam a quem os
+        // vem visitar. No telemóvel abre a folha de partilhar do próprio
+        // telemóvel; no computador, copia.
+        const podePartilhar = !!navigator.share && window.matchMedia('(pointer: coarse)').matches;
+        partilharEl.addEventListener('click', async () => {
+            if (!escolhida) return;
+            const url = window.location.origin + mapaEl.getAttribute('href');
+            const titulo = preencher(diz('nav.casa', 'Casa {numero}'), { numero: escolhida.n }) + ' — ' + diz('cab.bairro', 'Bairro de Penajóia');
+            const texto = preencher(diz('nav.textoPartilha', 'Como chegar à casa {numero}, no Bairro de Penajóia:'), { numero: escolhida.n });
+            if (podePartilhar) {
+                try { await navigator.share({ title: titulo, text: texto, url }); } catch (e) { /* desistiu */ }
+                return;
+            }
+            try {
+                await navigator.clipboard.writeText(url);
+                partilharEl.textContent = diz('par.copiado', 'Ligação copiada');
+                setTimeout(escreverPartilhar, 2000);
+            } catch (e) {
+                window.prompt(diz('nav.copiarCasa', 'Copiar a ligação desta casa'), url);
+            }
+        });
+
+        // ---- As línguas ----
+        const escreverCampo = () => {
+            campo.placeholder = diz('pesq.exemplo', 'Procurar uma casa');
+        };
+        escreverCampo();
+        escreverPartilhar();
+        window.addEventListener('idiomamudou', () => {
+            escreverCampo();
+            escreverPartilhar();
+            escreverPercurso();
+            if (!listaEl.hidden) mostrarLista();
+            if (pedidoDo3D) pedidoDo3D.then((nav) => nav.mudarLingua()).catch(() => {});
         });
     </script>
 
