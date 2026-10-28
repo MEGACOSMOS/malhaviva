@@ -1374,6 +1374,8 @@ class CameraControls extends Script {
      * @private
      */
     _irAte(sitio) {
+        // Carregar num sítio também é pegar na câmara (ver 'mexeu').
+        this.fire('mexeu');
         const posicao = this._pose.position;
         const angulos = this._pose.angles;
 
@@ -1761,8 +1763,11 @@ class CameraControls extends Script {
      * @param {number} rumo - Para onde olha, em graus (o mesmo ângulo da
      * câmara à volta da vertical).
      * @param {number} [duracao] - Quanto demora, em segundos.
+     * @param {boolean} [aVelocidadeCerta] - Sem começar nem acabar devagar:
+     * para viagens que se seguem umas às outras sem parar, como as da
+     * câmara a seguir quem anda.
      */
-    viajar(posicao, inclinacao, rumo, duracao = 1.6) {
+    viajar(posicao, inclinacao, rumo, duracao = 1.6, aVelocidadeCerta = false) {
         this._boundsArmed = false;
         this._entryLimit = null;
         this._lastInsideValid = false;
@@ -1784,7 +1789,8 @@ class CameraControls extends Script {
             rumo0: angulos.y,
             rumo1,
             t: 0,
-            duracao: Math.max(0.1, duracao)
+            duracao: Math.max(0.1, duracao),
+            aVelocidadeCerta
         };
     }
 
@@ -1844,22 +1850,23 @@ class CameraControls extends Script {
         this._state.ctrl += key[keyCode.CTRL];
         this._state.touches += count[0];
 
-        // Quem pega nos comandos a meio de uma viagem fica com a câmara:
-        // uma tecla de andar, a roda, um arrasto com o rato ou com o dedo,
-        // uma pinça ou um stick do comando param a viagem onde ela vai.
-        if (this._viagem) {
-            const botaoEmBaixo = this._state.mouse.some(b => b > 0);
-            const pegou = this._state.axis.lengthSq() > 0 ||
-                this._setas.lengthSq() > 0 ||
-                wheel[0] !== 0 ||
-                pinch[0] !== 0 ||
-                (botaoEmBaixo && (mouse[0] !== 0 || mouse[1] !== 0)) ||
-                touch[0] !== 0 || touch[1] !== 0 ||
-                leftStick[0] !== 0 || leftStick[1] !== 0 ||
-                rightStick[0] !== 0 || rightStick[1] !== 0;
-            if (pegou) {
-                this._viagem = null;
-            }
+        // Quem pega nos comandos fica com a câmara: uma tecla de andar, a
+        // roda, um arrasto com o rato ou com o dedo, uma pinça ou um stick
+        // do comando param a viagem onde ela vai. E diz-se a quem esteja a
+        // levar a câmara (a navegação, quando ela segue a seta de quem anda:
+        // ver navegacao-3d.mjs), para a largar.
+        const botaoEmBaixo = this._state.mouse.some(b => b > 0);
+        const pegou = this._state.axis.lengthSq() > 0 ||
+            this._setas.lengthSq() > 0 ||
+            wheel[0] !== 0 ||
+            pinch[0] !== 0 ||
+            (botaoEmBaixo && (mouse[0] !== 0 || mouse[1] !== 0)) ||
+            touch[0] !== 0 || touch[1] !== 0 ||
+            leftStick[0] !== 0 || leftStick[1] !== 0 ||
+            rightStick[0] !== 0 || rightStick[1] !== 0;
+        if (pegou) {
+            this._viagem = null;
+            this.fire('mexeu');
         }
 
         // FPS: Always Fly Mode
@@ -2178,7 +2185,7 @@ class CameraControls extends Script {
         if (this._viagem && this._mode === 'fly') {
             const viagem = this._viagem;
             viagem.t = Math.min(1, viagem.t + dt / viagem.duracao);
-            const k = entradaESaida(viagem.t);
+            const k = viagem.aVelocidadeCerta ? viagem.t : entradaESaida(viagem.t);
             this._pose.position.lerp(viagem.de, viagem.para, k);
             this._pose.angles.set(
                 math.lerp(viagem.inclinacao0, viagem.inclinacao1, k),

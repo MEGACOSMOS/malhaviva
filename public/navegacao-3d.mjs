@@ -76,6 +76,23 @@ const FORA_DA_REDE_M = 12;
 const ENCOSTAR_M = 8;
 const DESVIO_M = 30;
 const ATRAS_M = 15;
+// A seta de quem anda, em 3D, deitada no caminho: o feitio (o do antigo
+// ícone da navegação: x para a direita, y para a frente, em tamanhos), a
+// espessura, e o comprido que tem no ecrã, em pontos, perto ou longe.
+const SETA = [[0, 1], [0.62, -0.78], [0, -0.42], [-0.62, -0.78]];
+const COMPRIDO_DA_SETA = 1.78;
+const ESPESSURA_DA_SETA = 0.38;
+const SETA_NO_ECRA = 66;
+// Quanto demora a seta a ir de um sítio dado pela localização ao seguinte
+// (e a câmara, a segui-la), em segundos.
+const DESLIZAR_S = 1;
+// A câmara a seguir a seta, como nos mapas de navegação: atrás dela, virada
+// para onde o caminho segue, com esta inclinação e esta altura acima dela
+// (metros), e a seta a esta fração da parte livre do ecrã, a contar de
+// baixo.
+const INCLINACAO_A_SEGUIR = 48;
+const ALTURA_A_SEGUIR = 30;
+const SETA_NA_VISTA = 0.28;
 
 const RAIO_DA_TERRA = 6378137;
 
@@ -85,14 +102,16 @@ const RAIO_DA_TERRA = 6378137;
  *
  * @param {object} app - A aplicação 3D (PlayCanvas).
  * @param {object} opcoes - O que a página dá: `rede` (a Rede, já lida),
- *     `camara` (a entidade da câmara), `diz` (os textos das línguas) e
+ *     `camara` (a entidade da câmara), `diz` (os textos das línguas),
  *     `folgas` (o que tapa o ecrã: {esquerda, cima, direita, baixo}, em
- *     pontos).
+ *     pontos) e `quandoSeguir` (chamada quando a câmara passa a seguir a
+ *     seta de quem anda, ou a larga).
  * @returns {Promise<object>} O que se lhe pode pedir: mostrar o percurso
  *     até uma casa (`mostrar`), tirá-lo (`limpar`), voltar a enquadrá-lo
- *     (`enquadrar`), ir ver um passo de perto (`verPasso`), pôr e tirar o
- *     sítio de quem vê (`mostrarVoce`, `tirarVoce`) e renomear os
- *     marcadores numa língua nova (`mudarLingua`).
+ *     (`enquadrar`), ir ver um passo de perto (`verPasso`), pôr e tirar a
+ *     seta de quem vê (`mostrarVoce`, `tirarVoce`), pôr a câmara a segui-la
+ *     (`seguir`) e renomear os marcadores numa língua nova
+ *     (`mudarLingua`).
  */
 export async function prepararNavegacao3D(app, opcoes) {
     const { rede, camara } = opcoes;
@@ -390,6 +409,7 @@ export async function prepararNavegacao3D(app, opcoes) {
     const enquadrar = () => {
         const c = controlos();
         if (!atual || !c || typeof c.viajar !== 'function') return;
+        deixarDeSeguir();
         const { linha, acum, alvo, aqui, daqui } = atual;
         const direcao = (de, para) => {
             let dx = para[0] - de[0];
@@ -438,6 +458,7 @@ export async function prepararNavegacao3D(app, opcoes) {
     const verDePerto = (ponto, u) => {
         const c = controlos();
         if (!c || typeof c.viajar !== 'function') return;
+        deixarDeSeguir();
         const th = INCLINACAO_DE_PERTO * Math.PI / 180;
         let recuo = DE_PERTO * Math.cos(th);
         let cy = Math.min(tecto(), ponto[1] + DE_PERTO * Math.sin(th));
@@ -547,6 +568,22 @@ export async function prepararNavegacao3D(app, opcoes) {
         falta: [traco(LINHA, BRANCO, 1, false)],
         pontinhos: [traco(PONTO, BRANCO, 1, true)]
     };
+    // A seta de quem anda, em 3D: a sombra no chão, os lados (escuros) e o
+    // tampo (branco), por esta ordem — vista de cima, o tampo tapa os lados
+    // de trás.
+    const setaEl = document.createElementNS(SVG, 'g');
+    setaEl.setAttribute('class', 'seta-desenho');
+    setaEl.style.display = 'none';
+    const poligono = (classe) => {
+        const p = document.createElementNS(SVG, 'polygon');
+        p.setAttribute('class', classe);
+        setaEl.appendChild(p);
+        return p;
+    };
+    const sombraDaSeta = poligono('sombra');
+    const ladosDaSeta = SETA.map(() => poligono('lado'));
+    const tampoDaSeta = poligono('tampo');
+    desenho.appendChild(setaEl);
     const escritos = {};
     const escrever = (qual, d) => {
         if (escritos[qual] === d) return;
@@ -658,6 +695,39 @@ export async function prepararNavegacao3D(app, opcoes) {
         marcadores = { entrada: null, casa: null };
     };
 
+    // A seta no ecrã: os cantos dela no bairro, à volta do sítio C, virados
+    // para u, com o tamanho que lhe dá o mesmo comprido no ecrã a qualquer
+    // distância.
+    const desenharSeta = (C, u) => {
+        const camaraEm = camara.getPosition();
+        const distancia = Math.hypot(C[0] - camaraEm.x, C[1] - camaraEm.y, C[2] - camaraEm.z);
+        const tanV = 1 / ecra.perspetiva[5];
+        const tamanho = Math.max(0.4, Math.min(15, SETA_NO_ECRA * 2 * tanV * distancia / ecra.altura / COMPRIDO_DA_SETA));
+        const direita = [-u[1], u[0]];
+        const cantos = (altura, escala) => SETA.map(([x, y]) => [
+            C[0] + (direita[0] * x + u[0] * y) * tamanho * escala,
+            C[1] + altura,
+            C[2] + (direita[1] * x + u[1] * y) * tamanho * escala
+        ].map(Number));
+        const tampo = cantos(ESPESSURA_DA_SETA * tamanho, 1);
+        const baixo = cantos(0, 1);
+        const sombra = cantos(-0.05, 1.18);
+        const vistos = [tampo, baixo, sombra].map((lista) => lista.map(naCamara));
+        if (vistos.some((lista) => lista.some((c) => c[2] < PERTO_DE_MAIS))) {
+            setaEl.style.display = 'none';
+            return;
+        }
+        const [t, b, s] = vistos.map((lista) => lista.map(noEcra));
+        const pontos = (lista) => lista.map((p) => p[0].toFixed(1) + ',' + p[1].toFixed(1)).join(' ');
+        sombraDaSeta.setAttribute('points', pontos(s));
+        SETA.forEach((_, i) => {
+            const j = (i + 1) % SETA.length;
+            ladosDaSeta[i].setAttribute('points', pontos([t[i], t[j], b[j], b[i]]));
+        });
+        tampoDaSeta.setAttribute('points', pontos(t));
+        setaEl.style.display = '';
+    };
+
     // Antes de cada imagem ser desenhada, com a câmara já no sítio dela.
     app.on('prerender', () => {
         const todos = [marcadores.entrada, marcadores.casa, voce].filter(Boolean);
@@ -674,6 +744,18 @@ export async function prepararNavegacao3D(app, opcoes) {
             escrever('fundoDosPontinhos', d);
         } else {
             for (const qual of Object.keys(tracos)) escrever(qual, '');
+        }
+        // A seta de quem anda desliza do sítio anterior para o novo.
+        if (voce) {
+            const k = voce.t0 ? Math.min(1, (performance.now() - voce.t0) / (DESLIZAR_S * 1000)) : 1;
+            const { de, para } = voce;
+            voce.ponto = [0, 1, 2].map((i) => de.ponto[i] + (para.ponto[i] - de.ponto[i]) * k);
+            const u = [de.rumo[0] + (para.rumo[0] - de.rumo[0]) * k, de.rumo[1] + (para.rumo[1] - de.rumo[1]) * k];
+            const n = Math.hypot(u[0], u[1]);
+            voce.rumo = n > 0.01 ? [u[0] / n, u[1] / n] : para.rumo;
+            desenharSeta(voce.ponto, voce.rumo);
+        } else {
+            setaEl.style.display = 'none';
         }
         for (const m of todos) {
             const c = naCamara(m.ponto);
@@ -693,18 +775,7 @@ export async function prepararNavegacao3D(app, opcoes) {
                     if (m.el === document.activeElement) m.el.blur();
                 }
             }
-            if (!ve) continue;
-            m.el.style.transform = 'translate3d(' + s[0].toFixed(1) + 'px, ' + s[1].toFixed(1) + 'px, 0)';
-            // A seta vira-se para onde o caminho vai, no ecrã: do sítio dela
-            // a um ponto uns metros à frente.
-            if (m.rumo) {
-                const adiante = naCamara([m.ponto[0] + m.rumo[0] * 3, m.ponto[1], m.ponto[2] + m.rumo[1] * 3]);
-                if (adiante[2] > 1) {
-                    const t = noEcra(adiante);
-                    const graus = Math.atan2(t[1] - s[1], t[0] - s[0]) * 180 / Math.PI + 90;
-                    m.rotulo.style.transform = 'rotate(' + graus.toFixed(1) + 'deg)';
-                }
-            }
+            if (ve) m.el.style.transform = 'translate3d(' + s[0].toFixed(1) + 'px, ' + s[1].toFixed(1) + 'px, 0)';
         }
     });
 
@@ -785,18 +856,86 @@ export async function prepararNavegacao3D(app, opcoes) {
             const n = Math.hypot(dx, dz);
             rumo = n > 1 ? [dx / n, dz / n] : frenteDaCamara();
         }
+        // Desliza do sítio onde está desenhada para o novo (ver o
+        // prerender); a primeira vez, aparece logo lá. Carregar nela põe a
+        // câmara a segui-la.
+        const alvo = { ponto, rumo };
         if (!voce) {
-            voce = fazerMarcador('seta-3d', '', ponto, () => verDePerto(voce.ponto, voce.rumo));
-            voce.rotulo.innerHTML = '<svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><polygon points="12 2, 18.6 21.5, 12 16.6, 5.4 21.5"></polygon></svg>';
+            voce = fazerMarcador('seta-3d', '', ponto, () => seguir(true));
+            Object.assign(voce, { rumo, de: alvo, para: alvo, t0: 0 });
+        } else {
+            voce.de = { ponto: voce.ponto, rumo: voce.rumo };
+            voce.para = alvo;
+            voce.t0 = performance.now();
         }
-        voce.ponto = ponto;
-        voce.rumo = rumo;
         nomear();
+        if (seguindo) irAtrasDaSeta(DESLIZAR_S, true);
         return { longe: false, fora, feito };
     };
     const tirarVoce = () => {
+        deixarDeSeguir();
         if (voce) voce.el.remove();
         voce = null;
+    };
+
+    // ---- A câmara a seguir a seta ----
+    //
+    // Como nos mapas de navegação: atrás da seta e acima dela, virada para
+    // onde o caminho segue, com a seta no terço de baixo da parte livre do
+    // ecrã. A cada sítio novo, a câmara vai atrás dela, ao mesmo tempo que a
+    // seta desliza. Larga-a quando a pessoa pega na câmara (ver 'mexeu' em
+    // camera-controls.mjs), ou a manda para outro lado (o percurso todo, um
+    // passo, a casa); carregar na seta, ou no botão do painel, volta a pô-la
+    // a segui-la.
+    let seguindo = false;
+    const avisar = () => {
+        if (opcoes.quandoSeguir) opcoes.quandoSeguir(seguindo);
+    };
+    const deixarDeSeguir = () => {
+        if (!seguindo) return;
+        seguindo = false;
+        avisar();
+    };
+    let ouvidos = null;
+    const ouvirOsComandos = () => {
+        const c = controlos();
+        if (!c || ouvidos === c) return;
+        ouvidos = c;
+        c.on('mexeu', deixarDeSeguir);
+    };
+    const poseASeguir = (ponto, u) => {
+        const z = zonaLivre();
+        const th = INCLINACAO_A_SEGUIR * Math.PI / 180;
+        // Quanto abaixo do meio do ecrã fica a seta.
+        const alfa = Math.atan((z.yMin + (z.yMax - z.yMin) * SETA_NA_VISTA) * z.tanV);
+        const h = Math.max(8, Math.min(ALTURA_A_SEGUIR, tecto() - ponto[1]));
+        const atras = h / Math.tan(th - alfa);
+        let posicao = [ponto[0] - u[0] * atras, ponto[1] + h, ponto[2] - u[1] * atras];
+        // E de lado, para a seta ficar ao meio da parte livre (no
+        // computador, o painel tapa a esquerda).
+        const e = eixos(u, INCLINACAO_A_SEGUIR);
+        const fundo = ponto3([ponto[0] - posicao[0], ponto[1] - posicao[1], ponto[2] - posicao[2]], e.frente);
+        const lado = (z.xMin + z.xMax) / 2 * z.tanH * fundo;
+        posicao = posicao.map((v, i) => v - e.direita[i] * lado);
+        posicao[1] = Math.max(posicao[1], chaoEm(posicao[0], posicao[2]) + ALTURA_MINIMA / 2);
+        return { posicao, inclinacao: -INCLINACAO_A_SEGUIR, rumo: rumoDe(u[0], u[1]) };
+    };
+    const irAtrasDaSeta = (duracao, aVelocidadeCerta) => {
+        const c = controlos();
+        if (!c || typeof c.viajar !== 'function' || !voce) return;
+        ouvirOsComandos();
+        const { posicao, inclinacao, rumo } = poseASeguir(voce.para.ponto, voce.para.rumo);
+        c.viajar(new Vec3(posicao[0], posicao[1], posicao[2]), inclinacao, rumo, duracao, aVelocidadeCerta);
+    };
+    /**
+     * Põe a câmara a seguir a seta de quem anda, ou larga-a.
+     *
+     * @param {boolean} sim
+     */
+    const seguir = (sim) => {
+        seguindo = !!sim && !!voce;
+        avisar();
+        if (seguindo) irAtrasDaSeta(DURACAO_DA_VIAGEM, false);
     };
 
     /**
@@ -901,5 +1040,5 @@ export async function prepararNavegacao3D(app, opcoes) {
         for (const qual of Object.keys(tracos)) escrever(qual, '');
     };
 
-    return { mostrar, limpar, enquadrar, verPasso, mostrarVoce, tirarVoce, mudarLingua: nomear, atual: () => atual };
+    return { mostrar, limpar, enquadrar, verPasso, mostrarVoce, tirarVoce, seguir, aSeguir: () => seguindo, mudarLingua: nomear, atual: () => atual };
 }

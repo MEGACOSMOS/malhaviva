@@ -143,7 +143,7 @@
 
     <!-- As línguas do site. Fica antes de tudo o resto para o texto
          nascer já na língua certa, sem piscar em português primeiro. -->
-    <script src="/idiomas.js?v=47"></script>
+    <script src="/idiomas.js?v=48"></script>
     <script src="/legendas.js?v=2"></script>
 
     <!-- O quadrado de espera, o mesmo em todo o site. Fica antes de o
@@ -1009,7 +1009,9 @@
         .percurso-botao[hidden] {
             display: none;
         }
-        /* A localização ligada: o botão cheio, de branco. */
+        /* A localização ligada, e a câmara a seguir a seta: os botões
+           cheios, de branco. */
+        #percurso-seguir[aria-pressed="true"],
         #percurso-localizacao[aria-pressed="true"] {
             background: #ffffff;
             color: #05050a;
@@ -1017,6 +1019,7 @@
             font-weight: 600;
         }
         @media (hover: hover) {
+            #percurso-seguir[aria-pressed="true"]:hover,
             #percurso-localizacao[aria-pressed="true"]:hover {
                 background: rgba(255, 255, 255, 0.85);
             }
@@ -1197,30 +1200,33 @@
             box-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
         }
         /* Quem está a ver, com a localização ligada: uma seta de navegação
-           branca num disco escuro de aro branco, virada para onde o caminho
-           segue (ver navegacao-3d.mjs). */
+           em 3D, deitada no caminho e virada para onde ele segue —
+           desenhada com o percurso (ver navegacao-3d.mjs): a sombra no chão,
+           os lados escuros, o tampo branco. O marcador dela é só o sítio
+           onde se carrega (e onde fica o foco do teclado), sem desenho. */
+        .seta-desenho .sombra {
+            fill: rgba(0, 0, 0, 0.35);
+        }
+        .seta-desenho .lado {
+            fill: #2a2a33;
+            stroke: #2a2a33;
+            stroke-width: 1;
+            stroke-linejoin: round;
+        }
+        .seta-desenho .tampo {
+            fill: #ffffff;
+            stroke: #05050a;
+            stroke-width: 1.8;
+            stroke-linejoin: round;
+        }
         .seta-3d > span {
             position: absolute;
-            left: -19px;
-            top: -19px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            width: 38px;
-            height: 38px;
-            box-sizing: border-box;
-            border-radius: 50%;
-            background: #05050a;
-            border: 2.5px solid #ffffff;
-            box-shadow: 0 1px 6px rgba(0, 0, 0, 0.6);
-            transform-origin: 50% 50%;
-        }
-        .seta-3d svg {
+            left: -24px;
+            top: -24px;
             display: block;
-            margin-top: -2px;
-        }
-        .seta-3d polygon {
-            fill: #ffffff;
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
         }
         .inicio-3d > span {
             position: absolute;
@@ -3355,6 +3361,14 @@
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true"><circle cx="12" cy="12" r="6"></circle><line x1="12" y1="1" x2="12" y2="5"></line><line x1="12" y1="19" x2="12" y2="23"></line><line x1="1" y1="12" x2="5" y2="12"></line><line x1="19" y1="12" x2="23" y2="12"></line></svg>
                 <span></span>
             </button>
+            <!-- Com a localização ligada: a câmara atrás da seta de quem
+                 anda, a segui-la, como nos mapas de navegação. Acende-se
+                 sozinho ao ligar a localização, e apaga-se quando se pega na
+                 câmara. -->
+            <button type="button" class="percurso-botao" id="percurso-seguir" aria-pressed="false" hidden>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true"><polygon points="12 3.5, 19 20.5, 12 16.5, 5 20.5"></polygon></svg>
+                <span data-i18n="nav.seguirSeta">Seguir a seta</span>
+            </button>
             <button type="button" class="percurso-botao" id="percurso-ver" data-i18n="pesq.verTudo">Ver o percurso todo</button>
             <a class="percurso-botao" id="percurso-entrada" target="_blank" rel="noopener" data-i18n="nav.comoChegar" hidden>Como chegar à entrada</a>
             <button type="button" class="percurso-botao" id="percurso-partilhar"></button>
@@ -4054,7 +4068,7 @@
 
         <!-- Assets -->
         <pc-asset id="splat-scene" src="splat/lod-meta.json" type="gsplat"></pc-asset>
-        <pc-asset id="camera-controls-script" src="./camera-controls.mjs?v=49" type="script"></pc-asset>
+        <pc-asset id="camera-controls-script" src="./camera-controls.mjs?v=50" type="script"></pc-asset>
         <pc-asset id="camera-coords-script" src="./coords.mjs?v=7" type="script"></pc-asset>
         <pc-asset id="annotations-script" src="./annotations.mjs?v=115" type="script"></pc-asset>
         <pc-asset id="measure-script" src="./measure.mjs?v=1" type="script"></pc-asset>
@@ -5706,6 +5720,7 @@ void modifySplatColor(vec3 center, inout vec4 color) {
         const resumoLeitorEl = document.getElementById('percurso-resumo-leitor');
         const notaEl = document.getElementById('percurso-nota');
         const localizacaoEl = document.getElementById('percurso-localizacao');
+        const seguirEl = document.getElementById('percurso-seguir');
         const entradaEl = document.getElementById('percurso-entrada');
         const partilharEl = document.getElementById('percurso-partilhar');
         const indicacoesEl = document.getElementById('percurso-indicacoes');
@@ -5753,12 +5768,13 @@ void modifySplatColor(vec3 center, inout vec4 color) {
         let pedidoDo3D = null;
         const prepararO3D = () => {
             if (!pedidoDo3D) {
-                pedidoDo3D = Promise.all([lerRede(), whenReady('pc-app'), import('./navegacao-3d.mjs?v=3')])
+                pedidoDo3D = Promise.all([lerRede(), whenReady('pc-app'), import('./navegacao-3d.mjs?v=4')])
                     .then(([r, { app }, m]) => m.prepararNavegacao3D(app, {
                         rede: r,
                         camara: app.root.findByName('camera'),
                         diz,
-                        folgas
+                        folgas,
+                        quandoSeguir: escreverSeguir
                     }))
                     .then((n) => (nav = n));
                 pedidoDo3D.catch(() => { pedidoDo3D = null; });
@@ -5891,6 +5907,9 @@ void modifySplatColor(vec3 center, inout vec4 color) {
         // já andou (em metros), o passo em que vai, o pedido ao telemóvel, e
         // se ele não conseguiu saber.
         let aqui = null;
+        // Se a seta de quem anda está no bairro (com a localização ligada e
+        // a pessoa perto dele).
+        let comSeta = false;
         let progresso = 0;
         let passoAgora = -1;
         let vigia = null;
@@ -5905,6 +5924,12 @@ void modifySplatColor(vec3 center, inout vec4 color) {
             localizacaoEl.setAttribute('aria-pressed', ligada ? 'true' : 'false');
             localizacaoEl.lastElementChild.textContent = ligada ? diz('nav.desativarLocalizacao', 'Desativar localização') : diz('nav.ativarLocalizacao', 'Ativar localização');
         };
+        // O botão de seguir a seta: só com ela no bairro, e aceso enquanto a
+        // câmara a segue.
+        function escreverSeguir() {
+            seguirEl.hidden = !(vigia !== null && comSeta);
+            seguirEl.setAttribute('aria-pressed', nav && nav.aSeguir() ? 'true' : 'false');
+        }
         const escreverNota = () => {
             let nota = '';
             if (vigia !== null && !aqui) nota = diz('nav.aProcurar', 'A procurar onde está…');
@@ -6081,13 +6106,26 @@ void modifySplatColor(vec3 center, inout vec4 color) {
                 // quando chega perto do bairro ou se afasta dele de mais.
                 const ali = nav.mostrarVoce(aqui.lat, aqui.lon);
                 const daEntrada = !percurso || !percurso.daqui;
-                if (primeira || ali.fora || ali.longe !== daEntrada) {
-                    tracar(primeira || (daEntrada && !ali.longe));
+                comSeta = !ali.longe;
+                if (ali.longe) {
+                    // Longe do bairro: o percurso é o da entrada.
+                    if (!daEntrada) tracar(false);
+                    else escreverNota();
+                } else if (primeira || daEntrada) {
+                    // No bairro, ou a chegar a ele: o percurso passa a
+                    // começar onde a pessoa está, e a câmara vai para trás
+                    // da seta e segue-a, como nos mapas de navegação.
+                    tracar(false);
+                    nav.seguir(true);
+                } else if (ali.fora) {
+                    // Saiu do caminho: refaz-se dali.
+                    tracar(false);
                 } else {
                     progresso = ali.feito;
                     escreverProgresso();
                     escreverNota();
                 }
+                escreverSeguir();
             }, (erro) => {
                 // A pessoa não deixou: a localização desliga-se.
                 if (erro && erro.code === erro.PERMISSION_DENIED) {
@@ -6110,15 +6148,20 @@ void modifySplatColor(vec3 center, inout vec4 color) {
             if (vigia !== null) navigator.geolocation.clearWatch(vigia);
             vigia = null;
             aqui = null;
+            comSeta = false;
             progresso = 0;
             if (nav) nav.tirarVoce();
             escreverLocalizacao();
+            escreverSeguir();
             if (refazer) tracar(true);
             else escreverNota();
         };
         localizacaoEl.addEventListener('click', () => {
             if (vigia !== null) desligarLocalizacao(true);
             else ligarLocalizacao();
+        });
+        seguirEl.addEventListener('click', () => {
+            if (nav) nav.seguir(!nav.aSeguir());
         });
 
         const tirarPercurso = () => {
