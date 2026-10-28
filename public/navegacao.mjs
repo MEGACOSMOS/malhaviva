@@ -78,6 +78,79 @@ export function ordemDoNumero(a, b) {
     return pa[1] - pb[1] || pa[2] - pb[2] || (a < b ? -1 : a > b ? 1 : 0);
 }
 
+/**
+ * A casa que um endereço pede: /casa/D31 (ou /casa/D31/2, o segundo sítio
+ * de um número repetido no levantamento), ou, à moda antiga,
+ * /navegacao?casa=D31&sitio=2.
+ *
+ * @param {Location} onde - O endereço da página.
+ * @returns {{numero: string, sitio: number}|null}
+ */
+export function casaPedida(onde) {
+    const m = /^\/casa\/([^/]+)(?:\/(\d+))?\/?$/.exec(onde.pathname);
+    const p = new URLSearchParams(onde.search);
+    const numero = normalizar(m ? decodeURIComponent(m[1]) : (p.get('casa') || ''));
+    if (!numero) return null;
+    return { numero, sitio: Math.max(1, parseInt(m ? m[2] : p.get('sitio'), 10) || 1) };
+}
+
+/** O endereço de uma casa: /casa/D31, ou /casa/D31/2 para o segundo sítio. */
+export function enderecoDaCasa(numero, sitio, sitios) {
+    return '/casa/' + encodeURIComponent(numero) + (sitios > 1 ? '/' + sitio : '');
+}
+
+/**
+ * Um traçado sem cantos nem tremuras: os pontos (no plano em metros),
+ * refeitos de meio em meio metro, passam por uma média que pesa os vizinhos
+ * até 'sigma' metros para cada lado (uma curva de Gauss). As pontas não saem
+ * do sítio e, perto delas, a média vai-se desligando aos poucos — o
+ * princípio e o fim do percurso ficam onde são.
+ *
+ * @param {number[][]} xy - Os pontos.
+ * @param {number} sigma - Quanto alisar, em metros.
+ * @returns {number[][]} Os pontos alisados.
+ */
+export function alisar(xy, sigma) {
+    const acum = [0];
+    for (let i = 1; i < xy.length; i++) {
+        acum.push(acum[i - 1] + Math.hypot(xy[i][0] - xy[i - 1][0], xy[i][1] - xy[i - 1][1]));
+    }
+    const total = acum[acum.length - 1];
+    if (xy.length < 3 || total < 2 || sigma <= 0) return xy.map((p) => [p[0], p[1]]);
+    const n = Math.max(3, Math.round(total / 0.5) + 1);
+    const passo = total / (n - 1);
+    const pts = [];
+    for (let j = 0, k = 1; j < n; j++) {
+        const s = passo * j;
+        while (k < acum.length - 1 && acum[k] < s) k++;
+        const L = acum[k] - acum[k - 1];
+        const u = L ? (s - acum[k - 1]) / L : 0;
+        pts.push([xy[k - 1][0] + (xy[k][0] - xy[k - 1][0]) * u, xy[k - 1][1] + (xy[k][1] - xy[k - 1][1]) * u]);
+    }
+    const sigmaEmPontos = Math.min(sigma, total / 4) / passo;
+    const raio = Math.ceil(3 * sigmaEmPontos);
+    const pesos = [];
+    for (let d = -raio; d <= raio; d++) pesos.push(Math.exp(-0.5 * (d / sigmaEmPontos) ** 2));
+    const liso = pts.map((p, j) => {
+        let sx = 0;
+        let sy = 0;
+        let sw = 0;
+        for (let d = -raio; d <= raio; d++) {
+            const q = pts[Math.min(n - 1, Math.max(0, j + d))];
+            const w = pesos[d + raio];
+            sx += q[0] * w;
+            sy += q[1] * w;
+            sw += w;
+        }
+        const s = j * passo;
+        const peso = Math.min(1, Math.min(s, total - s) / (2 * sigma));
+        return [p[0] + (sx / sw - p[0]) * peso, p[1] + (sy / sw - p[1]) * peso];
+    });
+    liso[0] = [xy[0][0], xy[0][1]];
+    liso[n - 1] = [xy[xy.length - 1][0], xy[xy.length - 1][1]];
+    return liso;
+}
+
 /** Um monte (fila com prioridade), para o caminho mais curto. */
 class Monte {
     constructor() {

@@ -8,17 +8,30 @@
     <script src="/icone.js?v=1" defer></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title data-i18n-titulo="nav.separador">Navegação</title>
-    <script src="/idiomas.js?v=43"></script>
+    <!-- O que as aplicações de mensagens mostram ao receber o endereço da
+         página (ou o de uma casa: o servidor põe-lhe o número, ver
+         src/index.ts). -->
+    <meta name="description" content="Como chegar a uma casa do Bairro de Penajóia: escreva o número da casa e veja o caminho no mapa, passo a passo.">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Malha Viva">
+    <meta property="og:locale" content="pt_PT">
+    <meta property="og:title" content="Navegação — Bairro de Penajóia">
+    <meta property="og:description" content="Como chegar a uma casa do Bairro de Penajóia: escreva o número da casa e veja o caminho no mapa, passo a passo.">
+    <meta property="og:url" content="https://malhaviva.pt/navegacao">
+    <meta property="og:image" content="https://malhaviva.pt/navegacao/partilha.jpg">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta name="twitter:card" content="summary_large_image">
+    <script src="/idiomas.js?v=44"></script>
     <script src="/logotipo.js?v=1"></script>
     <script src="/quadrado-de-espera.js?v=4"></script>
     <!-- O aviso de "está a demorar" e a tecla de tentar de novo, os
          mesmos em todo o site. -->
     <script src="/rede-de-seguranca.js?v=3"></script>
     <script src="/comando-paginas.js?v=7" defer></script>
-    <!-- O mapa que se arrasta e aproxima: o Leaflet, servido daqui mesmo,
-         com a versão no nome do ficheiro (ver _headers). -->
-    <link rel="stylesheet" href="/motor/leaflet-1.9.4.css">
-    <script src="/motor/leaflet-1.9.4.js"></script>
+    <!-- O mapa que se arrasta, aproxima e se inclina: o MapLibre, servido
+         daqui mesmo, com a versão no nome da pasta (ver _headers). -->
+    <link rel="stylesheet" href="/motor/maplibre-gl-6.16.0/maplibre-gl.css">
     <style>
         /* A letra do site: a Liberation Mono, servida daqui mesmo (ficheiros
            em /fonts, licença SIL Open Font). */
@@ -87,21 +100,18 @@
             inset: 0;
             background: var(--fundo);
         }
-        #mapa.leaflet-container {
-            font-family: 'Liberation Mono', 'Courier New', monospace;
-            background: var(--fundo);
-        }
-        #mapa:focus {
+        #mapa .maplibregl-canvas:focus {
             outline: none;
         }
-        #mapa:focus-visible {
+        #mapa .maplibregl-canvas:focus-visible {
             outline: 2px solid rgba(255, 255, 255, 0.95);
             outline-offset: -4px;
         }
 
         /* ---- A barra de cima ----
-           O logótipo (que volta ao bairro), o fio a prumo e o nome da
-           página, com o véu por trás; à direita, o caminho de volta. */
+           O logótipo (que volta ao bairro), com o véu por trás; à direita,
+           o caminho de volta. O nome da página não se escreve: diz-se só a
+           quem ouve a página (ver #titulo). */
         .barra-do-titulo {
             position: absolute;
             top: 0;
@@ -128,25 +138,6 @@
         }
         .marca .logotipo {
             height: 22px;
-        }
-        .marca-barra {
-            align-self: stretch;
-            width: 1px;
-            margin: 2px 0;
-            background: rgba(255, 255, 255, 0.55);
-            flex-shrink: 0;
-        }
-        #titulo {
-            margin: 0;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            min-height: 41px;
-            font-size: 1.1rem;
-            font-weight: 600;
-        }
-        #titulo svg {
-            flex-shrink: 0;
         }
         .voltar {
             margin-left: auto;
@@ -387,17 +378,6 @@
         /* O número de cada casa, de perto: no telhado, escrito a branco
            com uma sombra, para se ler tanto na chapa como no chão. */
         .rotulo-casa {
-            background: none;
-            border: none;
-        }
-        .rotulo-casa.escondido span {
-            display: none;
-        }
-        .rotulo-casa span {
-            position: absolute;
-            left: 50%;
-            top: 50%;
-            transform: translate(-50%, -50%);
             padding: 1px 3px;
             white-space: nowrap;
             font-size: 11px;
@@ -407,16 +387,16 @@
             text-shadow: 0 1px 3px rgba(0, 0, 0, 0.95), 0 0 2px rgba(0, 0, 0, 0.95);
             cursor: pointer;
         }
-        /* A casa para onde se vai: o número num quadrado branco. */
+        /* A casa para onde se vai: o número num quadrado branco, com um bico
+           por baixo a apontar para o telhado. */
         .destino {
-            background: none;
-            border: none;
+            z-index: 3;
+            padding-bottom: 6px;
+            pointer-events: none;
         }
         .destino span {
-            position: absolute;
-            left: 50%;
-            bottom: 6px;
-            transform: translateX(-50%);
+            position: relative;
+            display: block;
             padding: 3px 7px;
             white-space: nowrap;
             font-size: 0.85rem;
@@ -438,16 +418,14 @@
         }
         /* Onde o percurso começa: um quadrado com o nome por cima. */
         .inicio {
-            background: none;
-            border: none;
-        }
-        .inicio .ponto {
-            position: absolute;
-            inset: 0;
+            z-index: 2;
+            width: 16px;
+            height: 16px;
             box-sizing: border-box;
             background: var(--fundo);
             border: 3px solid #ffffff;
             box-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
+            pointer-events: none;
         }
         .inicio .nome {
             position: absolute;
@@ -462,17 +440,15 @@
         }
         /* Onde a pessoa está, quando deixa o telemóvel dizê-lo. */
         .voce {
-            background: none;
-            border: none;
-        }
-        .voce .ponto {
-            position: absolute;
-            inset: 0;
+            z-index: 4;
+            width: 18px;
+            height: 18px;
             box-sizing: border-box;
             border-radius: 50%;
             background: #ffffff;
             border: 3px solid var(--fundo);
             box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.6), 0 1px 4px rgba(0, 0, 0, 0.6);
+            pointer-events: none;
         }
 
         /* ---- A barra dos comandos ----
@@ -571,10 +547,6 @@
                 --folga-cima: 12px;
                 --folga-lado: 16px;
             }
-            #titulo {
-                min-height: 39px;
-                font-size: 0.95rem;
-            }
             .video-controls {
                 padding: 32px 12px 14px;
                 gap: 10px;
@@ -644,11 +616,7 @@
 
     <header class="barra-do-titulo">
         <a href="/" class="marca" id="marca" aria-label="Voltar ao bairro" title="Voltar ao bairro" data-i18n-aria="nav.voltarBairro" data-i18n-title="nav.voltarBairro"></a>
-        <span class="marca-barra" aria-hidden="true"></span>
-        <h1 id="titulo">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true"><polygon points="12 3.5, 19 20.5, 12 16.5, 5 20.5"></polygon></svg>
-            <span data-i18n="nav.titulo">Navegação</span>
-        </h1>
+        <h1 id="titulo" class="so-leitor" data-i18n="nav.titulo">Navegação</h1>
         <a href="/" class="voltar">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true"><polyline points="11 5 4 12 11 19"></polyline><line x1="4" y1="12" x2="21" y2="12"></line></svg>
             <span class="texto" data-i18n="nav.voltarBairro">Voltar ao bairro</span>
@@ -711,22 +679,28 @@
     </div>
 
     <script type="module">
-        import { carregarRede, ORTOFOTO, METROS_POR_MINUTO, ESTRADA, RUA, BECO, LIGACAO, normalizar, arredondar } from './navegacao.mjs?v=4';
-        import { SATELITE } from './mapa-dos-bairros.mjs?v=7';
+        import * as maplibregl from '/motor/maplibre-gl-6.16.0/maplibre-gl.mjs';
+        import { carregarRede, ORTOFOTO, METROS_POR_MINUTO, ESTRADA, RUA, BECO, LIGACAO, normalizar, arredondar, alisar, casaPedida, enderecoDaCasa } from '/navegacao.mjs?v=5';
+        import { SATELITE } from '/mapa-dos-bairros.mjs?v=7';
 
-        // O passo dos botões, das teclas e do duplo clique, em níveis do
-        // mapa (cada nível é o dobro do anterior).
-        const PASSO = 1;
-        // Quanto a roda tem de rodar para andar um nível (um estalido de
-        // uma roda de rato dá 100).
-        const RODA_POR_NIVEL = 100;
-        // Quanto demora o zoom a chegar perto de onde se pediu, em segundos.
-        const SUAVIDADE_DO_ZOOM = 0.1;
+        // A inclinação do mapa, em graus (0 é a pique, de cima): a vista
+        // ligeiramente deitada dos mapas de navegação, como a do Google Maps.
+        // Com dois dedos a subir ou a descer, no telemóvel, inclina-se mais
+        // ou menos, até INCLINACAO_MAXIMA.
+        const INCLINACAO = 40;
+        const INCLINACAO_MAXIMA = 60;
         const PASSO_DAS_SETAS = 120;
-        // Até onde se aproxima: o ortofotomapa tem 2,5 cm por ponto, e os
-        // quadrados mais finos 3 cm (ver scripts/navegacao/mosaicos.py).
-        const ZOOM_MAXIMO = 22;
-        const ZOOM_DOS_NUMEROS = 19;
+        // Os níveis do mapa (os do MapLibre, que vão um abaixo dos do
+        // Leaflet para a mesma escala). O ortofotomapa tem 2,5 cm por ponto e
+        // os quadrados mais finos 3 cm (ver scripts/navegacao/mosaicos.py).
+        const ZOOM_MINIMO = 12;
+        const ZOOM_MAXIMO = 21.5;
+        const ZOOM_DOS_NUMEROS = 18;
+        const ZOOM_DE_PERTO = 18;
+        const ZOOM_DO_PERCURSO = 19;
+        // Quanto se alisa a linha do percurso, em metros (ver alisar, em
+        // navegacao.mjs).
+        const ALISAR_M = 4;
         // Mais longe do que isto da rede, o percurso não parte de onde a
         // pessoa está, mas da entrada do bairro mais perto da casa.
         const LONGE_DO_BAIRRO_M = 400;
@@ -737,7 +711,6 @@
         const REFAZER_M = 10;
         const ESPERA_MAXIMA_MS = 12000;
 
-        const parametros = new URLSearchParams(window.location.search);
         const diz = (chave, alternativa) => (window.Idiomas && window.Idiomas.t(chave)) || alternativa || '';
         const preencher = (texto, valores) => texto.replace(/\{(\w+)\}/g, (_, k) => (valores[k] != null ? valores[k] : ''));
 
@@ -788,116 +761,213 @@
             return formas[masculina(rua) ? 1 : 0] || formas[0];
         };
 
+        // ---- Contas com sítios ----
+        //
+        // A rede e as casas dizem os sítios como [latitude, longitude]; o
+        // MapLibre quer [longitude, latitude].
+        const lngLat = (p) => [p[1], p[0]];
+        const RAIO_DA_TERRA = 6371008;
+        const distancia = (a, b) => {
+            const r = Math.PI / 180;
+            const dLat = (b[0] - a[0]) * r;
+            const dLon = (b[1] - a[1]) * r;
+            const h = Math.sin(dLat / 2) ** 2 + Math.cos(a[0] * r) * Math.cos(b[0] * r) * Math.sin(dLon / 2) ** 2;
+            return 2 * RAIO_DA_TERRA * Math.asin(Math.min(1, Math.sqrt(h)));
+        };
+        // A caixa de uns quantos sítios, com uma folga à volta (uma fração
+        // do tamanho dela), como [[oeste, sul], [este, norte]].
+        const caixaDe = (pontos, folga = 0) => {
+            let o = Infinity;
+            let s = Infinity;
+            let e = -Infinity;
+            let n = -Infinity;
+            for (const [lat, lon] of pontos) {
+                o = Math.min(o, lon);
+                e = Math.max(e, lon);
+                s = Math.min(s, lat);
+                n = Math.max(n, lat);
+            }
+            const dx = (e - o) * folga;
+            const dy = (n - s) * folga;
+            return [[o - dx, s - dy], [e + dx, n + dy]];
+        };
+        // Um círculo de 'raio' metros à volta de um sítio, para a
+        // incerteza da posição.
+        const circulo = (centro, raio) => {
+            const kx = 111320 * Math.cos(centro[0] * Math.PI / 180);
+            const anel = [];
+            for (let i = 0; i <= 48; i++) {
+                const a = i / 48 * 2 * Math.PI;
+                anel.push([centro[1] + Math.cos(a) * raio / kx, centro[0] + Math.sin(a) * raio / 110574]);
+            }
+            return { type: 'Feature', geometry: { type: 'Polygon', coordinates: [anel] }, properties: {} };
+        };
+        const linhas = (lista) => ({
+            type: 'FeatureCollection',
+            features: lista.filter((l) => l && l.length > 1).map((l) => ({
+                type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: l.map(lngLat) }
+            }))
+        });
+        const NADA = { type: 'FeatureCollection', features: [] };
+
+        // ---- Começar: a rede e a lista dos quadrados do ortofotomapa ----
+        let rede_ = null;
+        let indice = null;
+        try {
+            [rede_, indice] = await Promise.all([
+                carregarRede(),
+                fetch(ORTOFOTO.indice).then((x) => x.json())
+            ]);
+        } catch (e) {
+            console.error(e);
+            falhou('nav.erro', 'Não foi possível carregar o mapa.');
+            throw e;
+        }
+        // Os quadrados que existem: os que cairiam fora do ortofotomapa não
+        // foram feitos (ver mosaicos.py), e não se pedem.
+        const quadrados = new Set();
+        for (const [z, lista] of Object.entries(indice.quadrados)) {
+            for (const [x, y] of lista) quadrados.add(z + '/' + x + '/' + y);
+        }
+        // Os limites do ortofotomapa, tirados dos quadrados do nível de cima.
+        const z0 = indice.niveis[0];
+        const lado = 2 ** z0;
+        const latDoQuadrado = (y) => Math.atan(Math.sinh(Math.PI * (1 - 2 * y / lado))) * 180 / Math.PI;
+        const xs = indice.quadrados[z0].map((q) => q[0]);
+        const ys = indice.quadrados[z0].map((q) => q[1]);
+        const limitesDoOrtofoto = [
+            [Math.min(...xs) / lado * 360 - 180, latDoQuadrado(Math.max(...ys) + 1)],
+            [(Math.max(...xs) + 1) / lado * 360 - 180, latDoQuadrado(Math.min(...ys))]
+        ];
+        const limitesDoBairro = caixaDe([...rede_.casas.values()].flat().map((c) => c.ponto), 0.15);
+
+        // Um quadrado do ortofotomapa que não existe é um quadrado vazio,
+        // sem ir pedi-lo ao servidor (um ponto transparente, em PNG).
+        const VAZIO = Uint8Array.from(atob('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII='), (c) => c.charCodeAt(0));
+        maplibregl.addProtocol('ortofoto', async (pedido, abortar) => {
+            const zxy = pedido.url.replace('ortofoto://', '');
+            if (!quadrados.has(zxy)) return { data: VAZIO.slice().buffer };
+            const resposta = await fetch(ORTOFOTO.endereco.replace('{z}/{x}/{y}', zxy), { signal: abortar.signal });
+            if (!resposta.ok) return { data: VAZIO.slice().buffer };
+            return { data: await resposta.arrayBuffer() };
+        });
+
         // ---- O mapa ----
         //
-        // Sem os botões nem os créditos do próprio Leaflet: os do site
-        // estão na barra de baixo. O zoom anda aos bocadinhos, como no Mapa
-        // dos Bairros.
-        const ecraFino = L.Browser.retina;
-        const mapa = L.map('mapa', {
-            zoomControl: false,
-            attributionControl: false,
-            zoomSnap: 0,
-            zoomDelta: PASSO,
-            scrollWheelZoom: false,
-            doubleClickZoom: false,
-            keyboard: false,
-            maxZoom: ZOOM_MAXIMO,
-            minZoom: 13
-        });
-        // A fotografia de satélite, por baixo de tudo. Nos ecrãs finos, um
-        // nível mais perto (ver a mesma conta em mapa-dos-bairros.html).
-        const satelite = L.tileLayer(SATELITE.endereco, {
-            maxZoom: ZOOM_MAXIMO + (ecraFino ? 1 : 0),
-            maxNativeZoom: SATELITE.zoomMaximo - (ecraFino ? 1 : 0),
-            detectRetina: true,
-            keepBuffer: 4
-        }).addTo(mapa);
-
-        // ---- O ortofotomapa ----
+        // A fotografia de satélite por baixo, o ortofotomapa do bairro por
+        // cima dela, e por cima de tudo o percurso. Sem os botões nem os
+        // créditos do próprio MapLibre: os do site estão na barra de baixo. O
+        // mapa não roda (o norte fica sempre para cima), só se inclina.
         //
-        // Os quadrados que existem vêm numa lista (indice.json): os que
-        // cairiam fora do ortofotomapa não foram feitos, e não se pedem.
-        let quadrados = new Set();
-        const CamadaDoOrtofoto = L.TileLayer.extend({
-            createTile(coords, feito) {
-                const z = this._getZoomForUrl();
-                if (!quadrados.has(z + '/' + coords.x + '/' + coords.y)) {
-                    const vazio = document.createElement('div');
-                    setTimeout(() => feito(null, vazio), 0);
-                    return vazio;
-                }
-                return L.TileLayer.prototype.createTile.call(this, coords, feito);
-            }
-        });
-        let ortofoto = null;
+        // Nos ecrãs finos (mais de um ponto do ecrã por ponto da página), os
+        // quadrados das fotografias contam como mais pequenos, para vir um
+        // nível mais perto e não se verem desfocados (a mesma conta do
+        // Mapa dos Bairros).
+        const ecraFino = (window.devicePixelRatio || 1) >= 1.5;
+        const LADO = ecraFino ? 128 : 256;
+        let mapa = null;
+        try {
+            mapa = new maplibregl.Map({
+                container: 'mapa',
+                style: {
+                    version: 8,
+                    sources: {
+                        satelite: { type: 'raster', tiles: [SATELITE.endereco], tileSize: LADO, maxzoom: SATELITE.zoomMaximo },
+                        ortofoto: {
+                            type: 'raster', tiles: ['ortofoto://{z}/{x}/{y}'], tileSize: LADO,
+                            minzoom: indice.niveis[0], maxzoom: indice.niveis[1],
+                            bounds: [...limitesDoOrtofoto[0], ...limitesDoOrtofoto[1]]
+                        },
+                        rede: { type: 'geojson', data: NADA },
+                        precisao: { type: 'geojson', data: NADA },
+                        tracejado: { type: 'geojson', data: NADA },
+                        percurso: { type: 'geojson', data: NADA }
+                    },
+                    layers: [
+                        { id: 'fundo', type: 'background', paint: { 'background-color': '#05050a' } },
+                        { id: 'satelite', type: 'raster', source: 'satelite', paint: { 'raster-fade-duration': 120 } },
+                        { id: 'ortofoto', type: 'raster', source: 'ortofoto', paint: { 'raster-fade-duration': 120 } },
+                        // A rede, para quem tem o menu de desenvolvedor (ver verRede).
+                        {
+                            id: 'rede', type: 'line', source: 'rede',
+                            layout: { visibility: 'none', 'line-join': 'round', 'line-cap': 'round' },
+                            paint: {
+                                'line-width': 2,
+                                'line-color': ['match', ['get', 'tipo'],
+                                    ESTRADA, '#ffffff', RUA, '#ffd400', BECO, '#00e060', LIGACAO, '#ff40ff', '#ff3030']
+                            }
+                        },
+                        {
+                            id: 'precisao', type: 'fill', source: 'precisao',
+                            paint: { 'fill-color': '#ffffff', 'fill-opacity': 0.12, 'fill-outline-color': 'rgba(255, 255, 255, 0.6)' }
+                        },
+                        // Uma linha branca com um contorno escuro, como as
+                        // estradas dos mapas: lisa, de pontas e curvas redondas,
+                        // e mais larga de perto.
+                        {
+                            id: 'percurso-contorno', type: 'line', source: 'percurso',
+                            layout: { 'line-join': 'round', 'line-cap': 'round' },
+                            paint: {
+                                'line-color': '#05050a', 'line-opacity': 0.85,
+                                'line-width': ['interpolate', ['exponential', 1.6], ['zoom'], 14, 6, 18, 10, 21, 22]
+                            }
+                        },
+                        {
+                            id: 'percurso', type: 'line', source: 'percurso',
+                            layout: { 'line-join': 'round', 'line-cap': 'round' },
+                            paint: {
+                                'line-color': '#ffffff',
+                                'line-width': ['interpolate', ['exponential', 1.6], ['zoom'], 14, 3, 18, 6, 21, 14]
+                            }
+                        },
+                        // Da rede até à casa, e de onde se está até à rede:
+                        // pontinhos.
+                        {
+                            id: 'tracejado', type: 'line', source: 'tracejado',
+                            layout: { 'line-cap': 'round' },
+                            paint: {
+                                'line-color': '#ffffff',
+                                'line-width': ['interpolate', ['linear'], ['zoom'], 14, 3, 18, 4, 21, 7],
+                                'line-dasharray': [0.1, 2]
+                            }
+                        }
+                    ]
+                },
+                bounds: limitesDoBairro,
+                pitch: INCLINACAO,
+                maxPitch: INCLINACAO_MAXIMA,
+                minZoom: ZOOM_MINIMO,
+                maxZoom: ZOOM_MAXIMO,
+                // Não se sai da zona do bairro: há margem para os lados, mas
+                // não para se perder em Almada.
+                maxBounds: caixaDe([[limitesDoOrtofoto[0][1], limitesDoOrtofoto[0][0]], [limitesDoOrtofoto[1][1], limitesDoOrtofoto[1][0]]], 2.5),
+                attributionControl: false,
+                dragRotate: false,
+                pitchWithRotate: false,
+                touchPitch: true,
+                keyboard: false,
+                boxZoom: false,
+                fadeDuration: 0
+            });
+        } catch (e) {
+            console.error(e);
+            falhou('nav.erro', 'Não foi possível carregar o mapa.');
+            throw e;
+        }
+        mapa.touchZoomRotate.disableRotation();
+        await new Promise((pronto) => (mapa.loaded() ? pronto() : mapa.once('load', pronto)));
 
-        // ---- Aproximar e afastar (o do Mapa dos Bairros) ----
-        let zoomPedido = 0;
-        let ancora = null;
-        let aDeslizar = false;
-        let instanteAnterior = 0;
-        const pintarBotoesDoZoom = () => {
-            const z = aDeslizar ? zoomPedido : mapa.getZoom();
-            botaoAproximar.disabled = z >= mapa.getMaxZoom() - 0.01;
-            botaoAfastar.disabled = z <= mapa.getMinZoom() + 0.01;
-        };
-        mapa.on('zoomend', pintarBotoesDoZoom);
-        const pararOZoom = () => {
-            if (!aDeslizar) return;
-            aDeslizar = false;
-            mapa._moveEnd(true);
-        };
-        const deslizar = (agora) => {
-            if (!aDeslizar) return;
-            const dt = instanteAnterior ? Math.min(0.1, (agora - instanteAnterior) / 1000) : 1 / 60;
-            instanteAnterior = agora;
-            const atual = mapa.getZoom();
-            const falta = zoomPedido - atual;
-            const chegou = Math.abs(falta) < 0.002;
-            const z = chegou ? zoomPedido : atual + falta * (1 - Math.exp(-dt / SUAVIDADE_DO_ZOOM));
-            const desvio = ancora.ponto.subtract(mapa.getSize().divideBy(2));
-            const centro = mapa.unproject(mapa.project(ancora.sitio, z).subtract(desvio), z);
-            mapa._move(mapa._limitCenter(centro, z, mapa.options.maxBounds), z);
-            if (chegou) pararOZoom();
-            else requestAnimationFrame(deslizar);
-        };
-        const pedirZoom = (novo, ponto) => {
-            if (!aDeslizar) {
-                mapa.stop();
-                zoomPedido = mapa.getZoom();
-            }
-            zoomPedido = Math.min(mapa.getMaxZoom(), Math.max(mapa.getMinZoom(), novo));
-            const p = ponto || mapa.getSize().divideBy(2);
-            ancora = { ponto: p, sitio: mapa.containerPointToLatLng(p) };
-            if (!aDeslizar) {
-                aDeslizar = true;
-                instanteAnterior = 0;
-                mapa._moveStart(true, false);
-                requestAnimationFrame(deslizar);
-            }
-            pintarBotoesDoZoom();
-        };
-        const zoomDeOndeSeParte = () => (aDeslizar ? zoomPedido : mapa.getZoom());
-        botaoAproximar.addEventListener('click', () => pedirZoom(zoomDeOndeSeParte() + PASSO));
-        botaoAfastar.addEventListener('click', () => pedirZoom(zoomDeOndeSeParte() - PASSO));
-        const contentor = mapa.getContainer();
-        contentor.addEventListener('wheel', (e) => {
-            e.preventDefault();
-            const porLinha = e.deltaMode === 1 ? 33 : (e.deltaMode === 2 ? 400 : 1);
-            const rodou = Math.max(-300, Math.min(300, e.deltaY * porLinha));
-            pedirZoom(zoomDeOndeSeParte() - rodou / RODA_POR_NIVEL, mapa.mouseEventToContainerPoint(e));
-        }, { passive: false });
-        contentor.addEventListener('dblclick', (e) => {
-            e.preventDefault();
-            pedirZoom(zoomDeOndeSeParte() + (e.shiftKey ? -PASSO : PASSO), mapa.mouseEventToContainerPoint(e));
-        });
-        contentor.addEventListener('mousedown', pararOZoom, true);
-        contentor.addEventListener('touchstart', pararOZoom, { capture: true, passive: true });
-        window.zoomDaPagina = (passos) => pedirZoom(zoomDeOndeSeParte() + passos * 0.3);
+        // Para quem verifica a página por dentro (as ferramentas do navegador).
+        window.navegacao = { mapa, rede: rede_ };
 
-        // O que o painel tapa do mapa, para os enquadramentos não porem
-        // nada debaixo dele: à esquerda no computador, em cima no telemóvel.
+        // ---- Enquadrar ----
+        //
+        // O que o painel tapa do mapa, para os enquadramentos não porem nada
+        // debaixo dele: à esquerda no computador, em cima no telemóvel.
+        const tamanhoDoMapa = () => {
+            const c = mapa.getContainer();
+            return { x: c.clientWidth, y: c.clientHeight };
+        };
         const folgas = () => {
             const cima = document.querySelector('.barra-do-titulo').offsetHeight;
             const baixo = document.getElementById('controlos').offsetHeight;
@@ -910,7 +980,7 @@
             // Nunca mais folga do que o mapa tem: num ecrã baixo (um
             // telemóvel deitado) com o painel aberto, sobrava mapa nenhum, e
             // o enquadramento falhava. Fica sempre pelo menos um terço dele.
-            const tamanho = mapa.getSize();
+            const tamanho = tamanhoDoMapa();
             [[0, tamanho.x], [1, tamanho.y]].forEach(([i, total]) => {
                 const soma = cimaEsq[i] + baixoDir[i];
                 const maximo = total * 2 / 3;
@@ -919,130 +989,160 @@
                     baixoDir[i] *= maximo / soma;
                 }
             });
-            return { paddingTopLeft: cimaEsq, paddingBottomRight: baixoDir };
+            return { left: cimaEsq[0], top: cimaEsq[1], right: baixoDir[0], bottom: baixoDir[1] };
         };
 
-        // Leva o mapa a mostrar uma caixa, entre as barras e o painel: a voar,
-        // ou de uma vez. Um mapa sem tamanho (a página aberta numa moldura
-        // escondida) não pode voar — as contas do voo dividem pelo tamanho —
-        // e vai de uma vez.
-        const mostrarNoMapa = (caixa, opcoes, animar) => {
-            const tamanho = mapa.getSize();
-            if (animar && tamanho.x > 0 && tamanho.y > 0) mapa.flyToBounds(caixa, { ...folgas(), ...opcoes, duration: 0.8 });
-            else mapa.fitBounds(caixa, { ...folgas(), ...opcoes, animate: false });
-        };
-
-        // ---- Começar: a rede e a lista dos quadrados ----
-        let rede_ = null;
-        let limitesDoBairro = null;
-        try {
-            const [r, indice] = await Promise.all([
-                carregarRede(),
-                fetch(ORTOFOTO.indice).then((x) => x.json())
-            ]);
-            rede_ = r;
-            for (const [z, lista] of Object.entries(indice.quadrados)) {
-                for (const [x, y] of lista) quadrados.add(z + '/' + x + '/' + y);
+        // Leva o mapa a mostrar uns sítios, entre as barras e o painel: a
+        // voar, ou de uma vez. Um mapa sem tamanho (a página aberta numa
+        // moldura escondida) não tem onde enquadrar: fica ao meio deles.
+        //
+        // O MapLibre enquadra como se visse o mapa a pique; inclinado, o que
+        // fica perto (em baixo no ecrã) aparece maior e saía da folga — o
+        // nome da entrada ficava cortado na borda. Por isso acerta-se aos
+        // poucos: põe-se a câmara, vê-se onde os sítios caem de facto no
+        // ecrã, e corrige-se o meio e o zoom, umas quantas vezes. As contas
+        // fazem-se com a câmara a saltar de um lado para o outro dentro do
+        // mesmo instante, sem nada se desenhar; depois volta onde estava e
+        // voa até ao sítio certo.
+        const mostrarNoMapa = (sitios, { maxZoom = ZOOM_MAXIMO } = {}, animar) => {
+            const tamanho = tamanhoDoMapa();
+            const caixa = caixaDe(sitios);
+            const meio = [(caixa[0][0] + caixa[1][0]) / 2, (caixa[0][1] + caixa[1][1]) / 2];
+            if (!(tamanho.x > 0 && tamanho.y > 0)) {
+                mapa.jumpTo({ center: meio });
+                return;
             }
-            // Os limites do ortofotomapa, tirados dos quadrados do nível de cima.
-            const z0 = indice.niveis[0];
-            const n = 2 ** z0;
-            const lat = (y) => Math.atan(Math.sinh(Math.PI * (1 - 2 * y / n))) * 180 / Math.PI;
-            const xs = indice.quadrados[z0].map((q) => q[0]);
-            const ys = indice.quadrados[z0].map((q) => q[1]);
-            const caixa = L.latLngBounds(
-                [lat(Math.max(...ys) + 1), Math.min(...xs) / n * 360 - 180],
-                [lat(Math.min(...ys)), (Math.max(...xs) + 1) / n * 360 - 180]);
-            limitesDoBairro = L.latLngBounds(rede_.casas.size ? [...rede_.casas.values()].flat().map((c) => c.ponto) : []).pad(0.15);
-            ortofoto = new CamadaDoOrtofoto(ORTOFOTO.endereco, {
-                minNativeZoom: indice.niveis[0] - (ecraFino ? 1 : 0),
-                maxNativeZoom: indice.niveis[1] - (ecraFino ? 1 : 0),
-                maxZoom: ZOOM_MAXIMO + (ecraFino ? 1 : 0),
-                detectRetina: true,
-                bounds: caixa,
-                keepBuffer: 2
-            }).addTo(mapa);
-            mapa.setMaxBounds(caixa.pad(2.5));
-            mapa.options.maxBoundsViscosity = 1;
-        } catch (e) {
-            console.error(e);
-            falhou('nav.erro', 'Não foi possível carregar o mapa.');
-            throw e;
-        }
-
-        // Para quem verifica a página por dentro (as ferramentas do navegador).
-        window.navegacao = { mapa, rede: rede_ };
-
-        const vistaDoBairro = (animar) => {
-            mostrarNoMapa(limitesDoBairro, {}, animar);
+            const f = folgas();
+            const pitch = mapa.getPitch();
+            const antes = { center: mapa.getCenter(), zoom: mapa.getZoom(), pitch, bearing: mapa.getBearing() };
+            const passo = Math.max(1, Math.ceil(sitios.length / 300));
+            const amostra = sitios.filter((_, i) => i % passo === 0).concat([sitios[sitios.length - 1]]);
+            const largura = tamanho.x - f.left - f.right;
+            const altura = tamanho.y - f.top - f.bottom;
+            let camara = mapa.cameraForBounds(caixa, { padding: f, bearing: 0, maxZoom }) || { center: meio, zoom: mapa.getZoom() };
+            for (let volta = 0; volta < 5; volta++) {
+                mapa.jumpTo({ center: camara.center, zoom: camara.zoom, pitch, bearing: 0 });
+                let x0 = Infinity;
+                let y0 = Infinity;
+                let x1 = -Infinity;
+                let y1 = -Infinity;
+                for (const s of amostra) {
+                    const q = mapa.project(lngLat(s));
+                    x0 = Math.min(x0, q.x);
+                    x1 = Math.max(x1, q.x);
+                    y0 = Math.min(y0, q.y);
+                    y1 = Math.max(y1, q.y);
+                }
+                const escala = Math.min(largura / Math.max(1, x1 - x0), altura / Math.max(1, y1 - y0));
+                const dx = (x0 + x1) / 2 - (f.left + largura / 2);
+                const dy = (y0 + y1) / 2 - (f.top + altura / 2);
+                const zoom = Math.min(maxZoom, camara.zoom + Math.log2(escala) * 0.95);
+                camara = { center: mapa.unproject([tamanho.x / 2 + dx, tamanho.y / 2 + dy]), zoom };
+                if (Math.abs(Math.log2(escala)) < 0.02 && Math.abs(dx) < 2 && Math.abs(dy) < 2) break;
+            }
+            mapa.jumpTo(antes);
+            if (animar) mapa.flyTo({ ...camara, pitch, bearing: 0, duration: 900, essential: true });
+            else mapa.jumpTo({ ...camara, pitch, bearing: 0 });
         };
+        const cantosDoBairro = [
+            [limitesDoBairro[0][1], limitesDoBairro[0][0]], [limitesDoBairro[1][1], limitesDoBairro[1][0]],
+            [limitesDoBairro[0][1], limitesDoBairro[1][0]], [limitesDoBairro[1][1], limitesDoBairro[0][0]]
+        ];
+        const vistaDoBairro = (animar) => mostrarNoMapa(cantosDoBairro, {}, animar);
         vistaDoBairro(false);
-        zoomPedido = mapa.getZoom();
+
+        // ---- Aproximar e afastar ----
+        const pintarBotoesDoZoom = () => {
+            const z = mapa.getZoom();
+            botaoAproximar.disabled = z >= mapa.getMaxZoom() - 0.01;
+            botaoAfastar.disabled = z <= mapa.getMinZoom() + 0.01;
+        };
+        mapa.on('zoomend', pintarBotoesDoZoom);
+        botaoAproximar.addEventListener('click', () => mapa.zoomIn({ duration: 300 }));
+        botaoAfastar.addEventListener('click', () => mapa.zoomOut({ duration: 300 }));
+        // Os gatilhos do comando (ver comando-paginas.js) aproximam e
+        // afastam por aqui, aos passos — positivos para chegar perto.
+        window.zoomDaPagina = (passos) => mapa.easeTo({ zoom: mapa.getZoom() + passos * 0.3, duration: 150 });
 
         let casaEscolhida = null;
 
         // ---- Os números das casas, de perto ----
         //
-        // Tocar num número escolhe essa casa. O da casa escolhida sai: ela
-        // já tem o seu, no quadrado branco.
-        const numeros = L.layerGroup();
+        // De perto, cada casa tem o número no telhado; tocar nele escolhe-a.
+        // Com o mapa inclinado, as casas lá ao fundo ficam umas em cima das
+        // outras: põem-se primeiro os números das mais perto (as de baixo no
+        // ecrã), e um número que tocasse noutro já posto não se põe. O da
+        // casa escolhida sai: ela já tem o seu, no quadrado branco, e à volta
+        // dele não se põe nenhum.
         const rotulos = new Map();
-        const pintarRotulos = () => {
-            for (const [casa, m] of rotulos) {
-                const el = m.getElement();
-                if (el) el.classList.toggle('escondido', casa === casaEscolhida);
-            }
-        };
-        for (const [n, lista] of rede_.casas) {
-            for (const casa of lista) {
-                const m = L.marker(casa.ponto, {
-                    icon: L.divIcon({ className: 'rotulo-casa', html: '<span aria-hidden="true"></span>', iconSize: [0, 0] }),
-                    keyboard: false
-                });
-                m.on('add', () => {
-                    m.getElement().firstChild.textContent = n;
-                    m.getElement().classList.toggle('escondido', casa === casaEscolhida);
-                });
-                m.on('click', () => escolher(casa));
-                numeros.addLayer(m);
-                rotulos.set(casa, m);
-            }
-        }
         const verNumeros = () => {
-            const ver = mapa.getZoom() >= ZOOM_DOS_NUMEROS;
-            if (ver && !mapa.hasLayer(numeros)) numeros.addTo(mapa);
-            else if (!ver && mapa.hasLayer(numeros)) mapa.removeLayer(numeros);
+            const tela = tamanhoDoMapa();
+            const ficam = new Set();
+            if (mapa.getZoom() >= ZOOM_DOS_NUMEROS && tela.x > 0) {
+                const ocupado = [];
+                const tocam = (a, b) => a[0] < b[2] && b[0] < a[2] && a[1] < b[3] && b[1] < a[3];
+                if (casaEscolhida) {
+                    const p = mapa.project(lngLat(casaEscolhida.ponto));
+                    ocupado.push([p.x - 40, p.y - 40, p.x + 40, p.y + 8]);
+                }
+                const candidatos = [];
+                for (const lista of rede_.casas.values()) {
+                    for (const casa of lista) {
+                        if (casa === casaEscolhida) continue;
+                        const p = mapa.project(lngLat(casa.ponto));
+                        if (p.x > -20 && p.x < tela.x + 20 && p.y > -10 && p.y < tela.y + 10) candidatos.push({ casa, p });
+                    }
+                }
+                candidatos.sort((a, b) => b.p.y - a.p.y);
+                for (const { casa, p } of candidatos) {
+                    const meia = 3.5 * casa.n.length + 5;
+                    const caixa = [p.x - meia, p.y - 9, p.x + meia, p.y + 9];
+                    if (ocupado.some((o) => tocam(caixa, o))) continue;
+                    ocupado.push(caixa);
+                    ficam.add(casa);
+                }
+            }
+            for (const [casa, m] of rotulos) {
+                if (!ficam.has(casa)) {
+                    m.remove();
+                    rotulos.delete(casa);
+                }
+            }
+            for (const casa of ficam) {
+                if (rotulos.has(casa)) continue;
+                const el = document.createElement('div');
+                el.className = 'rotulo-casa';
+                el.textContent = casa.n;
+                el.setAttribute('aria-hidden', 'true');
+                el.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    escolher(casa);
+                });
+                rotulos.set(casa, new maplibregl.Marker({ element: el, anchor: 'center' }).setLngLat(lngLat(casa.ponto)).addTo(mapa));
+            }
         };
-        mapa.on('zoomend', verNumeros);
-        verNumeros();
+        mapa.on('moveend', verNumeros);
 
         // ---- A rede, para quem tem o menu de desenvolvedor ----
         //
         // As ruas desenhadas (amarelo as largas, verde as estreitas), as
-        // estradas (branco) e as ligações das ruas às estradas (rosa), e o
-        // telhado reconhecido de cada casa, com a porta: para ver de perto se
-        // tudo bate com a fotografia.
-        let camadaDaRede = null;
+        // estradas (branco) e as ligações das ruas às estradas (rosa): para
+        // ver de perto se tudo bate com a fotografia.
+        let redePosta = false;
         const verRede = () => {
             let quer = false;
             try { quer = localStorage.getItem('programador') === 'on'; } catch (e) { /* sem memória */ }
-            if (quer && !camadaDaRede) {
-                const cores = { [ESTRADA]: '#ffffff', [RUA]: '#ffd400', [BECO]: '#00e060', [LIGACAO]: '#ff40ff' };
-                camadaDaRede = L.layerGroup();
-                for (const t of rede_.trocos) {
-                    L.polyline(t.pontos, { color: cores[t.tipo], weight: 2, opacity: 0.9, interactive: false }).addTo(camadaDaRede);
-                }
-                for (const lista of rede_.casas.values()) {
-                    for (const c of lista) {
-                        if (c.contorno) L.polygon(c.contorno, { color: '#3399ff', weight: 1.5, fillOpacity: 0.1, interactive: false }).addTo(camadaDaRede);
-                        L.circleMarker(c.porta, { radius: 3, color: '#ff8800', weight: 2, interactive: false }).addTo(camadaDaRede);
-                    }
-                }
+            if (quer && !redePosta) {
+                mapa.getSource('rede').setData({
+                    type: 'FeatureCollection',
+                    features: rede_.trocos.map((t) => ({
+                        type: 'Feature', properties: { tipo: t.tipo },
+                        geometry: { type: 'LineString', coordinates: t.pontos.map(lngLat) }
+                    }))
+                });
+                redePosta = true;
             }
-            if (camadaDaRede) {
-                if (quer && !mapa.hasLayer(camadaDaRede)) camadaDaRede.addTo(mapa);
-                if (!quer && mapa.hasLayer(camadaDaRede)) mapa.removeLayer(camadaDaRede);
-            }
+            mapa.setLayoutProperty('rede', 'visibility', quer ? 'visible' : 'none');
         };
         window.addEventListener('storage', (e) => {
             if (e.key === 'programador' || e.key === null) verRede();
@@ -1109,15 +1209,29 @@
                 else mostrarSugestoes();
             } else mostrarSugestoes();
         });
+
+        // ---- O que está no mapa por causa do percurso ----
+        const marcadores = { inicio: null, destino: null };
+        const tirarMarcador = (qual) => {
+            if (marcadores[qual]) marcadores[qual].remove();
+            marcadores[qual] = null;
+        };
+        const limparPercurso = () => {
+            mapa.getSource('percurso').setData(NADA);
+            mapa.getSource('tracejado').setData(NADA);
+            tirarMarcador('inicio');
+            tirarMarcador('destino');
+        };
         document.getElementById('outra').addEventListener('click', () => {
             casaEscolhida = null;
             document.body.classList.remove('com-casa');
-            pintarRotulos();
-            camadaDoPercurso.clearLayers();
+            limparPercurso();
+            verNumeros();
             resultadoEl.hidden = true;
             entrada.value = '';
             mostrarSugestoes();
-            history.replaceState(null, '', window.location.pathname);
+            history.replaceState(null, '', '/navegacao');
+            escreverTitulo();
             entrada.focus();
         });
 
@@ -1131,15 +1245,15 @@
         let aqui = null;
         let aquiDoPercurso = null;
         let marcadorAqui = null;
-        let circuloAqui = null;
         let seguir = false;
         const pintarOndeEstou = () => {
             ondeEstouEl.classList.toggle('ligado', vigia !== null);
             ondeEstouEl.setAttribute('aria-pressed', vigia !== null ? 'true' : 'false');
         };
+        const irPara = (sitio, zoom) => mapa.easeTo({ center: lngLat(sitio), zoom: Math.max(mapa.getZoom(), zoom), duration: 600 });
         const ondeEstou = (centrar) => {
             if (vigia !== null) {
-                if (aqui && centrar) mapa.setView([aqui.lat, aqui.lon], Math.max(mapa.getZoom(), 19));
+                if (aqui && centrar) irPara([aqui.lat, aqui.lon], ZOOM_DE_PERTO);
                 return;
             }
             if (!navigator.geolocation) {
@@ -1152,23 +1266,19 @@
                 const primeira = !aqui;
                 aqui = { lat: pos.coords.latitude, lon: pos.coords.longitude, precisao: pos.coords.accuracy };
                 const sitio = [aqui.lat, aqui.lon];
+                mapa.getSource('precisao').setData(circulo(sitio, aqui.precisao));
                 if (!marcadorAqui) {
-                    circuloAqui = L.circle(sitio, { radius: aqui.precisao, color: '#ffffff', weight: 1, opacity: 0.6, fillOpacity: 0.12, interactive: false }).addTo(mapa);
-                    marcadorAqui = L.marker(sitio, {
-                        icon: L.divIcon({ className: 'voce', html: '<span class="ponto"></span>', iconSize: [18, 18], iconAnchor: [9, 9] }),
-                        keyboard: false,
-                        interactive: false,
-                        zIndexOffset: 2000
-                    }).addTo(mapa);
-                    marcadorAqui.getElement().setAttribute('role', 'img');
-                    marcadorAqui.getElement().setAttribute('aria-label', diz('nav.voce', 'Está aqui'));
+                    const el = document.createElement('div');
+                    el.className = 'voce';
+                    el.setAttribute('role', 'img');
+                    el.setAttribute('aria-label', diz('nav.voce', 'Está aqui'));
+                    marcadorAqui = new maplibregl.Marker({ element: el, anchor: 'center' }).setLngLat(lngLat(sitio)).addTo(mapa);
                 } else {
-                    marcadorAqui.setLatLng(sitio);
-                    circuloAqui.setLatLng(sitio).setRadius(aqui.precisao);
+                    marcadorAqui.setLngLat(lngLat(sitio));
                 }
-                if (primeira && seguir) mapa.setView(sitio, Math.max(mapa.getZoom(), 19));
+                if (primeira && seguir) irPara(sitio, ZOOM_DE_PERTO);
                 if (casaEscolhida) {
-                    const mexeu = !aquiDoPercurso || mapa.distance(sitio, [aquiDoPercurso.lat, aquiDoPercurso.lon]) > REFAZER_M;
+                    const mexeu = !aquiDoPercurso || distancia(sitio, [aquiDoPercurso.lat, aquiDoPercurso.lon]) > REFAZER_M;
                     if (mexeu) tracar(primeira);
                 } else if (primeira) {
                     notaEl.textContent = '';
@@ -1185,7 +1295,7 @@
         ondeEstouEl.addEventListener('click', () => {
             if (vigia !== null && !aqui) return;
             if (vigia !== null && aqui) {
-                mapa.setView([aqui.lat, aqui.lon], Math.max(mapa.getZoom(), 19));
+                irPara([aqui.lat, aqui.lon], ZOOM_DE_PERTO);
                 return;
             }
             ondeEstou(true);
@@ -1196,31 +1306,10 @@
         });
 
         // ---- O percurso ----
-        const camadaDoPercurso = L.layerGroup().addTo(mapa);
         let passosAtuais = [];
         let percursoAtual = null;
 
         const minutos = (metros) => Math.max(1, Math.round(metros / METROS_POR_MINUTO));
-
-        // A linha desenhada, sem cantos onde os troços se juntam: cada canto
-        // é cortado três vezes por um quarto de cada lado (o corte de
-        // Chaikin). O princípio e o fim ficam onde estão. Só o desenho muda;
-        // as contas do percurso são feitas com os pontos de origem.
-        const alisarLinha = (pontos, voltas = 3) => {
-            let p = pontos;
-            for (let v = 0; v < voltas && p.length > 2; v++) {
-                const q = [p[0]];
-                for (let i = 0; i < p.length - 1; i++) {
-                    const a = p[i];
-                    const b = p[i + 1];
-                    q.push([0.75 * a[0] + 0.25 * b[0], 0.75 * a[1] + 0.25 * b[1]],
-                        [0.25 * a[0] + 0.75 * b[0], 0.25 * a[1] + 0.75 * b[1]]);
-                }
-                q.push(p[p.length - 1]);
-                p = q;
-            }
-            return p;
-        };
 
         const textoDoPasso = (p, numero) => {
             const m = { metros: p.metros, numero };
@@ -1251,6 +1340,14 @@
             return preencher(diz(chaves[0], chaves[1]), { ...m, pelaRua, paraRua });
         };
 
+        // O título do separador: a casa, quando há uma ("Casa D31 — Malha
+        // Viva"); senão, o da página.
+        const escreverTitulo = () => {
+            document.title = casaEscolhida
+                ? preencher(diz('nav.casa', 'Casa {numero}'), { numero: casaEscolhida.n }) + ' — ' + diz('site.nome', 'Malha Viva')
+                : diz('nav.separador', 'Navegação') + ' — ' + diz('site.nome', 'Malha Viva');
+        };
+
         const escreverPercurso = () => {
             if (!casaEscolhida || !percursoAtual) return;
             const n = casaEscolhida.n;
@@ -1267,7 +1364,7 @@
                 if (p.acao === 'chegada') li.className = 'chegada';
                 // Tocar num passo mostra-o no mapa.
                 li.addEventListener('click', () => {
-                    if (p.sitio) mapa.setView(p.sitio, Math.max(mapa.getZoom(), 20));
+                    if (p.sitio) irPara(p.sitio, ZOOM_DO_PERCURSO);
                 });
                 passosEl.appendChild(li);
             });
@@ -1276,6 +1373,7 @@
             if (ent) {
                 comoChegarEl.href = 'https://www.google.com/maps/dir/?api=1&destination=' + ent[0].toFixed(6) + ',' + ent[1].toFixed(6);
             }
+            escreverTitulo();
         };
 
         /**
@@ -1321,61 +1419,57 @@
             };
             for (const p of passos) {
                 if (p.acao === 'inicio') p.sitio = perc.pontos[0];
-                else if (p.acao === 'chegada') p.sitio = casa.porta;
+                else if (p.acao === 'chegada') p.sitio = casa.ponto;
                 else {
                     p.sitio = pontoEm(s);
                     s += p.metros;
                 }
             }
             const fim = perc.pontos[perc.pontos.length - 1];
-            const ultimo = mapa.distance(fim, casa.porta);
-            percursoAtual = { total: perc.comprimento + ultimo, entrada: entradaSitio };
+            percursoAtual = { total: perc.comprimento + distancia(fim, casa.porta), entrada: entradaSitio };
             passosAtuais = passos;
 
-            // O desenho: uma linha branca com um contorno escuro, como as
-            // estradas dos mapas, de pontas quadradas como o resto do site.
-            camadaDoPercurso.clearLayers();
-            if (casa.contorno) {
-                L.polygon(casa.contorno, { color: '#ffffff', weight: 2.5, fillColor: '#ffffff', fillOpacity: 0.28, interactive: false }).addTo(camadaDoPercurso);
-            }
-            const linha = alisarLinha(perc.pontos);
-            const contorno = { color: '#05050a', weight: 9, opacity: 0.85, lineCap: 'square', lineJoin: 'miter', interactive: false };
-            const meio = { color: '#ffffff', weight: 5, opacity: 1, lineCap: 'square', lineJoin: 'miter', interactive: false };
-            if (linha.length > 1) {
-                L.polyline(linha, contorno).addTo(camadaDoPercurso);
-                L.polyline(linha, meio).addTo(camadaDoPercurso);
-            }
-            // Da rede até à porta, e de onde se está até à rede: a tracejado.
-            const tracejado = { color: '#ffffff', weight: 3, opacity: 1, dashArray: '2 8', lineCap: 'square', interactive: false };
-            if (ultimo > 0.5) L.polyline([fim, casa.porta], tracejado).addTo(camadaDoPercurso);
-            if (ligacaoAqui) L.polyline(ligacaoAqui, tracejado).addTo(camadaDoPercurso);
-            // O princípio: a entrada (um quadrado com o nome) ou onde se está.
+            // A linha, alisada ao longo de uns metros: as curvas e os
+            // cruzamentos fazem-se em curva, sem cantos nem tremuras. Só o
+            // desenho muda; as contas são feitas com o traçado de origem.
+            const linha = alisar(perc.xy, ALISAR_M).map((q) => rede_.geo(q));
+            mapa.getSource('percurso').setData(linhas([linha]));
+            // Até à casa, a pontinhos: do fim da linha ao meio do telhado,
+            // onde o número aponta (só se a casa não ficar mesmo ao pé).
+            mapa.getSource('tracejado').setData(linhas([
+                distancia(fim, casa.ponto) > 3 ? [fim, casa.ponto] : null,
+                ligacaoAqui
+            ]));
+            // O princípio: a entrada, um quadrado com o nome.
+            tirarMarcador('inicio');
             if (inicio.tipo === 'entrada' && linha.length > 1) {
-                const m = L.marker(linha[0], {
-                    icon: L.divIcon({ className: 'inicio', html: '<span class="ponto"></span><span class="nome" aria-hidden="true"></span>', iconSize: [16, 16], iconAnchor: [8, 8] }),
-                    keyboard: false,
-                    interactive: false,
-                    zIndexOffset: 1000
-                }).addTo(camadaDoPercurso);
-                m.getElement().querySelector('.nome').textContent = diz('nav.entrada', 'Entrada');
-                m.getElement().setAttribute('role', 'img');
-                m.getElement().setAttribute('aria-label', diz('nav.entrada', 'Entrada'));
+                const el = document.createElement('div');
+                el.className = 'inicio';
+                el.setAttribute('role', 'img');
+                el.setAttribute('aria-label', diz('nav.entrada', 'Entrada'));
+                const nome = document.createElement('span');
+                nome.className = 'nome';
+                nome.setAttribute('aria-hidden', 'true');
+                nome.textContent = diz('nav.entrada', 'Entrada');
+                el.appendChild(nome);
+                marcadores.inicio = new maplibregl.Marker({ element: el, anchor: 'center' }).setLngLat(lngLat(linha[0])).addTo(mapa);
             }
-            // A casa: o número num quadrado branco, por cima do telhado.
-            const destino = L.marker(casa.ponto, {
-                icon: L.divIcon({ className: 'destino', html: '<span aria-hidden="true"></span>', iconSize: [0, 0] }),
-                keyboard: false,
-                interactive: false,
-                zIndexOffset: 1500
-            }).addTo(camadaDoPercurso);
-            destino.getElement().firstChild.textContent = casa.n;
-            destino.getElement().setAttribute('role', 'img');
-            destino.getElement().setAttribute('aria-label', preencher(diz('nav.casa', 'Casa {numero}'), { numero: casa.n }));
+            // A casa: o número num quadrado branco, com o bico a apontar
+            // para o telhado.
+            tirarMarcador('destino');
+            const el = document.createElement('div');
+            el.className = 'destino';
+            el.setAttribute('role', 'img');
+            el.setAttribute('aria-label', preencher(diz('nav.casa', 'Casa {numero}'), { numero: casa.n }));
+            const numero = document.createElement('span');
+            numero.setAttribute('aria-hidden', 'true');
+            numero.textContent = casa.n;
+            el.appendChild(numero);
+            marcadores.destino = new maplibregl.Marker({ element: el, anchor: 'bottom' }).setLngLat(lngLat(casa.ponto)).addTo(mapa);
 
             escreverPercurso();
             if (enquadrar) {
-                const caixa = L.latLngBounds(linha.concat([casa.porta, casa.ponto], ligacaoAqui || []));
-                mostrarNoMapa(caixa, { maxZoom: 20 }, true);
+                mostrarNoMapa(linha.concat([casa.ponto], ligacaoAqui || []), { maxZoom: ZOOM_DO_PERCURSO }, true);
             }
         };
 
@@ -1387,7 +1481,6 @@
         const escolher = (casa) => {
             casaEscolhida = casa;
             document.body.classList.add('com-casa');
-            pintarRotulos();
             entrada.value = casa.n;
             sugestoesEl.innerHTML = '';
             const repetidas = rede_.casas.get(casa.n);
@@ -1398,26 +1491,29 @@
             resultadoEl.hidden = false;
             // No telemóvel, as indicações começam dobradas: o mapa primeiro.
             document.getElementById('indicacoes').open = window.innerWidth > 640;
-            const qual = repetidas.length > 1 ? '&sitio=' + (repetidas.indexOf(casa) + 1) : '';
-            history.replaceState(null, '', window.location.pathname + '?casa=' + encodeURIComponent(casa.n) + qual);
+            // O endereço da casa, que é o que se partilha: /casa/D31.
+            history.replaceState(null, '', enderecoDaCasa(casa.n, repetidas.indexOf(casa) + 1, repetidas.length));
             tracar(true);
+            verNumeros();
         };
 
         // ---- Partilhar ----
         //
-        // A ligação abre esta página já com a casa escolhida: quem mora no
-        // bairro pode mandá-la a quem o vem visitar. No telemóvel abre a
-        // folha de partilhar do próprio telemóvel; no computador, copia.
+        // O endereço de cada casa (malhaviva.pt/casa/D31) abre esta página
+        // já com o percurso até ela: quem mora no bairro manda-o a quem o
+        // vem visitar. No telemóvel abre a folha de partilhar do próprio
+        // telemóvel (WhatsApp, mensagens...); no computador, copia.
         const podePartilhar = !!navigator.share && window.matchMedia('(pointer: coarse)').matches;
         const escreverPartilhar = () => {
-            partilharEl.textContent = podePartilhar ? diz('par.botao', 'Partilhar') : diz('par.copiar', 'Copiar ligação');
+            partilharEl.textContent = podePartilhar ? diz('nav.partilharCasa', 'Partilhar o endereço da casa') : diz('nav.copiarCasa', 'Copiar o endereço da casa');
         };
         partilharEl.addEventListener('click', async () => {
             if (!casaEscolhida) return;
-            const url = window.location.origin + window.location.pathname + window.location.search;
+            const url = window.location.origin + window.location.pathname;
             const titulo = preencher(diz('nav.casa', 'Casa {numero}'), { numero: casaEscolhida.n }) + ' — ' + diz('cab.bairro', 'Bairro de Penajóia');
+            const texto = preencher(diz('nav.textoPartilha', 'Como chegar à casa {numero}, no Bairro de Penajóia:'), { numero: casaEscolhida.n });
             if (podePartilhar) {
-                try { await navigator.share({ title: titulo, url }); } catch (e) { /* desistiu */ }
+                try { await navigator.share({ title: titulo, text: texto, url }); } catch (e) { /* desistiu */ }
                 return;
             }
             try {
@@ -1425,7 +1521,7 @@
                 partilharEl.textContent = diz('par.copiado', 'Ligação copiada');
                 setTimeout(escreverPartilhar, 2000);
             } catch (e) {
-                window.prompt(diz('par.copiar', 'Copiar ligação'), url);
+                window.prompt(diz('nav.copiarCasa', 'Copiar o endereço da casa'), url);
             }
         });
 
@@ -1464,14 +1560,12 @@
             };
             if (setas[tecla]) {
                 e.preventDefault();
-                pararOZoom();
-                mapa.panBy(setas[tecla]);
+                mapa.panBy(setas[tecla], { duration: 200 });
             } else if (tecla === '+' || tecla === '=') {
-                pedirZoom(zoomDeOndeSeParte() + PASSO);
+                mapa.zoomIn({ duration: 300 });
             } else if (tecla === '-' || tecla === '_') {
-                pedirZoom(zoomDeOndeSeParte() - PASSO);
+                mapa.zoomOut({ duration: 300 });
             } else if (tecla === '0' || tecla === 'r') {
-                pararOZoom();
                 vistaDoBairro(true);
             } else if (tecla === 'f') {
                 botaoEcra.click();
@@ -1480,7 +1574,7 @@
 
         // ---- Os textos que mudam com a língua ----
         const escreverTextos = () => {
-            entrada.placeholder = diz('nav.exemplo', 'Número da casa, p. ex. D31');
+            entrada.placeholder = diz('nav.exemplo', 'p. ex. D31');
             creditosEl.innerHTML = '';
             const partes = preencher(diz('nav.creditos', 'Ortofotomapa: voo de drone de 15 de fevereiro de 2026, com as ruas desenhadas por cima · Satélite: {satelite} · Estradas à volta: {osm}'), { satelite: SATELITE.creditos, osm: '\u0000' }).split('\u0000');
             creditosEl.append(partes[0]);
@@ -1495,22 +1589,30 @@
             escreverPartilhar();
             if (!entrada.value) mostrarSugestoes();
             escreverPercurso();
+            escreverTitulo();
+            if (marcadores.inicio) {
+                const el = marcadores.inicio.getElement();
+                el.setAttribute('aria-label', diz('nav.entrada', 'Entrada'));
+                el.querySelector('.nome').textContent = diz('nav.entrada', 'Entrada');
+            }
+            if (marcadorAqui) marcadorAqui.getElement().setAttribute('aria-label', diz('nav.voce', 'Está aqui'));
         };
         window.addEventListener('idiomamudou', escreverTextos);
 
         // ---- O ecrã de espera ----
-        let pedidos = 0;
-        let falhados = 0;
-        satelite.on('tileloadstart', () => { pedidos++; });
-        satelite.on('tileerror', () => { falhados++; });
+        //
+        // Sai quando o mapa acaba de desenhar a primeira vista, com as
+        // fotografias todas; ou, se demorarem, ao fim de ESPERA_MAXIMA_MS —
+        // mais vale um mapa a compor-se aos poucos do que um quadrado parado.
         let aberto = false;
         const abrir = () => {
             if (aberto) return;
             aberto = true;
             overlay.classList.add('escondido');
             pintarBotoesDoZoom();
+            verNumeros();
         };
-        satelite.once('load', () => abrir());
+        mapa.once('idle', abrir);
         setTimeout(abrir, ESPERA_MAXIMA_MS);
 
         // ---- Começar ----
@@ -1519,14 +1621,13 @@
         escreverTextos();
         pintarBotoesDoZoom();
         pintarOndeEstou();
-        // Uma ligação com a casa já escolhida (?casa=D31).
-        const pedida = normalizar(parametros.get('casa') || '');
-        if (pedida && rede_.casas.has(pedida)) {
-            const lista = rede_.casas.get(pedida);
-            const i = Math.max(0, Math.min(lista.length - 1, (parseInt(parametros.get('sitio'), 10) || 1) - 1));
-            escolher(lista[i]);
+        // Um endereço com a casa já escolhida: /casa/D31 (ou ?casa=D31).
+        const pedida = casaPedida(window.location);
+        if (pedida && rede_.casas.has(pedida.numero)) {
+            const lista = rede_.casas.get(pedida.numero);
+            escolher(lista[Math.min(lista.length, pedida.sitio) - 1]);
         } else if (pedida) {
-            entrada.value = pedida;
+            entrada.value = pedida.numero;
             mostrarSugestoes();
         }
     </script>

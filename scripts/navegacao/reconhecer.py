@@ -103,6 +103,8 @@ ESTRADA_M = 12.0
 ESPIGAO_M = 1.5
 # Uma rua com pelo menos isto de largura é rua; mais estreita, é beco.
 RUA_LARGURA = 2.6
+# O traçado guardado de cada rua não se afasta mais do que isto do desenho.
+SIMPLIFICAR_M = 0.05
 # Uma casa não vai além disto do seu ponto (os telhados colados não têm
 # sempre aresta entre eles).
 RAIO_DA_CASA = 8.0
@@ -453,6 +455,10 @@ def rede_desenhada(para_grelha, livre, cell):
         pp[:, 1] = np.clip(pp[:, 1], 0, W - 1)
         dd["largura"] = float(np.median(meia[pp[:, 0], pp[:, 1]]) * 2)
         dd["tipo"] = "rua" if dd["largura"] >= RUA_LARGURA else "beco"
+        # O desenho vem com um ponto a cada 10 cm; fica um só onde a linha
+        # se desvia mais de SIMPLIFICAR_M da reta (o mapa alisa-a na mesma).
+        dd["pts"] = cv2.approxPolyDP(dd["pts"][:, ::-1].astype(np.float32).reshape(-1, 1, 2),
+                                     SIMPLIFICAR_M / cell, False)[:, 0, ::-1].astype(float)
     return G
 
 
@@ -759,8 +765,8 @@ def escrever(G, casas, E0, N1, p, cell):
                 item["longe"] = round(c["dist"], 1)
             if c["fora"]:
                 item["fora"] = 1
-            if c["telhado"]:
-                item["contorno"] = [geo(*q) for q in c["telhado"]["contorno"]]
+            # (O contorno do telhado serve só para achar a porta: o mapa não
+            # o desenha, e não vai para o site.)
             saida_casas.append(item)
     os.makedirs(SAIDA, exist_ok=True)
     dados = dict(
