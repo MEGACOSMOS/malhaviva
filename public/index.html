@@ -143,7 +143,7 @@
 
     <!-- As línguas do site. Fica antes de tudo o resto para o texto
          nascer já na língua certa, sem piscar em português primeiro. -->
-    <script src="/idiomas.js?v=45"></script>
+    <script src="/idiomas.js?v=46"></script>
     <script src="/legendas.js?v=2"></script>
 
     <!-- O quadrado de espera, o mesmo em todo o site. Fica antes de o
@@ -905,7 +905,9 @@
             z-index: 90;
             box-sizing: border-box;
             width: 300px;
-            max-height: calc(100% - 84px - 180px);
+            /* Até baixo: a legenda do mapa, que lá está, apaga-se enquanto
+               há um percurso à vista. */
+            max-height: calc(100% - 84px - 24px);
             overflow-y: auto;
             padding: 14px 16px 16px;
             background: linear-gradient(to bottom, rgba(255, 255, 255, 0.05), transparent), #05050a;
@@ -953,6 +955,28 @@
             font-size: 0.85rem;
             color: rgba(255, 255, 255, 0.8);
         }
+        /* O que a localização tem a dizer: que está à procura, que não
+           conseguiu, ou que a pessoa está longe do bairro. */
+        #percurso-nota {
+            margin: 8px 0 0;
+            font-size: 0.75rem;
+            line-height: 1.45;
+            color: rgba(255, 255, 255, 0.75);
+        }
+        #percurso-nota:empty {
+            display: none;
+        }
+        /* Os créditos do que o percurso usa: as ruas desenhadas e as
+           estradas à volta, que vêm do OpenStreetMap. */
+        #percurso-creditos {
+            margin: 12px 0 0;
+            font-size: 0.65rem;
+            line-height: 1.45;
+            color: rgba(255, 255, 255, 0.5);
+        }
+        #percurso-creditos a {
+            color: inherit;
+        }
         .percurso-botoes {
             display: flex;
             flex-wrap: wrap;
@@ -978,6 +1002,21 @@
         @media (hover: hover) {
             .percurso-botao:hover {
                 background: rgba(255, 255, 255, 0.1);
+            }
+        }
+        .percurso-botao[hidden] {
+            display: none;
+        }
+        /* A localização ligada: o botão cheio, de branco. */
+        #percurso-localizacao[aria-pressed="true"] {
+            background: #ffffff;
+            color: #05050a;
+            border-color: #ffffff;
+            font-weight: 600;
+        }
+        @media (hover: hover) {
+            #percurso-localizacao[aria-pressed="true"]:hover {
+                background: rgba(255, 255, 255, 0.85);
             }
         }
         #percurso-fechar:focus-visible,
@@ -1068,10 +1107,11 @@
             }
         }
 
-        /* No bairro, por cima do percurso: a casa para onde se vai, o
+        /* No bairro, por cima de tudo: a linha do percurso (desenhada no
+           ecrã, da mesma grossura perto e longe); a casa para onde se vai, o
            número num quadrado branco com um bico a apontar para o telhado;
-           e a entrada, um quadrado com o nome por cima — os mesmos do mapa
-           da navegação. São postos no sítio a cada imagem (ver
+           a entrada, um quadrado com o nome por cima; e, com a localização
+           ligada, quem está a ver. São postos no sítio a cada imagem (ver
            navegacao-3d.mjs). */
         #percurso-3d {
             position: absolute;
@@ -1080,8 +1120,17 @@
             overflow: hidden;
             pointer-events: none;
         }
+        .percurso-traco {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            overflow: visible;
+            pointer-events: none;
+        }
         .destino-3d,
-        .inicio-3d {
+        .inicio-3d,
+        .voce-3d {
             position: absolute;
             left: 0;
             top: 0;
@@ -1092,7 +1141,8 @@
             transition: opacity 0.2s ease;
         }
         .destino-3d.fora,
-        .inicio-3d.fora {
+        .inicio-3d.fora,
+        .voce-3d.fora {
             opacity: 0;
             pointer-events: none;
         }
@@ -1133,7 +1183,21 @@
             border: 3px solid #ffffff;
             box-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
         }
-        .inicio-3d > span {
+        .voce-3d::before {
+            content: "";
+            position: absolute;
+            left: -9px;
+            top: -9px;
+            width: 18px;
+            height: 18px;
+            box-sizing: border-box;
+            border-radius: 50%;
+            background: #ffffff;
+            border: 3px solid #05050a;
+            box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.55), 0 1px 4px rgba(0, 0, 0, 0.6);
+        }
+        .inicio-3d > span,
+        .voce-3d > span {
             position: absolute;
             left: 0;
             bottom: 12px;
@@ -1145,10 +1209,37 @@
             color: #ffffff;
             background: rgba(5, 5, 10, 0.85);
         }
+        .voce-3d > span {
+            bottom: 15px;
+        }
         .destino-3d:focus-visible > span,
-        .inicio-3d:focus-visible > span {
+        .inicio-3d:focus-visible > span,
+        .voce-3d:focus-visible > span {
             outline: 2px solid #ffffff;
             outline-offset: 2px;
+        }
+
+        /* Com um percurso à vista, os marcadores dos testemunhos e das
+           rotas — e a legenda deles — apagam-se devagar: o bairro fica só
+           com o caminho até à casa. Voltam, também devagar, quando o
+           percurso sai. Apagados, saem também da fila do Tab e do que os
+           leitores de ecrã leem (visibility). */
+        #annotations-container {
+            transition: opacity 0.5s ease, visibility 0s linear 0s;
+        }
+        body.a-navegar #annotations-container,
+        body.a-navegar #legenda-mapa {
+            opacity: 0 !important;
+            visibility: hidden;
+            pointer-events: none;
+            transition: opacity 0.5s ease, visibility 0s linear 0.5s;
+        }
+        /* No telemóvel o painel do percurso ocupa o fundo do ecrã, onde
+           está a escala do mapa: ela sai enquanto o painel lá estiver. */
+        @media (max-width: 640px) {
+            body.a-navegar #map-scale {
+                display: none !important;
+            }
         }
 
         /* Os ícones que abrem um menu levam um bico de seta pequeno à
@@ -2815,20 +2906,20 @@
              navegacao-3d.mjs). Uma caixa de escolha com a lista das casas
              que respondem, que se percorre com as setas e o Enter. No
              telemóvel é a lupa, que abre a barra por cima do cabeçalho. -->
-        <div id="pesquisa-casas" role="search" aria-label="Procurar uma casa" data-i18n-aria="pesq.procurar">
-            <button type="button" id="pesquisa-abrir" class="adaptavel" aria-label="Procurar uma casa" title="Procurar uma casa" data-i18n-aria="pesq.procurar" data-i18n-title="pesq.procurar" aria-expanded="false" aria-controls="pesquisa-campo">
+        <div id="pesquisa-casas" role="search" aria-label="Pesquisar casa" data-i18n-aria="pesq.procurar">
+            <button type="button" id="pesquisa-abrir" class="adaptavel" aria-label="Pesquisar casa" title="Pesquisar casa" data-i18n-aria="pesq.procurar" data-i18n-title="pesq.procurar" aria-expanded="false" aria-controls="pesquisa-campo">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true">
                     <circle cx="10.5" cy="10.5" r="6.5"></circle>
                     <line x1="15.5" y1="15.5" x2="21" y2="21"></line>
                 </svg>
-                <span class="rotulo-icone" aria-hidden="true" data-i18n="pesq.curto">Procurar</span>
+                <span class="rotulo-icone" aria-hidden="true" data-i18n="pesq.curto">Pesquisar casa</span>
             </button>
             <div id="pesquisa-campo">
                 <svg class="pesquisa-lupa" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true">
                     <circle cx="10.5" cy="10.5" r="6.5"></circle>
                     <line x1="15.5" y1="15.5" x2="21" y2="21"></line>
                 </svg>
-                <input id="pesquisa-numero" type="text" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="pesquisa-sugestoes" aria-label="Número da casa" data-i18n-aria="pesq.rotulo" placeholder="Procurar uma casa" autocomplete="off" autocapitalize="characters" autocorrect="off" spellcheck="false" enterkeyhint="search">
+                <input id="pesquisa-numero" type="text" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="pesquisa-sugestoes" aria-label="Número da casa" data-i18n-aria="pesq.rotulo" placeholder="Pesquisar casa" autocomplete="off" autocapitalize="characters" autocorrect="off" spellcheck="false" enterkeyhint="search">
                 <button type="button" id="pesquisa-fechar" class="adaptavel" aria-label="Fechar a pesquisa" title="Fechar a pesquisa" data-i18n-aria="pesq.fechar" data-i18n-title="pesq.fechar">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true">
                         <line x1="5" y1="5" x2="19" y2="19"></line>
@@ -3019,20 +3110,22 @@
                 </div>
             </div>
 
-            <!-- A navegação: como chegar a uma casa do bairro (ver
-                 navegacao.html). Uma seta de navegação a apontar para cima,
-                 a ponta de uma bússola: um bico de seta com um entalhe em
-                 baixo, só em contorno, no traço dos outros ícones. É o mais
-                 à esquerda de todos, menos o de desenvolvedor, que fica
-                 sempre na ponta (e só aparece a quem o liga): para quem
-                 visita, é o primeiro ícone do cabeçalho, e o primeiro da
-                 gaveta no telemóvel. -->
-            <a href="/navegacao" id="navegacao-btn" class="adaptavel" aria-label="Navegação" title="Navegação" data-i18n-aria="cab.navegacao" data-i18n-title="cab.navegacao">
+            <!-- A navegação: como chegar a uma casa do bairro. Abre a
+                 pesquisa das casas (a barra do cabeçalho, ou a da lupa), e o
+                 percurso desenha-se no bairro (ver navegacao-3d.mjs). Uma
+                 seta de navegação a apontar para cima, a ponta de uma
+                 bússola: um bico de seta com um entalhe em baixo, só em
+                 contorno, no traço dos outros ícones. É o mais à esquerda
+                 de todos, menos o de desenvolvedor, que fica sempre na
+                 ponta (e só aparece a quem o liga): para quem visita, é o
+                 primeiro ícone do cabeçalho, e o primeiro da gaveta no
+                 telemóvel. -->
+            <button type="button" id="navegacao-btn" class="adaptavel" aria-label="Navegação" title="Navegação" data-i18n-aria="cab.navegacao" data-i18n-title="cab.navegacao" aria-controls="pesquisa-numero">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true">
                     <polygon points="12 3.5, 19 20.5, 12 16.5, 5 20.5"></polygon>
                 </svg>
                 <span class="rotulo-icone" aria-hidden="true" data-i18n="cab.navegacao">Navegação</span>
-            </a>
+            </button>
 
         <!-- Quatro setas a apontar para fora, ligadas por uma cruz ao
              meio, como o cursor de mover do Windows: é o ícone dos
@@ -3232,9 +3325,9 @@
 
     <div id="map-scale"><span></span></div>
 
-    <!-- A legenda do mapa: que marcador é que quer dizer o quê. -->
     <!-- O percurso até à casa procurada (ver a pesquisa, no cabeçalho, e
-         navegacao-3d.mjs): a casa, quanto se anda, e as indicações. -->
+         navegacao-3d.mjs): a casa, quanto se anda, a localização de quem
+         vê, e as indicações. -->
     <section id="percurso-painel" aria-labelledby="percurso-casa" hidden>
         <div class="percurso-topo">
             <h2 id="percurso-casa"></h2>
@@ -3247,17 +3340,27 @@
         </div>
         <p id="percurso-resumo" aria-hidden="true"></p>
         <p id="percurso-resumo-leitor" class="so-leitor" aria-live="polite"></p>
+        <p id="percurso-nota" aria-live="polite"></p>
         <div class="percurso-botoes">
+            <!-- A localização: o percurso passa a começar onde a pessoa
+                 está, e o sítio dela aparece no bairro. Fica no telemóvel
+                 de quem vê: não vai para lado nenhum. -->
+            <button type="button" class="percurso-botao" id="percurso-localizacao" aria-pressed="false">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true"><circle cx="12" cy="12" r="6"></circle><line x1="12" y1="1" x2="12" y2="5"></line><line x1="12" y1="19" x2="12" y2="23"></line><line x1="1" y1="12" x2="5" y2="12"></line><line x1="19" y1="12" x2="23" y2="12"></line></svg>
+                <span></span>
+            </button>
             <button type="button" class="percurso-botao" id="percurso-ver" data-i18n="pesq.verTudo">Ver o percurso todo</button>
-            <a class="percurso-botao" id="percurso-mapa" href="/navegacao" data-i18n="pesq.abrirMapa">Abrir no mapa</a>
+            <a class="percurso-botao" id="percurso-entrada" target="_blank" rel="noopener" data-i18n="nav.comoChegar" hidden>Como chegar à entrada</a>
             <button type="button" class="percurso-botao" id="percurso-partilhar"></button>
         </div>
         <details id="percurso-indicacoes" open>
             <summary data-i18n="nav.indicacoes">Indicações</summary>
             <ol id="percurso-passos"></ol>
         </details>
+        <p id="percurso-creditos"></p>
     </section>
 
+    <!-- A legenda do mapa: que marcador é que quer dizer o quê. -->
     <ul id="legenda-mapa" aria-label="Legenda do mapa" data-i18n-aria="leg.titulo">
         <li class="legenda-linha" data-tipo="testemunho">
             <span class="legenda-marcador testemunho" aria-hidden="true">
@@ -3682,7 +3785,10 @@
             const limpo = location.search.replace(/([?&])instrucoes(=[^&]*)?(&|$)/, (m, antes, valor, depois) => (depois ? antes : ''));
             history.replaceState(history.state, '', location.pathname + limpo + location.hash);
         }
-        if (!vistas || pedidas) {
+        // Quem chega pelo endereço de uma casa (/casa/D31) vem pelo
+        // percurso até ela: as instruções ficam para a próxima visita.
+        const porUmaCasa = /[?&]casa=/.test(location.search);
+        if ((!vistas && !porUmaCasa) || pedidas) {
             let marcado = false;
             const quandoPronto = () => {
                 if (marcado || !overlay.classList.contains('hidden')) return;
@@ -4710,7 +4816,13 @@ void modifySplatColor(vec3 center, inout vec4 color) {
                     n.classList.remove('em-duas-linhas');
                     n.parentElement.style.marginLeft = '';
                 });
-                const vistos = nomes.filter((n) => n.offsetParent && n.getBoundingClientRect().width > 0);
+                // Vizinhos são os da mesma fila, da esquerda para a direita:
+                // no telemóvel, os da gaveta (escondida, mas no sítio) ficam
+                // pelo meio na ordem da página, entre a lupa e o ecrã inteiro.
+                const vistos = nomes.filter((n) => n.offsetParent && n.getBoundingClientRect().width > 0)
+                    .map((n) => ({ n, r: n.getBoundingClientRect() }))
+                    .sort((a, b) => (Math.abs(a.r.top - b.r.top) > 4 ? a.r.top - b.r.top : a.r.left - b.r.left))
+                    .map(({ n }) => n);
                 for (let i = 1; i < vistos.length; i++) {
                     const a = vistos[i - 1];
                     const b = vistos[i];
@@ -5564,7 +5676,8 @@ void modifySplatColor(vec3 center, inout vec4 color) {
 
     <!-- A pesquisa das casas e o percurso até elas, no bairro em 3D (ver
          navegacao-3d.mjs). As ruas e o chão do bairro só se pedem quando
-         alguém vai procurar: não pesam no arranque. -->
+         alguém vai procurar, ou abre o endereço de uma casa: não pesam no
+         arranque. -->
     <script type="module">
         import { whenReady } from '@playcanvas/web-components';
 
@@ -5582,14 +5695,20 @@ void modifySplatColor(vec3 center, inout vec4 color) {
         const casaEl = document.getElementById('percurso-casa');
         const resumoEl = document.getElementById('percurso-resumo');
         const resumoLeitorEl = document.getElementById('percurso-resumo-leitor');
+        const notaEl = document.getElementById('percurso-nota');
+        const localizacaoEl = document.getElementById('percurso-localizacao');
+        const entradaEl = document.getElementById('percurso-entrada');
+        const partilharEl = document.getElementById('percurso-partilhar');
         const indicacoesEl = document.getElementById('percurso-indicacoes');
         const passosEl = document.getElementById('percurso-passos');
-        const mapaEl = document.getElementById('percurso-mapa');
-        const partilharEl = document.getElementById('percurso-partilhar');
+        const creditosEl = document.getElementById('percurso-creditos');
         const noTelemovel = window.matchMedia('(max-width: 640px)');
         // Até esta largura a pesquisa é a lupa, que abre a barra por cima do
         // cabeçalho (ver o estilo de #pesquisa-campo).
         const aLupa = window.matchMedia('(max-width: 960px)');
+        // Com a localização ligada, o percurso refaz-se a partir de onde a
+        // pessoa está quando ela andar mais do que isto, em metros.
+        const REFAZER_M = 10;
 
         // ---- As ruas e as casas ----
         let contas = null;
@@ -5597,7 +5716,7 @@ void modifySplatColor(vec3 center, inout vec4 color) {
         let pedidoDaRede = null;
         const lerRede = () => {
             if (!pedidoDaRede) {
-                pedidoDaRede = import('./navegacao.mjs?v=6').then(async (m) => {
+                pedidoDaRede = import('./navegacao.mjs?v=7').then(async (m) => {
                     contas = m;
                     rede = await m.carregarRede();
                     return rede;
@@ -5622,16 +5741,18 @@ void modifySplatColor(vec3 center, inout vec4 color) {
         };
 
         // ---- O bairro em 3D ----
+        let nav = null;
         let pedidoDo3D = null;
         const prepararO3D = () => {
             if (!pedidoDo3D) {
-                pedidoDo3D = Promise.all([lerRede(), whenReady('pc-app'), import('./navegacao-3d.mjs?v=1')])
+                pedidoDo3D = Promise.all([lerRede(), whenReady('pc-app'), import('./navegacao-3d.mjs?v=2')])
                     .then(([r, { app }, m]) => m.prepararNavegacao3D(app, {
                         rede: r,
                         camara: app.root.findByName('camera'),
                         diz,
                         folgas
-                    }));
+                    }))
+                    .then((n) => (nav = n));
                 pedidoDo3D.catch(() => { pedidoDo3D = null; });
             }
             return pedidoDo3D;
@@ -5706,6 +5827,15 @@ void modifySplatColor(vec3 center, inout vec4 color) {
             fecharPesquisa();
             abrirEl.focus();
         });
+        // O ícone da navegação, no cabeçalho, abre a pesquisa: é por ela que
+        // se começa. Na gaveta do telemóvel, a gaveta fecha-se primeiro.
+        document.getElementById('navegacao-btn').addEventListener('click', () => {
+            document.getElementById('header').classList.remove('gaveta-aberta');
+            const menu = document.getElementById('menu-btn');
+            if (menu) menu.setAttribute('aria-expanded', 'false');
+            if (aLupa.matches) abrirPesquisa();
+            else campo.focus();
+        });
 
         campo.addEventListener('focus', () => {
             lerRede().then(() => {
@@ -5758,11 +5888,47 @@ void modifySplatColor(vec3 center, inout vec4 color) {
         // ---- O percurso ----
         let escolhida = null;
         let percurso = null;
+        // Com a localização ligada: onde a pessoa está, de onde partiu o
+        // percurso que está desenhado, o pedido ao telemóvel, e se ele não
+        // conseguiu saber.
+        let aqui = null;
+        let aquiDoPercurso = null;
+        let vigia = null;
+        let semLocalizacao = false;
+        let tituloDeAntes = null;
 
         const escreverPartilhar = () => {
             partilharEl.textContent = podePartilhar ? diz('nav.partilharCasa', 'Partilhar a ligação desta casa') : diz('nav.copiarCasa', 'Copiar a ligação desta casa');
         };
+        const escreverLocalizacao = () => {
+            const ligada = vigia !== null;
+            localizacaoEl.setAttribute('aria-pressed', ligada ? 'true' : 'false');
+            localizacaoEl.lastElementChild.textContent = ligada ? diz('nav.desativarLocalizacao', 'Desativar localização') : diz('nav.ativarLocalizacao', 'Ativar localização');
+        };
+        const escreverNota = () => {
+            let nota = '';
+            if (vigia !== null && !aqui) nota = diz('nav.aProcurar', 'A procurar onde está…');
+            else if (semLocalizacao) nota = diz('nav.semGps', 'Não foi possível saber onde está. O percurso começa na entrada do bairro.');
+            else if (percurso && percurso.longe) nota = diz('nav.longe', 'Está longe do bairro: o percurso começa na entrada mais perto da casa.');
+            notaEl.textContent = nota;
+        };
+        // As ruas desenhadas sobre o voo de drone, e as estradas à volta,
+        // que vêm do OpenStreetMap: a licença dele pede que se diga.
+        const escreverCreditos = () => {
+            const partes = preencher(diz('nav.creditos3d', 'Ruas desenhadas sobre o voo de drone de 15 de fevereiro de 2026 · Estradas à volta: {osm}'), { osm: '\u0000' }).split('\u0000');
+            const osm = document.createElement('a');
+            osm.href = 'https://www.openstreetmap.org/copyright';
+            osm.target = '_blank';
+            osm.rel = 'noopener';
+            osm.textContent = '© OpenStreetMap';
+            creditosEl.replaceChildren(partes[0], osm, partes[1] || '');
+        };
+        // O título do separador: a casa, enquanto o percurso está à vista.
+        const escreverTitulo = () => {
+            if (escolhida) document.title = preencher(diz('nav.casa', 'Casa {numero}'), { numero: escolhida.n }) + ' — ' + diz('site.nome', 'Malha Viva');
+        };
         const escreverPercurso = () => {
+            escreverNota();
             if (!escolhida || !percurso) return;
             const n = escolhida.n;
             casaEl.textContent = preencher(diz('nav.casa', 'Casa {numero}'), { numero: n });
@@ -5770,6 +5936,11 @@ void modifySplatColor(vec3 center, inout vec4 color) {
             resumoEl.textContent = preencher(diz('nav.resumo', '{metros} m · cerca de {minutos} min a pé'), { metros, minutos });
             const unidade = diz('nav.unidade', 'minuto|minutos').split('|')[minutos === 1 ? 0 : 1];
             resumoLeitorEl.textContent = preencher(diz('nav.resumoLeitor', 'Percurso até à casa {numero}: {metros} metros, cerca de {minutos} {unidade} a pé.'), { numero: n, metros, minutos, unidade });
+            // Para quem vem de fora: como chegar de carro ou de transportes
+            // à entrada por onde o percurso começa.
+            const ent = percurso.entrada;
+            entradaEl.hidden = !ent;
+            if (ent) entradaEl.href = 'https://www.google.com/maps/dir/?api=1&destination=' + ent[0].toFixed(6) + ',' + ent[1].toFixed(6);
             passosEl.innerHTML = '';
             percurso.passos.forEach((p) => {
                 const li = document.createElement('li');
@@ -5779,7 +5950,7 @@ void modifySplatColor(vec3 center, inout vec4 color) {
                 b.type = 'button';
                 b.textContent = contas.textoDoPasso(p, n, diz);
                 b.addEventListener('click', () => {
-                    prepararO3D().then((nav) => nav.verPasso(p));
+                    if (nav) nav.verPasso(p);
                 });
                 li.appendChild(b);
                 passosEl.appendChild(li);
@@ -5787,9 +5958,36 @@ void modifySplatColor(vec3 center, inout vec4 color) {
             escreverPartilhar();
         };
 
+        // Desenha o percurso até à casa escolhida: de onde a pessoa está,
+        // com a localização ligada; da entrada do bairro, sem ela.
+        const tracar = (enquadrar) => {
+            if (!escolhida || !nav) return;
+            percurso = nav.mostrar(escolhida, { aqui, enquadrar });
+            aquiDoPercurso = aqui;
+            escreverPercurso();
+        };
+
+        // O endereço da página diz a casa (/?casa=D31): recarregar a página
+        // volta a abri-la, e é o mesmo que /casa/D31, o endereço que se
+        // partilha (ver src/index.ts).
+        const mudarEndereco = (casa) => {
+            if (!window.history || !history.replaceState) return;
+            const p = new URLSearchParams(location.search);
+            p.delete('casa');
+            p.delete('sitio');
+            if (casa) {
+                const sitios = rede.casas.get(casa.n);
+                p.set('casa', casa.n);
+                if (sitios.length > 1) p.set('sitio', String(sitios.indexOf(casa) + 1));
+            }
+            const q = p.toString();
+            history.replaceState(history.state, '', location.pathname + (q ? '?' + q : '') + location.hash);
+        };
+
         /**
-         * Escolhe uma casa: o painel abre com o percurso, e o bairro
-         * mostra-o, com a câmara a ir até onde se vê tudo.
+         * Escolhe uma casa: o painel abre com o percurso, os marcadores do
+         * bairro apagam-se devagar, e o bairro mostra o percurso, com a
+         * câmara a ir até onde se vê tudo.
          *
          * @param {object} casa - A casa (de rede.json).
          */
@@ -5801,8 +5999,10 @@ void modifySplatColor(vec3 center, inout vec4 color) {
                 fecharPesquisa();
                 campo.blur();
             }
-            const sitios = rede.casas.get(casa.n);
-            mapaEl.href = contas.enderecoDaCasa(casa.n, sitios.indexOf(casa) + 1, sitios.length);
+            mudarEndereco(casa);
+            document.body.classList.add('a-navegar');
+            if (tituloDeAntes === null) tituloDeAntes = document.title;
+            escreverTitulo();
             // O painel abre já (no telemóvel com as indicações dobradas,
             // para o bairro se ver); o percurso chega quando o bairro
             // estiver pronto para o desenhar.
@@ -5814,38 +6014,107 @@ void modifySplatColor(vec3 center, inout vec4 color) {
             passosEl.innerHTML = '';
             indicacoesEl.open = !noTelemovel.matches;
             painel.hidden = false;
-            let nav;
             try {
-                nav = await prepararO3D();
+                await prepararO3D();
             } catch (e) {
                 resumoEl.textContent = diz('nav.erro', 'Não foi possível carregar o mapa.');
                 return;
             }
             if (escolhida !== casa) return;
-            percurso = nav.mostrar(casa);
-            escreverPercurso();
+            if (aqui) nav.mostrarVoce(aqui.lat, aqui.lon);
+            tracar(true);
         };
 
+        // ---- A localização ----
+        //
+        // Pedida ao telemóvel (ou ao computador) só quando a pessoa carrega
+        // no botão, e só enquanto há um percurso à vista. Fica aqui: o sítio
+        // de quem vê não é mandado a lado nenhum.
+        const distanciaEntre = (a, b) => {
+            const pa = rede.plano([a.lat, a.lon]);
+            const pb = rede.plano([b.lat, b.lon]);
+            return Math.hypot(pa[0] - pb[0], pa[1] - pb[1]);
+        };
+        const ligarLocalizacao = () => {
+            if (vigia !== null) return;
+            semLocalizacao = false;
+            if (!navigator.geolocation) {
+                semLocalizacao = true;
+                escreverNota();
+                return;
+            }
+            vigia = navigator.geolocation.watchPosition((pos) => {
+                const primeira = !aqui;
+                aqui = { lat: pos.coords.latitude, lon: pos.coords.longitude };
+                semLocalizacao = false;
+                if (!nav) return;
+                nav.mostrarVoce(aqui.lat, aqui.lon);
+                // O percurso refaz-se ao ligar, e depois quando a pessoa
+                // andar; a câmara só vai até ele da primeira vez.
+                if (primeira || !aquiDoPercurso || distanciaEntre(aqui, aquiDoPercurso) > REFAZER_M) tracar(primeira);
+                else escreverNota();
+            }, (erro) => {
+                // A pessoa não deixou: a localização desliga-se.
+                if (erro && erro.code === erro.PERMISSION_DENIED) {
+                    desligarLocalizacao(false);
+                    semLocalizacao = true;
+                    tracar(false);
+                    return;
+                }
+                // Sem sinal, por agora: fica o último sítio, se havia, e
+                // continua-se à espera do próximo.
+                if (!aqui) {
+                    semLocalizacao = true;
+                    escreverNota();
+                }
+            }, { enableHighAccuracy: true, maximumAge: 5000, timeout: 30000 });
+            escreverLocalizacao();
+            escreverNota();
+        };
+        const desligarLocalizacao = (refazer) => {
+            if (vigia !== null) navigator.geolocation.clearWatch(vigia);
+            vigia = null;
+            aqui = null;
+            aquiDoPercurso = null;
+            if (nav) nav.tirarVoce();
+            escreverLocalizacao();
+            if (refazer) tracar(true);
+            else escreverNota();
+        };
+        localizacaoEl.addEventListener('click', () => {
+            if (vigia !== null) desligarLocalizacao(true);
+            else ligarLocalizacao();
+        });
+
         const tirarPercurso = () => {
+            desligarLocalizacao(false);
+            semLocalizacao = false;
             escolhida = null;
             percurso = null;
             painel.hidden = true;
             campo.value = '';
-            if (pedidoDo3D) pedidoDo3D.then((nav) => nav.limpar()).catch(() => {});
+            document.body.classList.remove('a-navegar');
+            mudarEndereco(null);
+            if (tituloDeAntes !== null) {
+                document.title = tituloDeAntes;
+                tituloDeAntes = null;
+            }
+            if (nav) nav.limpar();
         };
         document.getElementById('percurso-fechar').addEventListener('click', tirarPercurso);
         document.getElementById('percurso-ver').addEventListener('click', () => {
-            prepararO3D().then((nav) => nav.enquadrar());
+            if (nav) nav.enquadrar();
         });
 
-        // A ligação da casa (malhaviva.pt/casa/D31) abre o mapa da
-        // navegação com o percurso: é o que os moradores mandam a quem os
-        // vem visitar. No telemóvel abre a folha de partilhar do próprio
+        // A ligação da casa (malhaviva.pt/casa/D31) abre o bairro com o
+        // percurso até ela: é o que os moradores mandam a quem os vem
+        // visitar. No telemóvel abre a folha de partilhar do próprio
         // telemóvel; no computador, copia.
         const podePartilhar = !!navigator.share && window.matchMedia('(pointer: coarse)').matches;
         partilharEl.addEventListener('click', async () => {
             if (!escolhida) return;
-            const url = window.location.origin + mapaEl.getAttribute('href');
+            const sitios = rede.casas.get(escolhida.n);
+            const url = window.location.origin + contas.enderecoDaCasa(escolhida.n, sitios.indexOf(escolhida) + 1, sitios.length);
             const titulo = preencher(diz('nav.casa', 'Casa {numero}'), { numero: escolhida.n }) + ' — ' + diz('cab.bairro', 'Bairro de Penajóia');
             const texto = preencher(diz('nav.textoPartilha', 'Como chegar à casa {numero}, no Bairro de Penajóia:'), { numero: escolhida.n });
             if (podePartilhar) {
@@ -5861,18 +6130,65 @@ void modifySplatColor(vec3 center, inout vec4 color) {
             }
         });
 
+        // ---- O endereço de uma casa ----
+        //
+        // malhaviva.pt/casa/D31 vem dar aqui, como /?casa=D31 (ver
+        // src/index.ts), e a página abre com o percurso até essa casa, logo
+        // que o bairro aparecer.
+        if (/[?&]casa=/.test(location.search)) {
+            lerRede().then(() => {
+                const pedida = contas.casaPedida(location);
+                const casas = pedida && rede.casas.get(pedida.numero);
+                if (!casas) {
+                    // Um número que não há: fica escrito na pesquisa, que
+                    // diz que não há.
+                    campo.value = pedida ? pedida.numero : '';
+                    mudarEndereco(null);
+                    if (aLupa.matches) abrirPesquisa();
+                    else campo.focus();
+                    return;
+                }
+                const casa = casas[Math.min(casas.length, pedida.sitio) - 1];
+                prepararO3D().catch(() => {});
+                const ecraDeEspera = document.getElementById('loading-overlay');
+                const quandoAparecer = () => {
+                    if (ecraDeEspera && !ecraDeEspera.classList.contains('hidden')) return false;
+                    setTimeout(() => {
+                        if (!escolhida) escolher(casa);
+                    }, 600);
+                    return true;
+                };
+                if (!quandoAparecer()) {
+                    const observador = new MutationObserver(() => {
+                        if (quandoAparecer()) observador.disconnect();
+                    });
+                    observador.observe(ecraDeEspera, { attributes: true, attributeFilter: ['class'] });
+                }
+            }).catch(() => {});
+        }
+
         // ---- As línguas ----
         const escreverCampo = () => {
-            campo.placeholder = diz('pesq.exemplo', 'Procurar uma casa');
+            campo.placeholder = diz('pesq.exemplo', 'Pesquisar casa');
         };
         escreverCampo();
         escreverPartilhar();
+        escreverLocalizacao();
+        escreverCreditos();
         window.addEventListener('idiomamudou', () => {
             escreverCampo();
             escreverPartilhar();
+            escreverLocalizacao();
+            escreverCreditos();
             escreverPercurso();
+            // A tradução da página pôs o título de sempre, já na língua
+            // nova: é esse que volta quando o percurso sair.
+            if (escolhida) {
+                tituloDeAntes = document.title;
+                escreverTitulo();
+            }
             if (!listaEl.hidden) mostrarLista();
-            if (pedidoDo3D) pedidoDo3D.then((nav) => nav.mudarLingua()).catch(() => {});
+            if (nav) nav.mudarLingua();
         });
     </script>
 

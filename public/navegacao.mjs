@@ -11,14 +11,8 @@
  * estradas de fora do bairro, do OpenStreetMap.
  *
  * Aqui não se mexe na página: são só contas. Quem desenha é
- * navegacao.html.
+ * navegacao-3d.mjs, no bairro em 3D.
  */
-
-// Os quadrados do ortofotomapa (ver scripts/navegacao/mosaicos.py).
-export const ORTOFOTO = {
-    endereco: '/navegacao/ortofoto/{z}/{x}/{y}.webp',
-    indice: '/navegacao/ortofoto/indice.json'
-};
 
 export const REDE = '/navegacao/rede.json';
 
@@ -129,9 +123,9 @@ export function textoDoPasso(p, numero, diz) {
 }
 
 /**
- * A casa que um endereço pede: /casa/D31 (ou /casa/D31/2, o segundo sítio
- * de um número repetido no levantamento), ou, à moda antiga,
- * /navegacao?casa=D31&sitio=2.
+ * A casa que um endereço pede: /?casa=D31 (e /?casa=D31&sitio=2, o segundo
+ * sítio de um número repetido no levantamento), que é onde vai dar o
+ * endereço que se partilha, /casa/D31 (ver src/index.ts).
  *
  * @param {Location} onde - O endereço da página.
  * @returns {{numero: string, sitio: number}|null}
@@ -144,7 +138,10 @@ export function casaPedida(onde) {
     return { numero, sitio: Math.max(1, parseInt(m ? m[2] : p.get('sitio'), 10) || 1) };
 }
 
-/** O endereço de uma casa: /casa/D31, ou /casa/D31/2 para o segundo sítio. */
+/**
+ * O endereço de uma casa, o que se partilha: /casa/D31, ou /casa/D31/2 para
+ * o segundo sítio.
+ */
 export function enderecoDaCasa(numero, sitio, sitios) {
     return '/casa/' + encodeURIComponent(numero) + (sitios > 1 ? '/' + sitio : '');
 }

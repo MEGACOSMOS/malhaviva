@@ -1,7 +1,7 @@
 # As ligações das casas, para dar a quem lá mora.
 #
-# Cada casa tem o seu endereço — malhaviva.pt/casa/D31 — que abre a
-# navegação já com o percurso até ela (ver src/index.ts). Quem mora no
+# Cada casa tem o seu endereço — malhaviva.pt/casa/D31 — que abre o
+# bairro em 3D já com o percurso até ela (ver src/index.ts). Quem mora no
 # bairro pode mandá-lo a quem o vem visitar. Para lhes chegar às mãos, faz
 # aqui uma folha para imprimir, com um cartão por casa (o número, o código
 # QR e o endereço), e uma tabela com todos os endereços.

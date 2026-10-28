@@ -49,17 +49,14 @@
 /miniaturas/*
   Cache-Control: public, max-age=86400, stale-while-revalidate=604800
 
-# A navegação (ver navegacao.html). A página confirma-se sempre, como as
-# outras. Os quadrados do ortofotomapa são muitos e só mudam se o
-# ortofotomapa for refeito (ver scripts/navegacao/mosaicos.py); a rede e as
-# casas são um ficheiro só, que se confirma sempre antes de usar.
-/navegacao
-  Cache-Control: no-store
-
-/navegacao/ortofoto/*
-  Cache-Control: public, max-age=86400, stale-while-revalidate=604800
-
+# A navegação no bairro (ver navegacao-3d.mjs): a rede com as casas, e o
+# chão do bairro, refeitos juntos (ver scripts/navegacao/reconhecer.py).
+# Confirmam-se sempre antes de usar, para nunca se misturar um com o outro
+# de outra vez.
 /navegacao/rede.json
+  Cache-Control: no-cache
+
+/navegacao/chao.bin
   Cache-Control: no-cache
 
 /fonts/*

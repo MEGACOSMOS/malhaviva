@@ -1,37 +1,44 @@
 /**
- * A navegação no bairro em 3D: o percurso até uma casa desenhado por cima
- * do bairro de Gaussian splats, com o número da casa por cima do telhado e
- * a entrada marcada, e a câmara a ir até um sítio de onde se vê tudo.
+ * A navegação no bairro em 3D: o percurso até uma casa por cima do bairro
+ * de Gaussian splats — a linha pelas ruas, o número da casa por cima do
+ * telhado, a entrada (ou, com a localização ligada, quem está a ver)
+ * marcada — e a câmara a ir até um sítio de onde se vê tudo.
  *
- * O percurso é o mesmo da página da navegação (navegacao.html), com as
- * mesmas contas (navegacao.mjs): aqui só muda o desenho. As ruas e as casas
- * vêm em graus (latitude e longitude); a cena do site tem os seus eixos — x
- * para leste, z para sul, y para cima, em metros. A passagem é a do registo
- * do ortofotomapa, e o chão do bairro na cena (a altura de cada ponto) vem
- * em navegacao/chao.bin; os dois são feitos por
+ * As contas do percurso são as de navegacao.mjs; aqui só se desenha. As
+ * ruas e as casas vêm em graus (latitude e longitude); a cena do site tem
+ * os seus eixos — x para leste, z para sul, y para cima, em metros. A
+ * passagem é a do registo do ortofotomapa, e o chão do bairro na cena (a
+ * altura de cada ponto) vem em navegacao/chao.bin; os dois são feitos por
  * scripts/navegacao/reconhecer.py.
  *
- * A linha é desenhada como a pirâmide de onde se carrega (ver
- * camera-controls.mjs): na última camada, por cima de tudo. O bairro de
- * splats é pintado depois das coisas sólidas e tapava-a; assim vê-se
- * sempre, mesmo por baixo de um beiral.
+ * A linha é desenhada no ecrã, por cima do bairro e de tudo, com a mesma
+ * grossura perto e longe — a dos mapas de navegação: 6 pontos de branco
+ * num contorno escuro de 10. A cada imagem, os pontos do caminho são postos
+ * no sítio do ecrã onde caem, como os marcadores. (Pintada no chão do
+ * bairro, engrossava ao pé da câmara e sumia ao longe.)
  */
-import { Color, Entity, Mesh, MeshInstance, StandardMaterial, Vec3, BLEND_NORMAL, CULLFACE_NONE } from 'playcanvas';
-import { alisar, arredondar, preencher, METROS_POR_MINUTO } from './navegacao.mjs?v=6';
+import { Vec3 } from 'playcanvas';
+import { alisar, arredondar, preencher, METROS_POR_MINUTO } from './navegacao.mjs?v=7';
 
-// Quanto se alisa a linha, em metros (como na página da navegação).
+// Quanto se alisa a linha, em metros (as contas são as do traçado de
+// origem).
 const ALISAR_M = 4;
-// A linha fica um nada acima do chão, com esta largura (o branco) e este
-// contorno escuro à volta, em metros.
+// A linha passa um nada acima do chão.
 const ACIMA_DO_CHAO = 0.35;
-const LARGURA = 1.6;
-const LARGURA_DO_CONTORNO = 2.6;
-// Do fim da linha até à casa, a tracejado: um traço deste comprimento e
-// desta largura (mais o contorno) a cada PASSO_DOS_TRACOS metros.
-const TRACO = 1.1;
-const LARGURA_DO_TRACO = 0.6;
-const CONTORNO_DO_TRACO = 1.1;
-const PASSO_DOS_TRACOS = 2.6;
+// A linha no ecrã, em pontos: o branco e o contorno escuro à volta; e os
+// pontinhos até à casa (e até ao caminho, de onde se está), com o seu
+// contorno e o espaço entre eles.
+const LINHA = 6;
+const CONTORNO = 10;
+const PONTO = 4;
+const CONTORNO_DO_PONTO = 7;
+const ENTRE_PONTOS = 10;
+const BRANCO = '#ffffff';
+const ESCURO = '#05050a';
+const OPACIDADE_DO_ESCURO = 0.85;
+// O que fica a menos disto à frente da câmara, em metros, não se desenha:
+// está atrás dela, ou mesmo em cima.
+const PERTO_DE_MAIS = 0.5;
 // O número da casa fica esta altura acima do telhado; sem telhado medido,
 // esta acima do chão.
 const ACIMA_DO_TELHADO = 1.5;
@@ -53,8 +60,12 @@ const ACIMA_DO_MORRO = 1.5;
 // e com esta inclinação.
 const DE_PERTO = 38;
 const INCLINACAO_DE_PERTO = 42;
-const BRANCO = [255, 255, 255, 255];
-const ESCURO = [5, 5, 10, 255];
+// Onde está quem vê, com a localização ligada: a mais do que
+// LONGE_DO_BAIRRO_M do caminho mais perto, está fora do bairro, e o
+// percurso começa na entrada; mais perto, começa onde a pessoa está, a
+// pontinhos até ao caminho se ele ficar a mais de FORA_DA_REDE_M.
+const LONGE_DO_BAIRRO_M = 400;
+const FORA_DA_REDE_M = 12;
 
 const RAIO_DA_TERRA = 6378137;
 
@@ -69,7 +80,8 @@ const RAIO_DA_TERRA = 6378137;
  *     pontos).
  * @returns {Promise<object>} O que se lhe pode pedir: mostrar o percurso
  *     até uma casa (`mostrar`), tirá-lo (`limpar`), voltar a enquadrá-lo
- *     (`enquadrar`), ir ver um passo de perto (`verPasso`) e renomear os
+ *     (`enquadrar`), ir ver um passo de perto (`verPasso`), pôr e tirar o
+ *     sítio de quem vê (`mostrarVoce`, `tirarVoce`) e renomear os
  *     marcadores numa língua nova (`mudarLingua`).
  */
 export async function prepararNavegacao3D(app, opcoes) {
@@ -103,92 +115,15 @@ export async function prepararNavegacao3D(app, opcoes) {
             (h(j0 + 1, i0) * (1 - fi) + h(j0 + 1, i0 + 1) * fi) * fj;
     };
     const noChao = ([x, z], acima) => [x, chaoEm(x, z) + acima, z];
-
-    // ---- O desenho ----
-    //
-    // Uma fita deitada no chão, que segue os pontos: o contorno escuro
-    // primeiro e o branco por cima, com as pontas redondas. Tudo numa malha
-    // só, desenhada pela ordem dos triângulos.
-    const material = new StandardMaterial();
-    material.useLighting = false;
-    material.diffuse = new Color(0, 0, 0);
-    material.emissive = new Color(1, 1, 1);
-    material.emissiveVertexColor = true;
-    material.cull = CULLFACE_NONE;
-    material.depthTest = false;
-    material.depthWrite = false;
-    material.blendType = BLEND_NORMAL;
-    material.update();
-    const camada = app.scene.layers.getLayerByName('UI') || app.scene.layers.getLayerByName('World');
-    let entidade = null;
-
-    const fita = (pontos, largura, cor, posicoes, cores, indices) => {
-        const n = pontos.length;
-        if (n < 2) return;
-        const meia = largura / 2;
-        const base = posicoes.length / 3;
-        for (let i = 0; i < n; i++) {
-            const a = pontos[Math.max(0, i - 1)];
-            const b = pontos[Math.min(n - 1, i + 1)];
-            const L = Math.hypot(b[0] - a[0], b[2] - a[2]) || 1;
-            const dx = (b[0] - a[0]) / L;
-            const dz = (b[2] - a[2]) / L;
-            const p = pontos[i];
-            posicoes.push(p[0] - dz * meia, p[1], p[2] + dx * meia, p[0] + dz * meia, p[1], p[2] - dx * meia);
-            cores.push(...cor, ...cor);
+    // Uma linha a direito pelo chão, de metro a metro (para os pontinhos
+    // subirem e descerem com ele).
+    const peloChao = (de, ate) => {
+        const n = Math.max(1, Math.ceil(Math.hypot(ate[0] - de[0], ate[1] - de[1])));
+        const pontos = [];
+        for (let k = 0; k <= n; k++) {
+            pontos.push(noChao([de[0] + (ate[0] - de[0]) * k / n, de[1] + (ate[1] - de[1]) * k / n], ACIMA_DO_CHAO));
         }
-        for (let i = 0; i < n - 1; i++) {
-            const k = base + 2 * i;
-            indices.push(k, k + 1, k + 2, k + 1, k + 3, k + 2);
-        }
-        // As pontas: meio círculo em cada uma.
-        for (const [i, vizinho] of [[0, 1], [n - 1, n - 2]]) {
-            const p = pontos[i];
-            const q = pontos[vizinho];
-            const fora = Math.atan2(p[2] - q[2], p[0] - q[0]);
-            const centro = posicoes.length / 3;
-            posicoes.push(p[0], p[1], p[2]);
-            cores.push(...cor);
-            const passos = 8;
-            for (let k = 0; k <= passos; k++) {
-                const angulo = fora - Math.PI / 2 + Math.PI * k / passos;
-                posicoes.push(p[0] + Math.cos(angulo) * meia, p[1], p[2] + Math.sin(angulo) * meia);
-                cores.push(...cor);
-                if (k > 0) indices.push(centro, centro + k, centro + k + 1);
-            }
-        }
-    };
-
-    const tirarDesenho = () => {
-        if (!entidade) return;
-        const malha = entidade.render.meshInstances[0].mesh;
-        entidade.destroy();
-        malha.destroy();
-        entidade = null;
-    };
-    const desenhar = (linha, tracos) => {
-        tirarDesenho();
-        const posicoes = [];
-        const cores = [];
-        const indices = [];
-        for (const traco of tracos) fita(traco, CONTORNO_DO_TRACO, ESCURO, posicoes, cores, indices);
-        fita(linha, LARGURA_DO_CONTORNO, ESCURO, posicoes, cores, indices);
-        for (const traco of tracos) fita(traco, LARGURA_DO_TRACO, BRANCO, posicoes, cores, indices);
-        fita(linha, LARGURA, BRANCO, posicoes, cores, indices);
-        if (!indices.length) return;
-        const malha = new Mesh(app.graphicsDevice);
-        malha.setPositions(posicoes);
-        malha.setColors32(cores);
-        malha.setIndices(indices);
-        malha.update();
-        entidade = new Entity('percurso-ate-a-casa');
-        entidade.addComponent('render', {
-            meshInstances: [new MeshInstance(malha, material)],
-            layers: camada ? [camada.id] : undefined,
-            castShadows: false,
-            receiveShadows: false
-        });
-        app.root.addChild(entidade);
+        return pontos;
     };
 
     // ---- A câmara ----
@@ -231,7 +166,8 @@ export async function prepararNavegacao3D(app, opcoes) {
     };
 
     // A parte do ecrã que fica livre (sem o painel e o cabeçalho), de -1 a
-    // 1, com uma margem; e a abertura da câmara.
+    // 1, com uma margem para os nomes dos marcadores caberem; e a abertura
+    // da câmara.
     const zonaLivre = () => {
         const tela = app.graphicsDevice.canvas;
         const largura = Math.max(1, tela.clientWidth);
@@ -241,9 +177,9 @@ export async function prepararNavegacao3D(app, opcoes) {
         return {
             tanV,
             tanH: tanV * largura / altura,
-            xMin: -1 + 2 * (f.esquerda + 28) / largura,
-            xMax: 1 - 2 * (f.direita + 28) / largura,
-            yMin: -1 + 2 * (f.baixo + 28) / altura,
+            xMin: -1 + 2 * (f.esquerda + 44) / largura,
+            xMax: 1 - 2 * (f.direita + 44) / largura,
+            yMin: -1 + 2 * (f.baixo + 32) / altura,
             yMax: 1 - 2 * (f.cima + 40) / altura
         };
     };
@@ -414,8 +350,9 @@ export async function prepararNavegacao3D(app, opcoes) {
     };
 
     /**
-     * Quando nem um pedaço do fim do percurso cabe: do mais alto que a
-     * câmara pode ir, com a casa no meio da zona livre do ecrã.
+     * Quando nem um pedaço do percurso cabe: do mais alto que a câmara pode
+     * ir, com um sítio (a casa, ou quem está a ver) no meio da zona livre do
+     * ecrã.
      */
     const cameraDeRecurso = (alvo, u) => {
         const z = zonaLivre();
@@ -432,19 +369,21 @@ export async function prepararNavegacao3D(app, opcoes) {
     let atual = null;
 
     /**
-     * Leva a câmara até onde se vê o percurso todo, a olhar da entrada para
-     * a casa — como quem vai entrar no bairro. Num ecrã pequeno, um
-     * percurso muito comprido pode não caber: mostra-se então o fim dele, o
-     * mais comprido que couber, com a casa (a entrada é numa estrada, e lá
-     * chega-se pelo mapa da navegação).
+     * Leva a câmara até onde se vê o percurso todo, a olhar do princípio
+     * para a casa — como quem vai entrar no bairro. Num ecrã pequeno, um
+     * percurso muito comprido pode não caber: mostra-se então o pedaço mais
+     * comprido que couber. Da entrada, é o fim, com a casa (a entrada é numa
+     * estrada, e lá chega-se com o "Como chegar à entrada"); de onde a
+     * pessoa está, com a localização ligada, é o princípio, com ela — é por
+     * aí que ela vai começar a andar.
      */
     const enquadrar = () => {
         const c = controlos();
         if (!atual || !c || typeof c.viajar !== 'function') return;
-        const { linha, acum, alvo } = atual;
-        const direcao = (de) => {
-            let dx = alvo[0] - de[0];
-            let dz = alvo[2] - de[2];
+        const { linha, acum, alvo, aqui, daqui } = atual;
+        const direcao = (de, para) => {
+            let dx = para[0] - de[0];
+            let dz = para[2] - de[2];
             if (Math.hypot(dx, dz) < 1) {
                 dx = camara.forward.x;
                 dz = camara.forward.z;
@@ -452,15 +391,30 @@ export async function prepararNavegacao3D(app, opcoes) {
             const n = Math.hypot(dx, dz) || 1;
             return [dx / n, dz / n];
         };
-        let vista = cameraQueMostra(linha.concat([alvo]), direcao(linha[0]));
+        // De onde a pessoa está, quando é daí que o percurso começa.
+        const comeco = aqui ? [aqui].concat(linha) : linha;
+        let vista = cameraQueMostra(comeco.concat([alvo]), direcao(comeco[0], alvo));
         const total = acum[acum.length - 1];
         for (let parte = 0.15; !vista && parte < 0.95; parte += 0.15) {
-            const k = acum.findIndex((d) => d >= total * parte);
-            if (k < 0 || k >= linha.length - 1) break;
-            vista = cameraQueMostra(linha.slice(k).concat([alvo]), direcao(linha[k]));
-            if (vista) vista.desde = k;
+            if (daqui) {
+                const k = acum.findIndex((d) => d >= total * (1 - parte));
+                if (k < 2) break;
+                const pedaco = comeco.slice(0, k + 1 + comeco.length - linha.length);
+                vista = cameraQueMostra(pedaco, direcao(pedaco[0], pedaco[pedaco.length - 1]));
+                if (vista) vista.ate = k;
+            } else {
+                const k = acum.findIndex((d) => d >= total * parte);
+                if (k < 0 || k >= linha.length - 1) break;
+                vista = cameraQueMostra(linha.slice(k).concat([alvo]), direcao(linha[k], alvo));
+                if (vista) vista.desde = k;
+            }
         }
-        if (!vista) vista = cameraDeRecurso(alvo, direcao(linha[Math.max(0, linha.length - 8)]));
+        if (!vista) {
+            const onde = daqui ? comeco[0] : alvo;
+            const de = daqui ? comeco[0] : linha[Math.max(0, linha.length - 8)];
+            const para = daqui ? linha[Math.min(linha.length - 1, 8)] : alvo;
+            vista = cameraDeRecurso(onde, direcao(de, para));
+        }
         atual.vista = vista;
         c.viajar(new Vec3(vista.posicao[0], vista.posicao[1], vista.posicao[2]), vista.inclinacao, vista.rumo, DURACAO_DA_VIAGEM);
     };
@@ -544,18 +498,104 @@ export async function prepararNavegacao3D(app, opcoes) {
         verDePerto(ponto, u);
     };
 
-    // ---- Os marcadores: o número da casa e a entrada ----
+    // ---- O desenho: a linha e os marcadores ----
     //
-    // Como os dos testemunhos (ver annotations.mjs): elementos da página,
-    // postos a cada imagem no sítio do ecrã onde cai o ponto do bairro.
-    // Carregar num leva a câmara a vê-lo de perto. Para quem não vê o ecrã
-    // têm um nome que diz o que são, são botões na fila do Tab, e saem dela
-    // (aria-hidden, tabindex -1) quando ficam fora da vista — as regras de
-    // AGENTS.md para tudo o que se põe no mapa.
-    const camadaDosMarcadores = document.createElement('div');
-    camadaDosMarcadores.id = 'percurso-3d';
-    document.body.appendChild(camadaDosMarcadores);
-    const marcadores = [];
+    // Tudo numa camada da página por cima do bairro: a linha num desenho
+    // (svg) do tamanho do ecrã, e os marcadores — o número da casa, a
+    // entrada, quem está a ver — como os dos testemunhos (ver
+    // annotations.mjs). Carregar num marcador leva a câmara a vê-lo de
+    // perto. Para quem não vê o ecrã têm um nome que diz o que são, são
+    // botões na fila do Tab, e saem dela (aria-hidden, tabindex -1) quando
+    // ficam fora da vista — as regras de AGENTS.md para tudo o que se põe no
+    // mapa.
+    const camada = document.createElement('div');
+    camada.id = 'percurso-3d';
+    document.body.appendChild(camada);
+    const SVG = 'http://www.w3.org/2000/svg';
+    const desenho = document.createElementNS(SVG, 'svg');
+    desenho.setAttribute('class', 'percurso-traco');
+    desenho.setAttribute('aria-hidden', 'true');
+    camada.appendChild(desenho);
+    const traco = (largura, cor, opacidade, pontinhos) => {
+        const p = document.createElementNS(SVG, 'path');
+        p.setAttribute('fill', 'none');
+        p.setAttribute('stroke', cor);
+        p.setAttribute('stroke-width', largura);
+        p.setAttribute('stroke-opacity', opacidade);
+        p.setAttribute('stroke-linecap', 'round');
+        p.setAttribute('stroke-linejoin', 'round');
+        if (pontinhos) p.setAttribute('stroke-dasharray', '0.1 ' + ENTRE_PONTOS);
+        desenho.appendChild(p);
+        return p;
+    };
+    // Os contornos primeiro, por baixo dos dois brancos.
+    const tracos = {
+        linha: [traco(CONTORNO, ESCURO, OPACIDADE_DO_ESCURO, false), traco(LINHA, BRANCO, 1, false)],
+        pontinhos: [traco(CONTORNO_DO_PONTO, ESCURO, OPACIDADE_DO_ESCURO, true), traco(PONTO, BRANCO, 1, true)]
+    };
+    desenho.insertBefore(tracos.pontinhos[0], tracos.linha[1]);
+    const escritos = { linha: '', pontinhos: '' };
+    const escrever = (qual, d) => {
+        if (escritos[qual] === d) return;
+        escritos[qual] = d;
+        for (const p of tracos[qual]) p.setAttribute('d', d);
+    };
+
+    // Do bairro para o ecrã, com a vista e a perspetiva que a câmara tem
+    // nesta imagem (o motor refá-las antes de cada uma).
+    const ecra = { largura: 1, altura: 1, vista: null, perspetiva: null };
+    const prepararEcra = () => {
+        const tela = app.graphicsDevice.canvas;
+        ecra.largura = tela.clientWidth;
+        ecra.altura = tela.clientHeight;
+        ecra.vista = camara.camera.viewMatrix.data;
+        ecra.perspetiva = camara.camera.projectionMatrix.data;
+    };
+    // Um ponto do bairro visto da câmara: [x, y, quanto está à frente dela].
+    const naCamara = (q) => {
+        const v = ecra.vista;
+        return [
+            v[0] * q[0] + v[4] * q[1] + v[8] * q[2] + v[12],
+            v[1] * q[0] + v[5] * q[1] + v[9] * q[2] + v[13],
+            -(v[2] * q[0] + v[6] * q[1] + v[10] * q[2] + v[14])
+        ];
+    };
+    // Um ponto à frente da câmara, no ecrã, em pontos.
+    const noEcra = (c) => {
+        const p = ecra.perspetiva;
+        const z = -c[2];
+        const x = p[0] * c[0] + p[4] * c[1] + p[8] * z + p[12];
+        const y = p[1] * c[0] + p[5] * c[1] + p[9] * z + p[13];
+        const w = p[3] * c[0] + p[7] * c[1] + p[11] * z + p[15];
+        return [(x / w + 1) * 0.5 * ecra.largura, (1 - y / w) * 0.5 * ecra.altura];
+    };
+    // Uma linha do bairro como caminho no ecrã (o "d" de um path), cortada
+    // onde passa para trás da câmara.
+    const caminhoNoEcra = (pontos) => {
+        let d = '';
+        let ultimo = null;
+        const por = (c, novo) => {
+            const s = noEcra(c);
+            // Pontos a menos de um ponto do anterior não se notam.
+            if (!novo && Math.abs(s[0] - ultimo[0]) < 1 && Math.abs(s[1] - ultimo[1]) < 1) return;
+            d += (novo ? 'M' : 'L') + s[0].toFixed(1) + ' ' + s[1].toFixed(1);
+            ultimo = s;
+        };
+        let antes = null;
+        for (const q of pontos) {
+            const c = naCamara(q);
+            const aFrente = c[2] >= PERTO_DE_MAIS;
+            if (antes && (antes[2] >= PERTO_DE_MAIS) !== aFrente) {
+                // Onde a linha atravessa o plano à frente da câmara.
+                const k = (antes[2] - PERTO_DE_MAIS) / (antes[2] - c[2]);
+                por([antes[0] + (c[0] - antes[0]) * k, antes[1] + (c[1] - antes[1]) * k, PERTO_DE_MAIS], aFrente);
+            }
+            if (aFrente) por(c, !antes);
+            antes = c;
+        }
+        return d;
+    };
+
     const fazerMarcador = (classe, texto, ponto, acao) => {
         const el = document.createElement('div');
         el.className = classe + ' fora';
@@ -573,42 +613,43 @@ export async function prepararNavegacao3D(app, opcoes) {
                 acao();
             }
         });
-        camadaDosMarcadores.appendChild(el);
-        const marcador = { el, rotulo, ponto: new Vec3(ponto[0], ponto[1], ponto[2]), visto: false };
-        marcadores.push(marcador);
-        return marcador;
+        camada.appendChild(el);
+        return { el, rotulo, ponto, visto: false };
     };
-    const nomearMarcadores = () => {
-        if (!atual) return;
-        const numero = atual.casa.n;
-        const [entrada, destino] = marcadores;
-        if (entrada) {
-            entrada.el.setAttribute('aria-label', preencher(diz('nav.marcadorEntrada', 'Entrada do bairro, onde começa o percurso até à casa {numero}'), { numero }));
-            entrada.rotulo.textContent = diz('nav.entrada', 'Entrada');
+    // Os do percurso (a entrada, se ele começar nela, e a casa), e o de
+    // quem está a ver, que fica enquanto a localização estiver ligada.
+    let marcadores = { entrada: null, casa: null };
+    let voce = null;
+    const nomear = () => {
+        const numero = atual ? atual.casa.n : '';
+        if (marcadores.entrada) {
+            marcadores.entrada.el.setAttribute('aria-label', preencher(diz('nav.marcadorEntrada', 'Entrada do bairro, onde começa o percurso até à casa {numero}'), { numero }));
+            marcadores.entrada.rotulo.textContent = diz('nav.entrada', 'Entrada');
         }
-        if (destino) {
-            destino.el.setAttribute('aria-label', preencher(diz('nav.marcadorCasa', 'Casa {numero}, onde acaba o percurso'), { numero }));
+        if (marcadores.casa) {
+            marcadores.casa.el.setAttribute('aria-label', preencher(diz('nav.marcadorCasa', 'Casa {numero}, onde acaba o percurso'), { numero }));
+        }
+        if (voce) {
+            voce.el.setAttribute('aria-label', diz('nav.marcadorVoce', 'Está aqui: o sítio onde está agora'));
+            voce.rotulo.textContent = diz('nav.voce', 'Está aqui');
         }
     };
     const tirarMarcadores = () => {
-        for (const m of marcadores.splice(0)) m.el.remove();
+        for (const m of Object.values(marcadores)) if (m) m.el.remove();
+        marcadores = { entrada: null, casa: null };
     };
-    const noEcra = new Vec3();
-    const direcao = new Vec3();
-    // Antes de cada imagem ser desenhada, com a câmara já no sítio dela (a
-    // vista da câmara só é refeita nessa altura).
+
+    // Antes de cada imagem ser desenhada, com a câmara já no sítio dela.
     app.on('prerender', () => {
-        if (!marcadores.length) return;
-        const tela = app.graphicsDevice.canvas;
-        const largura = tela.clientWidth;
-        const altura = tela.clientHeight;
-        const posicao = camara.getPosition();
-        const frente = camara.forward;
-        for (const m of marcadores) {
-            camara.camera.worldToScreen(m.ponto, noEcra);
-            direcao.sub2(m.ponto, posicao);
-            const ve = frente.dot(direcao) > 0.5 &&
-                noEcra.x > -40 && noEcra.x < largura + 40 && noEcra.y > -40 && noEcra.y < altura + 40;
+        const todos = [marcadores.entrada, marcadores.casa, voce].filter(Boolean);
+        if (!atual && !todos.length) return;
+        prepararEcra();
+        escrever('linha', atual ? caminhoNoEcra(atual.linha) : '');
+        escrever('pontinhos', atual ? atual.pontinhos.map(caminhoNoEcra).join('') : '');
+        for (const m of todos) {
+            const c = naCamara(m.ponto);
+            const s = c[2] > 1 ? noEcra(c) : null;
+            const ve = !!s && s[0] > -40 && s[0] < ecra.largura + 40 && s[1] > -40 && s[1] < ecra.altura + 40;
             if (ve !== m.visto) {
                 m.visto = ve;
                 m.el.classList.toggle('fora', !ve);
@@ -623,34 +664,86 @@ export async function prepararNavegacao3D(app, opcoes) {
                     if (m.el === document.activeElement) m.el.blur();
                 }
             }
-            if (ve) m.el.style.transform = 'translate3d(' + noEcra.x.toFixed(1) + 'px, ' + noEcra.y.toFixed(1) + 'px, 0)';
+            if (ve) m.el.style.transform = 'translate3d(' + s[0].toFixed(1) + 'px, ' + s[1].toFixed(1) + 'px, 0)';
         }
     });
 
+    // Para onde a câmara está a olhar, no chão.
+    const frenteDaCamara = () => {
+        const f = camara.forward;
+        const n = Math.hypot(f.x, f.z) || 1;
+        return [f.x / n, f.z / n];
+    };
+
     /**
-     * Mostra o percurso até uma casa, da entrada do bairro mais perto dela:
-     * a linha, os marcadores, e a câmara a ir até onde se vê tudo.
+     * Põe no bairro o sítio de quem está a ver (com a localização ligada),
+     * se for no bairro ou perto dele.
+     *
+     * @param {number} lat
+     * @param {number} lon
+     * @returns {boolean} Se ficou no bairro (se não, não se mostra).
+     */
+    const mostrarVoce = (lat, lon) => {
+        const perto = rede.maisPerto(lat, lon);
+        if (!perto || perto.distancia > LONGE_DO_BAIRRO_M) {
+            tirarVoce();
+            return false;
+        }
+        const ponto = noChao(naCena([lat, lon]), 1);
+        if (voce) voce.ponto = ponto;
+        else voce = fazerMarcador('voce-3d', '', ponto, () => verDePerto(voce.ponto, frenteDaCamara()));
+        nomear();
+        return true;
+    };
+    const tirarVoce = () => {
+        if (voce) voce.el.remove();
+        voce = null;
+    };
+
+    /**
+     * Mostra o percurso até uma casa: de onde quem vê está, se se souber e
+     * for perto; senão, da entrada do bairro mais perto dela. A linha, os
+     * marcadores, e a câmara a ir até onde se vê tudo.
      *
      * @param {object} casa - A casa (de rede.json).
+     * @param {object} [como] - `aqui` ({lat, lon}: onde a pessoa está) e
+     *     `enquadrar` (se a câmara vai até ao percurso; sim, se não se
+     *     disser).
      * @returns {object|null} O percurso: `passos` (as indicações, ver
-     *     Rede.indicacoes, cada uma com `desde`), `metros`, `minutos` e
-     *     `entrada` (o sítio da entrada, [lat, lon]).
+     *     Rede.indicacoes, cada uma com `desde`), `metros`, `minutos`,
+     *     `entrada` (o sítio da entrada, [lat, lon], se começar nela) e
+     *     `longe` (se a pessoa está longe de mais para começar onde está).
      */
-    const mostrar = (casa) => {
-        const ent = rede.entradaPara(casa.no);
-        const origem = { no: ent ? ent.no : casa.no };
+    const mostrar = (casa, { aqui = null, enquadrar: mover = true } = {}) => {
+        let origem = null;
+        let inicio = null;
+        let ligacao = null;
+        let longe = false;
+        if (aqui) {
+            const perto = rede.maisPerto(aqui.lat, aqui.lon);
+            if (perto && perto.distancia <= LONGE_DO_BAIRRO_M) {
+                origem = { troco: perto.troco, ao: perto.ao };
+                inicio = { tipo: 'aqui' };
+                if (perto.distancia > FORA_DA_REDE_M) ligacao = [naCena([aqui.lat, aqui.lon]), naCena(perto.ponto)];
+            } else {
+                longe = true;
+            }
+        }
+        if (!origem) {
+            const ent = rede.entradaPara(casa.no);
+            origem = { no: ent ? ent.no : casa.no };
+            inicio = { tipo: 'entrada', rua: ent ? ent.rua : '' };
+        }
         const perc = rede.caminho(origem, casa.no);
         if (!perc) return null;
-        const passos = rede.indicacoes(perc, casa, { tipo: 'entrada', rua: ent ? ent.rua : '' });
-        // Onde começa cada passo, em metros desde a entrada.
+        const passos = rede.indicacoes(perc, casa, inicio);
+        // Onde começa cada passo, em metros desde o princípio.
         let andado = 0;
         for (const p of passos) {
             p.desde = andado;
             if (p.acao !== 'inicio' && p.acao !== 'chegada') andado += p.metros || 0;
         }
 
-        // A linha, alisada como na página da navegação; as contas são as
-        // do traçado de origem.
         const linha = alisar(perc.pontos.map(naCena), ALISAR_M).map((q) => noChao(q, ACIMA_DO_CHAO));
         const acum = [0];
         for (let i = 1; i < linha.length; i++) {
@@ -659,17 +752,12 @@ export async function prepararNavegacao3D(app, opcoes) {
         const [cx, cz] = naCena(casa.ponto);
         const telhado = casa.alto != null ? casa.alto + ACIMA_DO_TELHADO : chaoEm(cx, cz) + ACIMA_DO_CHAO_SEM_TELHADO;
         const alvo = [cx, telhado, cz];
-        // Do fim da linha ao meio do telhado, a tracejado (só se a casa
-        // não ficar mesmo ao pé).
-        const tracos = [];
+        // A pontinhos: do fim da linha ao meio da casa (se ela não ficar
+        // mesmo ao pé), e de onde a pessoa está até ao caminho.
         const fim = linha[linha.length - 1];
-        const falta = Math.hypot(cx - fim[0], cz - fim[2]);
-        if (falta > 3) {
-            for (let d = 1.6; d + TRACO <= falta - 1; d += PASSO_DOS_TRACOS) {
-                tracos.push([d, d + TRACO].map((k) => noChao([fim[0] + (cx - fim[0]) * k / falta, fim[2] + (cz - fim[2]) * k / falta], ACIMA_DO_CHAO)));
-            }
-        }
-        desenhar(linha, tracos);
+        const pontinhos = [];
+        if (Math.hypot(cx - fim[0], cz - fim[2]) > 3) pontinhos.push(peloChao([fim[0], fim[2]], [cx, cz]));
+        if (ligacao) pontinhos.push(peloChao(ligacao[0], ligacao[1]));
 
         const porta = naCena(casa.porta);
         const total = perc.comprimento + Math.hypot(porta[0] - fim[0], porta[1] - fim[2]);
@@ -679,27 +767,34 @@ export async function prepararNavegacao3D(app, opcoes) {
             linha,
             acum,
             alvo,
+            pontinhos,
             comprimento: perc.comprimento,
             metros: arredondar(total),
             minutos: Math.max(1, Math.round(total / METROS_POR_MINUTO)),
-            entrada: perc.pontos[0]
+            entrada: inicio.tipo === 'entrada' ? perc.pontos[0] : null,
+            daqui: inicio.tipo === 'aqui',
+            longe,
+            // De onde a pessoa está, quando o percurso começa aí: entra no
+            // enquadramento.
+            aqui: ligacao ? noChao(ligacao[0], 1) : null
         };
 
         tirarMarcadores();
-        fazerMarcador('inicio-3d', '', linha[0], () => verPasso(passos[0]));
-        fazerMarcador('destino-3d', casa.n, alvo, verCasa);
-        nomearMarcadores();
+        if (inicio.tipo === 'entrada') marcadores.entrada = fazerMarcador('inicio-3d', '', linha[0], () => verPasso(passos[0]));
+        marcadores.casa = fazerMarcador('destino-3d', casa.n, alvo, verCasa);
+        nomear();
 
-        enquadrar();
+        if (mover) enquadrar();
         return atual;
     };
 
-    /** Tira o percurso e os marcadores. */
+    /** Tira o percurso e os seus marcadores. */
     const limpar = () => {
-        tirarDesenho();
         tirarMarcadores();
         atual = null;
+        escrever('linha', '');
+        escrever('pontinhos', '');
     };
 
-    return { mostrar, limpar, enquadrar, verPasso, mudarLingua: nomearMarcadores, atual: () => atual };
+    return { mostrar, limpar, enquadrar, verPasso, mostrarVoce, tirarVoce, mudarLingua: nomear, atual: () => atual };
 }

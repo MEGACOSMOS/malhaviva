@@ -6,10 +6,11 @@
  * `assets` em `wrangler.jsonc`). A este código só chegam duas coisas:
  *
  *  - os pedidos das páginas pesadas do site (`run_worker_first`, em
- *    `wrangler.jsonc`), para se poder recusar o pré-carregamento (abaixo);
+ *    `wrangler.jsonc`), para se poder recusar o pré-carregamento (abaixo),
+ *    e para pôr o nome de uma casa no bairro aberto com ela (/?casa=D31);
  *  - um endereço que não corresponda a nenhum ficheiro: o de uma casa
- *    (/casa/D31, ver `casaDoEndereco`) abre a navegação até ela; os outros
- *    têm sempre a resposta de que não existem.
+ *    (/casa/D31, ver `casaDoEndereco`) vai dar ao bairro com o percurso até
+ *    ela; os outros têm sempre a resposta de que não existem.
  *
  * Porquê recusar o pré-carregamento. Quando alguém começa a escrever
  * "malhaviva.pt" na barra do Chrome, o Chrome adivinha para onde a pessoa
@@ -32,12 +33,21 @@ export function eUmPreCarregamento(pedido: Request): boolean {
 
 /**
  * O endereço de uma casa: malhaviva.pt/casa/D31 — e, para um número que o
- * levantamento tem em dois sítios, malhaviva.pt/casa/D31/2. Não é um
- * ficheiro: é a página da navegação (public/navegacao.html), que lê o
- * número do próprio endereço e abre já com o percurso até essa casa. É o
- * endereço que quem mora no bairro manda a quem o vem visitar.
+ * levantamento tem em dois sítios, malhaviva.pt/casa/D31/2. É o endereço
+ * que quem mora no bairro manda a quem o vem visitar, e o dos códigos QR
+ * das casas (scripts/navegacao/ligacoes.py). Não é um ficheiro: vai dar ao
+ * bairro com a casa no endereço (/?casa=D31), que abre já com o percurso
+ * até ela (ver a pesquisa das casas em public/index.html).
+ *
+ * Porquê mandar para lá em vez de mostrar o bairro neste endereço: a
+ * página do bairro vai buscar o que precisa (o motor, o bairro, as
+ * miniaturas) por caminhos que contam a partir do sítio onde ela está —
+ * em /casa/ não os encontrava.
  */
 const CASA = /^\/casa\/([A-Za-z0-9.]{1,12})(?:\/([1-9]))?\/?$/;
+
+/** O que pode ser o número de uma casa. */
+const NUMERO = /^[A-Za-z0-9.]{1,12}$/;
 
 /** A casa de um endereço /casa/…, ou nada. */
 export function casaDoEndereco(caminho: string): { numero: string; sitio: number } | null {
@@ -45,21 +55,49 @@ export function casaDoEndereco(caminho: string): { numero: string; sitio: number
 	return m ? { numero: m[1].toUpperCase(), sitio: m[2] ? Number(m[2]) : 1 } : null;
 }
 
+/** A casa que o bairro tem no endereço (/?casa=D31&sitio=2), ou nada. */
+export function casaNoBairro(endereco: URL): { numero: string; sitio: number } | null {
+	const numero = endereco.searchParams.get('casa') ?? '';
+	if (!NUMERO.test(numero)) return null;
+	const sitio = Number(endereco.searchParams.get('sitio'));
+	return { numero: numero.toUpperCase(), sitio: Number.isInteger(sitio) && sitio >= 1 && sitio <= 9 ? sitio : 1 };
+}
+
+/** O bairro, aberto com uma casa. */
+function bairroCom(casa: { numero: string; sitio: number }, base: URL): string {
+	const destino = new URL('/', base);
+	destino.searchParams.set('casa', casa.numero);
+	if (casa.sitio > 1) destino.searchParams.set('sitio', String(casa.sitio));
+	return destino.toString();
+}
+
 /**
- * A página da navegação com o nome da casa no título e na descrição: é o
- * que as aplicações de mensagens mostram na pré-visualização do endereço
- * ("Casa D31 — Bairro de Penajóia").
+ * O bairro com o nome da casa no título, na descrição e na imagem do
+ * endereço: é o que as aplicações de mensagens mostram na pré-visualização
+ * ("Casa D31 — Bairro de Penajóia"). O número só tem letras, algarismos e
+ * pontos (ver `NUMERO`): pode ir para dentro da página tal como está.
  */
-function paginaDaCasa(pagina: Response, numero: string, endereco: URL): Response {
-	const titulo = `Casa ${numero} — Bairro de Penajóia`;
-	const descricao = `Como chegar à casa ${numero} no Bairro de Penajóia: o caminho no mapa, passo a passo.`;
-	const conteudo = (valor: string) => ({ element(e: Element) { e.setAttribute('content', valor); } });
+function paginaDaCasa(pagina: Response, casa: { numero: string; sitio: number }): Response {
+	const titulo = `Casa ${casa.numero} — Bairro de Penajóia`;
+	const descricao = `Como chegar à casa ${casa.numero} no Bairro de Penajóia: o caminho no bairro, passo a passo.`;
+	const endereco = `https://malhaviva.pt/casa/${casa.numero}${casa.sitio > 1 ? '/' + casa.sitio : ''}`;
+	const propriedades: [string, string][] = [
+		['og:type', 'website'],
+		['og:site_name', 'Malha Viva'],
+		['og:locale', 'pt_PT'],
+		['og:title', titulo],
+		['og:description', descricao],
+		['og:url', endereco],
+		['og:image', 'https://malhaviva.pt/navegacao/partilha.jpg'],
+		['og:image:width', '1200'],
+		['og:image:height', '630'],
+	];
+	const etiquetas = propriedades.map(([p, v]) => `<meta property="${p}" content="${v}">`).join('') +
+		'<meta name="twitter:card" content="summary_large_image">';
 	return new HTMLRewriter()
 		.on('title', { element(e) { e.setInnerContent(titulo); } })
-		.on('meta[name="description"]', conteudo(descricao))
-		.on('meta[property="og:title"]', conteudo(titulo))
-		.on('meta[property="og:description"]', conteudo(descricao))
-		.on('meta[property="og:url"]', conteudo('https://malhaviva.pt' + endereco.pathname))
+		.on('meta[name="description"]', { element(e) { e.setAttribute('content', descricao); } })
+		.on('head', { element(e) { e.append(etiquetas, { html: true }); } })
 		.transform(pagina);
 }
 
@@ -73,9 +111,19 @@ export default {
 		}
 		const endereco = new URL(pedido.url);
 		const casa = casaDoEndereco(endereco.pathname);
-		if (casa) {
-			const pagina = await env.ASSETS.fetch(new Request(new URL('/navegacao', endereco), { headers: pedido.headers }));
-			return pagina.ok ? paginaDaCasa(pagina, casa.numero, endereco) : pagina;
+		if (casa) return Response.redirect(bairroCom(casa, endereco), 302);
+		// A navegação já foi uma página à parte, com o mapa visto de cima:
+		// os endereços dela vão dar ao bairro (com a casa, se tinham uma).
+		if (endereco.pathname === '/navegacao' || endereco.pathname === '/navegacao.html') {
+			const antiga = casaNoBairro(endereco);
+			return Response.redirect(antiga ? bairroCom(antiga, endereco) : new URL('/', endereco).toString(), 302);
+		}
+		if (endereco.pathname === '/') {
+			const pedida = casaNoBairro(endereco);
+			if (pedida) {
+				const pagina = await env.ASSETS.fetch(pedido);
+				return pagina.ok ? paginaDaCasa(pagina, pedida) : pagina;
+			}
 		}
 		// Tudo o resto é do site: ficheiros, ou a resposta de que não existe.
 		return env.ASSETS.fetch(pedido);

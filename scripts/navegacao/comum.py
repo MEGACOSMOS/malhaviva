@@ -7,8 +7,11 @@
 #     python -P scripts/navegacao/alturas.py      # as alturas, do modelo 3D
 #     python -P scripts/navegacao/ruas.py         # as ruas desenhadas, do Illustrator
 #     python -P scripts/navegacao/estradas.py     # as estradas à volta, do OpenStreetMap
-#     python -P scripts/navegacao/reconhecer.py   # a rede e as casas
-#     python -P scripts/navegacao/mosaicos.py     # o ortofotomapa para o mapa
+#     python -P scripts/navegacao/reconhecer.py   # a rede, as casas e o chão
+#
+# (Houve também um mapa visto de cima, com o ortofotomapa em quadrados:
+# saiu do site quando a navegação passou para o bairro em 3D. Os quadrados e
+# o passo que os fazia, mosaicos.py, ficam no histórico do git.)
 #
 # O "-P", e não o "-I": com o "-I" o Python esquece as bibliotecas
 # instaladas para o utilizador (numpy, rasterio, numba...).
