@@ -1187,10 +1187,16 @@
         if (onde === document) {
             document.documentElement.setAttribute('lang', atual === 'kea' ? 'kea' : atual);
             // O título do separador: o nome da página e o do site, os dois
-            // na língua de quem lê ("Créditos — Malha Viva").
+            // na língua de quem lê ("Créditos — Malha Viva"). Na página do
+            // bairro, o nome do site vem à frente ("Malha Viva | Bairro de
+            // Penajóia").
             var titulo = document.querySelector('title[data-i18n-titulo]');
             var pagina = titulo && t(titulo.getAttribute('data-i18n-titulo'));
-            if (pagina) document.title = pagina + ' — ' + t('site.nome');
+            if (pagina) {
+                document.title = titulo.hasAttribute('data-i18n-site-primeiro')
+                    ? t('site.nome') + ' | ' + pagina
+                    : pagina + ' — ' + t('site.nome');
+            }
         }
     }
 
