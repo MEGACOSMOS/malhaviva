@@ -232,11 +232,30 @@
             text-align: center;
         }
         .rolo h1 {
-            font-size: clamp(1.6rem, 5vw, 2.4rem);
-            font-weight: 700;
-            letter-spacing: 0.08em;
-            text-transform: uppercase;
             margin-bottom: 18vh;
+        }
+        /* No cimo do rolo, o logótipo do projecto, como o título de um
+           filme. */
+        .logotipo-do-rolo {
+            display: block;
+            width: min(380px, 78vw);
+            margin: 0 auto;
+        }
+        .logotipo-do-rolo .logotipo {
+            width: 100%;
+            height: auto;
+        }
+        /* O que só se diz a quem ouve a página: não ocupa lugar nenhum. */
+        .so-leitor {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            margin: -1px;
+            padding: 0;
+            overflow: hidden;
+            clip: rect(0 0 0 0);
+            white-space: nowrap;
+            border: 0;
         }
         .bloco {
             margin-bottom: 11vh;
@@ -403,7 +422,13 @@
 
     <!-- Os nomes de pessoas não se traduzem; só o que cada uma fez. -->
     <main class="rolo">
-        <h1 data-i18n="cred.titulo">Créditos</h1>
+        <!-- O título do rolo é o logótipo (ver logotipo.js); quem ouve a
+             página ouve o nome do projecto e "Créditos". -->
+        <h1>
+            <span class="logotipo-do-rolo" id="logotipo-do-rolo" role="img" aria-label="Malha Viva" data-i18n-aria="site.nome">Malha Viva</span>
+            <span class="so-leitor" data-i18n="cred.titulo">Créditos</span>
+        </h1>
+        <script>window.Logotipo && window.Logotipo.desenhar(document.getElementById('logotipo-do-rolo'));</script>
 
         <section class="bloco">
             <h2 class="funcao" data-i18n="cred.producao">Produzido e Realizado por</h2>
