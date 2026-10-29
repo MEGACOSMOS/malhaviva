@@ -17,8 +17,14 @@
  * num contorno escuro de 10. A cada imagem, os pontos do caminho são postos
  * no sítio do ecrã onde caem, como os marcadores. (Pintada no chão do
  * bairro, engrossava ao pé da câmara e sumia ao longe.)
+ *
+ * As casas do lote F ficam fora da zona do drone: para elas, pousa-se no
+ * chão, plana, uma fotografia de satélite do lote, que sai com o percurso.
  */
-import { Vec3 } from 'playcanvas';
+import {
+    Vec3, Color, Entity, Mesh, MeshInstance, StandardMaterial, Texture,
+    BLEND_NORMAL, CULLFACE_NONE, ADDRESS_CLAMP_TO_EDGE, FILTER_LINEAR, FILTER_LINEAR_MIPMAP_LINEAR
+} from 'playcanvas';
 import { alisar, arredondar, preencher, METROS_POR_MINUTO } from './navegacao.mjs?v=7';
 
 // Quanto se alisa a linha, em metros (as contas são as do traçado de
@@ -94,6 +100,13 @@ const INCLINACAO_A_SEGUIR = 48;
 const ALTURA_A_SEGUIR = 30;
 const SETA_NA_VISTA = 0.28;
 
+// O lote F, que o drone não fotografou: a fotografia de satélite pousada
+// no chão, plana (ver scripts/navegacao/lote-f.py), um nada acima dele; e
+// quanto demora a aparecer e a sair, em segundos.
+const LOTE_F = '/navegacao/lote-f.json';
+const LOTE_F_ACIMA_DO_CHAO = 0.2;
+const LOTE_F_ESBATER_S = 0.8;
+
 const RAIO_DA_TERRA = 6378137;
 
 /**
@@ -117,7 +130,12 @@ const RAIO_DA_TERRA = 6378137;
 export async function prepararNavegacao3D(app, opcoes) {
     const { rede, camara } = opcoes;
     const { registo, chao } = rede.cena;
-    const resposta = await fetch(chao.ficheiro);
+    const [resposta, infoDoLoteF] = await Promise.all([
+        fetch(chao.ficheiro),
+        // Onde fica a fotografia do lote F (ver mais abaixo): é pouco, e lê-se
+        // já, para o chão de lá ser conhecido logo que se escolhe uma casa F.
+        fetch(LOTE_F).then((r) => (r.ok ? r.json() : null)).catch(() => null)
+    ]);
     if (!resposta.ok) throw new Error(chao.ficheiro + ': ' + resposta.status);
     const alturas = new Int16Array(await resposta.arrayBuffer());
     const diz = (chave, alternativa) => opcoes.diz(chave, alternativa);
@@ -131,9 +149,9 @@ export async function prepararNavegacao3D(app, opcoes) {
         const b = (N - t[1]) / s;
         return [R[0][0] * a + R[1][0] * b, -(R[0][1] * a + R[1][1] * b)];
     };
-    // A altura do chão (o y da cena) num ponto x, z: entre os quatro
-    // pontos da grelha à volta; fora dela, o da beira.
-    const chaoEm = (x, z) => {
+    // A altura do chão do bairro (o y da cena) num ponto x, z: entre os
+    // quatro pontos da grelha à volta; fora dela, o da beira.
+    const chaoDoBairro = (x, z) => {
         const i = Math.min(chao.colunas - 1.001, Math.max(0, (x - chao.x0) / chao.passo));
         const j = Math.min(chao.linhas - 1.001, Math.max(0, (z - chao.z0) / chao.passo));
         const i0 = Math.floor(i);
@@ -144,6 +162,136 @@ export async function prepararNavegacao3D(app, opcoes) {
         return (h(j0, i0) * (1 - fi) + h(j0, i0 + 1) * fi) * (1 - fj) +
             (h(j0 + 1, i0) * (1 - fi) + h(j0 + 1, i0 + 1) * fi) * fj;
     };
+    // ---- O lote F ----
+    //
+    // As casas F ficam fora da zona do drone: ali, no bairro em 3D, não há
+    // bairro, e o chão medido é só a beira do ortofotomapa repetida, aos
+    // altos e baixos. Só quando se procura uma delas é que a fotografia de
+    // satélite do lote aparece, pousada no chão — plana, à altura das portas
+    // das casas F —, e o percurso, a casa e a seta passam por cima dela; na
+    // beira esbatida da fotografia, o chão volta devagar ao do bairro. Sai
+    // com o percurso.
+    const eDoLoteF = (casa) => /^F\d/i.test(casa.n);
+    const lote = infoDoLoteF && (() => {
+        const cantos = [
+            naCena([infoDoLoteF.norte, infoDoLoteF.oeste]),
+            naCena([infoDoLoteF.norte, infoDoLoteF.este]),
+            naCena([infoDoLoteF.sul, infoDoLoteF.este]),
+            naCena([infoDoLoteF.sul, infoDoLoteF.oeste])
+        ];
+        const portas = [];
+        for (const [n, casas] of rede.casas) {
+            if (/^F\d/i.test(n)) for (const c of casas) portas.push(chaoDoBairro(...naCena(c.porta)));
+        }
+        if (!portas.length) return null;
+        portas.sort((a, b) => a - b);
+        const m = portas.length >> 1;
+        return {
+            info: infoDoLoteF,
+            cantos,
+            // (A fotografia está virada a norte, e a cena quase: o
+            // rectângulo dela na cena é este, a menos de um palmo.)
+            x0: Math.min(...cantos.map((c) => c[0])),
+            x1: Math.max(...cantos.map((c) => c[0])),
+            z0: Math.min(...cantos.map((c) => c[1])),
+            z1: Math.max(...cantos.map((c) => c[1])),
+            beira: infoDoLoteF.beira || 14,
+            altura: portas.length % 2 ? portas[m] : (portas[m - 1] + portas[m]) / 2
+        };
+    })();
+    let loteFAVer = false;
+    // Quanto conta o chão plano do lote F num ponto: tudo por dentro da
+    // fotografia, nada fora dela, e devagar na beira esbatida.
+    const pesoDoLoteF = (x, z) => {
+        const d = Math.min(x - lote.x0, lote.x1 - x, z - lote.z0, lote.z1 - z) / lote.beira;
+        if (d <= 0) return 0;
+        const u = Math.min(1, d);
+        return u * u * (3 - 2 * u);
+    };
+    // O chão onde se desenha: o do bairro, ou o do lote F enquanto a
+    // fotografia dele está à vista.
+    const chaoEm = (x, z) => {
+        const h = chaoDoBairro(x, z);
+        if (!loteFAVer) return h;
+        return h + (lote.altura - h) * pesoDoLoteF(x, z);
+    };
+
+    let fotoDoLoteF = null;
+    let pedidoDoLoteF = null;
+    const prepararLoteF = () => {
+        if (!pedidoDoLoteF) {
+            pedidoDoLoteF = (async () => {
+                const imagem = new Image();
+                imagem.src = lote.info.imagem;
+                await imagem.decode();
+                const textura = new Texture(app.graphicsDevice, {
+                    width: imagem.naturalWidth,
+                    height: imagem.naturalHeight,
+                    mipmaps: true,
+                    minFilter: FILTER_LINEAR_MIPMAP_LINEAR,
+                    magFilter: FILTER_LINEAR,
+                    addressU: ADDRESS_CLAMP_TO_EDGE,
+                    addressV: ADDRESS_CLAMP_TO_EDGE
+                });
+                textura.setSource(imagem);
+
+                // Um rectângulo plano, com os cantos nos da fotografia. (A
+                // textura não vira ao subir: v = 0 é a primeira linha da
+                // fotografia, a de norte.)
+                const y = lote.altura + LOTE_F_ACIMA_DO_CHAO;
+                const malha = new Mesh(app.graphicsDevice);
+                malha.setPositions(lote.cantos.flatMap(([x, z]) => [x, y, z]));
+                malha.setUvs(0, [0, 0, 1, 0, 1, 1, 0, 1]);
+                malha.setIndices([0, 3, 1, 1, 3, 2]);
+                malha.update();
+
+                const material = new StandardMaterial();
+                material.useLighting = false;
+                material.diffuse = new Color(0, 0, 0);
+                material.emissive = new Color(1, 1, 1);
+                material.emissiveMap = textura;
+                material.opacityMap = textura;
+                material.blendType = BLEND_NORMAL;
+                material.cull = CULLFACE_NONE;
+                material.depthWrite = false;
+                material.opacity = 0;
+                material.update();
+
+                const entidade = new Entity('lote-f');
+                entidade.addComponent('render', {
+                    meshInstances: [new MeshInstance(malha, material)],
+                    castShadows: false,
+                    receiveShadows: false
+                });
+                entidade.enabled = false;
+                app.root.addChild(entidade);
+                fotoDoLoteF = { entidade, material };
+
+                // Aparece e sai devagar.
+                app.on('update', (dt) => {
+                    const alvo = loteFAVer ? 1 : 0;
+                    const agora = material.opacity;
+                    if (agora === alvo) return;
+                    const passo = Math.min(dt, 0.1) / LOTE_F_ESBATER_S;
+                    material.opacity = alvo > agora ? Math.min(alvo, agora + passo) : Math.max(alvo, agora - passo);
+                    material.update();
+                    entidade.enabled = material.opacity > 0;
+                });
+                return fotoDoLoteF;
+            })();
+            pedidoDoLoteF.catch(() => { pedidoDoLoteF = null; });
+        }
+        return pedidoDoLoteF;
+    };
+    const mostrarLoteF = (ver) => {
+        loteFAVer = !!(ver && lote);
+        if (loteFAVer) {
+            prepararLoteF().then((f) => {
+                if (loteFAVer) f.entidade.enabled = true;
+            }).catch(() => {});
+        }
+    };
+
     const noChao = ([x, z], acima) => [x, chaoEm(x, z) + acima, z];
     // Uma linha a direito pelo chão, de metro a metro (para os pontinhos
     // subirem e descerem com ele).
@@ -961,6 +1109,9 @@ export async function prepararNavegacao3D(app, opcoes) {
             const c = controlos();
             if (c && typeof c.vista === 'function') vistaDeAntes = c.vista();
         }
+        // Antes de tudo o resto: com uma casa F, o chão de lá é o plano da
+        // fotografia, e o percurso assenta nele.
+        mostrarLoteF(eDoLoteF(casa));
         let origem = null;
         let inicio = null;
         let ligacao = null;
@@ -996,7 +1147,12 @@ export async function prepararNavegacao3D(app, opcoes) {
             acum.push(acum[i - 1] + Math.hypot(linha[i][0] - linha[i - 1][0], linha[i][2] - linha[i - 1][2]));
         }
         const [cx, cz] = naCena(casa.ponto);
-        const telhado = casa.alto != null ? casa.alto + ACIMA_DO_TELHADO : chaoEm(cx, cz) + ACIMA_DO_CHAO_SEM_TELHADO;
+        // Sobre a fotografia do lote F, o número pousa nela, como um
+        // alfinete num mapa: de pé por cima de um telhado que ali não existe
+        // em 3D, deslizava sobre a fotografia quando a câmara mexia.
+        const telhado = casa.alto != null ? casa.alto + ACIMA_DO_TELHADO
+            : loteFAVer ? chaoEm(cx, cz) + ACIMA_DO_CHAO
+                : chaoEm(cx, cz) + ACIMA_DO_CHAO_SEM_TELHADO;
         const alvo = [cx, telhado, cz];
         // A pontinhos: do fim da linha ao meio da casa (se ela não ficar
         // mesmo ao pé), e de onde a pessoa está até ao caminho (até ela lá
@@ -1025,6 +1181,8 @@ export async function prepararNavegacao3D(app, opcoes) {
             // De onde a pessoa está, quando o percurso começa aí: entra no
             // enquadramento.
             aqui: ligacao ? noChao(ligacao[0], 1) : null,
+            // Se a fotografia de satélite do lote F está pousada no chão.
+            loteF: loteFAVer,
             // Quanto do caminho (alisado) já ficou para trás, e se a seta já
             // está em cima dele.
             feito: 0,
@@ -1043,6 +1201,7 @@ export async function prepararNavegacao3D(app, opcoes) {
     /** Tira o percurso e os seus marcadores. */
     const limpar = () => {
         tirarMarcadores();
+        mostrarLoteF(false);
         atual = null;
         vistaDeAntes = null;
         for (const qual of Object.keys(tracos)) escrever(qual, '');

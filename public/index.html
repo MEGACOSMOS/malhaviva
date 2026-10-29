@@ -5769,7 +5769,7 @@ void modifySplatColor(vec3 center, inout vec4 color) {
         let pedidoDo3D = null;
         const prepararO3D = () => {
             if (!pedidoDo3D) {
-                pedidoDo3D = Promise.all([lerRede(), whenReady('pc-app'), import('./navegacao-3d.mjs?v=5')])
+                pedidoDo3D = Promise.all([lerRede(), whenReady('pc-app'), import('./navegacao-3d.mjs?v=7')])
                     .then(([r, { app }, m]) => m.prepararNavegacao3D(app, {
                         rede: r,
                         camara: app.root.findByName('camera'),
@@ -5948,6 +5948,11 @@ void modifySplatColor(vec3 center, inout vec4 color) {
             osm.rel = 'noopener';
             osm.textContent = '© OpenStreetMap';
             creditosEl.replaceChildren(partes[0], osm, partes[1] || '');
+            // Com uma casa do lote F, a fotografia de satélite pousada no
+            // chão onde o drone não chegou.
+            if (percurso && percurso.loteF) {
+                creditosEl.append(' · ' + preencher(diz('nav.creditosLoteF', 'Lote F: fotografia de satélite {fonte}'), { fonte: 'Esri · Vantor' }));
+            }
         };
         // O título do separador: a casa, enquanto o percurso está à vista.
         const escreverTitulo = () => {
@@ -6016,6 +6021,7 @@ void modifySplatColor(vec3 center, inout vec4 color) {
             passoAgora = -1;
             escreverProgresso();
             escreverPartilhar();
+            escreverCreditos();
         };
 
         // Desenha o percurso até à casa escolhida: de onde a pessoa está,
