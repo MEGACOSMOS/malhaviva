@@ -718,7 +718,9 @@
             height: 38px;
             box-sizing: border-box;
             padding: 0 10px 0 35px;
-            background: rgba(5, 5, 10, 0.7);
+            /* Sem transparência: o quadrado escuro com o contorno de sempre,
+               o mesmo dos ícones do cabeçalho com o rato em cima. */
+            background: #05050a;
             color: #ffffff;
             border: 2.5px solid #505054;
             border-radius: 0;
@@ -726,7 +728,7 @@
             font-size: 0.85rem;
             letter-spacing: 0.04em;
             text-transform: uppercase;
-            transition: border-color 0.15s ease, background 0.15s ease;
+            transition: border-color 0.15s ease;
         }
         #pesquisa-numero::placeholder {
             color: rgba(255, 255, 255, 0.6);
@@ -736,12 +738,6 @@
         #pesquisa-numero:focus {
             outline: none;
             border-color: rgba(255, 255, 255, 0.75);
-            background: #05050a;
-        }
-        @media (hover: hover) {
-            #pesquisa-numero:hover {
-                background: #05050a;
-            }
         }
         #pesquisa-fechar {
             display: none;
