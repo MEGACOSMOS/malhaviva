@@ -3954,6 +3954,83 @@ const MARKER_SCALE_FALLOFF = 75;
 // se agarra ao ponto do mapa.
 const MARKER_DOT_HALF = 16;
 
+/**
+ * O tamanho de um marcador a uma distância da câmara (ver MARKER_SCALE_*).
+ *
+ * @param {number} distancia - A distância, em metros.
+ * @returns {number} A escala.
+ */
+function escalaDoMarcador(distancia) {
+    return MARKER_SCALE_MIN + (MARKER_SCALE_MAX - MARKER_SCALE_MIN) *
+        (MARKER_SCALE_FALLOFF / (MARKER_SCALE_FALLOFF + distancia));
+}
+
+const pontaNoEcra = new pc.Vec3();
+const outraPontaNoEcra = new pc.Vec3();
+const daCamara = new pc.Vec3();
+
+/**
+ * A fila do céu: o Retroceder, o Olho de Águia e o Mapa dos Bairros, a
+ * distâncias iguais uns dos outros. Os nomes por baixo dos quadrados é que
+ * não têm a mesma largura — "Retroceder" é mais curto do que "Mapa dos
+ * Bairros" —, e com os quadrados a distâncias iguais os espaços entre os
+ * nomes não o eram. Os das pontas andam no ecrã o mesmo tanto ao longo da
+ * fila, para o lado do nome mais comprido, e os dois espaços ficam iguais;
+ * o do meio fica onde está, ao meio do ecrã à entrada.
+ *
+ * As contas são as de quem olha a fila de frente, como à entrada, de perto
+ * ou de longe. Vista de lado, a perspectiva já faz os espaços desiguais, e
+ * o acerto, que é só o das larguras, fica pequeno ao pé dela.
+ *
+ * @param {object} camera - A câmara.
+ * @param {object} cameraPos - Onde ela está.
+ * @returns {{esquerda: object, direita: object, x: number, y: number}|null}
+ *     As duas das pontas e quanto andam no ecrã, ou nada se não estiverem
+ *     as duas à vista.
+ */
+AnnotationController.prototype.acertoDaFilaDoCeu = function(camera, cameraPos) {
+    if (this._filaDoCeu === undefined) {
+        const esquerda = this.annotations.find((ann) => ann.timelapse);
+        const direita = this.annotations.find((ann) => ann.mapaDosBairros);
+        this._filaDoCeu = esquerda && direita ? { esquerda, direita } : null;
+    }
+    const fila = this._filaDoCeu;
+    if (!fila) {
+        return null;
+    }
+    const { esquerda, direita } = fila;
+    for (const ann of [esquerda, direita]) {
+        if (!ann.element || !ann._visible || ann.element.style.display === 'none') {
+            return null;
+        }
+    }
+    camera.worldToScreen(esquerda.position, pontaNoEcra);
+    camera.worldToScreen(direita.position, outraPontaNoEcra);
+    if (pontaNoEcra.z < 0 || outraPontaNoEcra.z < 0) {
+        return null;
+    }
+    let ux = outraPontaNoEcra.x - pontaNoEcra.x;
+    let uy = outraPontaNoEcra.y - pontaNoEcra.y;
+    const comprimento = Math.hypot(ux, uy);
+    if (comprimento < 1) {
+        return null;
+    }
+    ux /= comprimento;
+    uy /= comprimento;
+    const larguraEsquerda = this.medidaComNome(esquerda).largura;
+    const larguraDireita = this.medidaComNome(direita).largura;
+    if (!larguraEsquerda || !larguraDireita) {
+        // Ainda sem caixa para medir: mede-se noutra imagem.
+        esquerda._caixaComNome = null;
+        direita._caixaComNome = null;
+        return null;
+    }
+    const escalaEsquerda = escalaDoMarcador(daCamara.sub2(esquerda.position, cameraPos).length());
+    const escalaDireita = escalaDoMarcador(daCamara.sub2(direita.position, cameraPos).length());
+    const passo = (larguraDireita * escalaDireita - larguraEsquerda * escalaEsquerda) / 4;
+    return { esquerda, direita, x: ux * passo, y: uy * passo };
+};
+
 AnnotationController.prototype.update = function(dt) {
     const camera = this.entity.camera;
     if (!camera) return;
@@ -3977,6 +4054,7 @@ AnnotationController.prototype.update = function(dt) {
     const dir = this._dir;
     const cameraPos = this.entity.getPosition();
     const cameraForward = this.entity.forward;
+    const acertoDoCeu = this.acertoDaFilaDoCeu(camera, cameraPos);
 
     for (let i = 0; i < this.annotations.length; i++) {
         const ann = this.annotations[i];
@@ -3984,6 +4062,13 @@ AnnotationController.prototype.update = function(dt) {
         if (!el) continue;
 
         camera.worldToScreen(ann.position, screenPos);
+        // As duas das pontas da fila do céu, para os espaços entre os três
+        // nomes serem iguais (ver acertoDaFilaDoCeu).
+        const acerto = acertoDoCeu && (ann === acertoDoCeu.esquerda || ann === acertoDoCeu.direita) ? acertoDoCeu : null;
+        if (acerto) {
+            screenPos.x += acerto.x;
+            screenPos.y += acerto.y;
+        }
 
         // Check if behind camera
         dir.sub2(ann.position, cameraPos);
@@ -4013,8 +4098,7 @@ AnnotationController.prototype.update = function(dt) {
             // conjunto ícone + etiqueta. Assim o ponto no mapa não se desloca
             // quando o marcador muda de tamanho com a distância.
             const distance = dir.length();
-            const scale = MARKER_SCALE_MIN + (MARKER_SCALE_MAX - MARKER_SCALE_MIN) *
-                (MARKER_SCALE_FALLOFF / (MARKER_SCALE_FALLOFF + distance));
+            const scale = escalaDoMarcador(distance);
 
             // Use translate3d to stay on the GPU compositor layer (no layout/reflow)
             el.style.transform = `translate3d(${screenPos.x}px, ${screenPos.y}px, 0) scale(${scale.toFixed(3)}) translate(-50%, ${-MARKER_DOT_HALF}px)`;
@@ -4029,6 +4113,10 @@ AnnotationController.prototype.update = function(dt) {
             acima.copy(ann.position);
             acima.y += ALTURA_DE_REFERENCIA;
             camera.worldToScreen(acima, acimaNoEcra);
+            if (acerto) {
+                acimaNoEcra.x += acerto.x;
+                acimaNoEcra.y += acerto.y;
+            }
             let ux = acimaNoEcra.x - screenPos.x;
             let uy = acimaNoEcra.y - screenPos.y;
             const comprimento = Math.hypot(ux, uy);
