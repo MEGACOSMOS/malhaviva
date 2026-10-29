@@ -1410,6 +1410,7 @@ AnnotationController.prototype.initialize = function() {
     document.body.appendChild(this.container);
 
     this.setupModal();
+    this.ligarVoltarAtras();
 
     // Load viewed annotations
     let viewedAnnotations = [];
@@ -1825,6 +1826,70 @@ AnnotationController.prototype.janelaAberta = function() {
     return aberta(this.modal) || aberta(this.palco360 && this.palco360.modal);
 };
 
+/* ---- O botão de voltar atrás ----
+
+   Quem tem um testemunho ou uma paragem aberta e carrega no botão de
+   voltar atrás — o do navegador, o do rato, o do telemóvel — quer voltar
+   ao bairro, e não sair do site. Por isso, ao abrir uma janela, o
+   histórico do navegador ganha um passo; voltar atrás tira-o e fecha a
+   janela. Fechar com a cruz tira também o passo, para o voltar atrás
+   seguinte não ficar sem efeito. ---- */
+
+const PASSO_DA_JANELA = 'malhaviva-anotacao';
+
+/**
+ * Põe no histórico o passo da janela que acabou de abrir (uma vez só,
+ * mesmo que se passe de um testemunho para o seguinte).
+ */
+AnnotationController.prototype.entrarNoHistorico = function() {
+    if (this.noHistorico || !window.history || !history.pushState) {
+        return;
+    }
+    history.pushState({ [PASSO_DA_JANELA]: true }, '', location.href);
+    this.noHistorico = true;
+};
+
+/**
+ * Tira do histórico o passo da janela que se fechou com a cruz (ou com o
+ * Escape, ou no fim do percurso).
+ */
+AnnotationController.prototype.sairDoHistorico = function() {
+    if (!this.noHistorico) {
+        return;
+    }
+    this.noHistorico = false;
+    if (history.state && history.state[PASSO_DA_JANELA]) {
+        this.aRecuarSozinho = true;
+        history.back();
+    }
+};
+
+/**
+ * Liga o voltar atrás: o do navegador, o do rato e o do telemóvel chegam
+ * todos como um passo atrás no histórico.
+ */
+AnnotationController.prototype.ligarVoltarAtras = function() {
+    const fecharAAberta = () => {
+        if (this.palco360 && this.palco360.modal.style.display !== 'none' &&
+            this.palco360.modal.style.display !== '') {
+            this.fecharPalco360();
+        } else if (this.modal && this.modal.style.display !== 'none' && this.fecharModal) {
+            this.fecharModal();
+        }
+    };
+    window.addEventListener('popstate', () => {
+        if (this.aRecuarSozinho) {
+            this.aRecuarSozinho = false;
+            return;
+        }
+        if (!this.noHistorico) {
+            return;
+        }
+        this.noHistorico = false;
+        fecharAAberta();
+    });
+};
+
 /* ---- O palco das paragens 360º ----
 
    A fotografia do alto do bairro e as três rotas são, para quem vê, a
@@ -2232,6 +2297,7 @@ AnnotationController.prototype.abrirParagem360 = function(ann, sentido) {
     }
     this.arrumarTrocaNaJanela360();
     this.mostrarParagem360(ann);
+    this.entrarNoHistorico();
 };
 
 /**
@@ -2663,6 +2729,7 @@ AnnotationController.prototype.fecharPalco360 = function() {
     if (!palco) {
         return;
     }
+    this.sairDoHistorico();
     const overlay = avisarQueOBairroVolta();
     if (this.paragem360) {
         this.marcarComoUltima(this.idDaAnotacao(this.paragem360));
@@ -3264,6 +3331,7 @@ AnnotationController.prototype.setupModal = function() {
     });
 
     const closeModal = () => {
+        this.sairDoHistorico();
         const overlay = avisarQueOBairroVolta();
 
         if (this.videoNome) {
@@ -3606,6 +3674,7 @@ AnnotationController.prototype.openVideoModal = function(nome, title, sentido) {
         return;
     }
     this.abrirTestemunho(nome, title);
+    this.entrarNoHistorico();
 };
 
 /**
