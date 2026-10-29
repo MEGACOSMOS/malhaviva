@@ -718,17 +718,16 @@
             height: 38px;
             box-sizing: border-box;
             padding: 0 10px 0 35px;
-            /* Sem transparência: o quadrado escuro com o contorno de sempre,
-               o mesmo dos ícones do cabeçalho com o rato em cima. */
-            background: #05050a;
+            /* Só o contorno, branco e da grossura dos outros contornos do
+               site; por dentro, o bairro à vista. */
+            background: transparent;
             color: #ffffff;
-            border: 2.5px solid #505054;
+            border: 2.5px solid #ffffff;
             border-radius: 0;
             font: inherit;
             font-size: 0.85rem;
             letter-spacing: 0.04em;
             text-transform: uppercase;
-            transition: border-color 0.15s ease;
         }
         #pesquisa-numero::placeholder {
             color: rgba(255, 255, 255, 0.6);
@@ -737,7 +736,6 @@
         }
         #pesquisa-numero:focus {
             outline: none;
-            border-color: rgba(255, 255, 255, 0.75);
         }
         #pesquisa-fechar {
             display: none;
