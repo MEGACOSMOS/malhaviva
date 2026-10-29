@@ -199,7 +199,7 @@
             'pesq.rotulo': 'Número da casa',
             'pesq.exemplo': 'Pesquisar casa',
             'pesq.fechar': 'Fechar a pesquisa',
-            'pesq.tirar': 'Tirar o percurso',
+            'pesq.voltar': 'Voltar ao bairro',
             'pesq.verTudo': 'Ver o percurso todo',
 
             'rota.titulo': 'Rota',
@@ -468,7 +468,7 @@
             'pesq.rotulo': 'House number',
             'pesq.exemplo': 'Search house',
             'pesq.fechar': 'Close search',
-            'pesq.tirar': 'Remove the route',
+            'pesq.voltar': 'Back to the neighbourhood',
             'pesq.verTudo': 'See the whole route',
 
             'rota.titulo': 'Route',
@@ -737,7 +737,7 @@
             'pesq.rotulo': 'Número de la casa',
             'pesq.exemplo': 'Buscar casa',
             'pesq.fechar': 'Cerrar la búsqueda',
-            'pesq.tirar': 'Quitar el recorrido',
+            'pesq.voltar': 'Volver al barrio',
             'pesq.verTudo': 'Ver todo el recorrido',
 
             'rota.titulo': 'Ruta',
@@ -1006,7 +1006,7 @@
             'pesq.rotulo': 'Númeru di kaza',
             'pesq.exemplo': 'Djobe kaza',
             'pesq.fechar': 'Fitxa pesquiza',
-            'pesq.tirar': 'Tira kaminhu',
+            'pesq.voltar': 'Volta pa bairu',
             'pesq.verTudo': 'Odja kaminhu tudu',
 
             'rota.titulo': 'Rota',

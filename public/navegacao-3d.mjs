@@ -107,7 +107,8 @@ const RAIO_DA_TERRA = 6378137;
  *     pontos) e `quandoSeguir` (chamada quando a câmara passa a seguir a
  *     seta de quem anda, ou a larga).
  * @returns {Promise<object>} O que se lhe pode pedir: mostrar o percurso
- *     até uma casa (`mostrar`), tirá-lo (`limpar`), voltar a enquadrá-lo
+ *     até uma casa (`mostrar`), tirá-lo (`limpar`), tirá-lo e levar a
+ *     câmara à vista de antes dele (`voltar`), voltar a enquadrá-lo
  *     (`enquadrar`), ir ver um passo de perto (`verPasso`), pôr e tirar a
  *     seta de quem vê (`mostrarVoce`, `tirarVoce`), pôr a câmara a segui-la
  *     (`seguir`) e renomear os marcadores numa língua nova
@@ -396,6 +397,7 @@ export async function prepararNavegacao3D(app, opcoes) {
 
     // ---- O percurso ----
     let atual = null;
+    let vistaDeAntes = null;
 
     /**
      * Leva a câmara até onde se vê o percurso todo, a olhar do princípio
@@ -954,6 +956,11 @@ export async function prepararNavegacao3D(app, opcoes) {
      *     está longe de mais para começar onde está).
      */
     const mostrar = (casa, { aqui = null, enquadrar: mover = true } = {}) => {
+        // A vista de antes da pesquisa, para onde se volta no fim.
+        if (!atual && !vistaDeAntes) {
+            const c = controlos();
+            if (c && typeof c.vista === 'function') vistaDeAntes = c.vista();
+        }
         let origem = null;
         let inicio = null;
         let ligacao = null;
@@ -1037,8 +1044,18 @@ export async function prepararNavegacao3D(app, opcoes) {
     const limpar = () => {
         tirarMarcadores();
         atual = null;
+        vistaDeAntes = null;
         for (const qual of Object.keys(tracos)) escrever(qual, '');
     };
 
-    return { mostrar, limpar, enquadrar, verPasso, mostrarVoce, tirarVoce, seguir, aSeguir: () => seguindo, mudarLingua: nomear, atual: () => atual };
+    /** Tira o percurso e leva a câmara de volta a onde estava antes dele. */
+    const voltar = () => {
+        const vista = vistaDeAntes;
+        deixarDeSeguir();
+        limpar();
+        const c = controlos();
+        if (vista && c && typeof c.viajar === 'function') c.viajar(vista.posicao, vista.inclinacao, vista.rumo, DURACAO_DA_VIAGEM);
+    };
+
+    return { mostrar, limpar, voltar, enquadrar, verPasso, mostrarVoce, tirarVoce, seguir, aSeguir: () => seguindo, mudarLingua: nomear, atual: () => atual };
 }

@@ -143,7 +143,7 @@
 
     <!-- As línguas do site. Fica antes de tudo o resto para o texto
          nascer já na língua certa, sem piscar em português primeiro. -->
-    <script src="/idiomas.js?v=48"></script>
+    <script src="/idiomas.js?v=49"></script>
     <script src="/legendas.js?v=2"></script>
 
     <!-- O quadrado de espera, o mesmo em todo o site. Fica antes de o
@@ -932,23 +932,24 @@
             font-size: 1.15rem;
             font-weight: 700;
         }
-        #percurso-fechar {
-            display: flex;
+        /* Voltar ao bairro: tira o percurso e leva a câmara de volta a
+           onde estava antes da pesquisa. */
+        #percurso-voltar {
+            display: inline-flex;
             align-items: center;
-            justify-content: center;
-            flex-shrink: 0;
-            width: 32px;
-            height: 32px;
-            margin: -6px -8px -6px 0;
-            padding: 0;
+            gap: 4px;
+            margin: -4px 0 8px -6px;
+            padding: 4px 8px 4px 2px;
             background: transparent;
             border: 0;
             color: rgba(255, 255, 255, 0.75);
+            font: inherit;
+            font-size: 0.78rem;
             cursor: pointer;
             transition: color 0.15s ease;
         }
         @media (hover: hover) {
-            #percurso-fechar:hover {
+            #percurso-voltar:hover {
                 color: #ffffff;
             }
         }
@@ -1024,7 +1025,7 @@
                 background: rgba(255, 255, 255, 0.85);
             }
         }
-        #percurso-fechar:focus-visible,
+        #percurso-voltar:focus-visible,
         .percurso-botao:focus-visible,
         #percurso-indicacoes summary:focus-visible,
         #percurso-passos button:focus-visible {
@@ -3341,14 +3342,14 @@
          navegacao-3d.mjs): a casa, quanto se anda, a localização de quem
          vê, e as indicações. -->
     <section id="percurso-painel" aria-labelledby="percurso-casa" hidden>
+        <button type="button" id="percurso-voltar">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true">
+                <polyline points="15 18 9 12 15 6"></polyline>
+            </svg>
+            <span data-i18n="pesq.voltar">Voltar ao bairro</span>
+        </button>
         <div class="percurso-topo">
             <h2 id="percurso-casa"></h2>
-            <button type="button" id="percurso-fechar" aria-label="Tirar o percurso" title="Tirar o percurso" data-i18n-aria="pesq.tirar" data-i18n-title="pesq.tirar">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true">
-                    <line x1="5" y1="5" x2="19" y2="19"></line>
-                    <line x1="19" y1="5" x2="5" y2="19"></line>
-                </svg>
-            </button>
         </div>
         <p id="percurso-resumo" aria-hidden="true"></p>
         <p id="percurso-resumo-leitor" class="so-leitor" aria-live="polite"></p>
@@ -4068,7 +4069,7 @@
 
         <!-- Assets -->
         <pc-asset id="splat-scene" src="splat/lod-meta.json" type="gsplat"></pc-asset>
-        <pc-asset id="camera-controls-script" src="./camera-controls.mjs?v=50" type="script"></pc-asset>
+        <pc-asset id="camera-controls-script" src="./camera-controls.mjs?v=51" type="script"></pc-asset>
         <pc-asset id="camera-coords-script" src="./coords.mjs?v=7" type="script"></pc-asset>
         <pc-asset id="annotations-script" src="./annotations.mjs?v=116" type="script"></pc-asset>
         <pc-asset id="measure-script" src="./measure.mjs?v=1" type="script"></pc-asset>
@@ -5768,7 +5769,7 @@ void modifySplatColor(vec3 center, inout vec4 color) {
         let pedidoDo3D = null;
         const prepararO3D = () => {
             if (!pedidoDo3D) {
-                pedidoDo3D = Promise.all([lerRede(), whenReady('pc-app'), import('./navegacao-3d.mjs?v=4')])
+                pedidoDo3D = Promise.all([lerRede(), whenReady('pc-app'), import('./navegacao-3d.mjs?v=5')])
                     .then(([r, { app }, m]) => m.prepararNavegacao3D(app, {
                         rede: r,
                         camara: app.root.findByName('camera'),
@@ -6058,6 +6059,7 @@ void modifySplatColor(vec3 center, inout vec4 color) {
                 fecharPesquisa();
                 campo.blur();
             }
+            entrarNoHistorico();
             mudarEndereco(casa);
             document.body.classList.add('a-navegar');
             if (tituloDeAntes === null) tituloDeAntes = document.title;
@@ -6164,7 +6166,46 @@ void modifySplatColor(vec3 center, inout vec4 color) {
             if (nav) nav.seguir(!nav.aSeguir());
         });
 
-        const tirarPercurso = () => {
+        // ---- O botão de voltar atrás ----
+        //
+        // Com um percurso à vista, voltar atrás (o botão do navegador, o
+        // do rato, o do telemóvel) volta ao bairro, como o "Voltar ao
+        // bairro" do painel — e não sai do site. Ao escolher uma casa o
+        // histórico ganha um passo, que se tira ao sair do percurso.
+        const PASSO_DO_PERCURSO = 'malhaviva-percurso';
+        let noHistorico = false;
+        let aRecuarSozinho = false;
+        const entrarNoHistorico = () => {
+            if (noHistorico || !window.history || !history.pushState) return;
+            history.pushState({ [PASSO_DO_PERCURSO]: true }, '', location.href);
+            noHistorico = true;
+        };
+        const sairDoHistorico = () => {
+            if (!noHistorico) return;
+            noHistorico = false;
+            if (history.state && history.state[PASSO_DO_PERCURSO]) {
+                aRecuarSozinho = true;
+                history.back();
+            }
+        };
+        window.addEventListener('popstate', () => {
+            if (aRecuarSozinho) {
+                // O passo de antes ainda podia ter a casa no endereço (quem
+                // chegou por /casa/D31): tira-se.
+                aRecuarSozinho = false;
+                if (!escolhida) mudarEndereco(null);
+                return;
+            }
+            if (!noHistorico) return;
+            noHistorico = false;
+            voltarAoBairro();
+            mudarEndereco(null);
+        });
+
+        // Tira o percurso; com `voltar`, a câmara volta também a onde
+        // estava antes da pesquisa.
+        const tirarPercurso = (voltar) => {
+            sairDoHistorico();
             desligarLocalizacao(false);
             semLocalizacao = false;
             escolhida = null;
@@ -6177,9 +6218,20 @@ void modifySplatColor(vec3 center, inout vec4 color) {
                 document.title = tituloDeAntes;
                 tituloDeAntes = null;
             }
-            if (nav) nav.limpar();
+            if (nav) {
+                if (voltar) nav.voltar();
+                else nav.limpar();
+            }
         };
-        document.getElementById('percurso-fechar').addEventListener('click', tirarPercurso);
+        // Voltar ao bairro: sem o percurso, e com a câmara onde estava
+        // antes da pesquisa.
+        const voltarAoBairro = () => tirarPercurso(true);
+        document.getElementById('percurso-voltar').addEventListener('click', (e) => {
+            voltarAoBairro();
+            // Quem carregou de tecla não fica com o foco perdido: volta à
+            // pesquisa.
+            if (e.detail === 0) (emLupa() ? abrirEl : campo).focus();
+        });
         document.getElementById('percurso-ver').addEventListener('click', () => {
             if (nav) nav.enquadrar();
         });

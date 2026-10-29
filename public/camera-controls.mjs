@@ -1795,6 +1795,20 @@ class CameraControls extends Script {
     }
 
     /**
+     * Onde a câmara está e para onde olha, na forma que `viajar` recebe —
+     * para se lá poder voltar depois (a navegação volta à vista de antes
+     * da pesquisa).
+     *
+     * @returns {{posicao: Vec3, inclinacao: number, rumo: number}} A vista.
+     */
+    vista() {
+        let inclinacao = this._pose.angles.x;
+        while (inclinacao > 180) inclinacao -= 360;
+        while (inclinacao < -180) inclinacao += 360;
+        return { posicao: this._pose.position.clone(), inclinacao, rumo: this._pose.angles.y };
+    }
+
+    /**
      * A altura mais alta a que a câmara pode andar (a da vista de abertura).
      *
      * @returns {number} A altura, ou Infinity se ainda não se sabe.
