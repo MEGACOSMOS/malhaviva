@@ -98,9 +98,9 @@
             height: 22px;
         }
 
-        /* À esquerda, o logótipo e a troca de língua; à direita, a cruz
-           que fecha a página e volta ao mapa. */
-        .cabecalho-esquerda {
+        /* À esquerda, o logótipo; à direita, a troca de língua e, ao lado
+           dela, a cruz que fecha a página e volta ao mapa. */
+        .cabecalho-direita {
             display: flex;
             align-items: center;
             gap: 22px;
@@ -208,7 +208,7 @@
         #idioma-menu {
             position: absolute;
             top: 62px;
-            left: 0;
+            right: 0;
             background: linear-gradient(to bottom, rgba(255,255,255,0.05), transparent), #05050a;
             border: 1px solid var(--color-border);
             border-radius: 0;
@@ -218,7 +218,7 @@
             max-width: 260px;
             box-shadow: 0 4px 15px rgba(0,0,0,0.4);
             transition: opacity 0.2s, transform 0.2s, visibility 0.2s;
-            transform-origin: top left;
+            transform-origin: top right;
             pointer-events: none;
             opacity: 0;
             transform: scale(0.95);
@@ -612,12 +612,14 @@
 <body>
     <!-- Header -->
     <header class="page-header">
-        <div class="cabecalho-esquerda">
-            <a href="/" class="brand" aria-label="Malha Viva" data-i18n-aria="site.nome">
-                <span class="brand-name" id="nome-do-site">Malha Viva</span>
-            </a>
-            <!-- O nome é o logótipo do projecto (ver logotipo.js). -->
-            <script>window.Logotipo && window.Logotipo.desenhar(document.getElementById('nome-do-site'));</script>
+        <a href="/" class="brand" aria-label="Malha Viva" data-i18n-aria="site.nome">
+            <span class="brand-name" id="nome-do-site">Malha Viva</span>
+        </a>
+        <!-- O nome é o logótipo do projecto (ver logotipo.js). -->
+        <script>window.Logotipo && window.Logotipo.desenhar(document.getElementById('nome-do-site'));</script>
+        <!-- À direita, a troca de língua e, ao lado dela, a cruz que
+             fecha a página e volta ao mapa. -->
+        <div class="cabecalho-direita">
             <div class="idioma">
                 <button type="button" class="idioma-botao" id="idioma-botao" title="Idioma" aria-label="Idioma" data-i18n-title="cab.idioma" data-i18n-aria="cab.idioma">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" stroke="none" aria-hidden="true">
@@ -654,13 +656,13 @@
                     </div>
                 </div>
             </div>
+            <a href="/" class="back-link" aria-label="Voltar ao Mapa" title="Voltar ao Mapa" data-i18n-aria="ctl.voltar" data-i18n-title="ctl.voltar">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true">
+                    <line x1="5" y1="5" x2="19" y2="19"></line>
+                    <line x1="19" y1="5" x2="5" y2="19"></line>
+                </svg>
+            </a>
         </div>
-        <a href="/" class="back-link" aria-label="Voltar ao Mapa" title="Voltar ao Mapa" data-i18n-aria="ctl.voltar" data-i18n-title="ctl.voltar">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true">
-                <line x1="5" y1="5" x2="19" y2="19"></line>
-                <line x1="19" y1="5" x2="5" y2="19"></line>
-            </svg>
-        </a>
     </header>
 
     <main class="content">
