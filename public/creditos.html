@@ -88,18 +88,27 @@
             height: 22px;
         }
 
-        .back-link {
-            display: inline-flex;
+        /* À esquerda, o logótipo e a troca de língua; à direita, a cruz
+           que fecha a página e volta ao mapa. */
+        .cabecalho-esquerda {
+            display: flex;
             align-items: center;
-            gap: 8px;
-            color: var(--color-text-muted);
+            gap: 22px;
+        }
+
+        /* A cruz e o ícone da língua são os do cabeçalho do mapa: sem caixa
+           até o rato lá chegar, e então o quadrado escuro com o fio de
+           sempre (que também fica com o menu aberto). */
+        .back-link {
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 40px;
+            height: 40px;
+            color: #ffffff;
             text-decoration: none;
-            font-size: 0.85rem;
-            font-weight: 500;
-            padding: 8px 16px;
-            border-radius: var(--radius-sm);
-            border: 1px solid var(--color-border);
-            transition: all 0.2s ease;
+            transition: background 0.15s ease;
         }
 
         /* ─── Selector de língua ─── */
@@ -107,29 +116,89 @@
             position: relative;
         }
 
+        /* O ícone, o bico do menu (vira para cima com ele aberto) e o nome
+           por baixo, pequeno, como no mapa. */
         .idioma-botao {
-            display: inline-flex;
+            position: relative;
+            display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 3px;
+            height: 40px;
+            padding: 0 6px 0 9px;
             background: transparent;
-            color: var(--color-text-muted);
+            color: #ffffff;
             font-family: inherit;
-            font-size: 0.85rem;
-            font-weight: 500;
-            padding: 8px 16px;
-            border: 2.5px solid var(--color-border);
+            border: 0;
             cursor: pointer;
             transition: background 0.15s ease;
         }
 
-        .idioma-botao:hover {
-            background: var(--color-surface-hover);
+        .idioma-botao .seta-menu {
+            flex-shrink: 0;
+            transition: transform 0.15s ease;
+        }
+
+        .idioma:has(#idioma-menu.open) .seta-menu {
+            transform: rotate(180deg);
+        }
+
+        .rotulo-icone {
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            margin-top: 3px;
+            font-size: 10px;
+            line-height: 1;
+            letter-spacing: 0.02em;
+            white-space: nowrap;
+            color: rgba(255, 255, 255, 0.8);
+            pointer-events: none;
+        }
+
+        .back-link::after,
+        .idioma-botao::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            border: 2.5px solid #505054;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.15s ease;
+        }
+
+        .idioma:has(#idioma-menu.open) .idioma-botao {
+            background: #05050a;
+        }
+
+        .idioma:has(#idioma-menu.open) .idioma-botao::after {
+            opacity: 1;
+        }
+
+        /* O quadrado do rato em cima só onde há rato: num ecrã táctil
+           ficava agarrado ao último toque. */
+        @media (hover: hover) {
+            .back-link:hover,
+            .idioma-botao:hover {
+                background: #05050a;
+            }
+
+            .back-link:hover::after,
+            .idioma-botao:hover::after {
+                opacity: 1;
+            }
+        }
+
+        .back-link:focus-visible,
+        .idioma-botao:focus-visible {
+            outline: 2.5px solid #ffffff;
+            outline-offset: 2px;
         }
 
         #idioma-menu {
             position: absolute;
-            top: calc(100% + 10px);
-            right: 0;
+            top: 62px;
+            left: 0;
             background: linear-gradient(to bottom, rgba(255,255,255,0.05), transparent), #05050a;
             border: 1px solid var(--color-border);
             border-radius: 0;
@@ -139,7 +208,7 @@
             max-width: 260px;
             box-shadow: 0 4px 15px rgba(0,0,0,0.4);
             transition: opacity 0.2s, transform 0.2s, visibility 0.2s;
-            transform-origin: top right;
+            transform-origin: top left;
             pointer-events: none;
             opacity: 0;
             transform: scale(0.95);
@@ -216,11 +285,6 @@
             cursor: pointer;
         }
 
-        .back-link:hover {
-            color: var(--color-accent);
-            border-color: var(--color-accent);
-            background: rgba(16, 185, 129, 0.05);
-        }
 
 
         /* O rolo: os nomes ao meio, com meia página de preto antes e
@@ -338,24 +402,18 @@
             .bloco { opacity: 1; transform: none; transition: none; }
         }
         @media (max-width: 640px) {
-            .idioma { display: none !important; }
             .brand-name { font-size: 1.05rem; }
             .brand-name .logotipo { height: 19px; }
-            .back-link { padding: 6px 12px; font-size: 0.75rem; }
-            .back-link svg { width: 14px; height: 14px; }
         }
         /* ─── Contornos ───
            Um fio de dois pontos e meio a toda a volta, de um só tom — o mais escuro do
            degradé que aqui houve — pousado sobre o fundo escuro do site. */
-        .back-link, #idioma-menu {
+        #idioma-menu {
             /* Sem rebordo nenhum, nem invisível: ficaria por fora do fio,
                com o fundo escuro a ver-se por baixo dele. */
             border: 0 !important;
         }
-        .back-link {
-            position: relative;
-        }
-        .back-link::after, #idioma-menu::after {
+        #idioma-menu::after {
             content: "";
             position: absolute;
             inset: 0;
@@ -371,53 +429,55 @@
 </head>
 <body>
     <header class="page-header">
-        <a href="/" class="brand" aria-label="Malha Viva" data-i18n-aria="site.nome">
-            <span class="brand-name" id="nome-do-site">Malha Viva</span>
-        </a>
-        <!-- O nome é o logótipo do projecto (ver logotipo.js). -->
-        <script>window.Logotipo && window.Logotipo.desenhar(document.getElementById('nome-do-site'));</script>
-        <a href="/" class="back-link">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <line x1="19" y1="12" x2="5" y2="12"></line>
-                <polyline points="12 19 5 12 12 5"></polyline>
-            </svg>
-            <span data-i18n="ctl.voltar">Voltar ao Mapa</span>
-        </a>
-        <div class="idioma">
-            <button type="button" class="idioma-botao" id="idioma-botao" data-i18n-title="cab.idioma" title="Idioma">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="none">
-                    <path d="M12.87 15.07l-2.54-2.51.03-.03c1.74-1.94 2.98-4.17 3.71-6.53H17V4h-7V2H8v2H1v1.99h11.17C11.5 7.92 10.44 9.75 9 11.35 8.07 10.32 7.3 9.19 6.69 8h-2c.73 1.63 1.73 3.17 2.98 4.56l-5.09 5.02L4 19l5-5 3.11 3.11.76-2.04zM18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2l-4.5-12zm-2.62 7l1.62-4.33L19.12 17h-3.24z"></path>
-                </svg>
-                <span id="idioma-nome">Português</span>
-            </button>
-            <div id="idioma-menu">
-                <button type="button" class="menu-fechar" aria-label="Fechar" title="Fechar">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="square" stroke-linejoin="miter">
-                        <line x1="5" y1="5" x2="19" y2="19"></line>
-                        <line x1="19" y1="5" x2="5" y2="19"></line>
+        <div class="cabecalho-esquerda">
+            <a href="/" class="brand" aria-label="Malha Viva" data-i18n-aria="site.nome">
+                <span class="brand-name" id="nome-do-site">Malha Viva</span>
+            </a>
+            <!-- O nome é o logótipo do projecto (ver logotipo.js). -->
+            <script>window.Logotipo && window.Logotipo.desenhar(document.getElementById('nome-do-site'));</script>
+            <div class="idioma">
+                <button type="button" class="idioma-botao" id="idioma-botao" title="Idioma" aria-label="Idioma" data-i18n-title="cab.idioma" data-i18n-aria="cab.idioma">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" stroke="none" aria-hidden="true">
+                        <path d="M12.87 15.07l-2.54-2.51.03-.03c1.74-1.94 2.98-4.17 3.71-6.53H17V4h-7V2H8v2H1v1.99h11.17C11.5 7.92 10.44 9.75 9 11.35 8.07 10.32 7.3 9.19 6.69 8h-2c.73 1.63 1.73 3.17 2.98 4.56l-5.09 5.02L4 19l5-5 3.11 3.11.76-2.04zM18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2l-4.5-12zm-2.62 7l1.62-4.33L19.12 17h-3.24z"></path>
                     </svg>
+                    <svg class="seta-menu" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true"><polyline points="5 9 12 16 19 9"></polyline></svg>
+                    <span class="rotulo-icone" aria-hidden="true" data-i18n="cab.idioma">Idioma</span>
                 </button>
-                <div class="settings-title" data-i18n="idm.titulo">Idioma</div>
-                <div class="settings-options">
-                    <label class="settings-radio">
-                        <input type="radio" name="idioma" value="kea" id="idioma-kea">
-                        <span>Kriolu</span>
-                    </label>
-                    <label class="settings-radio">
-                        <input type="radio" name="idioma" value="pt" id="idioma-pt">
-                        <span>Português</span>
-                    </label>
-                    <label class="settings-radio">
-                        <input type="radio" name="idioma" value="en" id="idioma-en">
-                        <span>English</span>
-                    </label>
-                    <label class="settings-radio">
-                        <input type="radio" name="idioma" value="es" id="idioma-es">
-                        <span>Español</span>
-                    </label>
+                <div id="idioma-menu">
+                    <button type="button" class="menu-fechar" aria-label="Fechar" title="Fechar">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="square" stroke-linejoin="miter">
+                            <line x1="5" y1="5" x2="19" y2="19"></line>
+                            <line x1="19" y1="5" x2="5" y2="19"></line>
+                        </svg>
+                    </button>
+                    <div class="settings-title" data-i18n="idm.titulo">Idioma</div>
+                    <div class="settings-options">
+                        <label class="settings-radio">
+                            <input type="radio" name="idioma" value="kea" id="idioma-kea">
+                            <span>Kriolu</span>
+                        </label>
+                        <label class="settings-radio">
+                            <input type="radio" name="idioma" value="pt" id="idioma-pt">
+                            <span>Português</span>
+                        </label>
+                        <label class="settings-radio">
+                            <input type="radio" name="idioma" value="en" id="idioma-en">
+                            <span>English</span>
+                        </label>
+                        <label class="settings-radio">
+                            <input type="radio" name="idioma" value="es" id="idioma-es">
+                            <span>Español</span>
+                        </label>
+                    </div>
                 </div>
             </div>
         </div>
+        <a href="/" class="back-link" aria-label="Voltar ao Mapa" title="Voltar ao Mapa" data-i18n-aria="ctl.voltar" data-i18n-title="ctl.voltar">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true">
+                <line x1="5" y1="5" x2="19" y2="19"></line>
+                <line x1="19" y1="5" x2="5" y2="19"></line>
+            </svg>
+        </a>
     </header>
 
     <!-- Os nomes de pessoas não se traduzem; só o que cada uma fez. -->
@@ -640,14 +700,9 @@
         var botao = document.getElementById('idioma-botao');
         var menu = document.getElementById('idioma-menu');
         var fechar = menu.querySelector('.menu-fechar');
-        var nome = document.getElementById('idioma-nome');
-
-        function mostrarNome() {
-            var actual = window.Idiomas.atual();
-            window.Idiomas.IDIOMAS.forEach(function (idioma) {
-                if (idioma.codigo === actual) nome.textContent = idioma.nome;
-            });
-            var escolhida = document.getElementById('idioma-' + actual);
+        // A língua escolhida fica marcada no menu.
+        function marcarEscolhida() {
+            var escolhida = document.getElementById('idioma-' + window.Idiomas.atual());
             if (escolhida) escolhida.checked = true;
         }
 
@@ -655,7 +710,7 @@
             entrada.addEventListener('change', function (e) {
                 window.Idiomas.definir(e.target.value);
                 menu.classList.remove('open');
-                mostrarNome();
+                marcarEscolhida();
             });
         });
 
@@ -675,7 +730,7 @@
             }
         });
 
-        mostrarNome();
+        marcarEscolhida();
     })();
     </script>
 </body>
