@@ -14,6 +14,13 @@
  * timelapse enche o ecrã e esse canto fica de fora, por isso são escritos
  * no leitor.
  *
+ * A de dezembro de 2023 não é do Google Earth, que não tem nenhuma entre
+ * abril de 2023 e abril de 2024: é a do WorldView-3 de 2 de dezembro de
+ * 2023 no arquivo da Esri (World Imagery Wayback, versão de 15 de agosto de
+ * 2024), torcida para cair em cima da de abril de 2023 ponto por ponto. O
+ * original, à medida das do Google Earth, está em Imagens\Esri Wayback.
+ * Tem menos pormenor do que as vizinhas (30 cm por ponto no satélite).
+ *
  * Lido pelo mapa (o nome do marcador, a data na barra de cima) e pela
  * página do timelapse.
  */
@@ -32,6 +39,7 @@ export const FOTOGRAFIAS = [
     { ano: 2020, mes: 7, creditos: MAXAR },
     { ano: 2021, mes: 6, creditos: MAXAR },
     { ano: 2023, mes: 4, creditos: MAXAR },
+    { ano: 2023, mes: 12, creditos: 'Esri World Imagery · Image © 2023 Maxar Technologies' },
     { ano: 2024, mes: 4, creditos: MAXAR },
     { ano: 2025, mes: 1, creditos: MAXAR },
     { ano: 2025, mes: 9, creditos: MAXAR },
