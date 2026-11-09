@@ -123,15 +123,22 @@ export function textoDoPasso(p, numero, diz) {
 }
 
 /**
- * A casa que um endereço pede: /?casa=D31 (e /?casa=D31&sitio=2, o segundo
- * sítio de um número repetido no levantamento), que é onde vai dar o
- * endereço que se partilha, /casa/D31 (ver src/index.ts).
+ * O endereço curto de uma casa: /d31, ou /d31-2 para o segundo sítio de um
+ * número repetido no levantamento (ver src/index.ts, que serve o bairro
+ * nele).
+ */
+export const ENDERECO_CURTO = /^\/([A-Za-z]?\d{1,4}(?:\.\d{1,2})?)(?:-([1-9]))?\/?$/;
+
+/**
+ * A casa que um endereço pede: o curto (/d31, /d31-2) e, por via das
+ * dúvidas, os de antes (/?casa=D31&sitio=2, /casa/D31/2), que o servidor
+ * já leva ao curto.
  *
  * @param {Location} onde - O endereço da página.
  * @returns {{numero: string, sitio: number}|null}
  */
 export function casaPedida(onde) {
-    const m = /^\/casa\/([^/]+)(?:\/(\d+))?\/?$/.exec(onde.pathname);
+    const m = ENDERECO_CURTO.exec(onde.pathname) || /^\/casa\/([^/]+)(?:\/(\d+))?\/?$/.exec(onde.pathname);
     const p = new URLSearchParams(onde.search);
     const numero = normalizar(m ? decodeURIComponent(m[1]) : (p.get('casa') || ''));
     if (!numero) return null;
@@ -139,11 +146,11 @@ export function casaPedida(onde) {
 }
 
 /**
- * O endereço de uma casa, o que se partilha: /casa/D31, ou /casa/D31/2 para
- * o segundo sítio.
+ * O endereço de uma casa, o que se partilha: /d31, ou /d31-2 para o
+ * segundo sítio.
  */
 export function enderecoDaCasa(numero, sitio, sitios) {
-    return '/casa/' + encodeURIComponent(numero) + (sitios > 1 ? '/' + sitio : '');
+    return '/' + encodeURIComponent(String(numero).toLowerCase()) + (sitios > 1 && sitio > 1 ? '-' + sitio : '');
 }
 
 /**

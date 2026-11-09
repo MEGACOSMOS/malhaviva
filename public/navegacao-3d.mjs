@@ -25,7 +25,7 @@ import {
     Vec3, Color, Entity, Mesh, MeshInstance, StandardMaterial, Texture,
     BLEND_NORMAL, CULLFACE_NONE, ADDRESS_CLAMP_TO_EDGE, FILTER_LINEAR, FILTER_LINEAR_MIPMAP_LINEAR
 } from 'playcanvas';
-import { alisar, arredondar, preencher, METROS_POR_MINUTO } from './navegacao.mjs?v=7';
+import { alisar, arredondar, preencher, METROS_POR_MINUTO } from './navegacao.mjs?v=8';
 
 // Quanto se alisa a linha, em metros (as contas são as do traçado de
 // origem).

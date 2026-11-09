@@ -3802,9 +3802,9 @@
             const limpo = location.search.replace(/([?&])instrucoes(=[^&]*)?(&|$)/, (m, antes, valor, depois) => (depois ? antes : ''));
             history.replaceState(history.state, '', location.pathname + limpo + location.hash);
         }
-        // Quem chega pelo endereço de uma casa (/casa/D31) vem pelo
+        // Quem chega pelo endereço de uma casa (malhaviva.pt/d31) vem pelo
         // percurso até ela: as instruções ficam para a próxima visita.
-        const porUmaCasa = /[?&]casa=/.test(location.search);
+        const porUmaCasa = /^\/[A-Za-z]?\d/.test(location.pathname) || /[?&]casa=/.test(location.search);
         if ((!vistas && !porUmaCasa) || pedidas) {
             let marcado = false;
             const quandoPronto = () => {
@@ -5736,7 +5736,7 @@ void modifySplatColor(vec3 center, inout vec4 color) {
         let pedidoDaRede = null;
         const lerRede = () => {
             if (!pedidoDaRede) {
-                pedidoDaRede = import('./navegacao.mjs?v=7').then(async (m) => {
+                pedidoDaRede = import('./navegacao.mjs?v=8').then(async (m) => {
                     contas = m;
                     rede = await m.carregarRede();
                     return rede;
@@ -5765,7 +5765,7 @@ void modifySplatColor(vec3 center, inout vec4 color) {
         let pedidoDo3D = null;
         const prepararO3D = () => {
             if (!pedidoDo3D) {
-                pedidoDo3D = Promise.all([lerRede(), whenReady('pc-app'), import('./navegacao-3d.mjs?v=7')])
+                pedidoDo3D = Promise.all([lerRede(), whenReady('pc-app'), import('./navegacao-3d.mjs?v=8')])
                     .then(([r, { app }, m]) => m.prepararNavegacao3D(app, {
                         rede: r,
                         camara: app.root.findByName('camera'),
@@ -6029,21 +6029,22 @@ void modifySplatColor(vec3 center, inout vec4 color) {
             escreverPercurso();
         };
 
-        // O endereço da página diz a casa (/?casa=D31): recarregar a página
-        // volta a abri-la, e é o mesmo que /casa/D31, o endereço que se
-        // partilha (ver src/index.ts).
+        // O endereço da página diz a casa: malhaviva.pt/d31 (ou /d31-2, o
+        // segundo sítio de um número repetido). Recarregar a página volta a
+        // abri-la, e é o endereço que se partilha (ver src/index.ts). Sem
+        // casa, volta a ser só malhaviva.pt.
         const mudarEndereco = (casa) => {
             if (!window.history || !history.replaceState) return;
             const p = new URLSearchParams(location.search);
             p.delete('casa');
             p.delete('sitio');
-            if (casa) {
+            let caminho = '/';
+            if (casa && rede && contas) {
                 const sitios = rede.casas.get(casa.n);
-                p.set('casa', casa.n);
-                if (sitios.length > 1) p.set('sitio', String(sitios.indexOf(casa) + 1));
+                caminho = contas.enderecoDaCasa(casa.n, sitios.indexOf(casa) + 1, sitios.length);
             }
             const q = p.toString();
-            history.replaceState(history.state, '', location.pathname + (q ? '?' + q : '') + location.hash);
+            history.replaceState(history.state, '', caminho + (q ? '?' + q : '') + location.hash);
         };
 
         /**
@@ -6193,7 +6194,7 @@ void modifySplatColor(vec3 center, inout vec4 color) {
         window.addEventListener('popstate', () => {
             if (aRecuarSozinho) {
                 // O passo de antes ainda podia ter a casa no endereço (quem
-                // chegou por /casa/D31): tira-se.
+                // chegou por malhaviva.pt/d31): tira-se.
                 aRecuarSozinho = false;
                 if (!escolhida) mudarEndereco(null);
                 return;
@@ -6264,10 +6265,9 @@ void modifySplatColor(vec3 center, inout vec4 color) {
 
         // ---- O endereço de uma casa ----
         //
-        // malhaviva.pt/casa/D31 vem dar aqui, como /?casa=D31 (ver
-        // src/index.ts), e a página abre com o percurso até essa casa, logo
-        // que o bairro aparecer.
-        if (/[?&]casa=/.test(location.search)) {
+        // malhaviva.pt/d31 é o bairro (ver src/index.ts), e a página abre
+        // com o percurso até essa casa, logo que o bairro aparecer.
+        if (/^\/[A-Za-z]?\d/.test(location.pathname) || /[?&]casa=/.test(location.search)) {
             lerRede().then(() => {
                 const pedida = contas.casaPedida(location);
                 const casas = pedida && rede.casas.get(pedida.numero);

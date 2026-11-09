@@ -1,7 +1,10 @@
 # As ligações das casas, para dar a quem lá mora.
 #
-# Cada casa tem o seu endereço — malhaviva.pt/casa/D31 — que abre o
-# bairro em 3D já com o percurso até ela (ver src/index.ts). Quem mora no
+# Cada casa tem o seu endereço — malhaviva.pt/d31 (e malhaviva.pt/d31-2
+# para o segundo sítio de um número repetido) — que abre o bairro em 3D já
+# com o percurso até ela (ver src/index.ts). Os cartões impressos antes, com
+# malhaviva.pt/casa/D31, continuam a funcionar: o servidor leva-os ao
+# endereço curto. Quem mora no
 # bairro pode mandá-lo a quem o vem visitar. Para lhes chegar às mãos, faz
 # aqui uma folha para imprimir, com um cartão por casa (o número, o código
 # QR e o endereço), e uma tabela com todos os endereços.
@@ -45,7 +48,7 @@ def main():
     for n in sorted(por_numero, key=ordem):
         lista = por_numero[n]
         for i, _ in enumerate(lista, 1):
-            caminho = "/casa/" + n + ("/%d" % i if len(lista) > 1 else "")
+            caminho = "/" + n.lower() + ("-%d" % i if len(lista) > 1 and i > 1 else "")
             casas.append((n, i if len(lista) > 1 else None, SITE + caminho))
     os.makedirs(PASTA, exist_ok=True)
 
