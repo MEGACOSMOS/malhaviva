@@ -658,6 +658,9 @@
             left: 50%;
             transform: translateX(-50%);
             margin-top: 3px;
+            /* A letra do site: os botões não a herdam sozinhos, e sem isto
+               metade dos rótulos saía em Arial (ou na letra do telemóvel). */
+            font-family: var(--font-main);
             font-size: 10px;
             line-height: 1;
             letter-spacing: 0.02em;
@@ -4603,9 +4606,9 @@
 
         <!-- Assets -->
         <pc-asset id="splat-scene" src="splat/lod-meta.json" type="gsplat"></pc-asset>
-        <pc-asset id="camera-controls-script" src="./camera-controls.mjs?v=51" type="script"></pc-asset>
+        <pc-asset id="camera-controls-script" src="./camera-controls.mjs?v=52" type="script"></pc-asset>
         <pc-asset id="camera-coords-script" src="./coords.mjs?v=7" type="script"></pc-asset>
-        <pc-asset id="annotations-script" src="./annotations.mjs?v=117" type="script"></pc-asset>
+        <pc-asset id="annotations-script" src="./annotations.mjs?v=118" type="script"></pc-asset>
         <pc-asset id="measure-script" src="./measure.mjs?v=1" type="script"></pc-asset>
         <pc-asset id="escala-script" src="./escala.mjs?v=2" type="script"></pc-asset>
         <pc-asset id="compass-script" src="./compass.mjs?v=2" type="script"></pc-asset>
@@ -5392,6 +5395,13 @@ void modifySplatColor(vec3 center, inout vec4 color) {
                     const falta = ra.right + FOLGA - rb.left;
                     if (falta > 0) b.parentElement.style.marginLeft = Math.ceil(falta) + 'px';
                 }
+                // E nenhum sai pela beira do ecrã: o último do telemóvel
+                // ("Ecrã Inteiro", "Pantalla completa") passa a duas linhas.
+                const largura = document.documentElement.clientWidth;
+                vistos.forEach((n) => {
+                    const r = n.getBoundingClientRect();
+                    if ((r.right > largura - 2 || r.left < 2) && /\s/.test(n.textContent.trim())) n.classList.add('em-duas-linhas');
+                });
             };
             let pedido = 0;
             const pedir = () => {
