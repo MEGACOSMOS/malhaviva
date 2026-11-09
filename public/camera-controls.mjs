@@ -27,6 +27,24 @@ import {
 /** @import { CameraComponent, InputController } from 'playcanvas' */
 
 /**
+ * O comando de jogo, para browsers que não sabem o que isso é.
+ *
+ * O GamepadSource do motor pergunta `navigator.getGamepads()` sem ver
+ * primeiro se a pergunta existe. Num browser sem comandos (algumas vistas
+ * de dentro de aplicações, browsers com a privacidade apertada, o WebKit
+ * de testes) isso dá erro em cada imagem, e o erro pára o resto da
+ * câmara: o bairro aparece, mas os marcadores dos testemunhos e das rotas
+ * nunca chegam a ser postos. Aqui, sem comandos, o comando simplesmente
+ * não mexe.
+ */
+class ComandoDeJogo extends GamepadSource {
+    read() {
+        if (typeof navigator.getGamepads === 'function') return super.read();
+        return Object.getPrototypeOf(GamepadSource.prototype).read.call(this);
+    }
+}
+
+/**
  * @typedef {object} CameraControlsState
  * @property {Vec3} axis - The axis.
  * @property {number} shift - The shift.
@@ -353,7 +371,7 @@ class CameraControls extends Script {
      * @type {GamepadSource}
      * @private
      */
-    _gamepadInput = new GamepadSource();
+    _gamepadInput = new ComandoDeJogo();
 
     /**
      * @type {FlyController}
