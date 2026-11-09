@@ -401,6 +401,24 @@
             }
         }
 
+        /* Nos telemóveis estreitos (até 380 pontos: muitos Samsung, o
+           iPhone SE) o nome do bairro ficava por cima da lupa. Sai de vista
+           e fica só o logótipo; quem usa leitor de ecrã continua a ouvi-lo. */
+        @media (max-width: 380px) {
+            .brand-barra {
+                display: none;
+            }
+            .brand-bairro {
+                position: absolute;
+                width: 1px;
+                height: 1px;
+                overflow: hidden;
+                clip: rect(0 0 0 0);
+                clip-path: inset(50%);
+                white-space: nowrap;
+            }
+        }
+
 
 
         /* ─── Coordinates Info ─── */
