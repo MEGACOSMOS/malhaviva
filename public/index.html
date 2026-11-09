@@ -4624,7 +4624,7 @@
 
         <!-- Assets -->
         <pc-asset id="splat-scene" src="splat/lod-meta.json" type="gsplat"></pc-asset>
-        <pc-asset id="camera-controls-script" src="./camera-controls.mjs?v=52" type="script"></pc-asset>
+        <pc-asset id="camera-controls-script" src="./camera-controls.mjs?v=53" type="script"></pc-asset>
         <pc-asset id="camera-coords-script" src="./coords.mjs?v=7" type="script"></pc-asset>
         <pc-asset id="annotations-script" src="./annotations.mjs?v=118" type="script"></pc-asset>
         <pc-asset id="measure-script" src="./measure.mjs?v=1" type="script"></pc-asset>
@@ -6387,7 +6387,7 @@ void modifySplatColor(vec3 center, inout vec4 color) {
         let pedidoDaRede = null;
         const lerRede = () => {
             if (!pedidoDaRede) {
-                pedidoDaRede = import('./navegacao.mjs?v=8').then(async (m) => {
+                pedidoDaRede = import('./navegacao.mjs?v=9').then(async (m) => {
                     contas = m;
                     rede = await m.carregarRede();
                     return rede;
@@ -6407,6 +6407,12 @@ void modifySplatColor(vec3 center, inout vec4 color) {
                 const p = painel.getBoundingClientRect();
                 if (noTelemovel.matches) {
                     f.baixo = Math.max(f.baixo, window.innerHeight - p.top);
+                    // O botão da localização, no canto, 12 pontos acima do
+                    // painel: o percurso não fica por baixo dele. (Conta-se
+                    // a partir do painel, e não de onde o botão está: ele só
+                    // é posto no sítio um instante depois de o painel
+                    // mudar de altura.)
+                    if (!localizarEl.hidden) f.baixo = Math.max(f.baixo, window.innerHeight - p.top + 12 + (localizarEl.offsetHeight || 44));
                     // A guiar, a indicação fica em cima, por baixo do
                     // cabeçalho.
                     if (painel.classList.contains('a-guiar')) f.cima = Math.max(f.cima, manobraEl.getBoundingClientRect().bottom + 12);
@@ -6772,9 +6778,15 @@ void modifySplatColor(vec3 center, inout vec4 color) {
         // com a localização ligada; da entrada do bairro, sem ela.
         const tracar = (enquadrar) => {
             if (!escolhida || !nav) return;
-            percurso = nav.mostrar(escolhida, { aqui, enquadrar });
+            percurso = nav.mostrar(escolhida, { aqui, enquadrar: false });
             progresso = aqui ? nav.mostrarVoce(aqui.lat, aqui.lon).feito : 0;
             escreverPercurso();
+            // A câmara vai até onde se vê o percurso todo só agora, com o
+            // painel já com o tamanho com que fica: no telemóvel é ele que
+            // diz quanto do ecrã sobra para o bairro, e medido antes (ainda
+            // com as linhas por escrever) o fim do caminho ficava por baixo
+            // dele.
+            if (enquadrar && percurso) nav.enquadrar();
         };
 
         // O endereço da página diz a casa: malhaviva.pt/d31 (ou /d31-2, o

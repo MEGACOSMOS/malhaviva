@@ -1836,6 +1836,100 @@ class CameraControls extends Script {
     }
 
     /**
+     * Um tecto mais alto do que o de sempre, enquanto for preciso.
+     *
+     * A navegação mostra, ao escolher uma casa, o caminho todo até ela; num
+     * telemóvel ao alto, um caminho comprido só cabe visto de mais alto do
+     * que a vista de abertura. Enquanto o caminho está à vista, o tecto fica
+     * aqui; quando sai (ver `soltarOTecto`), vai descendo atrás da câmara, e
+     * ela nunca é puxada para baixo de repente.
+     *
+     * @type {number|null}
+     * @private
+     */
+    _tectoAlto = null;
+
+    /**
+     * Se o tecto alto já foi largado, e desce agora com a câmara.
+     *
+     * @type {boolean}
+     * @private
+     */
+    _tectoASoltar = false;
+
+    /**
+     * Sobe o tecto da câmara até esta altura (nunca acima da abóbada do
+     * céu), até se pedir `soltarOTecto`.
+     *
+     * @param {number} altura - A altura que a câmara pode atingir.
+     */
+    subirOTecto(altura) {
+        if (!(altura > this.alturaMaxima())) return;
+        this._tectoAlto = Math.max(altura, this._tectoASoltar ? 0 : (this._tectoAlto || 0));
+        this._tectoASoltar = false;
+    }
+
+    /**
+     * Larga o tecto alto: a partir daqui ele desce atrás da câmara, até
+     * voltar ao de sempre.
+     */
+    soltarOTecto() {
+        if (this._tectoAlto !== null) this._tectoASoltar = true;
+    }
+
+    /**
+     * A altura mais alta a que a câmara pode estar agora: a de sempre, ou a
+     * do tecto alto enquanto ele durar.
+     *
+     * @returns {number} A altura.
+     * @private
+     */
+    _tectoAgora() {
+        const deSempre = this.alturaMaxima();
+        if (this._tectoAlto === null) return deSempre;
+        if (this._tectoASoltar) {
+            this._tectoAlto = Math.min(this._tectoAlto, Math.max(this._pose.position.y, deSempre));
+            if (this._tectoAlto <= deSempre + 0.01) {
+                this._tectoAlto = null;
+                this._tectoASoltar = false;
+                return deSempre;
+            }
+        }
+        return Math.max(deSempre, this._tectoAlto);
+    }
+
+    /**
+     * Se a câmara pode estar ali sem ser empurrada: abaixo do tecto (o
+     * de sempre, ou o que se pede) e dentro das paredes da taça do céu.
+     *
+     * @param {number} x - Onde, no bairro.
+     * @param {number} y - A altura.
+     * @param {number} z - Onde, no bairro.
+     * @param {number} [tecto] - O tecto a contar; o de agora, se não se der.
+     * @returns {boolean} Se pode.
+     */
+    podeEstar(x, y, z, tecto) {
+        if (y > (tecto !== undefined ? tecto : this._tectoAgora()) + 0.01) return false;
+        if (!this.travagem) return true;
+        const cupula = this._medidasDaCupula();
+        if (!cupula) return true;
+        if (y > cupula.topo - this.margemDaCupula) return false;
+        const parede = Math.max(1, this._paredeA(cupula, y) - this.margemDaCupula);
+        return Math.hypot(x - cupula.centroX, z - cupula.centroZ) <= parede - 0.5;
+    }
+
+    /**
+     * A altura mais alta que o tecto alto pode ter: a do alto da taça do
+     * céu, com a folga das paredes.
+     *
+     * @returns {number} A altura.
+     */
+    tectoPossivel() {
+        const cupula = this.travagem ? this._medidasDaCupula() : null;
+        return cupula ? cupula.topo - this.margemDaCupula : Infinity;
+    }
+
+    /**
      * @param {number} dt - The time delta.
      */
     update(dt) {
@@ -2286,7 +2380,7 @@ class CameraControls extends Script {
             
             const nextY = this._pose.position.y + trueForwardY * moveThisFrame;
             const MIN_ALTITUDE = 15.0;
-            const MAX_ALTITUDE = this._initialY !== undefined ? this._initialY : Infinity;
+            const MAX_ALTITUDE = this._tectoAgora();
             
             // Impede deslizar pelo chão ou teto quando forçamos o zoom contra eles
             if (nextY < MIN_ALTITUDE || nextY > MAX_ALTITUDE) {
@@ -2427,13 +2521,15 @@ class CameraControls extends Script {
 
         // --- GLOBAL ALTITUDE LIMITS ---
         // Impede que a câmara fure o chão (trespassar o gaussian) 
-        // e repõe o teto de altitude original da câmara.
+        // e repõe o teto de altitude original da câmara (ou o tecto alto da
+        // navegação, enquanto ele durar: ver `subirOTecto`).
         const MIN_ALTITUDE = 15.0;
         if (this._pose.position.y < MIN_ALTITUDE) {
             this._pose.position.y = MIN_ALTITUDE;
         }
-        if (this._initialY !== undefined && this._pose.position.y > this._initialY) {
-            this._pose.position.y = this._initialY;
+        const tecto = this._tectoAgora();
+        if (this._pose.position.y > tecto) {
+            this._pose.position.y = tecto;
         }
 
         this._camera.entity.setPosition(this._pose.position);

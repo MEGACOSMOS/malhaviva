@@ -29,7 +29,7 @@ import {
     Vec3, Color, Entity, Mesh, MeshInstance, StandardMaterial, Texture,
     BLEND_NORMAL, CULLFACE_NONE, ADDRESS_CLAMP_TO_EDGE, FILTER_LINEAR, FILTER_LINEAR_MIPMAP_LINEAR
 } from 'playcanvas';
-import { alisar, arredondar, preencher, METROS_POR_MINUTO } from './navegacao.mjs?v=8';
+import { alisar, arredondar, preencher, METROS_POR_MINUTO } from './navegacao.mjs?v=9';
 
 // Quanto se alisa a linha, em metros (as contas são as do traçado de
 // origem).
@@ -78,6 +78,13 @@ const DURACAO_DA_VIAGEM = 1.8;
 const INCLINACOES = [35, 42, 50, 58, 66, 74];
 const DESVIOS = [0, -20, 20, -40, 40];
 const ALTURA_MINIMA = 18;
+// Quando o percurso não cabe assim (num telemóvel ao alto, um percurso
+// comprido): todos os rumos, de 15 em 15 graus, e mais inclinações; e, se
+// nem assim, tectos mais altos do que o da vista de abertura — a câmara
+// sobe só para esta vista (ver `subirOTecto` em camera-controls.mjs).
+const RUMOS_TODOS = 24;
+const INCLINACOES_TODAS = [20, 25, 30, 35, 42, 50, 58, 66, 74, 80, 85];
+const TECTOS_ACIMA = [30, 70, 120, 190, 280, 380];
 // Quando o percurso não cabe todo, de cima, a esta inclinação.
 const INCLINACAO_DE_RECURSO = 60;
 // A linha de vista da câmara até ao percurso passa pelo menos esta altura
@@ -458,18 +465,25 @@ export async function prepararNavegacao3D(app, opcoes) {
      * da entrada para a casa, ou ao longo do percurso (num ecrã ao alto,
      * estreito, é o que o deixa caber), ou um pouco de lado; inclinada entre
      * INCLINACOES; e com tudo dentro da parte do ecrã que o painel e o
-     * cabeçalho não tapam, ao meio dela.
+     * cabeçalho não tapam, ao meio dela. Só conta um sítio onde a câmara
+     * pode mesmo ficar: abaixo do tecto e dentro das paredes do céu (a
+     * câmara empurrada para dentro delas deixava de mostrar tudo).
      *
+     * @param {number[][]} pontos - O que tem de se ver.
+     * @param {number[]} u - O rumo preferido, no chão.
+     * @param {object} [como] - `largo` (experimentar todos os rumos e mais
+     *     inclinações) e `limite` (o tecto a usar, se não o de sempre).
      * @returns {{posicao: number[], inclinacao: number, rumo: number}|null}
      */
-    const cameraQueMostra = (pontos, u) => {
+    const cameraQueMostra = (pontos, u, { largo = false, limite = tecto() } = {}) => {
         const z = zonaLivre();
         if (z.xMax - z.xMin < 0.2 || z.yMax - z.yMin < 0.2) return null;
         const passo = Math.max(1, Math.floor(pontos.length / 60));
         const amostra = pontos.filter((_, i) => i % passo === 0).concat([pontos[pontos.length - 1]]);
         const centro = [0, 1, 2].map((i) => amostra.reduce((soma, p) => soma + p[i], 0) / amostra.length);
-        const limite = tecto();
         const pisoDoPercurso = Math.min(...amostra.map((p) => p[1])) + ALTURA_MINIMA;
+        const c = controlos();
+        const podeEstar = (q) => !c || typeof c.podeEstar !== 'function' || c.podeEstar(q[0], q[1], q[2], limite);
 
         // Os rumos a experimentar: o da entrada para a casa, o comprido do
         // percurso (o eixo para onde ele mais se estende), e uns desvios.
@@ -487,6 +501,10 @@ export async function prepararNavegacao3D(app, opcoes) {
         let aoComprido = [Math.cos(eixo), Math.sin(eixo)];
         if (aoComprido[0] * u[0] + aoComprido[1] * u[1] < 0) aoComprido = [-aoComprido[0], -aoComprido[1]];
         const anguloDe = (d) => Math.atan2(d[1], d[0]);
+        const longeDe = (a) => {
+            const d = a - anguloDe(u);
+            return Math.abs(Math.atan2(Math.sin(d), Math.cos(d))) * 180 / Math.PI;
+        };
         const rumos = DESVIOS.map((desvio) => ({ a: anguloDe(u) + desvio * Math.PI / 180, desvio: Math.abs(desvio) }));
         const diferenca = anguloDe(aoComprido) - anguloDe(u);
         const doEixo = Math.abs(Math.atan2(Math.sin(diferenca), Math.cos(diferenca))) * 180 / Math.PI;
@@ -495,11 +513,19 @@ export async function prepararNavegacao3D(app, opcoes) {
                 rumos.push({ a: anguloDe(aoComprido) + desvio * Math.PI / 180, desvio: doEixo + Math.abs(desvio) / 2 });
             }
         }
+        // À larga: todos os rumos à volta, a contar o desvio do preferido.
+        if (largo) {
+            for (let k = 0; k < RUMOS_TODOS; k++) {
+                const a = anguloDe(u) + k * 2 * Math.PI / RUMOS_TODOS;
+                rumos.push({ a, desvio: longeDe(a) });
+            }
+        }
+        const inclinacoes = largo ? INCLINACOES_TODAS : INCLINACOES;
 
         let melhor = null;
         for (const { a, desvio } of rumos) {
             const ud = [Math.cos(a), Math.sin(a)];
-            for (const graus of INCLINACOES) {
+            for (const graus of inclinacoes) {
                 const e = eixos(ud, graus);
                 // O chão por baixo da câmara não se sabe antes de saber onde
                 // ela fica: tenta-se, e sobe-se o piso se for preciso.
@@ -513,14 +539,15 @@ export async function prepararNavegacao3D(app, opcoes) {
                     piso = precisa;
                     q = null;
                 }
-                if (!q || !veDali(q, centro) || !veDali(q, amostra[amostra.length - 1])) continue;
+                if (!q || !podeEstar(q) || !veDali(q, centro) || !veDali(q, amostra[amostra.length - 1])) continue;
                 // De todas as que cabem, a mais perto do percurso, com algum
                 // gosto por olhar da entrada para a casa e por não ficar a
                 // pique por cima dele.
                 const nota = Math.hypot(q[0] - centro[0], q[1] - centro[1], q[2] - centro[2]) *
-                    (1 + 0.005 * desvio) * (1 + 0.012 * Math.max(0, graus - 50));
+                    (1 + 0.005 * desvio) * (1 + 0.012 * Math.max(0, graus - 50)) *
+                    (1 + 0.015 * Math.max(0, 35 - graus));
                 if (!melhor || nota < melhor.nota) {
-                    melhor = { nota, posicao: q, inclinacao: -graus, rumo: rumoDe(ud[0], ud[1]) };
+                    melhor = { nota, posicao: q, inclinacao: -graus, rumo: rumoDe(ud[0], ud[1]), limite };
                 }
             }
         }
@@ -535,7 +562,7 @@ export async function prepararNavegacao3D(app, opcoes) {
             if (!r) break;
             const acima = angulo((r.y0 + r.y1) / 2, z.tanV) - angulo((z.yMin + z.yMax) / 2, z.tanV);
             const aDireita = angulo((r.x0 + r.x1) / 2, z.tanH) - angulo((z.xMin + z.xMax) / 2, z.tanH);
-            inclinacao = Math.max(-80, Math.min(-25, inclinacao + acima));
+            inclinacao = Math.max(-88, Math.min(-15, inclinacao + acima));
             rumo -= aDireita / Math.max(0.3, Math.cos(inclinacao * Math.PI / 180));
         }
         if (dentro(noRetangulo(amostra, melhor.posicao, eixos(direcaoDoRumo(rumo), -inclinacao), z), z)) {
@@ -566,10 +593,35 @@ export async function prepararNavegacao3D(app, opcoes) {
     let vistaDeAntes = null;
 
     /**
+     * A câmara que mostra tudo o que se lhe dá, custe o que custar: à
+     * maneira de sempre; senão, de todos os rumos e com mais inclinações;
+     * senão, de cada vez mais alto, acima do tecto da vista de abertura (a
+     * câmara sobe só para esta vista). Nada, só se nem do alto do céu se
+     * conseguir.
+     */
+    const cameraQueMostraTudo = (pontos, u) => {
+        const vista = cameraQueMostra(pontos, u) || cameraQueMostra(pontos, u, { largo: true });
+        if (vista) return vista;
+        const c = controlos();
+        if (!c || typeof c.subirOTecto !== 'function') return null;
+        const deSempre = tecto();
+        const possivel = typeof c.tectoPossivel === 'function' ? c.tectoPossivel() - 0.5 : deSempre;
+        for (const acima of TECTOS_ACIMA) {
+            const limite = Math.min(deSempre + acima, possivel);
+            if (limite <= deSempre) break;
+            const alta = cameraQueMostra(pontos, u, { largo: true, limite });
+            if (alta) return alta;
+            if (limite >= possivel) break;
+        }
+        return null;
+    };
+
+    /**
      * Leva a câmara até onde se vê o percurso todo, a olhar do princípio
-     * para a casa — como quem vai entrar no bairro. Num ecrã pequeno, um
-     * percurso muito comprido pode não caber: mostra-se então o pedaço mais
-     * comprido que couber. Da entrada, é o fim, com a casa (a entrada é numa
+     * para a casa — como quem vai entrar no bairro. Mesmo num telemóvel ao
+     * alto, com um percurso comprido, cabe sempre tudo (ver
+     * `cameraQueMostraTudo`). Só se nem assim couber se mostra o pedaço mais
+     * comprido que couber: da entrada, é o fim, com a casa (a entrada é numa
      * estrada, e lá chega-se com o "Como chegar à entrada"); de onde a
      * pessoa está, com a localização ligada, é o princípio, com ela — é por
      * aí que ela vai começar a andar.
@@ -591,7 +643,7 @@ export async function prepararNavegacao3D(app, opcoes) {
         };
         // De onde a pessoa está, quando é daí que o percurso começa.
         const comeco = aqui ? [aqui].concat(linha) : linha;
-        let vista = cameraQueMostra(comeco.concat([alvo]), direcao(comeco[0], alvo));
+        let vista = cameraQueMostraTudo(comeco.concat([alvo]), direcao(comeco[0], alvo));
         const total = acum[acum.length - 1];
         for (let parte = 0.15; !vista && parte < 0.95; parte += 0.15) {
             if (daqui) {
@@ -614,6 +666,10 @@ export async function prepararNavegacao3D(app, opcoes) {
             vista = cameraDeRecurso(onde, direcao(de, para));
         }
         atual.vista = vista;
+        // Vista de cima do tecto de sempre: a câmara pode lá ir, enquanto o
+        // percurso estiver à vista.
+        if (vista.limite > tecto() && typeof c.subirOTecto === 'function') c.subirOTecto(vista.limite + 0.5);
+        else if (typeof c.soltarOTecto === 'function') c.soltarOTecto();
         c.viajar(new Vec3(vista.posicao[0], vista.posicao[1], vista.posicao[2]), vista.inclinacao, vista.rumo, DURACAO_DA_VIAGEM);
     };
 
@@ -1308,6 +1364,10 @@ export async function prepararNavegacao3D(app, opcoes) {
 
     /** Tira o percurso e os seus marcadores. */
     const limpar = () => {
+        // O tecto alto (se o percurso precisou dele) vai descendo atrás da
+        // câmara até ao de sempre.
+        const c = controlos();
+        if (c && typeof c.soltarOTecto === 'function') c.soltarOTecto();
         tirarMarcadores();
         mostrarLoteF(false);
         atual = null;
