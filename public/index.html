@@ -143,7 +143,7 @@
 
     <!-- As línguas do site. Fica antes de tudo o resto para o texto
          nascer já na língua certa, sem piscar em português primeiro. -->
-    <script src="/idiomas.js?v=50"></script>
+    <script src="/idiomas.js?v=51"></script>
     <script src="/legendas.js?v=2"></script>
 
     <!-- O quadrado de espera, o mesmo em todo o site. Fica antes de o
@@ -1031,16 +1031,16 @@
         #percurso-nota:empty {
             display: none;
         }
-        /* Os créditos do que o percurso usa: as ruas desenhadas e as
-           estradas à volta, que vêm do OpenStreetMap. */
+        /* O crédito da fotografia de satélite do lote F, só com uma casa
+           de lá. */
         #percurso-creditos {
             margin: 12px 0 0;
             font-size: 0.65rem;
             line-height: 1.45;
             color: rgba(255, 255, 255, 0.5);
         }
-        #percurso-creditos a {
-            color: inherit;
+        #percurso-creditos:empty {
+            display: none;
         }
 
         /* Os botões: o Iniciar cheio, de branco; os outros com o fio
@@ -3011,22 +3011,26 @@
      * deixa cair quando lhe acontece; as portas do próprio navegador para
      * o dizer são ligadas mal o motor acorda (ver `vigiarAPlacaGrafica`).
      *
-     * Faz-se uma de duas coisas: se ainda não se tentou, recarrega-se a
-     * página em modo de poupança, a pedir muito menos ao aparelho; se já
-     * se estava em poupança e mesmo assim não deu, diz-se com todas as
-     * letras, com um botão para tentar de novo — e a porta do ecrã de
-     * espera fica fechada, em vez de abrir para um ecrã preto.
+     * Desce-se um degrau de cada vez, a recarregar a página:
+     *  1. se a qualidade gráfica foi escolhida à mão (Máximo, Alto, Médio
+     *     ou Baixo), volta ao Automático — é o primeiro suspeito, e o
+     *     Automático vai-se afinando ao que o aparelho aguenta;
+     *  2. já no Automático, o modo de poupança, a pedir muito menos ao
+     *     aparelho;
+     *  3. se já se estava em poupança e mesmo assim não deu, diz-se com
+     *     todas as letras, com um botão para tentar de novo — e a porta do
+     *     ecrã de espera fica fechada, em vez de abrir para um ecrã preto.
+     *
+     * O primeiro degrau também é dado por quem vigia a entrada no bairro
+     * (ver `vigiarAEntrada`), quando as imagens quase não andam.
      */
     (function () {
         const t = (chave, senao) => (window.Idiomas && window.Idiomas.t(chave)) || senao;
-        const placa = { desistida: false, desistiu: null };
+        const placa = { desistida: false, desistiu: null, voltarAoAutomatico: null };
 
-        placa.desistiu = () => {
-            if (placa.desistida) return;
-            placa.desistida = true;
-
+        // O ecrã de espera por cima de tudo, com o letreiro dele.
+        const mostrarEcraDeEspera = () => {
             const overlay = document.getElementById('loading-overlay');
-            const letreiro = overlay && overlay.querySelector('.loading-text');
             if (overlay) {
                 overlay.style.transition = 'none';
                 overlay.classList.remove('hidden');
@@ -3035,6 +3039,36 @@
             // diz aqui já o diz por palavras.
             const bruto = document.getElementById('debug-error');
             if (bruto) bruto.style.display = 'none';
+            return overlay && overlay.querySelector('.loading-text');
+        };
+
+        /**
+         * Se a qualidade foi escolhida à mão, volta ao Automático e
+         * recarrega a página, a dizê-lo. Diz se o fez.
+         */
+        placa.voltarAoAutomatico = () => {
+            let escolhida = null;
+            try { escolhida = localStorage.getItem('quality'); } catch (e) { escolhida = null; }
+            if (!escolhida || escolhida === 'auto') return false;
+            try { localStorage.removeItem('quality'); } catch (e) { /* segue */ }
+            // Se a memória não deixou apagar, recarregar dava o mesmo:
+            // segue-se para o degrau seguinte.
+            let ficou = null;
+            try { ficou = localStorage.getItem('quality'); } catch (e) { ficou = null; }
+            if (ficou && ficou !== 'auto') return false;
+            placa.desistida = true;
+            const letreiro = mostrarEcraDeEspera();
+            if (letreiro) letreiro.textContent = t('gpu.paraAuto', 'Este aparelho está com dificuldade em mostrar o bairro com a qualidade escolhida. A voltar ao modo Automático…');
+            setTimeout(() => window.location.reload(), 1600);
+            return true;
+        };
+
+        placa.desistiu = () => {
+            if (placa.desistida) return;
+            if (placa.voltarAoAutomatico()) return;
+            placa.desistida = true;
+
+            const letreiro = mostrarEcraDeEspera();
 
             if (!window.modoDePoupanca) {
                 try { sessionStorage.setItem('poupanca', '1'); } catch (e) { /* sem memória: tenta na mesma */ }
@@ -5676,6 +5710,7 @@ void modifySplatColor(vec3 center, inout vec4 color) {
             window.ceu = ceu;
 
             vigiarAPlacaGrafica(app);
+            vigiarAEntrada(app);
 
             // --- Comando de jogo ---
             // Os dois sticks já andavam pelo bairro por conta do motor; o
@@ -5746,11 +5781,11 @@ void modifySplatColor(vec3 center, inout vec4 color) {
              * matar o desenho a meio: o bairro fica branco, e o motor não
              * se levanta sozinho. Aqui ouve-se esse momento — pelas duas
              * portas que o navegador tem para o dizer, e ainda pelos erros
-             * que o motor deixa cair quando lhe acontece — e faz-se uma de
-             * duas coisas: se ainda não se tentou, recarrega-se a página em
-             * modo de poupança, a pedir muito menos ao aparelho; se já se
-             * estava em poupança e mesmo assim não deu, diz-se com todas as
-             * letras, em vez de deixar um ecrã branco.
+             * que o motor deixa cair quando lhe acontece — e desce-se um
+             * degrau (ver `placaGrafica`): a qualidade escolhida à mão volta
+             * ao Automático; já no Automático, o modo de poupança, a pedir
+             * muito menos ao aparelho; se mesmo assim não deu, diz-se com
+             * todas as letras, em vez de deixar um ecrã branco.
              *
              * @param {object} app - A aplicação 3D.
              */
@@ -5765,6 +5800,72 @@ void modifySplatColor(vec3 center, inout vec4 color) {
                 if (device.canvas) device.canvas.addEventListener('webglcontextlost', desistiu);
                 if (device.wgpu && device.wgpu.lost && device.wgpu.lost.then) device.wgpu.lost.then(desistiu, () => {});
                 if (typeof device.on === 'function') device.on('devicelost', desistiu);
+            }
+
+            /**
+             * Quando a qualidade escolhida à mão não aguenta a entrada.
+             *
+             * Uma qualidade escolhida à mão (Máximo, Alto, Médio ou Baixo)
+             * fica guardada para as visitas seguintes — também num aparelho
+             * que não a aguenta, ou depois de o aparelho mudar (outro ecrã,
+             * a bateria a poupar). O bairro entra então aos solavancos, uma
+             * imagem de longe a longe, e quem chega não tem como saber que a
+             * culpa é de uma escolha antiga. Isto conta as imagens nos
+             * primeiros segundos à vista: se andarem abaixo de
+             * IMAGENS_MINIMAS por segundo durante JANELA segundos seguidos, a
+             * qualidade volta ao Automático, que se vai afinando ao aparelho
+             * (ver `placaGrafica.voltarAoAutomatico`).
+             *
+             * No Automático não há nada a fazer aqui: é ele que já se afina
+             * (ver `afinarPelaFluidez`). Só se conta com a página à vista e
+             * fora dos óculos; e as primeiras imagens não contam, que essas
+             * demoram sempre, a preparar o desenho.
+             *
+             * @param {object} app - A aplicação 3D.
+             */
+            function vigiarAEntrada(app) {
+                const placa = window.placaGrafica;
+                if (savedQuality === 'auto' || window.modoVRpedido || !placa || !placa.voltarAoAutomatico) return;
+                const AQUECER = 3;          // segundos à vista antes de contar
+                const VIGIAR = 45;          // segundos à vista em que se vigia
+                const JANELA = 8;           // segundos seguidos aos solavancos
+                const IMAGENS_MINIMAS = 6;  // imagens por segundo
+                let imagens = 0;
+                let visto = 0;
+                let lento = 0;
+                let antes = performance.now();
+                const contar = () => { imagens++; };
+                app.on('frameend', contar);
+                const parar = () => {
+                    clearInterval(relogio);
+                    app.off('frameend', contar);
+                };
+                // O tempo vem do relógio a sério, e não do número de voltas:
+                // com o aparelho aflito, uma volta de um segundo pode
+                // demorar três.
+                const relogio = setInterval(() => {
+                    const agora = performance.now();
+                    const passou = (agora - antes) / 1000;
+                    antes = agora;
+                    const destaVez = imagens;
+                    imagens = 0;
+                    const parado = document.hidden ||
+                        (app.xr && app.xr.active) ||
+                        document.body.classList.contains('em-cartao');
+                    if (parado || placa.desistida) {
+                        lento = 0;
+                        return;
+                    }
+                    visto += passou;
+                    if (visto <= AQUECER) return;
+                    lento = destaVez / Math.max(passou, 0.001) < IMAGENS_MINIMAS ? lento + passou : 0;
+                    if (lento >= JANELA) {
+                        parar();
+                        placa.voltarAoAutomatico();
+                        return;
+                    }
+                    if (visto >= AQUECER + VIGIAR) parar();
+                }, 1000);
             }
 
             /**
@@ -6404,21 +6505,14 @@ void modifySplatColor(vec3 center, inout vec4 color) {
             else if (percurso && percurso.longe) nota = diz('nav.longe', 'Está longe do bairro: o percurso começa na entrada mais perto da casa.');
             notaEl.textContent = nota;
         };
-        // As ruas desenhadas sobre o voo de drone, e as estradas à volta,
-        // que vêm do OpenStreetMap: a licença dele pede que se diga.
+        // O painel já não diz de onde vêm as ruas (o voo de drone e o
+        // OpenStreetMap): a pedido, a linha saiu. Fica só, com uma casa do
+        // lote F, o crédito da fotografia de satélite pousada no chão onde
+        // o drone não chegou — e sem ela o parágrafo não aparece.
         const escreverCreditos = () => {
-            const partes = preencher(diz('nav.creditos3d', 'Ruas desenhadas sobre o voo de drone de 15 de fevereiro de 2026 · Estradas à volta: {osm}'), { osm: '\u0000' }).split('\u0000');
-            const osm = document.createElement('a');
-            osm.href = 'https://www.openstreetmap.org/copyright';
-            osm.target = '_blank';
-            osm.rel = 'noopener';
-            osm.textContent = '© OpenStreetMap';
-            creditosEl.replaceChildren(partes[0], osm, partes[1] || '');
-            // Com uma casa do lote F, a fotografia de satélite pousada no
-            // chão onde o drone não chegou.
-            if (percurso && percurso.loteF) {
-                creditosEl.append(' · ' + preencher(diz('nav.creditosLoteF', 'Lote F: fotografia de satélite {fonte}'), { fonte: 'Esri · Vantor' }));
-            }
+            creditosEl.textContent = percurso && percurso.loteF
+                ? preencher(diz('nav.creditosLoteF', 'Lote F: fotografia de satélite {fonte}'), { fonte: 'Esri · Vantor' })
+                : '';
         };
         // O título do separador: a casa, enquanto o percurso está à vista.
         const escreverTitulo = () => {
@@ -6850,26 +6944,48 @@ void modifySplatColor(vec3 center, inout vec4 color) {
             else copiarEl.removeAttribute('title');
             if (!copiado) copiarTextoEl.textContent = diz('nav.copiarLink', 'Copiar link casa');
         }
+        // A maneira antiga de copiar, para os navegadores que não deixam a
+        // página usar a área de transferência: um campo escondido com o
+        // endereço, escolhido e copiado.
+        const copiarAModaAntiga = (texto) => {
+            const campoEscondido = document.createElement('textarea');
+            campoEscondido.value = texto;
+            campoEscondido.setAttribute('readonly', '');
+            campoEscondido.style.cssText = 'position:fixed;top:0;left:0;opacity:0;pointer-events:none;';
+            document.body.appendChild(campoEscondido);
+            campoEscondido.select();
+            let deu = false;
+            try { deu = document.execCommand('copy'); } catch (e) { deu = false; }
+            campoEscondido.remove();
+            copiarEl.focus({ preventScroll: true });
+            return deu;
+        };
         copiarEl.addEventListener('click', async () => {
             const url = enderecoParaMandar();
             if (!url) return;
+            let deu = false;
             try {
                 await navigator.clipboard.writeText(url);
+                deu = true;
             } catch (e) {
-                // Sem acesso à área de transferência: o endereço fica numa
-                // caixa, já escolhido, para copiar à mão.
-                window.prompt(diz('nav.copiarLink', 'Copiar link casa'), url);
-                return;
+                deu = copiarAModaAntiga(url);
             }
-            // Diz que copiou, no próprio botão (e a quem ouve a página), e
-            // volta ao que era ao fim de dois segundos.
             clearTimeout(copiado);
-            copiarTextoEl.textContent = diz('nav.linkCopiado', 'Link copiado');
-            resumoLeitorEl.textContent = diz('nav.linkCopiado', 'Link copiado');
+            if (deu) {
+                // Diz que copiou, no próprio botão (e a quem ouve a página),
+                // e volta ao que era ao fim de dois segundos.
+                copiarTextoEl.textContent = diz('nav.linkCopiado', 'Link copiado');
+                resumoLeitorEl.textContent = diz('nav.linkCopiado', 'Link copiado');
+            } else {
+                // Nem assim: o próprio endereço fica escrito no botão, para
+                // se copiar à mão.
+                copiarTextoEl.textContent = url.replace(/^https?:\/\//, '');
+                resumoLeitorEl.textContent = url;
+            }
             copiado = setTimeout(() => {
                 copiado = 0;
                 escreverCopiar();
-            }, 2000);
+            }, deu ? 2000 : 6000);
         });
         // No telemóvel, a folha de partilhar do próprio telemóvel.
         partilharEl.addEventListener('click', async () => {
