@@ -143,7 +143,7 @@
 
     <!-- As línguas do site. Fica antes de tudo o resto para o texto
          nascer já na língua certa, sem piscar em português primeiro. -->
-    <script src="/idiomas.js?v=51"></script>
+    <script src="/idiomas.js?v=52"></script>
     <script src="/legendas.js?v=2"></script>
 
     <!-- O quadrado de espera, o mesmo em todo o site. Fica antes de o
@@ -925,24 +925,88 @@
             scrollbar-color: rgba(255, 255, 255, 0.25) transparent;
         }
         /* Voltar ao bairro: tira o percurso e leva a câmara de volta a
-           onde estava antes da pesquisa. */
+           onde estava antes da pesquisa. Uma seta para a esquerda, só, no
+           canto de cima à direita do painel — fica lá mesmo quando as
+           indicações deslizam. */
         #percurso-voltar {
-            display: inline-flex;
+            position: absolute;
+            top: 6px;
+            right: 6px;
+            z-index: 2;
+            display: flex;
             align-items: center;
-            gap: 4px;
-            margin: -4px 0 10px -6px;
-            padding: 4px 8px 4px 2px;
+            justify-content: center;
+            width: 40px;
+            height: 40px;
+            padding: 0;
             background: transparent;
             border: 0;
-            color: rgba(255, 255, 255, 0.75);
-            font: inherit;
-            font-size: 0.78rem;
+            border-radius: 0;
+            color: rgba(255, 255, 255, 0.8);
             cursor: pointer;
-            transition: color 0.15s ease;
+            transition: color 0.15s ease, background 0.15s ease;
         }
         @media (hover: hover) {
             #percurso-voltar:hover {
                 color: #ffffff;
+                background: rgba(255, 255, 255, 0.1);
+            }
+        }
+        /* A origem e a casa não passam por baixo da seta. */
+        .percurso-pontas {
+            padding-right: 36px;
+        }
+
+        /* A localização: um quadrado escuro com o fio do site, no canto de
+           baixo à direita, por cima do botão de partilhar. Aceso, de
+           branco, enquanto a câmara segue quem está a ver. No telemóvel
+           fica logo acima do painel, que lá está em baixo (a altura dele
+           vem em --altura-do-painel). */
+        #percurso-localizar {
+            position: fixed;
+            right: 24px;
+            bottom: 106px;
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 44px;
+            height: 44px;
+            padding: 0;
+            background: #05050a;
+            color: #ffffff;
+            border: 2.5px solid #505054;
+            border-radius: 0;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+            cursor: pointer;
+            transition: background 0.15s ease, color 0.15s ease;
+        }
+        #percurso-localizar[hidden] {
+            display: none;
+        }
+        @media (hover: hover) {
+            #percurso-localizar:hover {
+                background: #1b1b24;
+            }
+        }
+        #percurso-localizar[aria-pressed="true"] {
+            background: #ffffff;
+            color: #05050a;
+            border-color: #ffffff;
+        }
+        @media (hover: hover) {
+            #percurso-localizar[aria-pressed="true"]:hover {
+                background: rgba(255, 255, 255, 0.85);
+            }
+        }
+        #percurso-localizar:focus-visible {
+            outline: 2px solid rgba(255, 255, 255, 0.95);
+            outline-offset: 3px;
+        }
+        @media (max-width: 640px) {
+            #percurso-localizar {
+                right: 16px;
+                bottom: calc(var(--altura-do-painel, 0px) + 12px);
             }
         }
 
@@ -1991,6 +2055,7 @@
         body.em-cartao #partilhar-menu,
         body.em-cartao #legenda-mapa,
         body.em-cartao #percurso-painel,
+        body.em-cartao #percurso-localizar,
         body.em-cartao #percurso-3d,
         body.em-cartao #camera-stuck-popup {
             display: none !important;
@@ -3712,13 +3777,16 @@
              a que horas se chega, e o Terminar.
          Em baixo, sempre, o botão de copiar o endereço da casa. -->
     <section id="percurso-painel" aria-labelledby="percurso-casa" hidden>
+        <!-- Voltar ao bairro: uma seta para a esquerda, no canto de cima à
+             direita do painel. O nome vai dito (e no rato em cima), e não
+             escrito. -->
+        <button type="button" id="percurso-voltar" aria-label="Voltar ao bairro" title="Voltar ao bairro" data-i18n-aria="pesq.voltar" data-i18n-title="pesq.voltar">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true">
+                <line x1="20" y1="12" x2="5" y2="12"></line>
+                <polyline points="11 18 5 12 11 6"></polyline>
+            </svg>
+        </button>
         <div class="percurso-corpo">
-            <button type="button" id="percurso-voltar">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true">
-                    <polyline points="15 18 9 12 15 6"></polyline>
-                </svg>
-                <span data-i18n="pesq.voltar">Voltar ao bairro</span>
-            </button>
 
             <!-- A guiar: a indicação em que se vai. Carregar nela leva a
                  câmara a vê-la; as setas passam às outras. -->
@@ -3831,6 +3899,21 @@
             </button>
         </div>
     </section>
+
+    <!-- A localização, no canto de baixo à direita enquanto há um percurso
+         à vista, como nos mapas: liga a localização e leva a câmara até
+         onde a pessoa está, a segui-la. Uma mira quadrada, como os outros
+         sinais do site. -->
+    <button type="button" id="percurso-localizar" aria-pressed="false" aria-label="A minha localização" title="A minha localização" data-i18n-aria="nav.localizar" data-i18n-title="nav.localizar" hidden>
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true">
+            <rect x="6" y="6" width="12" height="12"></rect>
+            <rect x="10.5" y="10.5" width="3" height="3" fill="currentColor"></rect>
+            <line x1="12" y1="2" x2="12" y2="6"></line>
+            <line x1="12" y1="18" x2="12" y2="22"></line>
+            <line x1="2" y1="12" x2="6" y2="12"></line>
+            <line x1="18" y1="12" x2="22" y2="12"></line>
+        </svg>
+    </button>
 
     <!-- A legenda do mapa: que marcador é que quer dizer o quê. -->
     <ul id="legenda-mapa" aria-label="Legenda do mapa" data-i18n-aria="leg.titulo">
@@ -6255,6 +6338,7 @@ void modifySplatColor(vec3 center, inout vec4 color) {
         const manobraAnteriorEl = document.getElementById('manobra-anterior');
         const manobraSeguinteEl = document.getElementById('manobra-seguinte');
         const seguirEl = document.getElementById('percurso-seguir');
+        const localizarEl = document.getElementById('percurso-localizar');
         const entradaEl = document.getElementById('percurso-entrada');
         const partilharEl = document.getElementById('percurso-partilhar');
         const copiarEl = document.getElementById('percurso-copiar');
@@ -6497,6 +6581,7 @@ void modifySplatColor(vec3 center, inout vec4 color) {
         function escreverSeguir() {
             seguirEl.hidden = !(vigia !== null && comSeta);
             seguirEl.setAttribute('aria-pressed', nav && nav.aSeguir() ? 'true' : 'false');
+            localizarEl.setAttribute('aria-pressed', vigia !== null && comSeta && nav && nav.aSeguir() ? 'true' : 'false');
         }
         const escreverNota = () => {
             let nota = '';
@@ -6719,6 +6804,7 @@ void modifySplatColor(vec3 center, inout vec4 color) {
             indicacoesEl.open = !noTelemovel.matches;
             escreverCopiar();
             painel.hidden = false;
+            localizarEl.hidden = !navigator.geolocation;
             try {
                 await prepararO3D();
             } catch (e) {
@@ -6804,6 +6890,25 @@ void modifySplatColor(vec3 center, inout vec4 color) {
         seguirEl.addEventListener('click', () => {
             if (nav) nav.seguir(!nav.aSeguir());
         });
+
+        // O botão da localização, no canto de baixo à direita: liga a
+        // localização (a primeira posição leva a câmara até onde a pessoa
+        // está e põe-na a segui-la — ver ligarLocalizacao); já ligada, e
+        // com a pessoa no bairro, volta a pôr a câmara atrás dela. Longe do
+        // bairro não há onde a mostrar: a nota do painel já o diz.
+        localizarEl.addEventListener('click', () => {
+            if (vigia === null) ligarLocalizacao();
+            else if (comSeta && nav) nav.seguir(true);
+            escreverSeguir();
+        });
+        // No telemóvel o botão fica logo acima do painel, que lá está em
+        // baixo e muda de altura (a ver o percurso, a guiar, com as
+        // indicações abertas ou dobradas).
+        const medirOPainel = () => {
+            document.documentElement.style.setProperty('--altura-do-painel', (painel.hidden ? 0 : painel.offsetHeight) + 'px');
+        };
+        if (window.ResizeObserver) new ResizeObserver(medirOPainel).observe(painel);
+        window.addEventListener('resize', medirOPainel);
 
         // ---- Iniciar e terminar ----
         //
@@ -6898,6 +7003,7 @@ void modifySplatColor(vec3 center, inout vec4 color) {
             escolhida = null;
             percurso = null;
             painel.hidden = true;
+            localizarEl.hidden = true;
             campo.value = '';
             document.body.classList.remove('a-navegar');
             mudarEndereco(null);
