@@ -8,7 +8,7 @@
     <script src="/icone.js?v=1" defer></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Fotografia 360º</title>
-    <script src="/idiomas.js?v=50"></script>
+    <script src="/idiomas.js?v=52"></script>
     <script src="/quadrado-de-espera.js?v=4"></script>
     <!-- O aviso de "está a demorar" e a tecla de tentar de novo, os
          mesmos em todo o site. -->
@@ -165,6 +165,46 @@
             white-space: nowrap;
         }
 
+        /* O convite a olhar à volta mexendo o telemóvel: ao meio da
+           fotografia, com a roupa dos botões do site — o véu escuro e o
+           fio de dois pontos e meio. Sai com um toque nele, quando se
+           começa a arrastar a vista, ou passado um bocado; o mesmo pedido
+           fica no botão do telemóvel, na barra. */
+        #convite-movimento {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 1500;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            width: max-content;
+            max-width: calc(100% - 48px);
+            box-sizing: border-box;
+            padding: 12px 18px;
+            background: rgba(5, 5, 10, 0.78);
+            border: 2.5px solid rgba(255, 255, 255, 0.15);
+            border-radius: 0;
+            color: #ffffff;
+            font-family: inherit;
+            font-size: 0.85rem;
+            line-height: 1.4;
+            text-align: left;
+            cursor: pointer;
+            transition: opacity 0.35s ease;
+        }
+        #convite-movimento[hidden] {
+            display: none;
+        }
+        #convite-movimento.a-sair {
+            opacity: 0;
+            pointer-events: none;
+        }
+        #convite-movimento svg {
+            flex: 0 0 auto;
+        }
+
         @media (max-width: 900px) {
             .barra-do-nome {
                 height: calc(12px + 39px + 32px);
@@ -188,10 +228,24 @@
     <!-- A fotografia em cima, os comandos em baixo. A cena é "embedded"
          para caber neste sítio em vez de tomar a página toda. -->
     <div id="palco-360">
-        <a-scene embedded loading-screen="enabled: false" vr-mode-ui="enabled: false">
+        <!-- device-orientation-permission-ui: desligado. No iPhone e no iPad
+             o A-Frame pedia sozinho, logo ao abrir, licença para ler o
+             sensor de movimento; recusado (sem toque não há licença),
+             tapava a página com uma caixa escura em inglês. Quem pede agora
+             é a página, com as palavras do site (ver "Olhar à volta mexendo
+             o telemóvel", mais abaixo). -->
+        <a-scene embedded loading-screen="enabled: false" vr-mode-ui="enabled: false"
+                 device-orientation-permission-ui="enabled: false">
             <a-entity id="camera" camera="fov: 80" look-controls="reverseMouseDrag: true"></a-entity>
             <a-sky id="ceu" rotation="0 -90 0"></a-sky>
         </a-scene>
+
+        <!-- O convite a olhar à volta mexendo o telemóvel, só onde é
+             preciso pedir licença para isso (iPhone e iPad). -->
+        <button type="button" id="convite-movimento" hidden>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true"><rect x="8" y="3" width="8" height="18"></rect><line x1="11" y1="18" x2="13" y2="18"></line><path d="M4 8a6 6 0 0 0 0 8"></path><path d="M20 8a6 6 0 0 1 0 8"></path></svg>
+            <span data-i18n="foto.movimentoConvite">Toca aqui para a fotografia seguir o movimento do telemóvel</span>
+        </button>
 
         <div class="barra-do-nome" id="barra-do-nome">
             <div id="nome"></div>
@@ -209,6 +263,10 @@
         </button>
         <button class="player-btn" id="aproximar-btn" title="Aproximar" data-i18n-title="foto.aproximar" aria-label="Aproximar">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter"><circle cx="11" cy="11" r="7"></circle><line x1="8" y1="11" x2="14" y2="11"></line><line x1="11" y1="8" x2="11" y2="14"></line><line x1="16.5" y1="16.5" x2="21" y2="21"></line></svg>
+        </button>
+        <button class="player-btn" id="movimento-btn" title="Seguir o movimento do telemóvel" data-i18n-title="foto.movimento"
+                aria-label="Seguir o movimento do telemóvel" data-i18n-aria="foto.movimento" style="display: none;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true"><rect x="8" y="3" width="8" height="18"></rect><line x1="11" y1="18" x2="13" y2="18"></line><path d="M4 8a6 6 0 0 0 0 8"></path><path d="M20 8a6 6 0 0 1 0 8"></path></svg>
         </button>
         <button class="player-btn" id="vr-btn" title="Ver com óculos" data-i18n-title="video.oculos" style="display: none;">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a3 3 0 0 1 3-3h12a3 3 0 0 1 3 3v3a3 3 0 0 1-3 3h-2.5a2 2 0 0 1-1.7-1l-.9-1.4a1.2 1.2 0 0 0-2 0l-.9 1.4a2 2 0 0 1-1.7 1H6a3 3 0 0 1-3-3z"></path></svg>
@@ -276,6 +334,15 @@
         const botaoEcra = document.getElementById('fullscreen-btn');
         const iconeEntrar = botaoEcra.innerHTML;
         const iconeSair = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="square" stroke-linejoin="miter"><path d="M3 9h6V3 M21 9h-6V3 M21 15h-6v6 M3 15h6v6"></path></svg>';
+
+        // O iPhone não põe páginas em ecrã inteiro (só vídeos, e em plano):
+        // lá o botão não fazia nada, e sai. O iPad e os computadores ficam
+        // com ele.
+        const raiz = document.documentElement;
+        if (!((raiz.requestFullscreen || raiz.webkitRequestFullscreen) &&
+            (document.fullscreenEnabled || document.webkitFullscreenEnabled))) {
+            botaoEcra.style.display = 'none';
+        }
 
         botaoEcra.addEventListener('click', () => {
             const alvo = document.documentElement;
@@ -405,6 +472,78 @@
         const largarDedos = () => { distanciaInicial = 0; };
         palco.addEventListener('touchend', largarDedos);
         palco.addEventListener('touchcancel', largarDedos);
+
+        // ---- Olhar à volta mexendo o telemóvel ----
+        //
+        // Num telemóvel a fotografia segue o aparelho: vira-se o telemóvel
+        // e olha-se para esse lado. O iPhone e o iPad só deixam ler o
+        // sensor de movimento com licença, e a licença só se pede a partir
+        // de um toque. Quem pedia era o A-Frame, sozinho, ao abrir — sem
+        // toque, recusado, e a página ficava tapada por uma caixa em
+        // inglês. Agora pede a página: um convite ao meio da fotografia e
+        // um botão na barra, nas línguas do site, e só onde é preciso.
+        const botaoMovimento = document.getElementById('movimento-btn');
+        const convite = document.getElementById('convite-movimento');
+        const pedeLicenca = typeof window.DeviceOrientationEvent !== 'undefined' &&
+            typeof window.DeviceOrientationEvent.requestPermission === 'function';
+        let esperaDoConvite = null;
+
+        const tirarConvite = () => {
+            clearTimeout(esperaDoConvite);
+            if (convite.hidden || convite.classList.contains('a-sair')) return;
+            convite.classList.add('a-sair');
+            setTimeout(() => { convite.hidden = true; }, 400);
+        };
+
+        // Com licença, a fotografia passa a seguir o telemóvel: o A-Frame
+        // liga o sensor quando ouve este aviso na cena.
+        const ligarOMovimento = () => {
+            cena.emit('deviceorientationpermissiongranted');
+            botaoMovimento.style.display = 'none';
+            tirarConvite();
+        };
+
+        const pedirMovimento = () => {
+            tirarConvite();
+            window.DeviceOrientationEvent.requestPermission().then((resposta) => {
+                if (resposta === 'granted') ligarOMovimento();
+                // Recusado, o aparelho não volta a perguntar tão cedo: o
+                // botão, que já não faria nada, sai.
+                else botaoMovimento.style.display = 'none';
+            }).catch(() => { /* fica como estava: arrasta-se com o dedo */ });
+        };
+
+        const oferecerMovimento = () => {
+            const olhar = camara.components && camara.components['look-controls'];
+            // Só onde a fotografia seguiria mesmo o aparelho — num
+            // telemóvel ou num tablet — e onde é preciso pedir.
+            if (!pedeLicenca || !olhar || !olhar.magicWindowControls) return;
+            // Com a licença já dada (há pouco, noutra fotografia), liga-se
+            // sem perguntar. Sem ela, um pedido sem toque é recusado — e é
+            // então que se convida a dar o toque.
+            window.DeviceOrientationEvent.requestPermission().then((resposta) => {
+                if (resposta === 'granted') ligarOMovimento();
+            }).catch(() => {
+                botaoMovimento.style.display = 'flex';
+                convite.hidden = false;
+                // O convite conta o seu tempo a partir de quando a
+                // fotografia aparece, e não enquanto ela carrega.
+                const contar = () => { esperaDoConvite = setTimeout(tirarConvite, 12000); };
+                if (overlay.classList.contains('escondido')) contar();
+                else fotografia.addEventListener('load', contar, { once: true });
+            });
+        };
+
+        botaoMovimento.addEventListener('click', pedirMovimento);
+        convite.addEventListener('click', pedirMovimento);
+        // Quem começa a arrastar a vista escolheu o dedo: o convite sai da
+        // frente. O botão fica na barra, para depois.
+        palco.addEventListener('touchstart', (e) => {
+            if (!convite.hidden && !convite.contains(e.target)) tirarConvite();
+        }, { passive: true });
+
+        if (cena.hasLoaded) oferecerMovimento();
+        else cena.addEventListener('loaded', oferecerMovimento, { once: true });
 
         // Endireitar a vista: quem se perde a olhar para trás volta ao
         // princípio, e à distância a que chegou, com uma tecla só.

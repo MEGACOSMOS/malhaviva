@@ -124,6 +124,8 @@
             'foto.ecra': 'Ecrã inteiro',
             'foto.aproximar': 'Aproximar',
             'foto.afastar': 'Afastar',
+            'foto.movimento': 'Seguir o movimento do telemóvel',
+            'foto.movimentoConvite': 'Toca aqui para a fotografia seguir o movimento do telemóvel',
 
             'tl.titulo': 'Retroceder',
             'tl.carregar': 'A carregar fotografias de satélite…',
@@ -416,6 +418,8 @@
             'foto.ecra': 'Fullscreen',
             'foto.aproximar': 'Zoom in',
             'foto.afastar': 'Zoom out',
+            'foto.movimento': 'Follow the phone’s movement',
+            'foto.movimentoConvite': 'Tap here to make the photo follow your phone’s movement',
 
             'tl.titulo': 'Retroceder',
             'tl.carregar': 'Loading satellite photos…',
@@ -699,6 +703,8 @@
             'foto.ecra': 'Pantalla completa',
             'foto.aproximar': 'Acercar',
             'foto.afastar': 'Alejar',
+            'foto.movimento': 'Seguir el movimiento del móvil',
+            'foto.movimentoConvite': 'Toca aquí para que la fotografía siga el movimiento del móvil',
 
             'tl.titulo': 'Retroceder',
             'tl.carregar': 'Cargando fotografías de satélite…',
@@ -982,6 +988,8 @@
             'foto.ecra': 'Ekran interu',
             'foto.aproximar': 'Xiga más pértu',
             'foto.afastar': 'Fasta',
+            'foto.movimento': 'Sigi movimentu di telemóvel',
+            'foto.movimentoConvite': 'Toka li pa fotografia sigi movimentu di telemóvel',
 
             'tl.titulo': 'Retroceder',
             'tl.carregar': 'Ta karega fotografias di satélite…',
