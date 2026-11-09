@@ -990,7 +990,15 @@
          para caber neste sítio em vez de tomar a página toda. -->
     <div id="palco-360">
         <!-- A-Frame 360 Engine -->
-        <a-scene embedded loading-screen="enabled: false" vr-mode-ui="enabled: false">
+        <!-- device-orientation-permission-ui: desligado. No iPhone e no iPad
+             o A-Frame pedia, logo ao abrir, licença para ler o sensor de
+             movimento; o aparelho recusa um pedido que não venha de um
+             toque, e o A-Frame tapava então a página inteira com uma caixa
+             escura, em inglês, por cima do botão de tocar — para um sensor
+             que aqui só serve dentro dos óculos. A licença é pedida no
+             toque que leva aos óculos (ver VRCartao.pedirSensores). -->
+        <a-scene embedded loading-screen="enabled: false" vr-mode-ui="enabled: false"
+                 device-orientation-permission-ui="enabled: false">
             <a-assets>
                 <!-- Video dynamically injected -->
             </a-assets>
@@ -1311,7 +1319,7 @@
     </div>
 
     <script type="module">
-        import { fontesDeVideo, previaDe, olharInicialDe, ABERTURA_INICIAL } from './videos.mjs?v=8';
+        import { fontesDeVideo, previaDe, olharInicialDe, ABERTURA_INICIAL, eOriginal, e360 } from './videos.mjs?v=8';
         import { criarGestorDeQualidade, limiteDeTexturaDoAparelho } from './qualidade-video.mjs?v=9';
         import { temCaminhoDaCara, olharDaCara } from './olhar-das-rotas.mjs?v=1';
 
@@ -1327,6 +1335,16 @@
         const ecraPlano = urlParams.get('plano') === '1';
         const momentoInicial = parseFloat(urlParams.get('t') || '0') || 0;
         const fontes = enderecoDirecto ? { 'Original': enderecoDirecto } : fontesDeVideo(nome);
+
+        // O iPhone e o iPad (que se apresenta como um Mac com ecrã de
+        // toque) não sabem abrir o original das rotas, de 8K: é mais do
+        // que o descodificador deles aguenta, e escolhido no menu ficava
+        // o quadrado de espera a rodar para sempre. Nesses nem se oferece.
+        const aparelhoDaAppleDeToque = /iP(hone|ad|od)/.test(navigator.userAgent) ||
+            (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
+        if (aparelhoDaAppleDeToque && !enderecoDirecto && e360(nome)) {
+            Object.keys(fontes).forEach((r) => { if (eOriginal(nome, r)) delete fontes[r]; });
+        }
 
         // DOM Elements
         const overlay = document.getElementById('play-overlay');
@@ -1502,12 +1520,38 @@
         let isMuted = false;
         let currentVolume = 1;
 
+        // No iPhone e no iPad o volume de um vídeo não se muda por aqui: é
+        // o dos botões do aparelho, e o vídeo diz sempre que está no
+        // máximo, faça-se o que se fizer. Vê-se isso num ensaio.
+        const oVolumeObedece = (() => {
+            try {
+                const ensaio = document.createElement('audio');
+                ensaio.volume = 0.5;
+                return ensaio.volume === 0.5;
+            } catch (e) {
+                return true;
+            }
+        })();
+
         // Põe o som do vídeo como a barra o pede. Calar é pôr o volume no
         // zero, e não tapar o vídeo: um vídeo tapado nem sempre se deixa
         // destapar sem um toque, e este destapa-se de qualquer lado.
+        // Onde o volume não obedece, calar só pode ser tapar o vídeo —
+        // e aí só se tapa e destapa a partir do botão do som, que é um
+        // toque, e por isso volta sempre a destapar.
         const porOSom = () => {
-            video.volume = isMuted ? 0 : Math.min(1, currentVolume);
+            if (oVolumeObedece) {
+                video.volume = isMuted ? 0 : Math.min(1, currentVolume);
+            } else if (video.muted !== isMuted) {
+                video.muted = isMuted;
+            }
         };
+        // E a barrinha do volume, que lá não mexia em nada, sai: fica o
+        // botão de tirar e pôr o som.
+        if (!oVolumeObedece) {
+            const barraDoVolume = document.querySelector('.volume-slider-wrapper');
+            if (barraDoVolume) barraDoVolume.style.display = 'none';
+        }
 
         const togglePlay = () => {
             if (video.paused) {
@@ -1576,14 +1620,30 @@
         // seguro de que há imagem: o relógio do vídeo anda com o som, e
         // nas rotas em 8K o som chegava a andar um bom bocado antes de a
         // primeira imagem estar descodificada e posta na placa gráfica.
+        //
+        // O Safari tem estes contadores, mas só os conta para um vídeo à
+        // vista numa caixa sua; com o filme posto só na esfera deixa-os
+        // sempre no zero, e a cortina ficava à espera dos dez segundos de
+        // reserva, com a imagem parada e o filme a andar calado por trás.
+        // O aviso de cada imagem posta (requestVideoFrameCallback), esse,
+        // o Safari dá-o na mesma: contam também as imagens avisadas (ver
+        // `imagensAvisadas`, mais abaixo). Onde nem esse aviso existe, um
+        // contador que continua no zero com o filme já a meio segundo não
+        // está a contar nada, e vale o relógio do vídeo. (Onde o aviso
+        // existe, não: no Chrome, com o 8K, o contador no zero quer mesmo
+        // dizer que ainda não há imagem.)
+        let imagensAvisadas = 0;
         const imagensDescodificadas = () => {
+            let contadas = -1;
             if (typeof video.getVideoPlaybackQuality === 'function') {
-                return video.getVideoPlaybackQuality().totalVideoFrames;
+                contadas = video.getVideoPlaybackQuality().totalVideoFrames;
+            } else if (typeof video.webkitDecodedFrameCount === 'number') {
+                contadas = video.webkitDecodedFrameCount;
             }
-            if (typeof video.webkitDecodedFrameCount === 'number') {
-                return video.webkitDecodedFrameCount;
-            }
-            return -1;
+            const imagens = Math.max(contadas, imagensAvisadas);
+            const semAviso = typeof video.requestVideoFrameCallback !== 'function';
+            if (imagens <= 0 && semAviso && video.currentTime > 0.5) return -1;
+            return imagens;
         };
 
         // Espera que haja mesmo imagem — duas imagens descodificadas e o
@@ -1653,29 +1713,69 @@
         // E só arranca com a cena já a ser desenhada: arrancar antes era
         // o filme a andar às escuras, e a imagem a chegar já uns segundos
         // adiantada em relação ao princípio.
+        //
+        // Mas o iPhone e o iPad não descarregam filme nenhum antes de
+        // alguém carregar em tocar: lêem só o princípio do ficheiro (a
+        // duração, o tamanho) e param de descarregar, à espera. Esse
+        // "pronto" nunca chegava — e, sem tentativa de arranque, também
+        // nunca aparecia o botão do toque que o desbloqueava: o quadrado de
+        // espera rodava para sempre. Um navegador que parou de descarregar
+        // sozinho antes de ter o que chega está à espera de um toque, e
+        // isso conta como pronto para se tentar. E também um que, lido o
+        // princípio, fica uns segundos sem ler uma única imagem, mesmo
+        // sem dizer que parou: os outros, quando descarregam, chegam à
+        // primeira imagem logo a seguir ao princípio.
         const PRONTO = 4;
+        const SO_O_PRINCIPIO = 1;
+        const PARADO_NO_PRINCIPIO = 2500; // milissegundos
         const quandoPronto = (depois) => {
             let feito = false;
+            let principioLidoEm = 0;
+            let relogio = null;
+            const parouAEsperar = () => {
+                if (video.readyState < SO_O_PRINCIPIO) return false;
+                if (video.networkState === video.NETWORK_IDLE) return true;
+                return video.readyState === SO_O_PRINCIPIO && principioLidoEm > 0 &&
+                    performance.now() - principioLidoEm >= PARADO_NO_PRINCIPIO;
+            };
+            const QUANDO = ['canplaythrough', 'suspend'];
             const ver = () => {
-                if (feito || video.readyState < PRONTO || !cenaADesenhar) return;
+                if (feito || !cenaADesenhar) return;
+                if (video.readyState < PRONTO && !parouAEsperar()) return;
                 feito = true;
-                video.removeEventListener('canplaythrough', ver);
+                clearTimeout(relogio);
+                QUANDO.forEach((ev) => video.removeEventListener(ev, ver));
+                video.removeEventListener('loadedmetadata', principioLido);
                 scene.removeEventListener('renderstart', ver);
                 depois();
             };
-            video.addEventListener('canplaythrough', ver);
+            // O princípio de cada versão: uma troca de versão começa a
+            // contar de novo.
+            const principioLido = () => {
+                principioLidoEm = performance.now();
+                clearTimeout(relogio);
+                relogio = setTimeout(ver, PARADO_NO_PRINCIPIO + 50);
+                ver();
+            };
+            QUANDO.forEach((ev) => video.addEventListener(ev, ver));
+            video.addEventListener('loadedmetadata', principioLido);
             scene.addEventListener('renderstart', ver);
-            ver();
+            if (video.readyState >= SO_O_PRINCIPIO) principioLido();
+            else ver();
         };
 
         playBtnInitial.addEventListener('click', () => {
             if (pedidoDeVR && scene.enterVR) {
+                // Os óculos de cartão do iPhone lêem o sensor de movimento,
+                // e a licença para isso só se pede a partir de um toque:
+                // este, antes de mais nada.
+                if (window.VRCartao) window.VRCartao.pedirSensores();
                 scene.enterVR().catch((erro) => console.log('VR:', erro));
             }
             playBtnInitial.style.display = 'none';
             spinner.style.display = 'grid';
 
-            quandoPronto(() => arrancarCalado().catch(e => {
+            const arrancar = () => arrancarCalado().catch(e => {
                 // Uma troca de versão a meio do arranque interrompe o
                 // pedido, mas o vídeo volta a arrancar sozinho a seguir e
                 // a cortina abre-se na mesma: não é um erro.
@@ -1685,7 +1785,27 @@
                 alert("Erro ao reproduzir vídeo. Tente novamente.");
                 playBtnInitial.style.display = 'flex';
                 spinner.style.display = 'none';
-            }));
+            });
+
+            // O arranque é pedido aqui mesmo, ainda dentro do toque, sem
+            // esperar pelo filme: o iPhone e o iPad só deixam um vídeo
+            // andar com som — e só o começam a descarregar — quando o
+            // pedido vem de um toque, e passado o toque já não vale. O
+            // filme anda mal tenha imagem que chegue — calado, onde o
+            // volume obedece — e a cortina abre-se com o som quando a
+            // imagem está na esfera, como sempre.
+            if (cenaADesenhar) {
+                arrancar();
+                return;
+            }
+            // A cena ainda não está a ser desenhada (só logo ao abrir):
+            // o toque fica dado ao vídeo — tocar e parar logo, que basta
+            // para o iPhone o deixar andar depois — e o arranque a sério
+            // faz-se quando ela estiver pronta.
+            const ensaio = video.play();
+            if (ensaio && ensaio.catch) ensaio.catch(() => {});
+            video.pause();
+            quandoPronto(arrancar);
         });
 
         // A rota começa a andar mal esteja pronta, sem ninguém ter de
@@ -1798,9 +1918,32 @@
         // instante do clique, e não por recado: o navegador só deixa ir a
         // ecrã inteiro enquanto dura o toque, e um recado chega depois.
         // Aberta sozinha, vai esta página.
-        fullscreenBtn.addEventListener('click', () => {
+        const alvoDoEcraInteiro = () => {
             const palco = noPalco && window.frameElement && window.frameElement.closest('#modal-360');
-            const alvo = palco || document.documentElement;
+            return palco || document.documentElement;
+        };
+        // O iPhone não põe páginas em ecrã inteiro — só os vídeos, e esses
+        // em plano, a imagem esticada sem dar a volta. Lá, o botão não
+        // fazia nada: sai. (O iPad e o Safari do Mac põem, e ficam com ele.)
+        const haEcraInteiro = (() => {
+            try {
+                const alvo = alvoDoEcraInteiro();
+                const doc = alvo.ownerDocument;
+                return !!((alvo.requestFullscreen || alvo.webkitRequestFullscreen) &&
+                    (doc.fullscreenEnabled || doc.webkitFullscreenEnabled));
+            } catch (e) {
+                return true;
+            }
+        })();
+        if (!haEcraInteiro) fullscreenBtn.style.display = 'none';
+
+        // O Safari de antes da versão 16.4 só dizia o ecrã inteiro com o
+        // prefixo dele.
+        const emEcraInteiroAqui = () => !!(document.fullscreenElement || document.webkitFullscreenElement);
+        const AO_MUDAR_O_ECRA = ['fullscreenchange', 'webkitfullscreenchange'];
+
+        fullscreenBtn.addEventListener('click', () => {
+            const alvo = alvoDoEcraInteiro();
             const doc = alvo.ownerDocument;
             const entrar = alvo.requestFullscreen || alvo.webkitRequestFullscreen;
             const sair = doc.exitFullscreen || doc.webkitExitFullscreen;
@@ -1812,12 +1955,12 @@
             } catch (e) { console.log(e); }
         });
 
-        document.addEventListener('fullscreenchange', () => {
+        AO_MUDAR_O_ECRA.forEach((ev) => document.addEventListener(ev, () => {
             // A cena tem de se voltar a medir para encher o novo tamanho.
             window.dispatchEvent(new Event('resize'));
             if (scene && scene.resize) setTimeout(() => scene.resize(), 60);
-            pintarBotaoDoEcra(!!document.fullscreenElement);
-        });
+            pintarBotaoDoEcra(emEcraInteiroAqui());
+        }));
 
         // --- Menu das resoluções ---
 
@@ -1930,15 +2073,17 @@
                 scene.exitVR();
                 return;
             }
-            // No iPhone o sensor de movimento pede licença a partir de um
-            // toque: este.
-            if (window.VRCartao) await window.VRCartao.pedirSensores();
             // Dentro dos óculos ninguém carrega no botão de arranque, por
-            // isso o vídeo começa a andar aqui se ainda estiver parado.
+            // isso o vídeo começa a andar aqui se ainda estiver parado —
+            // e logo, ainda dentro do toque: no iPhone, depois de a licença
+            // do sensor ser pedida, o toque já passou e o vídeo não andava.
             if (video.paused) {
                 overlay.style.display = 'none';
                 arrancarCalado().catch(() => porOSom());
             }
+            // No iPhone o sensor de movimento pede licença a partir de um
+            // toque: este.
+            if (window.VRCartao) await window.VRCartao.pedirSensores();
             scene.enterVR().catch((erro) => console.log('VR:', erro));
         });
 
@@ -1959,7 +2104,7 @@
 
             ratoParado = setTimeout(() => {
                 const overControls = document.getElementById('video-controls').matches(':hover');
-                if (!video.paused && (!overControls || !document.fullscreenElement)) {
+                if (!video.paused && (!overControls || !emEcraInteiroAqui())) {
                     document.body.classList.add('hide-cursor');
                 }
             }, 5000);
@@ -1987,7 +2132,7 @@
         // inteiro, e sobe também com as peças do palco — e não desce com o
         // menu das resoluções aberto, que vai com ela.
         const arrumarBarra = () => {
-            const recolhida = !!document.fullscreenElement || noPalco;
+            const recolhida = emEcraInteiroAqui() || noPalco;
             const espreita = !recolhida || ratoNoFundo || tecladoNaBarra ||
                 comandosDoPalco || qualityMenu.classList.contains('show');
             document.body.classList.toggle('barra-a-espreitar', espreita);
@@ -2028,10 +2173,10 @@
             arrumarBarra();
         });
 
-        document.addEventListener('fullscreenchange', () => {
+        AO_MUDAR_O_ECRA.forEach((ev) => document.addEventListener(ev, () => {
             ratoNoFundo = false;
             arrumarBarra();
-        });
+        }));
         // O rato que sai da página já não está no fundo dela.
         document.documentElement.addEventListener('mouseleave', () => {
             ratoNoFundo = false;
@@ -2222,17 +2367,28 @@
         // que pôs no ecrã e de que instante do filme ela é
         // (requestVideoFrameCallback): é a essa que a vista anda
         // agarrada. Onde esse aviso não existe, fica o relógio do leitor.
+        // Cada aviso conta também para a cortina saber que já há imagem
+        // (ver imagensDescodificadas).
         const avisaDaImagem = typeof video.requestVideoFrameCallback === 'function';
         let instanteNoEcra = 0;
+        let ultimoAvisoDeImagem = 0;
         if (avisaDaImagem) {
             const imagemPosta = (agora, dados) => {
                 const instante = dados && dados.mediaTime;
                 instanteNoEcra = isFinite(instante) ? instante : (video.currentTime || 0);
+                imagensAvisadas++;
+                ultimoAvisoDeImagem = performance.now();
                 video.requestVideoFrameCallback(imagemPosta);
             };
             video.requestVideoFrameCallback(imagemPosta);
         }
-        const instanteDoFilme = () => (avisaDaImagem ? instanteNoEcra : (video.currentTime || 0));
+        // O aviso só vale enquanto vier: um navegador que o tem mas não o
+        // dá com o filme a andar (o Safari, com o filme só na esfera, nem
+        // sempre o dá) deixava a vista parada no princípio da rota. Aí
+        // fica o relógio do leitor.
+        const avisoEmDia = () => avisaDaImagem && imagensAvisadas > 0 &&
+            (video.paused || performance.now() - ultimoAvisoDeImagem < 500);
+        const instanteDoFilme = () => (avisoEmDia() ? instanteNoEcra : (video.currentTime || 0));
 
         // Onde está a cara dela no instante que está no ecrã.
         const olharDaRota = () => {
