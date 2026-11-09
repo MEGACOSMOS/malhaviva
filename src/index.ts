@@ -164,6 +164,18 @@ export default {
 		}
 
 		// Tudo o resto é do site: ficheiros, ou a resposta de que não existe.
-		return env.ASSETS.fetch(pedido);
+		// Essa resposta vinha vazia, e o navegador mostrava o seu próprio
+		// erro, em inglês e sem saída; agora leva a página `404.html`, com o
+		// caminho de volta ao bairro. (Não se usa o `not_found_handling` da
+		// Cloudflare: com ele, os endereços das casas, /d31, deixavam de
+		// chegar a este código.)
+		const resposta = await env.ASSETS.fetch(pedido);
+		if (resposta.status !== 404 || pedido.method !== 'GET') return resposta;
+		const pagina = await env.ASSETS.fetch(new Request(new URL('/404', endereco), pedido));
+		if (!pagina.ok) return resposta;
+		return new Response(pagina.body, {
+			status: 404,
+			headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' },
+		});
 	},
 } satisfies ExportedHandler<{ ASSETS: Fetcher }>;

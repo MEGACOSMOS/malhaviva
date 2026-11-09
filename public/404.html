@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex">
+    <link rel="icon" href="/favicon.ico" sizes="32x32">
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+    <title data-i18n-titulo="nao.titulo">Página não encontrada — Malha Viva</title>
+    <!--
+        O que se vê num endereço do site que não existe — um link mal
+        copiado, um código QR mal lido. Sem isto o servidor respondia com
+        uma página vazia e o navegador mostrava o seu próprio erro, em
+        inglês e sem saída. Aqui há o nome do site e o caminho de volta ao
+        bairro, na língua que a pessoa já tinha escolhido (ver idiomas.js).
+        Quem a manda é a Cloudflare (`not_found_handling` em wrangler.jsonc).
+    -->
+    <script src="/idiomas.js?v=50"></script>
+    <script src="/logotipo.js?v=1"></script>
+    <style>
+        @font-face {
+            font-family: 'Liberation Mono';
+            src: url('/fonts/LiberationMono-Regular.ttf') format('truetype');
+            font-weight: 100 500;
+            font-display: swap;
+        }
+        @font-face {
+            font-family: 'Liberation Mono';
+            src: url('/fonts/LiberationMono-Bold.ttf') format('truetype');
+            font-weight: 600 900;
+            font-display: swap;
+        }
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body { height: 100%; }
+        body {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            background: #05050a;
+            color: #ffffff;
+            font-family: 'Liberation Mono', 'Courier New', monospace;
+            -webkit-font-smoothing: antialiased;
+            text-align: center;
+        }
+        main {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+            max-width: 420px;
+        }
+        .logotipo { height: 28px; color: #ffffff; }
+        h1 { font-size: 1.05rem; font-weight: 700; }
+        p { font-size: 0.9rem; line-height: 1.6; color: rgba(255, 255, 255, 0.7); }
+        a.voltar {
+            margin-top: 8px;
+            padding: 10px 20px;
+            border: 2.5px solid rgba(255, 255, 255, 0.15);
+            color: #ffffff;
+            font-size: 0.9rem;
+            font-weight: 600;
+            text-decoration: none;
+            transition: background 0.15s ease;
+        }
+        a.voltar:hover { background: rgba(255, 255, 255, 0.05); }
+        a.voltar:focus-visible { outline: 2.5px solid #ffffff; outline-offset: 3px; }
+    </style>
+</head>
+<body>
+    <main>
+        <span id="logotipo" role="img" aria-label="Malha Viva" data-i18n-aria="site.nome">Malha Viva</span>
+        <script>window.Logotipo && window.Logotipo.desenhar(document.getElementById('logotipo'));</script>
+        <h1 data-i18n="nao.titulo">Página não encontrada</h1>
+        <p data-i18n="nao.texto">Este endereço não leva a nenhum sítio do Malha Viva. Pode ter sido mal copiado.</p>
+        <a class="voltar" href="/" data-i18n="ctl.voltar">Voltar ao Mapa</a>
+    </main>
+</body>
+</html>
