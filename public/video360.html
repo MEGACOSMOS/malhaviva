@@ -957,6 +957,34 @@
             }
         }
 
+        /* Nos telemóveis estreitos (360 pontos ou menos, muitos Android e o
+           iPhone SE antigo) os oito botões não cabiam: o último saía do
+           ecrã e os dois grupos colavam-se. Aqui apertam-se os espaços, e
+           os dois grupos guardam sempre um intervalo entre si. */
+        .controls-main {
+            gap: 8px;
+        }
+        @media (max-width: 400px) {
+            .video-controls {
+                padding-left: 10px;
+                padding-right: 10px;
+            }
+            .controls-left, .controls-right {
+                gap: 5px;
+            }
+            .player-btn {
+                padding: 6px;
+            }
+        }
+        @media (max-width: 340px) {
+            .controls-left, .controls-right {
+                gap: 3px;
+            }
+            .player-btn {
+                padding: 5px;
+            }
+        }
+
         /* ─── Contornos ───
            Um fio de dois pontos e meio a toda a volta, de um só tom — o mais escuro do
            degradé que aqui houve — pousado sobre o fundo escuro do site. */
