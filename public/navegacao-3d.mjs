@@ -39,10 +39,12 @@ const ACIMA_DO_CHAO = 0.35;
 // A fita do percurso, deitada no chão: a largura do branco, em metros; o
 // mínimo e o máximo que ela tem no ecrã, em pontos (ao longe e ao pé da
 // câmara); e o contorno escuro à volta, em pontos, igual perto e longe.
-const LARGURA_M = 2;
-const LARGURA_MINIMA = 5;
-const LARGURA_MAXIMA = 26;
-const CONTORNO = 2;
+// Mais fina do que no princípio (2 metros, entre 5 e 26 pontos, contorno
+// de 2): a fita larga tapava a rua por onde passa.
+const LARGURA_M = 1.2;
+const LARGURA_MINIMA = 3.5;
+const LARGURA_MAXIMA = 16;
+const CONTORNO = 1.5;
 // Os pontinhos até à casa (e até ao caminho, de onde se está): discos no
 // chão, com o raio em metros, o mínimo e o máximo no ecrã, o espaço entre
 // eles no chão (e o mínimo no ecrã, para ao longe não se colarem) e o seu
