@@ -3119,7 +3119,20 @@ AnnotationController.prototype.setupModal = function() {
     let isMuted = false;
     let currentVolume = 1;
 
+    // Sem Web Audio (há browsers e vistas de dentro de aplicações que não
+    // o têm), o volume vai direito ao vídeo, até 100%: o filme toca na
+    // mesma, e o botão de silenciar continua a silenciar.
+    const SemWebAudio = !(window.AudioContext || window.webkitAudioContext);
+    const aplicarVolume = (v) => {
+        if (gainNode) gainNode.gain.value = v;
+        else if (SemWebAudio) {
+            this.videoPlayer.muted = v === 0;
+            this.videoPlayer.volume = Math.min(1, v);
+        }
+    };
+
     const initAudio = () => {
+        if (SemWebAudio) return;
         if (!audioCtx) {
             audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             mediaSource = audioCtx.createMediaElementSource(this.videoPlayer);
@@ -3135,7 +3148,7 @@ AnnotationController.prototype.setupModal = function() {
 
     volumeSlider.addEventListener('input', (e) => {
         currentVolume = parseFloat(e.target.value);
-        if (gainNode) gainNode.gain.value = currentVolume;
+        aplicarVolume(currentVolume);
         volumePercentage.innerText = Math.round(currentVolume * 100) + '%';
 
         if (currentVolume === 0) {
@@ -3154,12 +3167,12 @@ AnnotationController.prototype.setupModal = function() {
                 currentVolume = 1; 
                 volumeSlider.value = 1;
             }
-            if (gainNode) gainNode.gain.value = currentVolume;
+            aplicarVolume(currentVolume);
             volumePercentage.innerText = Math.round(currentVolume * 100) + '%';
             volumeBtn.innerHTML = volHighIcon;
             isMuted = false;
         } else {
-            if (gainNode) gainNode.gain.value = 0;
+            aplicarVolume(0);
             volumePercentage.innerText = '0%';
             volumeBtn.innerHTML = volMutedIcon;
             isMuted = true;
