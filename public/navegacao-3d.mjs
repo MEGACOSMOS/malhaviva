@@ -12,11 +12,15 @@
  * altura de cada ponto) vem em navegacao/chao.bin; os dois são feitos por
  * scripts/navegacao/reconhecer.py.
  *
- * A linha é desenhada no ecrã, por cima do bairro e de tudo, com a mesma
- * grossura perto e longe — a dos mapas de navegação: 6 pontos de branco
- * num contorno escuro de 10. A cada imagem, os pontos do caminho são postos
- * no sítio do ecrã onde caem, como os marcadores. (Pintada no chão do
- * bairro, engrossava ao pé da câmara e sumia ao longe.)
+ * A linha é uma fita deitada no chão do bairro, como a dos mapas de
+ * navegação em 3D: com a sua largura em metros, vista em perspetiva — mais
+ * larga perto da câmara, mais fina ao longe, e achatada onde atravessa a
+ * vista. A cada imagem, as duas beiras da fita são postas no sítio do ecrã
+ * onde caem, como os marcadores, e o desenho fica por cima do bairro (uma
+ * casa à frente não a tapa). Só não segue a perspetiva até ao fim nos
+ * extremos: ao longe nunca fica mais fina do que se consegue ver, e ao pé
+ * da câmara nunca fica tão larga que tape a rua. Os pontinhos até à casa
+ * são pequenos discos pousados no chão, da mesma maneira.
  *
  * As casas do lote F ficam fora da zona do drone: para elas, pousa-se no
  * chão, plana, uma fotografia de satélite do lote, que sai com o percurso.
@@ -32,14 +36,26 @@ import { alisar, arredondar, preencher, METROS_POR_MINUTO } from './navegacao.mj
 const ALISAR_M = 4;
 // A linha passa um nada acima do chão.
 const ACIMA_DO_CHAO = 0.35;
-// A linha no ecrã, em pontos: o branco e o contorno escuro à volta; e os
-// pontinhos até à casa (e até ao caminho, de onde se está), com o seu
-// contorno e o espaço entre eles.
-const LINHA = 6;
-const CONTORNO = 10;
-const PONTO = 4;
-const CONTORNO_DO_PONTO = 7;
-const ENTRE_PONTOS = 10;
+// A fita do percurso, deitada no chão: a largura do branco, em metros; o
+// mínimo e o máximo que ela tem no ecrã, em pontos (ao longe e ao pé da
+// câmara); e o contorno escuro à volta, em pontos, igual perto e longe.
+const LARGURA_M = 2;
+const LARGURA_MINIMA = 5;
+const LARGURA_MAXIMA = 26;
+const CONTORNO = 2;
+// Os pontinhos até à casa (e até ao caminho, de onde se está): discos no
+// chão, com o raio em metros, o mínimo e o máximo no ecrã, o espaço entre
+// eles no chão (e o mínimo no ecrã, para ao longe não se colarem) e o seu
+// contorno.
+const PONTO_M = 0.4;
+const PONTO_MINIMO = 2.2;
+const PONTO_MAXIMO = 7;
+const ENTRE_PONTOS_M = 2;
+const ENTRE_PONTOS = 9;
+const CONTORNO_DO_PONTO = 1.6;
+// Pontos do caminho mais perto do que isto do anterior, no ecrã, não se
+// notam: saltam-se.
+const JUNTO = 2;
 const BRANCO = '#ffffff';
 // O caminho já andado, com a localização ligada.
 const ANDADO = '#8e8e96';
@@ -697,26 +713,29 @@ export async function prepararNavegacao3D(app, opcoes) {
     desenho.setAttribute('class', 'percurso-traco');
     desenho.setAttribute('aria-hidden', 'true');
     camada.appendChild(desenho);
-    const traco = (largura, cor, opacidade, pontinhos) => {
+    // Uma forma cheia (a fita, ou os discos); com `contorno`, cresce para
+    // fora esses pontos de cada lado — é o contorno escuro, por baixo.
+    const forma = (cor, opacidade, contorno) => {
         const p = document.createElementNS(SVG, 'path');
-        p.setAttribute('fill', 'none');
-        p.setAttribute('stroke', cor);
-        p.setAttribute('stroke-width', largura);
-        p.setAttribute('stroke-opacity', opacidade);
-        p.setAttribute('stroke-linecap', 'round');
-        p.setAttribute('stroke-linejoin', 'round');
-        if (pontinhos) p.setAttribute('stroke-dasharray', '0.1 ' + ENTRE_PONTOS);
+        p.setAttribute('fill', cor);
+        p.setAttribute('fill-opacity', opacidade);
+        if (contorno) {
+            p.setAttribute('stroke', cor);
+            p.setAttribute('stroke-width', 2 * contorno);
+            p.setAttribute('stroke-opacity', opacidade);
+            p.setAttribute('stroke-linejoin', 'round');
+        }
         desenho.appendChild(p);
         return p;
     };
     // Por esta ordem: os contornos por baixo, e por cima deles o caminho já
     // andado (cinzento), o que falta (branco) e os pontinhos.
     const tracos = {
-        contorno: [traco(CONTORNO, ESCURO, OPACIDADE_DO_ESCURO, false)],
-        fundoDosPontinhos: [traco(CONTORNO_DO_PONTO, ESCURO, OPACIDADE_DO_ESCURO, true)],
-        andado: [traco(LINHA, ANDADO, 1, false)],
-        falta: [traco(LINHA, BRANCO, 1, false)],
-        pontinhos: [traco(PONTO, BRANCO, 1, true)]
+        contorno: [forma(ESCURO, OPACIDADE_DO_ESCURO, CONTORNO)],
+        fundoDosPontinhos: [forma(ESCURO, OPACIDADE_DO_ESCURO, CONTORNO_DO_PONTO)],
+        andado: [forma(ANDADO, 1, 0)],
+        falta: [forma(BRANCO, 1, 0)],
+        pontinhos: [forma(BRANCO, 1, 0)]
     };
     // A seta de quem anda, em 3D: a sombra no chão, os lados (escuros) e o
     // tampo (branco), por esta ordem — vista de cima, o tampo tapa os lados
@@ -769,40 +788,127 @@ export async function prepararNavegacao3D(app, opcoes) {
         const w = p[3] * c[0] + p[7] * c[1] + p[11] * z + p[15];
         return [(x / w + 1) * 0.5 * ecra.largura, (1 - y / w) * 0.5 * ecra.altura];
     };
-    // Uma linha do bairro como caminho no ecrã (o "d" de um path), cortada
-    // onde passa para trás da câmara.
-    const caminhoNoEcra = (pontos) => {
+    const xy = (s) => s[0].toFixed(1) + ' ' + s[1].toFixed(1);
+    // Um ponto do ecrã afastado de s na direção de outro (a), com o
+    // afastamento multiplicado por f.
+    const esticar = (s, a, f) => [s[0] + (a[0] - s[0]) * f, s[1] + (a[1] - s[1]) * f];
+
+    /**
+     * Uma fita deitada no chão ao longo dos pontos, vista no ecrã: o "d" de
+     * um path, com um polígono (a beira esquerda e, de volta, a direita) por
+     * cada pedaço do caminho que fica à frente da câmara.
+     *
+     * Cada ponto dá as duas beiras da fita no chão, para um lado e para o
+     * outro do caminho, e as duas vão para o ecrã com a perspetiva da
+     * câmara. Só a largura que isso dá no ecrã é segurada entre
+     * LARGURA_MINIMA e LARGURA_MAXIMA, sem mudar a direção das beiras — a
+     * fita continua deitada.
+     */
+    const fitaNoEcra = (pontos) => {
+        const n = pontos.length;
+        if (n < 2) return '';
+        const meia = LARGURA_M / 2;
         let d = '';
+        let esquerda = [];
+        let direita = [];
         let ultimo = null;
-        const por = (c, novo) => {
-            const s = noEcra(c);
-            // Pontos a menos de um ponto do anterior não se notam.
-            if (!novo && Math.abs(s[0] - ultimo[0]) < 1 && Math.abs(s[1] - ultimo[1]) < 1) return;
-            d += (novo ? 'M' : 'L') + s[0].toFixed(1) + ' ' + s[1].toFixed(1);
-            ultimo = s;
-        };
-        let antes = null;
-        for (const q of pontos) {
-            const c = naCamara(q);
-            const aFrente = c[2] >= PERTO_DE_MAIS;
-            if (antes && (antes[2] >= PERTO_DE_MAIS) !== aFrente) {
-                // Onde a linha atravessa o plano à frente da câmara.
-                const k = (antes[2] - PERTO_DE_MAIS) / (antes[2] - c[2]);
-                por([antes[0] + (c[0] - antes[0]) * k, antes[1] + (c[1] - antes[1]) * k, PERTO_DE_MAIS], aFrente);
+        const fechar = () => {
+            if (esquerda.length >= 2) {
+                d += 'M' + esquerda.map(xy).join('L') + 'L' + direita.reverse().map(xy).join('L') + 'Z';
             }
-            if (aFrente) por(c, !antes);
-            antes = c;
+            esquerda = [];
+            direita = [];
+            ultimo = null;
+        };
+        for (let i = 0; i < n; i++) {
+            const q = pontos[i];
+            // Para onde o caminho vai ali, no chão (de um ponto ao outro à
+            // volta deste), e o lado da fita.
+            const a = pontos[Math.max(0, i - 1)];
+            const b = pontos[Math.min(n - 1, i + 1)];
+            const comprido = Math.hypot(b[0] - a[0], b[2] - a[2]);
+            if (comprido < 1e-6) continue;
+            const lx = -(b[2] - a[2]) / comprido * meia;
+            const lz = (b[0] - a[0]) / comprido * meia;
+            const cc = naCamara(q);
+            const ce = naCamara([q[0] + lx, q[1], q[2] + lz]);
+            const cd = naCamara([q[0] - lx, q[1], q[2] - lz]);
+            if (cc[2] < PERTO_DE_MAIS || ce[2] < PERTO_DE_MAIS || cd[2] < PERTO_DE_MAIS) {
+                // Atrás da câmara, ou mesmo em cima dela: a fita corta-se aqui.
+                fechar();
+                continue;
+            }
+            const sc = noEcra(cc);
+            const fim = i === n - 1;
+            if (ultimo && !fim && Math.abs(sc[0] - ultimo[0]) < JUNTO && Math.abs(sc[1] - ultimo[1]) < JUNTO) continue;
+            const se = noEcra(ce);
+            const sd = noEcra(cd);
+            const largura = Math.hypot(se[0] - sd[0], se[1] - sd[1]);
+            if (largura < 0.01) continue;
+            const f = largura < LARGURA_MINIMA ? LARGURA_MINIMA / largura
+                : largura > LARGURA_MAXIMA ? LARGURA_MAXIMA / largura : 1;
+            esquerda.push(f === 1 ? se : esticar(sc, se, f));
+            direita.push(f === 1 ? sd : esticar(sc, sd, f));
+            ultimo = sc;
+        }
+        fechar();
+        return d;
+    };
+
+    /**
+     * Os pontinhos: discos pousados no chão, de ENTRE_PONTOS_M em
+     * ENTRE_PONTOS_M metros ao longo de cada linha (e nunca mais perto do
+     * que ENTRE_PONTOS no ecrã), cada um com o seu achatamento.
+     */
+    const discosNoEcra = (linhas) => {
+        let d = '';
+        for (const pontos of linhas) {
+            let ultimo = null;
+            let andado = 0;
+            let proximo = 0;
+            for (let i = 0; i < pontos.length; i++) {
+                const q = pontos[i];
+                if (i > 0) andado += Math.hypot(q[0] - pontos[i - 1][0], q[2] - pontos[i - 1][2]);
+                if (andado < proximo) continue;
+                const cc = naCamara(q);
+                const cx = naCamara([q[0] + PONTO_M, q[1], q[2]]);
+                const cz = naCamara([q[0], q[1], q[2] + PONTO_M]);
+                if (cc[2] < PERTO_DE_MAIS || cx[2] < PERTO_DE_MAIS || cz[2] < PERTO_DE_MAIS) continue;
+                const sc = noEcra(cc);
+                if (ultimo && Math.hypot(sc[0] - ultimo[0], sc[1] - ultimo[1]) < ENTRE_PONTOS) continue;
+                proximo = andado + ENTRE_PONTOS_M;
+                ultimo = sc;
+                const sx = noEcra(cx);
+                const sz = noEcra(cz);
+                const raio = Math.max(Math.hypot(sx[0] - sc[0], sx[1] - sc[1]), Math.hypot(sz[0] - sc[0], sz[1] - sc[1]), 0.01);
+                const f = raio < PONTO_MINIMO ? PONTO_MINIMO / raio : raio > PONTO_MAXIMO ? PONTO_MAXIMO / raio : 1;
+                const ax = (sx[0] - sc[0]) * f;
+                const ay = (sx[1] - sc[1]) * f;
+                const bx = (sz[0] - sc[0]) * f;
+                const by = (sz[1] - sc[1]) * f;
+                // O círculo do chão no ecrã é uma elipse: doze pontos dela.
+                for (let k = 0; k < 12; k++) {
+                    const t = k * Math.PI / 6;
+                    const c = Math.cos(t);
+                    const s = Math.sin(t);
+                    d += (k ? 'L' : 'M') + xy([sc[0] + ax * c + bx * s, sc[1] + ay * c + by * s]);
+                }
+                d += 'Z';
+            }
         }
         return d;
     };
+
     // A linha partida onde a pessoa vai: o pedaço já andado e o que falta.
+    // O andado entra um ponto pelo que falta dentro, para as duas fitas se
+    // sobreporem um nada onde se tocam, sem fresta.
     const partirLinha = (distancia) => {
         const { linha, acum } = atual;
         if (!(distancia > 0)) return [[], linha];
         const { ponto } = naLinha(distancia);
         let k = 1;
         while (k < acum.length - 1 && acum[k] < distancia) k++;
-        return [linha.slice(0, k).concat([ponto]), [ponto].concat(linha.slice(k))];
+        return [linha.slice(0, k).concat([ponto], linha.slice(k, k + 1)), [ponto].concat(linha.slice(k))];
     };
 
     const fazerMarcador = (classe, texto, ponto, acao) => {
@@ -885,11 +991,11 @@ export async function prepararNavegacao3D(app, opcoes) {
         prepararEcra();
         if (atual) {
             const [andado, falta] = partirLinha(atual.feito);
-            escrever('contorno', caminhoNoEcra(atual.linha));
-            escrever('andado', andado.length > 1 ? caminhoNoEcra(andado) : '');
-            escrever('falta', caminhoNoEcra(falta));
+            escrever('contorno', fitaNoEcra(atual.linha));
+            escrever('andado', andado.length > 1 ? fitaNoEcra(andado) : '');
+            escrever('falta', fitaNoEcra(falta));
             const pontinhos = atual.encostado ? atual.ateCasa : atual.ateCasa.concat(atual.daquiAteAoCaminho);
-            const d = pontinhos.map(caminhoNoEcra).join('');
+            const d = discosNoEcra(pontinhos);
             escrever('pontinhos', d);
             escrever('fundoDosPontinhos', d);
         } else {
