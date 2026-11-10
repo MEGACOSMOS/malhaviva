@@ -613,6 +613,13 @@
                 transform: rotate(-90deg);
             }
 
+            /* A lupa, à cabeça da gaveta (ver arrumarALupa): o nome dela
+               vai em duas linhas, e afasta-se o que a segunda ocupa, para
+               ficar à mesma distância do ícone de baixo que os outros. */
+            #acoes-do-cabecalho #pesquisa-abrir {
+                margin-bottom: 12px;
+            }
+
             #acoes-do-cabecalho .settings:has(.open) .seta-menu {
                 transform: rotate(90deg);
             }
@@ -6599,6 +6606,27 @@ void modifySplatColor(vec3 center, inout vec4 color) {
         // (ver arrumarPesquisa).
         const emLupa = () => cabecalho.classList.contains('pesquisa-na-lupa');
 
+        // No telemóvel a lupa vive na gaveta do hambúrguer, à cabeça da
+        // coluna dos ícones, com o nome por baixo como os outros; no
+        // cabeçalho fica só o ecrã inteiro. Carregar nela fecha a gaveta e
+        // abre a barra por cima do cabeçalho, como antes. No computador
+        // volta para o cabeçalho.
+        const gaveta = document.getElementById('acoes-do-cabecalho');
+        const menuBtn = document.getElementById('menu-btn');
+        const lupaNaGaveta = () => noTelemovel.matches && !!gaveta;
+        const arrumarALupa = () => {
+            if (lupaNaGaveta()) {
+                if (abrirEl.parentNode !== gaveta) gaveta.insertBefore(abrirEl, gaveta.firstChild);
+            } else if (abrirEl.parentNode !== caixa) {
+                caixa.insertBefore(abrirEl, caixa.firstChild);
+            }
+        };
+        arrumarALupa();
+        if (noTelemovel.addEventListener) noTelemovel.addEventListener('change', arrumarALupa);
+        // Fechada a barra, quem anda de tecla volta à lupa — ou, com ela
+        // dentro da gaveta fechada, ao hambúrguer.
+        const focarLupa = () => (lupaNaGaveta() && !cabecalho.classList.contains('gaveta-aberta') ? menuBtn : abrirEl).focus();
+
         // ---- As ruas e as casas ----
         let contas = null;
         let rede = null;
@@ -6713,6 +6741,7 @@ void modifySplatColor(vec3 center, inout vec4 color) {
         };
 
         const abrirPesquisa = () => {
+            if (cabecalho.classList.contains('gaveta-aberta') && menuBtn) menuBtn.click();
             caixa.classList.add('aberta');
             abrirEl.setAttribute('aria-expanded', 'true');
             campo.focus();
@@ -6725,7 +6754,7 @@ void modifySplatColor(vec3 center, inout vec4 color) {
         abrirEl.addEventListener('click', abrirPesquisa);
         fecharEl.addEventListener('click', () => {
             fecharPesquisa();
-            abrirEl.focus();
+            focarLupa();
         });
 
         campo.addEventListener('focus', () => {
@@ -6771,7 +6800,7 @@ void modifySplatColor(vec3 center, inout vec4 color) {
                 if (!listaEl.hidden) fecharLista();
                 else if (caixa.classList.contains('aberta')) {
                     fecharPesquisa();
-                    abrirEl.focus();
+                    focarLupa();
                 } else campo.blur();
             }
         });
@@ -7283,7 +7312,10 @@ void modifySplatColor(vec3 center, inout vec4 color) {
             voltarAoBairro();
             // Quem carregou de tecla não fica com o foco perdido: volta à
             // pesquisa.
-            if (e.detail === 0) (emLupa() ? abrirEl : campo).focus();
+            if (e.detail === 0) {
+                if (emLupa()) focarLupa();
+                else campo.focus();
+            }
         });
         document.getElementById('percurso-ver').addEventListener('click', () => {
             if (nav) nav.enquadrar();
