@@ -677,6 +677,10 @@
                 right: auto;
                 transform-origin: top left;
                 max-width: calc(100vw - 84px);
+                /* Quando não cabe na altura do ecrã (ver encaixar). */
+                overscroll-behavior: contain;
+                scrollbar-width: thin;
+                scrollbar-color: rgba(255,255,255,0.25) transparent;
             }
             #acoes-do-cabecalho #dev-menu {
                 max-height: calc(100vh - 96px);
@@ -1928,6 +1932,13 @@
            deles e soma a mesma folga dos outros: a largura sai da conta e
            não de um número à sorte, e acompanha a língua escolhida sem
            ninguém lhe mexer. */
+        /* Num ecrã baixo o menu corre por dentro (ver encaixar). */
+        #definicoes-menu, #idioma-menu {
+            overscroll-behavior: contain;
+            scrollbar-width: thin;
+            scrollbar-color: rgba(255,255,255,0.25) transparent;
+        }
+
         #idioma-menu {
             width: max-content;
             min-width: 150px;
@@ -2290,6 +2301,18 @@
             visibility: hidden;
             pointer-events: none;
             transition: opacity 0.2s, transform 0.2s, visibility 0.2s;
+        }
+
+        /* Num ecrã baixo (um telemóvel deitado) não passa do topo: fica
+           com a altura que há por cima do botão, e o resto corre lá
+           dentro. */
+        #partilhar-menu {
+            max-height: calc(100vh - 104px - 12px);
+            max-height: calc(100dvh - 104px - 12px);
+            overflow-y: auto;
+            overscroll-behavior: contain;
+            scrollbar-width: thin;
+            scrollbar-color: rgba(255,255,255,0.25) transparent;
         }
 
         #partilhar-menu.open {
@@ -5667,6 +5690,62 @@ void modifySplatColor(vec3 center, inout vec4 color) {
                 [definicoesMenu, idiomaMenu, devMenu].forEach((m) => m && m.classList.remove('open'));
             }
         };
+        // Os menus da gaveta abrem à direita do ícone, à altura dele. Os
+        // ícones de baixo (as Definições) ficam perto do fundo do ecrã, e o
+        // menu passava para lá dele, cortado — num telemóvel pequeno, ou
+        // deitado. Ao abrir, e sempre que o ecrã muda de tamanho, o menu
+        // sobe o que for preciso para caber, sem passar acima do topo da
+        // gaveta; se nem assim couber, fica com a altura que há e o resto
+        // corre lá dentro. (Na fila do computador, ou de um telemóvel
+        // deitado, ver mais abaixo.)
+        if (gaveta) {
+            const MARGEM = 12;
+            const menusDaGaveta = ['definicoes-menu', 'idioma-menu', 'dev-menu']
+                .map((id) => document.getElementById(id)).filter(Boolean);
+            const naGaveta = window.matchMedia('(max-width: 640px)');
+            const encaixar = (menu) => {
+                menu.style.top = '';
+                menu.style.maxHeight = '';
+                menu.style.overflowY = '';
+                if (!menu.classList.contains('open')) return;
+                const casa = menu.offsetParent;
+                if (!casa) return;
+                const alturaDoEcra = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+                const chao = alturaDoEcra - MARGEM;
+                const topoDaCasa = casa.getBoundingClientRect().top;
+                // Na fila de ícones (computador, ou telemóvel deitado) o
+                // menu desce por baixo do ícone e não pode subir sem o
+                // tapar: num ecrã baixo fica só com a altura que há até ao
+                // fundo, e o resto corre lá dentro.
+                if (!naGaveta.matches || !gaveta.contains(menu)) {
+                    const topo = topoDaCasa + menu.offsetTop;
+                    if (topo + menu.offsetHeight > chao) {
+                        menu.style.maxHeight = Math.max(120, Math.round(chao - topo)) + 'px';
+                        menu.style.overflowY = 'auto';
+                    }
+                    return;
+                }
+                const tecto = gaveta.getBoundingClientRect().top;
+                // offsetHeight não conta o crescer da abertura (scale).
+                const altura = menu.offsetHeight;
+                if (altura > chao - tecto) {
+                    menu.style.top = Math.round(tecto - topoDaCasa) + 'px';
+                    menu.style.maxHeight = Math.round(chao - tecto) + 'px';
+                    menu.style.overflowY = 'auto';
+                } else if (topoDaCasa + altura > chao) {
+                    menu.style.top = Math.round(chao - altura - topoDaCasa) + 'px';
+                }
+            };
+            const encaixarTodos = () => menusDaGaveta.forEach(encaixar);
+            menusDaGaveta.forEach((menu) => new MutationObserver(() => encaixar(menu))
+                .observe(menu, { attributes: true, attributeFilter: ['class'] }));
+            window.addEventListener('resize', encaixarTodos);
+            if (window.visualViewport) window.visualViewport.addEventListener('resize', encaixarTodos);
+            // Uma língua nova muda a altura do menu.
+            window.addEventListener('idiomamudou', () => requestAnimationFrame(encaixarTodos));
+            if (naGaveta.addEventListener) naGaveta.addEventListener('change', encaixarTodos);
+        }
+
         if (menuBtn && gaveta) {
             menuBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
