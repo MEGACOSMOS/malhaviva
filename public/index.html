@@ -9,6 +9,14 @@
     <link rel="icon" href="/favicon.svg" type="image/svg+xml">
     <link rel="apple-touch-icon" href="/apple-touch-icon.png">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- O iPhone não deixa um site ocupar o ecrã todo. Deixa, sim, que
+         quem o põe no ecrã principal ("Adicionar ao ecrã principal") o
+         abra de lá sem as barras do navegador, como uma aplicação. Estas
+         linhas pedem-lhe isso, com a faixa das horas em preto e o nome
+         curto por baixo do ícone. (Ver o botão do ecrã inteiro.) -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="apple-mobile-web-app-title" content="Malha Viva">
     <title data-i18n-titulo="cab.bairro" data-i18n-site-primeiro>Malha Viva | Bairro de Penajóia</title>
     <meta name="description" content="Exploração 3D interativa do Bairro de Penajóia através de Gaussian Splatting. Projeto Malha Viva.">
 
@@ -144,7 +152,7 @@
     <!-- As línguas do site. Fica antes de tudo o resto para o texto
          nascer já na língua certa, sem piscar em português primeiro. -->
     <script src="/idiomas.js?v=52"></script>
-    <script src="/legendas.js?v=2"></script>
+    <script src="/legendas.js?v=3"></script>
 
     <!-- O quadrado de espera, o mesmo em todo o site. Fica antes de o
          ecrã de espera se desenhar, para nascer já com a sua roupa. -->
@@ -1991,7 +1999,7 @@
         /* O aviso do limite do mapa e o aviso do arranque (ver `arranque`)
            são o mesmo cartão: um deles vive na página, o outro nasce só
            quando é preciso. */
-        #camera-stuck-popup, #arranque-popup {
+        #camera-stuck-popup, #arranque-popup, #ecra-iphone-popup {
             position: fixed;
             top: 50%;
             left: 50%;
@@ -2015,7 +2023,7 @@
             text-align: center;
         }
 
-        #camera-stuck-popup.visible, #arranque-popup.visible {
+        #camera-stuck-popup.visible, #arranque-popup.visible, #ecra-iphone-popup.visible {
             opacity: 1;
             visibility: visible;
         }
@@ -2033,8 +2041,28 @@
             margin-bottom: 14px;
         }
 
+        /* O aviso do ecrã inteiro no iPhone: o mesmo cartão, por cima de
+           tudo, com o texto mais largo e o ícone de partilhar do iPhone
+           (o quadrado com a seta para cima) no meio da frase, como quem
+           aponta para ele. */
+        #ecra-iphone-popup {
+            z-index: 1000;
+            width: 340px;
+            box-sizing: border-box;
+            padding: 24px 24px 26px;
+        }
+        #ecra-iphone-popup .stuck-subtext {
+            line-height: 1.5;
+            margin-bottom: 6px;
+        }
+        #ecra-iphone-popup .icone-partilhar-iphone {
+            display: inline-block;
+            vertical-align: -3px;
+            margin: 0 2px;
+        }
+
         /* O botão é uma tecla, como as do rodapé: só o traço e a letra. */
-        #recenter-btn {
+        #recenter-btn, #ecra-iphone-ok {
             background: transparent;
             color: var(--color-text);
             border: 2.5px solid rgba(255, 255, 255, 0.25);
@@ -2049,11 +2077,11 @@
             transition: background 0.15s ease, border-color 0.15s ease, transform 0.1s;
         }
 
-        #recenter-btn:hover {
+        #recenter-btn:hover, #ecra-iphone-ok:hover {
             background: rgba(255, 255, 255, 0.1);
             border-color: rgba(255, 255, 255, 0.45);
         }
-        #recenter-btn:active {
+        #recenter-btn:active, #ecra-iphone-ok:active {
             transform: scale(0.97);
         }
 
@@ -2929,7 +2957,7 @@
            degradé que aqui houve — pousado sobre o fundo escuro do site. */
         .panel-glass, .btn-glass, .action-btn, .settings-panel, .filter-btn, 
         #coordinates-info, #camera-info, #loading-bar-container,
-        #definicoes-menu, #dev-menu, #idioma-menu, #camera-stuck-popup, #arranque-popup, #partilhar-menu, .instrucoes-cartao {
+        #definicoes-menu, #dev-menu, #idioma-menu, #camera-stuck-popup, #arranque-popup, #ecra-iphone-popup, #partilhar-menu, .instrucoes-cartao {
             /* Sem rebordo nenhum, nem invisível: um rebordo invisível fica
                por fora do fio e deixa ver o fundo escuro por baixo dele,
                como um segundo fio, preto, a toda a volta. */
@@ -2940,7 +2968,7 @@
         }
         .panel-glass::after, .btn-glass::after, .action-btn::after, .settings-panel::after, .filter-btn::after,
         #coordinates-info::after, #camera-info::after, #loading-bar-container::after,
-        #definicoes-menu::after, #dev-menu::after, #idioma-menu::after, #camera-stuck-popup::after, #arranque-popup::after, #partilhar-menu::after, .instrucoes-cartao::after {
+        #definicoes-menu::after, #dev-menu::after, #idioma-menu::after, #camera-stuck-popup::after, #arranque-popup::after, #ecra-iphone-popup::after, #partilhar-menu::after, .instrucoes-cartao::after {
             content: "";
             position: absolute;
             inset: 0;
@@ -3000,6 +3028,23 @@
         <div class="stuck-text" data-i18n="limite.titulo">Chegaste ao limite do mapa.</div>
         <div class="stuck-subtext" data-i18n="limite.sub">Não há terreno para lá desta zona.</div>
         <button id="recenter-btn" data-i18n="limite.botao">Recentrar Câmara</button>
+    </div>
+
+    <!-- O aviso do ecrã inteiro no iPhone (ver o botão do ecrã inteiro):
+         lá não há ecrã inteiro para sites, e o que se pode fazer é pô-lo
+         no ecrã principal e abri-lo de lá, sem barras. -->
+    <div id="ecra-iphone-popup" role="dialog" aria-modal="true" aria-labelledby="ecra-iphone-titulo">
+        <div class="stuck-text" id="ecra-iphone-titulo" data-i18n="ecra.iphoneTitulo">Ecrã inteiro no iPhone</div>
+        <div class="stuck-subtext">
+            <span data-i18n="ecra.iphoneAntes">O iPhone não deixa os sites ocuparem o ecrã todo. Para ver o bairro sem as barras do navegador, toca em Partilhar</span>
+            <svg class="icone-partilhar-iphone" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true">
+                <polyline points="8 6.5 12 2.5 16 6.5"></polyline>
+                <line x1="12" y1="3" x2="12" y2="15"></line>
+                <polyline points="9 9.5 5 9.5 5 21.5 19 21.5 19 9.5 15 9.5"></polyline>
+            </svg>
+            <span data-i18n="ecra.iphoneDepois">e depois em «Adicionar ao ecrã principal». Abre o Malha Viva pelo ícone que lá fica.</span>
+        </div>
+        <button type="button" id="ecra-iphone-ok" data-i18n="ecra.iphoneBotao">Percebi</button>
     </div>
 
     <!-- Loading Overlay -->
@@ -4752,7 +4797,7 @@
         <pc-asset id="splat-scene" src="splat/lod-meta.json" type="gsplat"></pc-asset>
         <pc-asset id="camera-controls-script" src="./camera-controls.mjs?v=53" type="script"></pc-asset>
         <pc-asset id="camera-coords-script" src="./coords.mjs?v=7" type="script"></pc-asset>
-        <pc-asset id="annotations-script" src="./annotations.mjs?v=120" type="script"></pc-asset>
+        <pc-asset id="annotations-script" src="./annotations.mjs?v=121" type="script"></pc-asset>
         <pc-asset id="measure-script" src="./measure.mjs?v=1" type="script"></pc-asset>
         <pc-asset id="escala-script" src="./escala.mjs?v=2" type="script"></pc-asset>
         <pc-asset id="compass-script" src="./compass.mjs?v=2" type="script"></pc-asset>
@@ -5376,24 +5421,69 @@ void modifySplatColor(vec3 center, inout vec4 color) {
             window.location.reload();
         }
 
-        // Fullscreen Logic
+        // O ecrã inteiro.
+        //
+        // Nos computadores, nos Android e no iPad a página vai ao ecrã
+        // inteiro (o Safari de antes da versão 16.4 só o diz com o prefixo
+        // dele). O iPhone não põe páginas em ecrã inteiro — nem pelo
+        // Safari, nem pelo Chrome: lá o botão não fazia nada. O que o
+        // iPhone deixa é abrir o site a partir do ecrã principal, sem as
+        // barras do navegador; por isso, no iPhone, o botão explica como.
+        // Aberto já assim, sem barras, o botão sai.
         const fullscreenMainBtn = document.getElementById('fullscreen-main-btn');
         if (fullscreenMainBtn) {
-            fullscreenMainBtn.addEventListener('click', () => {
-                if (!document.fullscreenElement) {
-                    document.documentElement.requestFullscreen().catch(err => console.log(err));
-                } else {
-                    document.exitFullscreen();
-                }
+            const raiz = document.documentElement;
+            const haEcraInteiro = !!((raiz.requestFullscreen || raiz.webkitRequestFullscreen) &&
+                (document.fullscreenEnabled || document.webkitFullscreenEnabled));
+            // O iPad apresenta-se como um Mac com ecrã de toque.
+            const ehIOS = /iPhone|iPod|iPad/.test(navigator.userAgent) ||
+                (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
+            const semBarras = navigator.standalone === true ||
+                (window.matchMedia && window.matchMedia('(display-mode: standalone), (display-mode: fullscreen)').matches);
+            if (semBarras || (!haEcraInteiro && !ehIOS)) fullscreenMainBtn.style.display = 'none';
+
+            const aviso = document.getElementById('ecra-iphone-popup');
+            const avisoOk = document.getElementById('ecra-iphone-ok');
+            const fecharAviso = () => {
+                if (!aviso.classList.contains('visible')) return;
+                aviso.classList.remove('visible');
+                fullscreenMainBtn.focus({ preventScroll: true });
+            };
+            const abrirAviso = () => {
+                aviso.classList.add('visible');
+                avisoOk.focus({ preventScroll: true });
+            };
+            avisoOk.addEventListener('click', fecharAviso);
+            // Um toque fora do cartão também o fecha, e o Escape.
+            document.addEventListener('pointerdown', (e) => {
+                if (aviso.classList.contains('visible') && !aviso.contains(e.target) && !fullscreenMainBtn.contains(e.target)) fecharAviso();
+            });
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') fecharAviso();
             });
 
-            document.addEventListener('fullscreenchange', () => {
-                if (document.fullscreenElement) {
+            const emEcraInteiro = () => !!(document.fullscreenElement || document.webkitFullscreenElement);
+            fullscreenMainBtn.addEventListener('click', () => {
+                if (!haEcraInteiro) {
+                    if (aviso.classList.contains('visible')) fecharAviso();
+                    else abrirAviso();
+                    return;
+                }
+                try {
+                    const pedido = emEcraInteiro()
+                        ? (document.exitFullscreen || document.webkitExitFullscreen).call(document)
+                        : (raiz.requestFullscreen || raiz.webkitRequestFullscreen).call(raiz);
+                    if (pedido && pedido.catch) pedido.catch(err => console.log(err));
+                } catch (err) { console.log(err); }
+            });
+
+            ['fullscreenchange', 'webkitfullscreenchange'].forEach((ev) => document.addEventListener(ev, () => {
+                if (emEcraInteiro()) {
                     fullscreenMainBtn.querySelector('svg').outerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="square" stroke-linejoin="miter"><path d="M3 9h6V3 M21 9h-6V3 M21 15h-6v6 M3 15h6v6"></path></svg>';
                 } else {
                     fullscreenMainBtn.querySelector('svg').outerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="square" stroke-linejoin="miter"><path d="M8 3H3v5m18 0V3h-5m0 18h5v-5M3 16v5h5"></path></svg>';
                 }
-            });
+            }));
         }
 
         // Menu de Definições

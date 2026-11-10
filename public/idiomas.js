@@ -51,6 +51,10 @@
             'cab.cartao': 'Óculos de cartão',
             'cab.sairCartao': 'Sair dos óculos',
             'cab.ecra': 'Ecrã Inteiro',
+            'ecra.iphoneTitulo': 'Ecrã inteiro no iPhone',
+            'ecra.iphoneAntes': 'O iPhone não deixa os sites ocuparem o ecrã todo. Para ver o bairro sem as barras do navegador, toca em Partilhar',
+            'ecra.iphoneDepois': 'e depois em «Adicionar ao ecrã principal». Abre o Malha Viva pelo ícone que lá fica.',
+            'ecra.iphoneBotao': 'Percebi',
 
             'def.qualidade': 'Qualidade Gráfica',
             'def.auto': 'Automático (Recomendado)',
@@ -348,6 +352,10 @@
             'cab.cartao': 'Cardboard headset',
             'cab.sairCartao': 'Leave the headset',
             'cab.ecra': 'Fullscreen',
+            'ecra.iphoneTitulo': 'Full screen on iPhone',
+            'ecra.iphoneAntes': 'The iPhone doesn’t let websites fill the whole screen. To see the neighbourhood without the browser bars, tap Share',
+            'ecra.iphoneDepois': 'and then “Add to Home Screen”. Open Malha Viva from the icon that appears there.',
+            'ecra.iphoneBotao': 'Got it',
 
             'def.qualidade': 'Graphics Quality',
             'def.auto': 'Automatic (Recommended)',
@@ -636,6 +644,10 @@
             'cab.cartao': 'Gafas de cartón',
             'cab.sairCartao': 'Salir de las gafas',
             'cab.ecra': 'Pantalla completa',
+            'ecra.iphoneTitulo': 'Pantalla completa en el iPhone',
+            'ecra.iphoneAntes': 'El iPhone no deja que las webs ocupen toda la pantalla. Para ver el barrio sin las barras del navegador, toca Compartir',
+            'ecra.iphoneDepois': 'y luego «Añadir a pantalla de inicio». Abre Malha Viva desde el icono que aparece allí.',
+            'ecra.iphoneBotao': 'Entendido',
 
             'def.qualidade': 'Calidad Gráfica',
             'def.auto': 'Automático (Recomendado)',
@@ -924,6 +936,10 @@
             'cab.cartao': 'Óklus di karton',
             'cab.sairCartao': 'Sai di óklus',
             'cab.ecra': 'Ekran interu',
+            'ecra.iphoneTitulo': 'Ekran interu na iPhone',
+            'ecra.iphoneAntes': 'iPhone ka ta dexa sites okupa ekran tudu. Pa odja bairu sen kes bara di navegador, toka na «Partilhar»',
+            'ecra.iphoneDepois': 'i dipos na «Adicionar ao ecrã principal». Abri Malha Viva na ikon ki ta fika la.',
+            'ecra.iphoneBotao': 'Dja N intendi',
 
             'def.qualidade': 'Kualidadi di imajen',
             'def.auto': 'Automátiku (Rekumendadu)',

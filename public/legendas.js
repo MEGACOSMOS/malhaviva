@@ -134,6 +134,15 @@
             video.addEventListener(ev, acertar);
         });
         video.addEventListener('play', function () { self.correr(); });
+        // O leitor do próprio iPhone (ver porNaPista).
+        video.addEventListener('webkitbeginfullscreen', function () {
+            self.noLeitorDoIphone = true;
+            self.porNaPista();
+        });
+        video.addEventListener('webkitendfullscreen', function () {
+            self.noLeitorDoIphone = false;
+            if (self.pista) self.pista.mode = 'disabled';
+        });
 
         if (this.botao) {
             this.botao.innerHTML = ICONE;
@@ -171,6 +180,7 @@
             self.blocos = blocos;
             self.pintarBotao();
             self.acertar();
+            self.porNaPista();
         });
     };
 
@@ -223,6 +233,27 @@
         requestAnimationFrame(passo);
     };
 
+    /**
+     * O leitor do próprio iPhone, em ecrã inteiro, não vê a caixa das
+     * legendas: tapa a página toda. Enquanto lá estiver, a legenda vai
+     * dentro do filme, como uma pista de legendas que o iPhone desenha ele
+     * mesmo — o mesmo texto, nos mesmos tempos. Ao sair, a pista apaga-se
+     * e voltam as nossas.
+     */
+    Leitor.prototype.porNaPista = function () {
+        var video = this.video;
+        if (!this.noLeitorDoIphone || !video.addTextTrack || typeof VTTCue === 'undefined') return;
+        if (!this.pista) this.pista = video.addTextTrack('subtitles', t('video.legendas', 'Legendas'), linguaDoSite());
+        var pista = this.pista;
+        // Só se mexe nas falas de uma pista que não está desligada.
+        pista.mode = 'hidden';
+        while (pista.cues && pista.cues.length) pista.removeCue(pista.cues[0]);
+        (this.blocos || []).forEach(function (b) {
+            pista.addCue(new VTTCue(b.inicio, b.fim, b.texto));
+        });
+        pista.mode = this.blocos && ligadas() ? 'showing' : 'hidden';
+    };
+
     Leitor.prototype.pintarBotao = function () {
         if (!this.botao) return;
         var sim = ligadas();
@@ -236,7 +267,7 @@
     };
 
     function acertarTodos() {
-        leitores.forEach(function (l) { l.pintarBotao(); l.atual = undefined; l.acertar(); });
+        leitores.forEach(function (l) { l.pintarBotao(); l.atual = undefined; l.acertar(); l.porNaPista(); });
     }
 
     /** Liga as legendas se estão desligadas, e desliga-as se estão ligadas. */

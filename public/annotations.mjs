@@ -3340,11 +3340,28 @@ AnnotationController.prototype.setupModal = function() {
 
     // O palco já enche a janela do navegador; este botão leva-o ao ecrã
     // inteiro, com as setas e a cruz de fechar.
-    fullscreenBtn.addEventListener('click', () => alternarEcraInteiro(this.modal));
-
-    document.addEventListener('fullscreenchange', () => {
-        fullscreenBtn.innerHTML = emEcraInteiro() ? ICONE_SAIR_DO_ECRA : ICONE_ECRA_INTEIRO;
+    //
+    // O iPhone não põe páginas em ecrã inteiro, e aqui o botão não fazia
+    // nada. Põe os vídeos: lá, o botão abre o testemunho no leitor do
+    // próprio iPhone, de ponta a ponta do ecrã e com as legendas (ver
+    // legendas.js). Ao sair, o filme continua aqui onde ia.
+    const raizDoPalco = this.modal;
+    const haEcraInteiroDePagina = !!((raizDoPalco.requestFullscreen || raizDoPalco.webkitRequestFullscreen) &&
+        (document.fullscreenEnabled || document.webkitFullscreenEnabled));
+    const video = this.videoPlayer;
+    if (!haEcraInteiroDePagina && !video.webkitEnterFullscreen) fullscreenBtn.style.display = 'none';
+    fullscreenBtn.addEventListener('click', () => {
+        if (haEcraInteiroDePagina) {
+            alternarEcraInteiro(this.modal);
+            return;
+        }
+        // Ainda sem o filme carregado, o iPhone recusa: fica no palco.
+        try { video.webkitEnterFullscreen(); } catch (e) { /* fica no palco */ }
     });
+
+    ['fullscreenchange', 'webkitfullscreenchange'].forEach((ev) => document.addEventListener(ev, () => {
+        fullscreenBtn.innerHTML = emEcraInteiro() ? ICONE_SAIR_DO_ECRA : ICONE_ECRA_INTEIRO;
+    }));
 
     const closeModal = () => {
         this.sairDoHistorico();
