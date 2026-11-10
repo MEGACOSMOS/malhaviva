@@ -576,6 +576,38 @@
                 display: flex;
             }
 
+            /* Com a gaveta aberta o cabeçalho passa por cima do resto do que
+               está no ecrã, para o degradê o cobrir também. Ao fechar só
+               desce depois de o degradê se apagar, para não saltar. */
+            #header {
+                transition: opacity 0.6s ease, transform 0.6s ease, z-index 0s linear 0.45s;
+            }
+            #header.gaveta-aberta {
+                z-index: 450;
+                transition: opacity 0.6s ease, transform 0.6s ease, z-index 0s;
+            }
+
+            /* Por trás da gaveta, um degradê preto que nasce do lado
+               esquerdo, onde estão os ícones, e se apaga para a direita:
+               os ícones e os nomes lêem-se sobre qualquer parte do bairro.
+               Entra e sai devagar, a acelerar e a travar. Não se toca: um
+               toque nele cai no bairro e fecha a gaveta, como antes. */
+            #header::before {
+                content: '';
+                position: fixed;
+                inset: 0;
+                z-index: -1;
+                background:
+                    linear-gradient(to bottom, rgba(0, 0, 0, 0.55) 0, rgba(0, 0, 0, 0) 140px),
+                    linear-gradient(to right, rgba(0, 0, 0, 0.9) 0%, rgba(0, 0, 0, 0.72) 28%, rgba(0, 0, 0, 0.35) 62%, rgba(0, 0, 0, 0.08) 88%, rgba(0, 0, 0, 0) 100%);
+                opacity: 0;
+                pointer-events: none;
+                transition: opacity 0.45s cubic-bezier(0.65, 0, 0.35, 1);
+            }
+            #header.gaveta-aberta::before {
+                opacity: 1;
+            }
+
             /* A coluna dos ícones, por baixo do hambúrguer, sem caixa. */
             #acoes-do-cabecalho {
                 position: fixed;
@@ -587,13 +619,28 @@
                 opacity: 0;
                 visibility: hidden;
                 pointer-events: none;
-                transition: opacity 0.15s ease, visibility 0.15s;
+                transition: opacity 0.45s cubic-bezier(0.65, 0, 0.35, 1), visibility 0s linear 0.45s;
             }
 
             #header.gaveta-aberta #acoes-do-cabecalho {
                 opacity: 1;
                 visibility: visible;
                 pointer-events: auto;
+                transition: opacity 0.45s cubic-bezier(0.65, 0, 0.35, 1), visibility 0s;
+            }
+
+            /* Os ícones chegam da esquerda, um nada, com o degradê. */
+            #acoes-do-cabecalho > * {
+                transform: translateX(-10px);
+                transition: transform 0.45s cubic-bezier(0.65, 0, 0.35, 1);
+            }
+            #header.gaveta-aberta #acoes-do-cabecalho > * {
+                transform: none;
+            }
+            @media (prefers-reduced-motion: reduce) {
+                #acoes-do-cabecalho > * {
+                    transform: none;
+                }
             }
 
             /* Cada ícone com o seu bico por baixo: aponta para a direita
