@@ -619,26 +619,24 @@
                 opacity: 0;
                 visibility: hidden;
                 pointer-events: none;
-                transition: opacity 0.45s cubic-bezier(0.65, 0, 0.35, 1), visibility 0s linear 0.45s;
+                /* Os ícones chegam da esquerda, um nada, com o degradê —
+                   a coluna toda de uma vez, para irem todos juntos (cada
+                   ícone tem a sua própria transição, que apagaria a dele).
+                   Aberta fica sem transformação: nada dentro dela é fixo ao
+                   ecrã, mas assim nem por um instante o poderia prender. */
+                transform: translateX(-10px);
+                transition: opacity 0.45s cubic-bezier(0.65, 0, 0.35, 1), transform 0.45s cubic-bezier(0.65, 0, 0.35, 1), visibility 0s linear 0.45s;
             }
 
             #header.gaveta-aberta #acoes-do-cabecalho {
                 opacity: 1;
                 visibility: visible;
                 pointer-events: auto;
-                transition: opacity 0.45s cubic-bezier(0.65, 0, 0.35, 1), visibility 0s;
-            }
-
-            /* Os ícones chegam da esquerda, um nada, com o degradê. */
-            #acoes-do-cabecalho > * {
-                transform: translateX(-10px);
-                transition: transform 0.45s cubic-bezier(0.65, 0, 0.35, 1);
-            }
-            #header.gaveta-aberta #acoes-do-cabecalho > * {
                 transform: none;
+                transition: opacity 0.45s cubic-bezier(0.65, 0, 0.35, 1), transform 0.45s cubic-bezier(0.65, 0, 0.35, 1), visibility 0s;
             }
             @media (prefers-reduced-motion: reduce) {
-                #acoes-do-cabecalho > * {
+                #acoes-do-cabecalho {
                     transform: none;
                 }
             }
