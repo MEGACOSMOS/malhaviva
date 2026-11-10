@@ -1216,6 +1216,11 @@
             margin: -14px -16px 12px;
             background: #ffffff;
             color: #05050a;
+            /* Desliza-se de lado com o dedo para passar de indicação (ver
+               "Deslizar na faixa"); de cima para baixo é do navegador. A
+               indicação que sai não se vê fora da faixa. */
+            touch-action: pan-y;
+            overflow: hidden;
         }
         .manobra-principal {
             display: flex;
@@ -7239,6 +7244,84 @@ void modifySplatColor(vec3 center, inout vec4 color) {
         manobraVerEl.addEventListener('click', () => verIndicacao(passoNaFaixa(), false));
         manobraAnteriorEl.addEventListener('click', () => verIndicacao(passoNaFaixa() - 1, true));
         manobraSeguinteEl.addEventListener('click', () => verIndicacao(passoNaFaixa() + 1, true));
+
+        // ---- Deslizar na faixa ----
+        //
+        // A faixa da indicação passa de uma indicação a outra com o dedo,
+        // como as setas: a deslizar para a esquerda, a seguinte; para a
+        // direita, a anterior. A indicação vai atrás do dedo enquanto ele
+        // anda; largada a meio caminho, volta ao sítio; largada depois do
+        // limiar, sai para esse lado e a nova entra pelo outro. Nas pontas
+        // do percurso (a primeira e a última) só cede um pouco e volta.
+        // Para cima e para baixo não é com ela: o dedo continua a mexer no
+        // que estiver por baixo.
+        (() => {
+            const LIMIAR = 48;
+            const conteudo = manobraVerEl;
+            let toque = null;
+            let engolirClique = false;
+            const pousar = (dx, comTransicao) => {
+                conteudo.style.transition = comTransicao ? 'transform 0.18s ease, opacity 0.18s ease' : 'none';
+                conteudo.style.transform = dx ? 'translateX(' + dx + 'px)' : '';
+                conteudo.style.opacity = dx ? String(Math.max(0.35, 1 - Math.abs(dx) / 260)) : '';
+            };
+            const haPasso = (sentido) => !!(percurso && percurso.passos[passoNaFaixa() + sentido]);
+            manobraEl.addEventListener('pointerdown', (e) => {
+                if (!aGuiar || (e.pointerType === 'mouse' && e.button !== 0)) return;
+                // As setas pequenas continuam a ser só botões.
+                if (e.target.closest('.manobra-setas')) return;
+                toque = { id: e.pointerId, x: e.clientX, y: e.clientY, lado: null };
+            });
+            manobraEl.addEventListener('pointermove', (e) => {
+                if (!toque || e.pointerId !== toque.id) return;
+                const dx = e.clientX - toque.x;
+                const dy = e.clientY - toque.y;
+                if (toque.lado === null) {
+                    if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
+                    // Mais para o lado do que para cima: é um deslizar.
+                    toque.lado = Math.abs(dx) > Math.abs(dy) * 1.2;
+                    if (!toque.lado) { toque = null; return; }
+                    try { manobraEl.setPointerCapture(e.pointerId); } catch (_) { /* segue sem */ }
+                }
+                // Sem indicação desse lado, cede só um terço.
+                const sentido = dx < 0 ? 1 : -1;
+                pousar(haPasso(sentido) ? dx : dx / 3, false);
+            });
+            const largar = (e) => {
+                if (!toque || e.pointerId !== toque.id) return;
+                const eraDeslizar = toque.lado === true;
+                const dx = e.clientX - toque.x;
+                toque = null;
+                if (!eraDeslizar) return;
+                // O toque que deslizou não conta como carregar na faixa.
+                engolirClique = true;
+                setTimeout(() => { engolirClique = false; }, 0);
+                const sentido = dx < 0 ? 1 : -1;
+                if (e.type === 'pointercancel' || Math.abs(dx) < LIMIAR || !haPasso(sentido)) {
+                    pousar(0, true);
+                    return;
+                }
+                // Sai para o lado do dedo; a nova entra pelo outro.
+                const largura = manobraEl.offsetWidth || 300;
+                pousar(-sentido * largura * 0.6, true);
+                setTimeout(() => {
+                    verIndicacao(passoNaFaixa() + sentido, true);
+                    pousar(sentido * largura * 0.4, false);
+                    // Uma imagem depois, para o navegador dar pela posição
+                    // de partida antes de a deslizar para o sítio.
+                    requestAnimationFrame(() => requestAnimationFrame(() => pousar(0, true)));
+                    setTimeout(() => pousar(0, true), 60);
+                }, 170);
+            };
+            manobraEl.addEventListener('pointerup', largar);
+            manobraEl.addEventListener('pointercancel', largar);
+            manobraEl.addEventListener('click', (e) => {
+                if (!engolirClique) return;
+                engolirClique = false;
+                e.stopPropagation();
+                e.preventDefault();
+            }, true);
+        })();
         document.getElementById('percurso-ver-guia').addEventListener('click', () => {
             if (nav) nav.enquadrar();
             escreverSeguir();
