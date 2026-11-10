@@ -21,7 +21,7 @@ seguintes.** Todas vivem em `public/annotations.mjs`.
 1. **Um nome dito por palavras.** Em `nomeAcessivel()`, uma anotação de
    qualquer tipo tem de devolver uma frase que diga *de quem é* e *o que é*
    — "Testemunho de Dulce", e não "Dulce". O que está desenhado no
-   marcador — uma casa, um olho, a palavra 360º — não se lê em voz
+   marcador — uma câmara, um olho, a palavra 360º — não se lê em voz
    alta. Se acrescentar um tipo novo, ensine-o a esta função.
 
 2. **Esse nome traduzido nas quatro línguas.** Em `public/idiomas.js`, em

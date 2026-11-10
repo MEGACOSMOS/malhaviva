@@ -1500,11 +1500,15 @@ AnnotationController.prototype.initialize = function() {
                 <div class="marker-label">${ann.label}</div>
             `;
         } else {
+            // O testemunho: uma câmara de filmar vista de lado — o corpo e,
+            // à frente, a objectiva a abrir-se para a direita. Sem os rolos
+            // de película por cima, e com os cantos vivos dos outros
+            // desenhos. Os mesmos 20 de largura.
             el.innerHTML = `
                 <div class="marker-dot ${isViewed ? 'viewed' : ''}">
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter">
-                        <polygon points="12 3, 22 11, 22 21, 2 21, 2 11"></polygon>
-                        <polyline points="9.5 21, 9.5 15, 14.5 15, 14.5 21"></polyline>
+                        <rect x="2" y="6" width="13" height="12"></rect>
+                        <polygon points="15 12, 22 6, 22 18"></polygon>
                     </svg>
                 </div>
                 <div class="marker-label">${ann.label}</div>
