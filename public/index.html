@@ -645,7 +645,6 @@
                fechado, para a esquerda aberto. */
             #acoes-do-cabecalho #definicoes-btn,
             #acoes-do-cabecalho #dev-btn,
-            #acoes-do-cabecalho #partilhar-btn-gaveta,
             #acoes-do-cabecalho #idioma-btn {
                 flex-direction: column;
                 width: 40px;
@@ -672,19 +671,12 @@
             /* Os menus abrem para a direita do ícone, alinhados com ele. */
             #acoes-do-cabecalho #definicoes-menu,
             #acoes-do-cabecalho #dev-menu,
-            #acoes-do-cabecalho #partilhar-menu,
             #acoes-do-cabecalho #idioma-menu {
                 top: 0;
                 left: 52px;
                 right: auto;
                 transform-origin: top left;
                 max-width: calc(100vw - 84px);
-            }
-            /* O de partilhar vem do canto de baixo à direita: aqui vive na
-               gaveta, ao pé dos outros, e o do canto some. */
-            #acoes-do-cabecalho #partilhar-menu {
-                position: absolute;
-                bottom: auto;
             }
             #acoes-do-cabecalho #dev-menu {
                 max-height: calc(100vh - 96px);
@@ -705,13 +697,9 @@
         .settings {
             position: relative;
         }
-        /* O partilhar da gaveta só existe no telemóvel (ver acima). */
-        #partilhar-container {
-            display: none;
-        }
         
         /* Sem caixa nenhuma até o rato lá chegar. */
-        #github-btn, #definicoes-btn, #dev-btn, #idioma-btn, #help-btn, #creditos-btn, #fullscreen-main-btn, #vr-btn, #partilhar-btn-gaveta, #pesquisa-abrir, #pesquisa-fechar {
+        #github-btn, #definicoes-btn, #dev-btn, #idioma-btn, #help-btn, #creditos-btn, #fullscreen-main-btn, #vr-btn, #pesquisa-abrir, #pesquisa-fechar {
             background: transparent;
             border: 0;
             width: 40px;
@@ -1881,7 +1869,6 @@
         .settings:has(.open) > #definicoes-btn,
         .settings:has(.open) > #dev-btn,
         .settings:has(.open) > #idioma-btn,
-        .settings:has(.open) > #partilhar-btn-gaveta,
         #partilhar-btn.aberto {
             background: #05050a;
         }
@@ -1889,7 +1876,6 @@
         .settings:has(.open) > #definicoes-btn::after,
         .settings:has(.open) > #dev-btn::after,
         .settings:has(.open) > #idioma-btn::after,
-        .settings:has(.open) > #partilhar-btn-gaveta::after,
         #partilhar-btn.aberto::after {
             opacity: 1;
         }
@@ -2356,18 +2342,14 @@
             color: #10b981;
         }
 
+        /* No telemóvel o botão fica onde está no computador: no canto de
+           baixo à direita, por cima da escala, e o menu abre por cima
+           dele. Enquanto o painel do percurso ocupa o fundo do ecrã sai,
+           como a escala. */
         @media (max-width: 640px) {
-            /* No telemóvel o botão do canto some: o de partilhar passa a
-               viver na gaveta do hambúrguer, ao pé dos outros ícones. */
-            #partilhar-btn {
-                display: none;
-            }
-            #partilhar-container {
-                display: block;
-            }
-            #partilhar-menu {
-                bottom: 70px;
-                right: 16px;
+            body.a-navegar #partilhar-btn,
+            body.a-navegar #partilhar-menu {
+                display: none !important;
             }
         }
 
@@ -3874,22 +3856,6 @@
             </div>
         </div>
 
-        <!-- Partilhar, na gaveta do telemóvel: o mesmo menu do botão do
-             canto, que o guião traz para aqui quando a gaveta existe. -->
-        <div class="settings" id="partilhar-container">
-            <button type="button" id="partilhar-btn-gaveta" class="adaptavel" aria-label="Partilhar" title="Partilhar" data-i18n-aria="par.botao" data-i18n-title="par.botao" aria-haspopup="true" aria-expanded="false" aria-controls="partilhar-menu">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true">
-                    <rect x="15" y="2" width="6" height="6"></rect>
-                    <rect x="3" y="9" width="6" height="6"></rect>
-                    <rect x="15" y="16" width="6" height="6"></rect>
-                    <line x1="9" y1="10.5" x2="15" y2="6.5"></line>
-                    <line x1="9" y1="13.5" x2="15" y2="17.5"></line>
-                </svg>
-                <svg class="seta-menu" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true"><polyline points="5 9 12 16 19 9"></polyline></svg>
-                <span class="rotulo-icone" aria-hidden="true" data-i18n="par.botao">Partilhar</span>
-            </button>
-        </div>
-
         <!-- Os créditos: uma claquete aberta, com o braço na inclinação
              das diagonais do site. As riscas são cheias, no braço e no
              topo da claquete, para se lerem mesmo em pequeno.
@@ -4658,23 +4624,7 @@
         const overlay = document.getElementById('loading-overlay');
         if (!botao || !menu || !overlay) return;
 
-        // No telemóvel o botão vive na gaveta do hambúrguer, e o menu vai
-        // com ele para abrir ao lado do ícone, como os outros; no
-        // computador volta para o canto de baixo à direita.
-        const botaoDaGaveta = document.getElementById('partilhar-btn-gaveta');
-        const casaNaGaveta = document.getElementById('partilhar-container');
-        const gavetaExiste = window.matchMedia('(max-width: 640px)');
-        const arrumarOMenu = () => {
-            if (!casaNaGaveta) return;
-            if (gavetaExiste.matches) {
-                if (menu.parentNode !== casaNaGaveta) casaNaGaveta.appendChild(menu);
-            } else if (menu.parentNode === casaNaGaveta) {
-                botao.insertAdjacentElement('afterend', menu);
-            }
-        };
-        arrumarOMenu();
-        if (gavetaExiste.addEventListener) gavetaExiste.addEventListener('change', arrumarOMenu);
-        const botoes = [botao, botaoDaGaveta].filter(Boolean);
+        const botoes = [botao];
 
         const titulo = document.getElementById('partilhar-titulo');
         const opcoes = Array.from(menu.querySelectorAll('.partilha-opcao'));
@@ -4715,7 +4665,7 @@
         let relogioDoAviso = null;
         const abrir = () => {
             encherLigacoes();
-            // Na gaveta só um menu de cada vez.
+            // Só um menu de cada vez.
             ['definicoes-menu', 'idioma-menu', 'dev-menu'].forEach((id) => {
                 const outro = document.getElementById(id);
                 if (outro) outro.classList.remove('open');
@@ -4734,8 +4684,7 @@
             titulo.classList.remove('copiado');
             titulo.textContent = t('par.titulo', 'Partilhar');
             if (devolverFoco) {
-                const dono = menu.parentNode === casaNaGaveta && botaoDaGaveta ? botaoDaGaveta : botao;
-                dono.focus({ preventScroll: true });
+                botao.focus({ preventScroll: true });
             }
         };
         const aberto = () => menu.classList.contains('open');
@@ -4743,8 +4692,7 @@
         botoes.forEach((b) => b.addEventListener('click', () => { if (aberto()) fechar(false); else abrir(); }));
         menu.querySelector('.menu-fechar').addEventListener('click', () => fechar(true));
 
-        // Fecha ao carregar fora, e com a tecla Escape — e ao abrir outro
-        // menu da gaveta.
+        // Fecha ao carregar fora, e com a tecla Escape.
         document.addEventListener('pointerdown', (e) => {
             if (aberto() && !menu.contains(e.target) && !botoes.some((b) => b.contains(e.target))) fechar(false);
         });
