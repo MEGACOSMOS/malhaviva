@@ -3109,10 +3109,77 @@
      *
      * O primeiro degrau também é dado por quem vigia a entrada no bairro
      * (ver `vigiarAEntrada`), quando as imagens quase não andam.
+     *
+     * E há o caso em que o motor nem chega a começar: o navegador diz
+     * "não" ao pedido de desenhar em 3D (ver `semMotor`). Esse não é de
+     * memória nem de qualidade, por isso não desce degrau nenhum.
      */
     (function () {
         const t = (chave, senao) => (window.Idiomas && window.Idiomas.t(chave)) || senao;
-        const placa = { desistida: false, desistiu: null, voltarAoAutomatico: null };
+        const placa = { desistida: false, desistiu: null, voltarAoAutomatico: null, semMotor: null, correuBem: null };
+
+        // Quantas vezes, nesta visita, o motor ficou sem desenho e a página
+        // se recarregou por isso — e quantas se aceitam antes de o dizer.
+        const VEZES_SEM_MOTOR = 'motor-sem-desenho';
+        const MAXIMO_SEM_MOTOR = 2;
+        // Segundos à vista que se espera pela placa gráfica antes de seguir.
+        const ESPERA_PELA_PLACA = 15;
+
+        /**
+         * Pergunta ao navegador se já deixa desenhar em 3D, com uma tela de
+         * experiência que se deita fora logo a seguir.
+         */
+        const podeDesenhar = () => {
+            try {
+                const gl = document.createElement('canvas').getContext('webgl2');
+                if (!gl) return false;
+                const largar = gl.getExtension('WEBGL_lose_context');
+                if (largar) largar.loseContext();
+                return true;
+            } catch (e) {
+                return false;
+            }
+        };
+
+        /**
+         * Recarrega a página — mas só quando a placa gráfica já deixa
+         * desenhar outra vez.
+         *
+         * Quando a placa gráfica de um telemóvel cai, o Chrome levanta-a
+         * sozinho, mas leva um instante, e nesse instante quem pede para
+         * desenhar em 3D ouve um "não" (medido num Redmi Note 10 Pro: ainda
+         * "não" dois segundos depois da queda, já "sim" meio segundo mais
+         * tarde). A página recarregava-se a relógio, ao fim de menos de um
+         * segundo, e caía nesse buraco: o motor não arrancava, e ao fim de
+         * duas voltas ficava "Este aparelho não consegue mostrar o bairro em
+         * 3D" num telemóvel que o mostra muito bem. Agora pergunta-se
+         * primeiro, de meio em meio segundo, e só se recarrega quando a
+         * resposta for sim.
+         *
+         * Conta só o tempo à vista, e recarrega só à vista. Se ao fim de
+         * ESPERA_PELA_PLACA segundos a resposta ainda for não, faz `senao`
+         * (se não houver, recarrega na mesma, e logo se vê).
+         *
+         * @param {number} minimo - Milissegundos de espera, no mínimo (para
+         *     se poder ler o que está escrito no ecrã).
+         * @param {function} [senao] - O que fazer se a placa não voltar.
+         */
+        const recarregarQuandoPuder = (minimo, senao) => {
+            let esperou = 0;
+            const relogio = setInterval(() => {
+                if (document.hidden) return;
+                esperou += 500;
+                if (esperou < minimo) return;
+                if (podeDesenhar()) {
+                    clearInterval(relogio);
+                    window.location.reload();
+                } else if (esperou >= ESPERA_PELA_PLACA * 1000) {
+                    clearInterval(relogio);
+                    if (senao) senao();
+                    else window.location.reload();
+                }
+            }, 500);
+        };
 
         // O ecrã de espera por cima de tudo, com o letreiro dele.
         const mostrarEcraDeEspera = () => {
@@ -3145,8 +3212,32 @@
             placa.desistida = true;
             const letreiro = mostrarEcraDeEspera();
             if (letreiro) letreiro.textContent = t('gpu.paraAuto', 'Este aparelho está com dificuldade em mostrar o bairro com a qualidade escolhida. A voltar ao modo Automático…');
-            setTimeout(() => window.location.reload(), 1600);
+            recarregarQuandoPuder(1600);
             return true;
+        };
+
+        /**
+         * Não há mais por onde descer: diz-se com todas as letras, com um
+         * botão para tentar de novo desde o princípio.
+         */
+        const dizerQueNaoDa = () => {
+            const letreiro = mostrarEcraDeEspera();
+            if (!letreiro || letreiro.dataset.naoDa) return;
+            letreiro.dataset.naoDa = '1';
+            letreiro.textContent = t('gpu.desistiu', 'Este aparelho não consegue mostrar o bairro em 3D.');
+            const botao = document.createElement('button');
+            botao.type = 'button';
+            botao.id = 'recenter-btn';
+            botao.style.marginTop = '18px';
+            botao.textContent = t('gpu.botao', 'Tentar de novo');
+            botao.addEventListener('click', () => {
+                try {
+                    sessionStorage.removeItem('poupanca');
+                    sessionStorage.removeItem(VEZES_SEM_MOTOR);
+                } catch (e) { /* nada */ }
+                window.location.reload();
+            });
+            letreiro.insertAdjacentElement('afterend', botao);
         };
 
         placa.desistiu = () => {
@@ -3159,25 +3250,57 @@
             if (!window.modoDePoupanca) {
                 try { sessionStorage.setItem('poupanca', '1'); } catch (e) { /* sem memória: tenta na mesma */ }
                 if (letreiro) letreiro.textContent = t('gpu.aTentar', 'O aparelho ficou sem memória gráfica. A tentar de novo com menos detalhe…');
-                setTimeout(() => window.location.reload(), 900);
+                recarregarQuandoPuder(900);
                 return;
             }
 
             // Já era a poupança: não há mais por onde descer.
-            if (letreiro) {
-                letreiro.textContent = t('gpu.desistiu', 'Este aparelho não consegue mostrar o bairro em 3D.');
-                const botao = document.createElement('button');
-                botao.type = 'button';
-                botao.id = 'recenter-btn';
-                botao.style.marginTop = '18px';
-                botao.textContent = t('gpu.botao', 'Tentar de novo');
-                botao.addEventListener('click', () => {
-                    try { sessionStorage.removeItem('poupanca'); } catch (e) { /* nada */ }
-                    window.location.reload();
-                });
-                letreiro.insertAdjacentElement('afterend', botao);
-            }
+            dizerQueNaoDa();
         };
+
+        /**
+         * O motor nem chegou a começar: pediu ao navegador para desenhar em
+         * 3D e ouviu "não". Acontece num telemóvel cuja placa gráfica caiu
+         * há um instante e ainda se está a levantar — também quando quem a
+         * deitou abaixo foi outra página, ou esta mesma, antes de se
+         * recarregar. Antes ficava-se quinze segundos a olhar para o ecrã de
+         * espera (o limite de segurança), e depois descia-se para o modo de
+         * poupança, que não muda nada a isto; à segunda, o site desistia.
+         *
+         * Agora espera-se que a placa volte e recarrega-se, sem descer
+         * degrau nenhum. Se ela não voltar à vista em ESPERA_PELA_PLACA
+         * segundos, ou se já se recarregou MAXIMO_SEM_MOTOR vezes nesta
+         * visita sem o motor arrancar, diz-se que não dá.
+         */
+        placa.semMotor = () => {
+            if (placa.desistida) return;
+            placa.desistida = true;
+            let vezes = Infinity;
+            try {
+                const antes = Number(sessionStorage.getItem(VEZES_SEM_MOTOR)) || 0;
+                sessionStorage.setItem(VEZES_SEM_MOTOR, String(antes + 1));
+                vezes = antes;
+            } catch (e) { /* sem memória para as contar: não se arrisca uma roda */ }
+            if (vezes >= MAXIMO_SEM_MOTOR) {
+                dizerQueNaoDa();
+                return;
+            }
+            mostrarEcraDeEspera();
+            recarregarQuandoPuder(0, dizerQueNaoDa);
+        };
+
+        /** O bairro chegou ao ecrã: as contas desta visita voltam a zero. */
+        placa.correuBem = () => {
+            try { sessionStorage.removeItem(VEZES_SEM_MOTOR); } catch (e) { /* nada */ }
+        };
+
+        // O motor diz que não conseguiu desenhar num aviso que não sobe até
+        // à janela (é dado ao próprio `pc-app`), por isso apanha-se à
+        // descida, a caminho dele.
+        window.addEventListener('error', (e) => {
+            const motor = e.target;
+            if (motor && motor.tagName === 'PC-APP' && !motor.app) placa.semMotor();
+        }, true);
 
         // Os erros que o motor deixa cair quando a placa lhe foge debaixo
         // dos pés — ou quando nem chega a tê-la.
@@ -3312,6 +3435,10 @@
                 if (guarda) {
                     if (marco === 'modulo') guarda.codigoCorreu();
                     else if (marco === 'bairro') guarda.bairroChegou();
+                }
+                // E quem vigia a placa gráfica também (ver `placaGrafica`).
+                if (marco === 'bairro' && window.placaGrafica && window.placaGrafica.correuBem) {
+                    window.placaGrafica.correuBem();
                 }
                 // Um sinal de vida tira o aviso da frente: o que estava a
                 // demorar acabou de chegar. Com o bairro à vista, acabou.
@@ -6283,9 +6410,11 @@ void modifySplatColor(vec3 center, inout vec4 color) {
                     // Se ao fim deste tempo o motor nem chegou a acordar, não
                     // é o bairro que está atrasado: é a placa gráfica que
                     // não se levantou. Abrir a porta dava um ecrã preto.
+                    // (Quase sempre isto já foi apanhado no instante em que
+                    // o motor ouviu "não" — ver `placaGrafica.semMotor`.)
                     const motor = document.querySelector('pc-app');
                     if (!(motor && motor.app) && window.placaGrafica) {
-                        window.placaGrafica.desistiu();
+                        window.placaGrafica.semMotor();
                         return;
                     }
                     showUIOnce();
