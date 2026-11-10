@@ -10,7 +10,7 @@ import {
  * pousados por cima da imagem — e dentro dos óculos o HTML não existe:
  * ficava-se a andar pelo bairro sem um único sinal de onde há o que ver.
  * Aqui cada marcador passa a ser uma placa no próprio bairro: o mesmo
- * quadrado com o mesmo desenho (as barras de um testemunho, a moldura
+ * quadrado com o mesmo desenho (a casa de um testemunho, a moldura
  * panorâmica de uma rota, o olho da fotografia, as setas do timelapse) e o
  * nome por baixo, desenhados
  * numa tela e postos numa placa que vira sempre a cara para quem olha.
@@ -75,13 +75,13 @@ function desenharPlaca(ann, nome, visto) {
     const Y = (v) => qy + margem + v * u;
     c.beginPath();
     if (!ann.is360) {
-        // O balão de fala do testemunho, com as duas linhas de texto.
-        c.moveTo(X(2), Y(4)); c.lineTo(X(22), Y(4)); c.lineTo(X(22), Y(16));
-        c.lineTo(X(12), Y(16)); c.lineTo(X(7), Y(21)); c.lineTo(X(7), Y(16));
-        c.lineTo(X(2), Y(16));
+        // A casa do testemunho: o telhado e as paredes num só contorno, e
+        // a porta.
+        c.moveTo(X(12), Y(3)); c.lineTo(X(22), Y(11)); c.lineTo(X(22), Y(21));
+        c.lineTo(X(2), Y(21)); c.lineTo(X(2), Y(11));
         c.closePath();
-        c.moveTo(X(7), Y(8)); c.lineTo(X(17), Y(8));
-        c.moveTo(X(7), Y(12)); c.lineTo(X(12), Y(12));
+        c.moveTo(X(9.5), Y(21)); c.lineTo(X(9.5), Y(15));
+        c.lineTo(X(14.5), Y(15)); c.lineTo(X(14.5), Y(21));
     } else if (ann.timelapse) {
         // As duas setas para trás do timelapse das fotografias de satélite.
         c.moveTo(X(12), Y(19)); c.lineTo(X(5), Y(12)); c.lineTo(X(12), Y(5));

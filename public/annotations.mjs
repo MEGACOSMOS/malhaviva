@@ -1503,9 +1503,8 @@ AnnotationController.prototype.initialize = function() {
             el.innerHTML = `
                 <div class="marker-dot ${isViewed ? 'viewed' : ''}">
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter">
-                        <polygon points="2 4 22 4 22 16 12 16 7 21 7 16 2 16"></polygon>
-                        <line x1="7" y1="8" x2="17" y2="8"></line>
-                        <line x1="7" y1="12" x2="12" y2="12"></line>
+                        <polygon points="12 3, 22 11, 22 21, 2 21, 2 11"></polygon>
+                        <polyline points="9.5 21, 9.5 15, 14.5 15, 14.5 21"></polyline>
                     </svg>
                 </div>
                 <div class="marker-label">${ann.label}</div>
@@ -1945,7 +1944,7 @@ AnnotationController.prototype.paragens360 = function() {
 /**
  * O nome por que um marcador se dá a conhecer a quem não o vê.
  *
- * O que está desenhado no mapa — um microfone, um olho, a palavra 360º —
+ * O que está desenhado no mapa — uma casa, um olho, a palavra 360º —
  * não diz nada a um leitor de ecrã. Este é o nome que ele lê em voz alta,
  * e por isso tem de dizer as duas coisas: de quem é e o que é. "Dulce"
  * sozinho não chega; "Testemunho de Dulce" chega.

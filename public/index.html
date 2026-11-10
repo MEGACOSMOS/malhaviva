@@ -4068,9 +4068,8 @@
         <li class="legenda-linha" data-tipo="testemunho">
             <span class="legenda-marcador testemunho" aria-hidden="true">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="square" stroke-linejoin="miter">
-                    <polygon points="2 4 22 4 22 16 12 16 7 21 7 16 2 16"></polygon>
-                    <line x1="7" y1="8" x2="17" y2="8"></line>
-                    <line x1="7" y1="12" x2="12" y2="12"></line>
+                    <polygon points="12 3, 22 11, 22 21, 2 21, 2 11"></polygon>
+                    <polyline points="9.5 21, 9.5 15, 14.5 15, 14.5 21"></polyline>
                 </svg>
             </span>
             <span data-i18n="def.testemunhos">Testemunhos</span>
@@ -4273,7 +4272,7 @@
                             <use href="#ins-chao"></use>
                             <g class="ins-marcador-a">
                                 <rect x="98" y="37" width="30" height="30" fill="#10b981"></rect>
-                                <svg x="102" y="41" width="22" height="22" viewBox="0 0 24 24"><g class="ins-branco"><polygon points="2 4 22 4 22 16 12 16 7 21 7 16 2 16"></polygon><line x1="7" y1="8" x2="17" y2="8"></line><line x1="7" y1="12" x2="12" y2="12"></line></g></svg>
+                                <svg x="102" y="41" width="22" height="22" viewBox="0 0 24 24"><g class="ins-branco"><polygon points="12 3, 22 11, 22 21, 2 21, 2 11"></polygon><polyline points="9.5 21, 9.5 15, 14.5 15, 14.5 21"></polyline></g></svg>
                             </g>
                             <g class="ins-marcador-b">
                                 <rect x="156" y="37" width="30" height="30" fill="#ff0000"></rect>
@@ -4753,7 +4752,7 @@
         <pc-asset id="splat-scene" src="splat/lod-meta.json" type="gsplat"></pc-asset>
         <pc-asset id="camera-controls-script" src="./camera-controls.mjs?v=53" type="script"></pc-asset>
         <pc-asset id="camera-coords-script" src="./coords.mjs?v=7" type="script"></pc-asset>
-        <pc-asset id="annotations-script" src="./annotations.mjs?v=118" type="script"></pc-asset>
+        <pc-asset id="annotations-script" src="./annotations.mjs?v=119" type="script"></pc-asset>
         <pc-asset id="measure-script" src="./measure.mjs?v=1" type="script"></pc-asset>
         <pc-asset id="escala-script" src="./escala.mjs?v=2" type="script"></pc-asset>
         <pc-asset id="compass-script" src="./compass.mjs?v=2" type="script"></pc-asset>
@@ -4862,7 +4861,7 @@
         import { ligarLodNoCentroDaVista } from './lod-foco.mjs?v=6';
         import { medirACargaDoBairro } from './carga-do-bairro.mjs?v=1';
         import { criarAfinadorDeFluidez, construirEscada } from './fluidez.mjs?v=1';
-        import { criarModoVR } from './vr.mjs?v=14';
+        import { criarModoVR } from './vr.mjs?v=15';
         import { ligarCeu } from './ceu.mjs?v=16';
         import { ligarComando } from './comando.mjs?v=13';
 
@@ -6721,7 +6720,10 @@ void modifySplatColor(vec3 center, inout vec4 color) {
             volta: '<path d="M16 21V9a4 4 0 0 0-8 0v6"/><polyline points="4 11 8 15 12 11"/>',
             entrada: '<rect x="6" y="6" width="12" height="12"/>',
             aqui: '<polygon points="12 3.5, 19 20.5, 12 16.5, 5 20.5"/>',
-            chegada: '<polyline points="3 11 12 3 21 11"/><polyline points="5.5 9 5.5 21 18.5 21 18.5 9"/><rect x="10" y="14" width="4" height="7"/>'
+            // A casa: um só contorno (telhado e paredes de uma vez, para os
+            // cantos do traço não espetarem para fora do telhado) e a porta.
+            // É a mesma casa dos marcadores dos testemunhos.
+            chegada: '<polygon points="12 3, 22 11, 22 21, 2 21, 2 11"/><polyline points="9.5 21, 9.5 15, 14.5 15, 14.5 21"/>'
         };
         const sinalDoPasso = (p) => {
             const qual = p.acao === 'inicio' ? (p.origem === 'aqui' ? 'aqui' : 'entrada') : p.acao;
