@@ -137,6 +137,10 @@
             'tl.carregar': 'A carregar fotografias de satélite…',
             'tl.erro': 'Não foi possível carregar as fotografias de satélite.',
             'tl.linha': 'Data da fotografia',
+            'tl.casas': '{n} casas',
+            'tl.novas': '+{n} novas',
+            'tl.demolidas': '−{n} demolidas',
+            'tl.inicio': 'ponto de partida',
             'tl.meses': 'Janeiro,Fevereiro,Março,Abril,Maio,Junho,Julho,Agosto,Setembro,Outubro,Novembro,Dezembro',
 
             // O mapa dos bairros. "Mapa dos Bairros" é o nome do sítio,
@@ -438,6 +442,10 @@
             'tl.carregar': 'Loading satellite photos…',
             'tl.erro': 'The satellite photos could not be loaded.',
             'tl.linha': 'Photo date',
+            'tl.casas': '{n} houses',
+            'tl.novas': '+{n} new',
+            'tl.demolidas': '−{n} demolished',
+            'tl.inicio': 'starting point',
             'tl.meses': 'January,February,March,April,May,June,July,August,September,October,November,December',
 
             'mb.separador': 'Mapa dos Bairros',
@@ -730,6 +738,10 @@
             'tl.carregar': 'Cargando fotografías de satélite…',
             'tl.erro': 'No se han podido cargar las fotografías de satélite.',
             'tl.linha': 'Fecha de la fotografía',
+            'tl.casas': '{n} casas',
+            'tl.novas': '+{n} nuevas',
+            'tl.demolidas': '−{n} demolidas',
+            'tl.inicio': 'punto de partida',
             'tl.meses': 'Enero,Febrero,Marzo,Abril,Mayo,Junio,Julio,Agosto,Septiembre,Octubre,Noviembre,Diciembre',
 
             'mb.separador': 'Mapa dos Bairros',
@@ -1022,6 +1034,10 @@
             'tl.carregar': 'Ta karega fotografias di satélite…',
             'tl.erro': 'Ka konsigi karega fotografias di satélite.',
             'tl.linha': 'Data di fotografia',
+            'tl.casas': '{n} kasa',
+            'tl.novas': '+{n} nobu',
+            'tl.demolidas': '−{n} dirubadu',
+            'tl.inicio': 'pontu di partida',
             'tl.meses': 'Janeru,Febreru,Marsu,Abril,Maiu,Junhu,Julhu,Agostu,Setenbru,Otubru,Nuvenbru,Dizenbru',
 
             'mb.separador': 'Mapa dos Bairros',

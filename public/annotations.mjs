@@ -2,7 +2,7 @@ import * as pc from 'playcanvas';
 import { fontesDeVideo, previaDe, olharInicialDe, ABERTURA_INICIAL } from './videos.mjs?v=8';
 import { criarGestorDeQualidade } from './qualidade-video.mjs?v=9';
 import { carregarPrevia360 } from './previa-360.mjs?v=2';
-import { FOTOGRAFIAS, enderecoDa, LARGURA_LEVE } from './timelapse.mjs?v=2';
+import { FOTOGRAFIAS, enderecoDa, LARGURA_LEVE } from './timelapse.mjs?v=3';
 
 export const AnnotationController = pc.createScript('annotationController');
 

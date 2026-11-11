@@ -63,7 +63,8 @@ function ffmpeg(args, entrada) {
     return r.stdout;
 }
 
-const local = (endereco) => join(PUBLICO, decodeURIComponent(endereco));
+// (sem o ?v=… que alguns endereços levam para o navegador não usar a cópia antiga)
+const local = (endereco) => join(PUBLICO, decodeURIComponent(endereco.split('?')[0]));
 
 // O primeiro instante de um testemunho, da versão de 1080 linhas (mais
 // nítida do que a de 480 que o navegador usava, e reduzida aqui).
@@ -117,7 +118,10 @@ const trabalho = [
 mkdirSync(PASTA, { recursive: true });
 let falhas = 0;
 let total = 0;
+// Com nomes na linha de comandos, só essas (bun scripts/gerar-miniaturas.mjs retroceder).
+const so = process.argv.slice(2);
 for (const [nome, fazer] of trabalho) {
+    if (so.length && !so.includes(nome)) continue;
     const destino = join(PASTA, nome + '.webp');
     try {
         fazer(destino);

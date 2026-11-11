@@ -119,7 +119,7 @@
             box-sizing: border-box;
             /* A altura da cruz de fechar lá de fora, para a data ficar
                alinhada com ela. */
-            height: calc(var(--folga-cima) + 41px + 40px);
+            height: calc(var(--folga-cima) + 41px + 64px);
             padding: var(--folga-cima) var(--folga-lado) 0;
             background: linear-gradient(to bottom, var(--veu-forte), var(--veu-medio) 55%, var(--veu-nenhum));
             pointer-events: none;
@@ -132,6 +132,19 @@
             font-weight: 600;
             white-space: nowrap;
         }
+        /* Os números da contagem de casas dessa fotografia, por baixo da
+           data, com as cores dos contornos desenhados nela: amarelo o
+           total, vermelho as novas, azul as demolidas. */
+        #casas {
+            margin-top: 2px;
+            font-size: 0.95rem;
+            white-space: nowrap;
+            text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+        }
+        #casas .total { color: #ffd23c; font-weight: 600; }
+        #casas .novas { color: #ff6a52; }
+        #casas .demolidas { color: #5cc8ff; }
+        #casas .sep { color: rgba(255, 255, 255, 0.5); }
 
         /* ---- Os lados ----
            As setas dos vídeos: de cada lado, junto à borda, a seta que leva
@@ -442,7 +455,7 @@
             }
             /* A cruz de fechar lá de fora encolhe com os botões. */
             .barra-da-data {
-                height: calc(var(--folga-cima) + 39px + 32px);
+                height: calc(var(--folga-cima) + 39px + 56px);
             }
             #data {
                 height: 39px;
@@ -479,6 +492,7 @@
 
     <div class="barra-da-data">
         <div id="data"></div>
+        <div id="casas"></div>
     </div>
 
     <div class="video-controls" id="controlos">
@@ -512,7 +526,7 @@
     </div>
 
     <script type="module">
-        import { FOTOGRAFIAS, LARGURA_LEVE, LARGURA_NITIDA, FEITIO, enderecoDa, dataDa } from './timelapse.mjs?v=2';
+        import { FOTOGRAFIAS, LARGURA_LEVE, LARGURA_NITIDA, FEITIO, enderecoDa, dataDa, casasDa } from './timelapse.mjs?v=3';
 
         const TOTAL = FOTOGRAFIAS.length;
         const ULTIMA = TOTAL - 1;
@@ -756,14 +770,36 @@
             arrumarANitida();
         };
 
+        // Os números das casas, com cada parte na sua cor. Escritos com
+        // textContent (nada de HTML vindo de fora).
+        const casasEl = document.getElementById('casas');
+        const escreverAsCasas = (foto) => {
+            casasEl.textContent = '';
+            const partes = casasDa(foto).split(' · ');
+            const classes = ['total', foto.novas !== undefined ? 'novas' : 'sep', 'demolidas'];
+            partes.forEach((texto, i) => {
+                if (i) {
+                    const sep = document.createElement('span');
+                    sep.className = 'sep';
+                    sep.textContent = ' · ';
+                    casasEl.appendChild(sep);
+                }
+                const el = document.createElement('span');
+                el.className = classes[i] || '';
+                el.textContent = texto;
+                casasEl.appendChild(el);
+            });
+        };
+
         const escreverAData = () => {
             const k = atual();
             const foto = FOTOGRAFIAS[k];
             const data = dataDa(foto);
             dataEl.textContent = data;
+            escreverAsCasas(foto);
             creditosEl.textContent = foto.creditos;
             linha.setAttribute('aria-valuenow', String(k));
-            linha.setAttribute('aria-valuetext', data);
+            linha.setAttribute('aria-valuetext', data + ' — ' + casasDa(foto));
             anosEl.querySelectorAll('.ano').forEach((el) => {
                 el.classList.toggle('atual', Number(el.dataset.ano) === foto.ano);
             });
@@ -1212,7 +1248,11 @@
             ecraDeAntes = e;
             voo = null;
             ancora = null;
-            const largura = Math.max(larguraMinima(), Math.min(larguraMaxima(), vista.largura * proporcao));
+            // Se a página abriu sem tamanho (escondida), ainda não havia
+            // vista: começa com o ecrã cheio, como ao abrir à vista.
+            const largura = cheioAntes > 0
+                ? Math.max(larguraMinima(), Math.min(larguraMaxima(), vista.largura * proporcao))
+                : larguraACheio();
             larguraPedida = largura;
             porLargura(largura, e.w / 2, e.h / 2, meio.x, meio.y);
             pintarBotoesDoZoom();
