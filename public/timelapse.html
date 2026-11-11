@@ -775,6 +775,7 @@
         const casasEl = document.getElementById('casas');
         const escreverAsCasas = (foto) => {
             casasEl.textContent = '';
+            if (!casasDa(foto)) return;
             const partes = casasDa(foto).split(' · ');
             const classes = ['total', foto.novas !== undefined ? 'novas' : 'sep', 'demolidas'];
             partes.forEach((texto, i) => {
@@ -799,7 +800,7 @@
             escreverAsCasas(foto);
             creditosEl.textContent = foto.creditos;
             linha.setAttribute('aria-valuenow', String(k));
-            linha.setAttribute('aria-valuetext', data + ' — ' + casasDa(foto));
+            linha.setAttribute('aria-valuetext', casasDa(foto) ? data + ' — ' + casasDa(foto) : data);
             anosEl.querySelectorAll('.ano').forEach((el) => {
                 el.classList.toggle('atual', Number(el.dataset.ano) === foto.ano);
             });
@@ -1250,11 +1251,13 @@
             ancora = null;
             // Se a página abriu sem tamanho (escondida), ainda não havia
             // vista: começa com o ecrã cheio, como ao abrir à vista.
-            const largura = cheioAntes > 0
-                ? Math.max(larguraMinima(), Math.min(larguraMaxima(), vista.largura * proporcao))
-                : larguraACheio();
-            larguraPedida = largura;
-            porLargura(largura, e.w / 2, e.h / 2, meio.x, meio.y);
+            if (cheioAntes > 0) {
+                const largura = Math.max(larguraMinima(), Math.min(larguraMaxima(), vista.largura * proporcao));
+                larguraPedida = largura;
+                porLargura(largura, e.w / 2, e.h / 2, meio.x, meio.y);
+            } else {
+                vistaDeAbrir();
+            }
             pintarBotoesDoZoom();
             arrumarAnos();
             arrumarANitida();

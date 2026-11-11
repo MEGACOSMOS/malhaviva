@@ -12,12 +12,11 @@
  * fotografia que está parada à frente de quem a olha, quando o ecrã — ou o
  * aproximar — pede mais pormenor.
  *
- * Em cada fotografia estão desenhadas as casas dessa data, contadas casa a
- * casa: a vermelho as que apareceram desde a fotografia anterior, a amarelo
- * as que já lá estavam, a azul o sítio das que foram demolidas desde a
- * anterior. Os números (casas, novas, demolidas) vão em `casas`, `novas` e
- * `demolidas`, e o leitor escreve-os por baixo da data. A primeira não tem
- * novas nem demolidas: é o ponto de partida.
+ * As fotografias vão sem as casas desenhadas e sem os números da contagem
+ * enquanto a contagem é refeita (2026-11). Quando houver números de
+ * confiança, cada fotografia pode levar `casas`, `novas` e `demolidas`, e o
+ * leitor escreve-os por baixo da data (ver casasDa); sem eles não escreve
+ * nada.
  *
  * O ficheiro de cada uma chama-se pelo ano e pelo mês ("2009-04.jpg"). Os
  * créditos são escritos no leitor, porque o timelapse enche o ecrã e o canto
@@ -32,21 +31,21 @@ const MAXAR = 'Google Earth · Image © 2026 Maxar Technologies';
 const AIRBUS = 'Google Earth · Image © 2026 Airbus';
 
 export const FOTOGRAFIAS = [
-    { ano: 2009, mes: 4, ficheiro: '2009-04', creditos: 'Google Earth', casas: 65 },
-    { ano: 2011, mes: 3, ficheiro: '2011-03', creditos: 'Esri World Imagery Wayback', casas: 68, novas: 20, demolidas: 17 },
-    { ano: 2014, mes: 12, ficheiro: '2014-12', creditos: 'Direção-Geral do Território · Ortofotomapas do litoral 2014–2015', casas: 112, novas: 51, demolidas: 7 },
-    { ano: 2016, mes: 6, ficheiro: '2016-06', creditos: MAXAR, casas: 117, novas: 8, demolidas: 3 },
-    { ano: 2018, mes: 7, ficheiro: '2018-07', creditos: 'Direção-Geral do Território · Ortofotomapas 2018', casas: 117, novas: 0, demolidas: 0 },
-    { ano: 2020, mes: 7, ficheiro: '2020-07', creditos: MAXAR, casas: 142, novas: 32, demolidas: 7 },
-    { ano: 2022, mes: 8, ficheiro: '2022-08', creditos: 'Esri World Imagery Wayback · Image © 2022 Maxar Technologies', casas: 156, novas: 14, demolidas: 0 },
-    { ano: 2023, mes: 4, ficheiro: '2023-04', creditos: MAXAR, casas: 186, novas: 30, demolidas: 0 },
-    { ano: 2024, mes: 2, ficheiro: '2024-02', creditos: MAXAR, casas: 240, novas: 57, demolidas: 3 },
-    { ano: 2024, mes: 7, ficheiro: '2024-07', creditos: MAXAR, casas: 289, novas: 51, demolidas: 2 },
-    { ano: 2025, mes: 1, ficheiro: '2025-01', creditos: MAXAR, casas: 450, novas: 161, demolidas: 0 },
-    { ano: 2025, mes: 9, ficheiro: '2025-09', creditos: MAXAR, casas: 484, novas: 39, demolidas: 5 },
-    { ano: 2026, mes: 2, ficheiro: '2026-02', creditos: 'Ortofotomapa Malha Viva (drone, 15/02/2026) · à volta: Google Earth, set. 2025 · Image © 2026 Maxar Technologies', casas: 527, novas: 45, demolidas: 2 },
-    { ano: 2026, mes: 6, ficheiro: '2026-06', creditos: AIRBUS, casas: 577, novas: 50, demolidas: 0 },
-    { ano: 2026, mes: 8, ficheiro: '2026-08', creditos: AIRBUS, casas: 596, novas: 19, demolidas: 0 }
+    { ano: 2009, mes: 4, ficheiro: '2009-04', creditos: 'Google Earth' },
+    { ano: 2011, mes: 3, ficheiro: '2011-03', creditos: 'Esri World Imagery Wayback' },
+    { ano: 2014, mes: 12, ficheiro: '2014-12', creditos: 'Direção-Geral do Território · Ortofotomapas do litoral 2014–2015' },
+    { ano: 2016, mes: 6, ficheiro: '2016-06', creditos: MAXAR },
+    { ano: 2018, mes: 7, ficheiro: '2018-07', creditos: 'Direção-Geral do Território · Ortofotomapas 2018' },
+    { ano: 2020, mes: 7, ficheiro: '2020-07', creditos: MAXAR },
+    { ano: 2022, mes: 8, ficheiro: '2022-08', creditos: 'Esri World Imagery Wayback · Image © 2022 Maxar Technologies' },
+    { ano: 2023, mes: 4, ficheiro: '2023-04', creditos: MAXAR },
+    { ano: 2024, mes: 2, ficheiro: '2024-02', creditos: MAXAR },
+    { ano: 2024, mes: 7, ficheiro: '2024-07', creditos: MAXAR },
+    { ano: 2025, mes: 1, ficheiro: '2025-01', creditos: MAXAR },
+    { ano: 2025, mes: 9, ficheiro: '2025-09', creditos: MAXAR },
+    { ano: 2026, mes: 2, ficheiro: '2026-02', creditos: 'Ortofotomapa Malha Viva (drone, 15/02/2026) · à volta: Google Earth, set. 2025 · Image © 2026 Maxar Technologies' },
+    { ano: 2026, mes: 6, ficheiro: '2026-06', creditos: AIRBUS },
+    { ano: 2026, mes: 8, ficheiro: '2026-08', creditos: AIRBUS }
 ];
 
 // As duas medidas, em pontos de largura. A altura vem com a fotografia
@@ -65,9 +64,9 @@ export const FEITIO = 8192 / 6578;
  * @returns {string} O endereço.
  */
 export function enderecoDa(foto, largura) {
-    // ?v=3: as fotografias de 2026-11 (com as casas desenhadas) têm alguns
+    // ?v=4: as fotografias de 2026-11 têm alguns
     // nomes iguais às antigas; isto impede que fique a antiga guardada.
-    return '/timelapse/' + largura + '/' + foto.ano + '-' + String(foto.mes).padStart(2, '0') + '.jpg?v=3';
+    return '/timelapse/' + largura + '/' + foto.ano + '-' + String(foto.mes).padStart(2, '0') + '.jpg?v=4';
 }
 
 /**
