@@ -68,6 +68,7 @@
             'def.previsualizacoes': 'Previsualizações',
             'def.interface': 'Interface',
             'def.paisagem': 'Paisagem',
+            'def.edificios': 'Edifícios',
             'leg.titulo': 'Legenda do mapa',
 
             'ins.titulo': 'Como navegar',
@@ -374,6 +375,7 @@
             'def.previsualizacoes': 'Previews',
             'def.interface': 'Interface',
             'def.paisagem': 'Landscape',
+            'def.edificios': 'Buildings',
             'leg.titulo': 'Map legend',
 
             'ins.titulo': 'How to get around',
@@ -671,6 +673,7 @@
             'def.previsualizacoes': 'Previsualizaciones',
             'def.interface': 'Interfaz',
             'def.paisagem': 'Paisaje',
+            'def.edificios': 'Edificios',
             'leg.titulo': 'Leyenda del mapa',
 
             'ins.titulo': 'Cómo navegar',
@@ -968,6 +971,7 @@
             'def.previsualizacoes': 'Previzualizasons',
             'def.interface': 'Interfasi',
             'def.paisagem': 'Paizajen',
+            'def.edificios': 'Prédius',
             'leg.titulo': 'Legenda di mapa',
 
             'ins.titulo': 'Modi ki bu ta navega',

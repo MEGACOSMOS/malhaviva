@@ -151,7 +151,7 @@
 
     <!-- As línguas do site. Fica antes de tudo o resto para o texto
          nascer já na língua certa, sem piscar em português primeiro. -->
-    <script src="/idiomas.js?v=53"></script>
+    <script src="/idiomas.js?v=54"></script>
     <script src="/legendas.js?v=3"></script>
 
     <!-- O quadrado de espera, o mesmo em todo o site. Fica antes de o
@@ -3958,7 +3958,7 @@
 
                 <!-- O que se vê no bairro e se pode dispensar: os
                      marcadores de cada tipo, as miniaturas por cima
-                     deles e a paisagem. -->
+                     deles, a paisagem e os prédios à volta. -->
                 <div class="settings-title" style="margin-top: 18px;" data-i18n="def.interface">Interface</div>
                 <div class="settings-options">
                     <label class="settings-radio">
@@ -3976,6 +3976,10 @@
                     <label class="settings-radio">
                         <input type="checkbox" id="paisagem-ligada">
                         <span data-i18n="def.paisagem">Paisagem</span>
+                    </label>
+                    <label class="settings-radio">
+                        <input type="checkbox" id="edificios-ligados" checked>
+                        <span data-i18n="def.edificios">Edifícios</span>
                     </label>
                 </div>
             </div>
@@ -4936,7 +4940,7 @@
         import { criarAfinadorDeFluidez, construirEscada } from './fluidez.mjs?v=1';
         import { criarModoVR } from './vr.mjs?v=16';
         import { ligarCeu } from './ceu.mjs?v=16';
-        import { ligarEdificios } from './edificios.mjs?v=1';
+        import { ligarEdificios } from './edificios.mjs?v=2';
         import { ligarComando } from './comando.mjs?v=13';
 
         // O código do site chegou e está a correr: o primeiro sinal de vida
@@ -5916,6 +5920,23 @@ void modifySplatColor(vec3 center, inout vec4 color) {
             });
         }
 
+        // --- Edifícios ---
+        //
+        // A maquete dos prédios à volta do bairro (edificios.mjs).
+        // Desligada, o bairro volta a ficar sozinho até à paisagem — e quem
+        // a desliga antes de ela chegar já nem a descarrega. A escolha fica
+        // guardada, como as outras desta lista; os prédios só nascem mais
+        // abaixo, quando o motor estiver pronto, e leem esta caixa nessa
+        // altura.
+        const caixaDosEdificios = document.getElementById('edificios-ligados');
+        if (caixaDosEdificios) {
+            caixaDosEdificios.checked = memoria.ler('edificios') !== 'off';
+            caixaDosEdificios.addEventListener('change', () => {
+                memoria.guardar('edificios', caixaDosEdificios.checked ? 'on' : 'off');
+                if (window.edificios) window.edificios.ligado(caixaDosEdificios.checked);
+            });
+        }
+
         /**
          * Espera que o bairro esteja mesmo desenhado antes de abrir a porta.
          *
@@ -6125,7 +6146,9 @@ void modifySplatColor(vec3 center, inout vec4 color) {
             // Uma maquete simples da cidade à volta (alturas do LiDAR da
             // DGT, plantas do OpenStreetMap), para o bairro deixar de
             // flutuar numa ilha às escuras. Chegam depois do bairro.
-            window.edificios = ligarEdificios(app);
+            window.edificios = ligarEdificios(app, {
+                ligado: !caixaDosEdificios || caixaDosEdificios.checked
+            });
 
             vigiarAPlacaGrafica(app);
             vigiarAEntrada(app);

@@ -34,7 +34,8 @@ import {
  * fica atrás de um prédio não se vê.
  *
  * Só são trazidos depois de o bairro estar à vista, para não roubarem um
- * byte ao arranque.
+ * byte ao arranque — e só se estiverem ligados: quem os desligou nas
+ * definições não os descarrega, a não ser que os volte a ligar.
  */
 
 const PASTA = '/edificios/';
@@ -48,11 +49,15 @@ const DISTANCIA_A_QUE_SOMEM = 170;
  * Liga os prédios ao mapa.
  *
  * @param {object} app - A aplicação 3D.
+ * @param {object} [opcoes]
+ * @param {boolean} [opcoes.ligado=true] - Se aparecem logo (a caixa
+ *   "Edifícios" das definições).
  * @returns {object} Comandos: `ligado(sim)` para os mostrar ou esconder.
  */
-export function ligarEdificios(app) {
+export function ligarEdificios(app, { ligado: ligadoAoInicio = true } = {}) {
     let entidade = null;
-    let mostrar = true;
+    let mostrar = !!ligadoAoInicio;
+    let aCaminho = null;
 
     function quandoOBairroEstiverAVista() {
         const ecra = document.getElementById('loading-overlay');
@@ -182,14 +187,24 @@ fn getOpacity() {
         app.root.addChild(entidade);
     }
 
-    quandoOBairroEstiverAVista()
-        .then(carregar)
-        .catch((e) => console.warn('Prédios à volta do bairro: não foi possível pô-los no mapa.', e));
+    /** Traz os prédios, uma vez só; se falhar, tenta-se de novo ao religar. */
+    function trazer() {
+        if (aCaminho) return;
+        aCaminho = quandoOBairroEstiverAVista()
+            .then(carregar)
+            .catch((e) => {
+                aCaminho = null;
+                console.warn('Prédios à volta do bairro: não foi possível pô-los no mapa.', e);
+            });
+    }
+
+    if (mostrar) trazer();
 
     return {
         ligado(sim) {
             mostrar = !!sim;
             if (entidade) entidade.enabled = mostrar;
+            else if (mostrar) trazer();
         },
         get entidade() {
             return entidade;
