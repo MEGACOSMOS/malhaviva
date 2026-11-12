@@ -2,38 +2,49 @@
 """
 Assa a panoramica do Olho de Aguia com os acertos ja embutidos.
 
-O ceu do bairro era a fotografia tal como saiu, e os acertos de luz e cor
-eram feitos no navegador, a cada visita, a partir dos numeros do editor.
-Isso tinha dois problemas. Um: os acertos eram feitos por cima de uma
-imagem ja reduzida a 256 tons por canal, e uma exposicao de quase cinco
-vezes esticada sobre 256 degraus deixa bandas a vista. Dois: tudo o que
-passava do branco era cortado a direito, e o ceu ficava uma mancha chapada
-sem desenho nenhum - "estourado".
+A mesma imagem serve duas vezes: e a paragem 360 do Olho de Aguia, vista
+tal e qual, e e o ceu que envolve o bairro (ai com a cor esbatida no
+navegador, ver AJUSTES_PADRAO em public/ceu-fotografia.mjs).
 
-Aqui as mesmas contas sao feitas uma so vez, a partir do original de doze
-mil pontos de largura e em virgula flutuante, e o resultado e guardado numa
-imagem so. Chega ao visitante ja pronto: sem bandas, sem contas a fazer, e
-com os altos recuperados.
+As contas sao feitas uma so vez, a partir do original de doze mil pontos
+de largura e em virgula flutuante, e o resultado e guardado numa imagem
+so. Chega ao visitante ja pronto: sem bandas, sem contas a fazer, e com os
+altos a encostar ao branco em vez de chapar.
 
-O que muda em relacao ao que o editor fazia:
+O original esta em luz linear
+-----------------------------
 
-  - A exposicao continua a ser uma multiplicacao em luz linear, que e onde
-    ela e honesta.
-  - Mas em vez de cortar a direito no branco, ha um joelho: ate ao valor
-    ESCOLHIDO nada muda - fica igualzinho ao que se afinou no editor - e
-    dai para cima os valores vao encostando ao branco sem nunca la chegar
-    de repente. E a diferenca entre um ceu chapado e um ceu com desenho.
-  - Gama, contraste e cor vem a seguir, pela mesma ordem e com as mesmas
-    formulas do editor, para o resultado ser o que se viu ao afinar.
+O ficheiro .exr guarda a luz tal como ela e - "linear", diz o proprio
+ficheiro -, e nao ja preparada para o ecra, como um JPG. Ate 2026-11-12
+este guiao tratava-o como se fosse um JPG: passava-o outra vez para luz
+linear, o que e fazer a mesma conta duas vezes. A imagem ficava muito
+mais escura e muito mais carregada de cor do que a fotografia, e para a
+trazer de volta era preciso uma exposicao de quase cinco vezes e um
+contraste forte por cima. Dai o ceu azul-marinho em cima, a faixa ciano
+junto ao horizonte, o sol num disco enorme e os telhados cor de sangue.
+
+Agora a luz entra como esta, passa uma unica vez para o ecra, e os
+acertos por cima sao poucos: o equilibrio de cor do original ja estava
+certo (as estradas e o betao dao cinzento, a menos de 2 % de diferenca
+entre canais), so lhe faltava um pouco de corpo.
+
+A ordem das contas:
+
+  - Exposicao em luz linear, que e onde ela e honesta, com um joelho: ate
+    JOELHO nada muda, e dai para cima os valores vao encostando ao branco
+    sem nunca la chegar de repente.
+  - A passagem para o ecra (sRGB), uma vez so.
+  - Gama, contraste e cor vem a seguir, com as mesmas formulas do editor
+    do menu de desenvolvedor.
 
 Como usar, a partir da raiz do projecto:
 
     python scripts/assar-ceu.py
 
-Os numeros vivem em ACERTOS. Se um dia forem afinados outra vez no editor
-do menu de desenvolvedor, escrevem-se aqui e volta-se a correr o guiao.
+Os numeros vivem em ACERTOS.
 """
 import os
+import shutil
 import subprocess
 import sys
 
@@ -42,9 +53,8 @@ from PIL import Image
 
 Image.MAX_IMAGE_PIXELS = None
 
-# O original, em virgula flutuante, com 12272 x 6136 pontos.
+# O original, em virgula flutuante e luz linear, com 12272 x 6136 pontos.
 ORIGINAL = r"C:\Users\malve\Videos\Malha Viva\Imagens\HDRi\HDRi - Preenchimento Generativo.exr"
-FFMPEG = r"C:\Users\malve\AppData\Local\Programs\Stremio\ffmpeg.exe"
 SAIDA = os.path.join('public', 'ceu-olho-de-aguia.jpg')
 
 # Largura da imagem a escrever. E a largura com que o site trabalha o ceu
@@ -52,22 +62,33 @@ SAIDA = os.path.join('public', 'ceu-olho-de-aguia.jpg')
 # de mais na ligacao para nao se ver diferenca nenhuma no ecra.
 LARGURA = 4096
 
-# Os acertos, tal como foram afinados no editor.
+# Os acertos por cima da fotografia. Sao pequenos de proposito: a cor do
+# original ja esta certa, e isto so lhe da um pouco mais de corpo.
 ACERTOS = {
-    'exposicao': 4.75,
-    'gama': 1.06,
-    'contraste': 1.55,
-    'saturacao': 1.13,
+    'exposicao': 1.1,
+    'gama': 1.0,
+    'contraste': 0.9,
+    'saturacao': 1.1,
 }
 
 # A partir de que ponto os altos comecam a encostar ao branco, em luz
-# linear e ja depois da exposicao. Abaixo disto a imagem fica exactamente
-# como o editor a deixava; acima, em vez de chapar, ganha desenho.
-JOELHO = 0.5
+# linear e ja depois da exposicao.
+JOELHO = 0.8
 
 
-def para_linear(x):
-    return np.where(x <= 0.04045, x / 12.92, ((x + 0.055) / 1.055) ** 2.4)
+def achar_ffmpeg():
+    """O ffmpeg que houver: o do sistema, o que vem com o Python, ou o do Stremio."""
+    candidatos = [os.environ.get('FFMPEG'), shutil.which('ffmpeg')]
+    try:
+        import imageio_ffmpeg
+        candidatos.append(imageio_ffmpeg.get_ffmpeg_exe())
+    except Exception:
+        pass
+    candidatos.append(r"C:\Users\malve\AppData\Local\Programs\Stremio\ffmpeg.exe")
+    for c in candidatos:
+        if c and os.path.isfile(c):
+            return c
+    sys.exit('Nao encontrei o ffmpeg. Instale-o ou diga onde esta com FFMPEG=...')
 
 
 def para_ecra(x):
@@ -86,36 +107,33 @@ def encostar_ao_branco(y, joelho=JOELHO):
     return np.clip(saida, 0.0, 1.0)
 
 
-def ler_pfm(caminho):
-    with open(caminho, 'rb') as f:
-        cabecalho = f.readline().strip()
-        assert cabecalho == b'PF', cabecalho
-        largura, altura = map(int, f.readline().split())
-        escala = float(f.readline())
-        tipo = '<f4' if escala < 0 else '>f4'
-        dados = np.frombuffer(f.read(), dtype=tipo)
-    return dados.reshape(altura, largura, 3).astype(np.float64)
+def trazer_original(largura):
+    """
+    Traz o original para virgula flutuante, no tamanho pedido.
 
-
-def trazer_original(largura, destino):
-    """Traz o original para virgula flutuante, no tamanho pedido."""
+    Sai em pontos crus, plano a plano (verde, azul, vermelho) e de cima para
+    baixo. Antes passava por um ficheiro PFM, mas esse formato guarda as
+    linhas de baixo para cima e nem todas as versoes do ffmpeg o respeitam:
+    com uma a imagem saia direita, com outra de pernas para o ar.
+    """
     altura = largura // 2
-    subprocess.run([
-        FFMPEG, '-y', '-hide_banner', '-loglevel', 'error',
+    crus = subprocess.run([
+        achar_ffmpeg(), '-hide_banner', '-loglevel', 'error',
         '-i', ORIGINAL,
         '-vf', 'scale=%d:%d:flags=lanczos' % (largura, altura),
-        '-pix_fmt', 'gbrpf32le', '-f', 'image2', '-c:v', 'pfm', destino,
-    ], check=True)
-    return ler_pfm(destino)
+        '-pix_fmt', 'gbrpf32le', '-f', 'rawvideo', '-',
+    ], check=True, stdout=subprocess.PIPE).stdout
+    planos = np.frombuffer(crus, dtype='<f4').reshape(3, altura, largura)
+    verde, azul, vermelho = planos
+    return np.stack([vermelho, verde, azul], axis=-1).astype(np.float64)
 
 
-def tratar(imagem, acertos=ACERTOS, joelho=JOELHO):
-    """As mesmas contas do editor, pela mesma ordem, mas em virgula flutuante."""
-    x = np.clip(imagem, 0.0, 1.0)
-
-    # 1. Exposicao em luz linear, com os altos a encostar ao branco.
-    x = encostar_ao_branco(para_linear(x) * acertos['exposicao'], joelho)
-    x = para_ecra(x)
+def tratar(linear, acertos=ACERTOS, joelho=JOELHO):
+    """Da luz linear ao ecra, uma vez so, com os acertos por cima."""
+    # 1. Exposicao em luz linear, com os altos a encostar ao branco, e a
+    #    passagem para o ecra.
+    x = np.clip(linear, 0.0, None)
+    x = para_ecra(encostar_ao_branco(x * acertos['exposicao'], joelho))
 
     # 2. Gama, em espaco de ecra.
     gama = acertos['gama']
@@ -136,26 +154,30 @@ def tratar(imagem, acertos=ACERTOS, joelho=JOELHO):
     return np.clip(x, 0.0, 1.0)
 
 
+def confirmar_que_esta_direita(imagem):
+    """O ceu tem de estar em cima: o quarto de cima e mais azul do que o de baixo."""
+    quarto = imagem.shape[0] // 4
+    cima = imagem[:quarto].reshape(-1, 3).mean(0)
+    baixo = imagem[-quarto:].reshape(-1, 3).mean(0)
+    if cima[2] - cima[0] <= baixo[2] - baixo[0]:
+        sys.exit('A imagem saiu de pernas para o ar - nada foi escrito.')
+
+
 def escrever(imagem, caminho, qualidade=88):
     pontos = np.rint(imagem * 255.0).astype(np.uint8)
     Image.fromarray(pontos, 'RGB').save(caminho, quality=qualidade, subsampling=0, optimize=True)
 
 
 def main():
-    pasta = os.environ.get('TEMP', '.')
-    bruto = os.path.join(pasta, 'ceu-original-%d.pfm' % LARGURA)
     print('A trazer o original a %d pontos de largura...' % LARGURA)
-    imagem = trazer_original(LARGURA, bruto)
+    imagem = trazer_original(LARGURA)
+    confirmar_que_esta_direita(imagem)
     print('A aplicar os acertos...')
     tratada = tratar(imagem)
     print('A escrever %s...' % SAIDA)
     escrever(tratada, SAIDA)
     tamanho = os.path.getsize(SAIDA) / (1024 * 1024)
     print('Pronto: %s (%.1f MB)' % (SAIDA, tamanho))
-    try:
-        os.remove(bruto)
-    except OSError:
-        pass
 
 
 if __name__ == '__main__':

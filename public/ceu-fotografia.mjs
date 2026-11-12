@@ -36,7 +36,11 @@ export const AJUSTES_PADRAO = {
     exposicao: 1,
     gama: 1,
     contraste: 0,
-    saturacao: 0.36,
+    // A cor da paisagem à volta do bairro fica esbatida, para não competir
+    // com ele. Era 0,36 quando a fotografia vinha carregada de cor de mais
+    // (ver scripts/assar-ceu.py); com a cor certa, 0,5 dá ao céu o mesmo
+    // azul esbatido de antes, em vez de um cinzento de dia encoberto.
+    saturacao: 0.5,
     desfoqueCeu: 0,
     desfoqueHorizonte: 0,
     desfoqueFundo: 0
