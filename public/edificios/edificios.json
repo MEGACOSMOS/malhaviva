@@ -1,0 +1,17 @@
+{
+ "versao": 1,
+ "vertices": 31709,
+ "triangulos": 13865,
+ "indices32": false,
+ "minimo": [
+  -682.5165405273438,
+  -74.30789947509766,
+  -709.9058227539062
+ ],
+ "escala": [
+  0.02084789238870144,
+  0.0018787146545946598,
+  0.021471820771694183
+ ],
+ "fontes": "Alturas: DGT, LiDAR 2024 (MDS e MDT 50 cm), CC BY 4.0. Plantas: © contribuidores do OpenStreetMap, ODbL."
+}

@@ -151,7 +151,7 @@
 
     <!-- As línguas do site. Fica antes de tudo o resto para o texto
          nascer já na língua certa, sem piscar em português primeiro. -->
-    <script src="/idiomas.js?v=52"></script>
+    <script src="/idiomas.js?v=53"></script>
     <script src="/legendas.js?v=3"></script>
 
     <!-- O quadrado de espera, o mesmo em todo o site. Fica antes de o
@@ -4936,6 +4936,7 @@
         import { criarAfinadorDeFluidez, construirEscada } from './fluidez.mjs?v=1';
         import { criarModoVR } from './vr.mjs?v=16';
         import { ligarCeu } from './ceu.mjs?v=16';
+        import { ligarEdificios } from './edificios.mjs?v=1';
         import { ligarComando } from './comando.mjs?v=13';
 
         // O código do site chegou e está a correr: o primeiro sinal de vida
@@ -6119,6 +6120,12 @@ void modifySplatColor(vec3 center, inout vec4 color) {
                 larguraMaxima: window.modoDePoupanca ? 1024 : (isLow ? 2048 : undefined)
             });
             window.ceu = ceu;
+
+            // --- Prédios à volta do bairro ---
+            // Uma maquete simples da cidade à volta (alturas do LiDAR da
+            // DGT, plantas do OpenStreetMap), para o bairro deixar de
+            // flutuar numa ilha às escuras. Chegam depois do bairro.
+            window.edificios = ligarEdificios(app);
 
             vigiarAPlacaGrafica(app);
             vigiarAEntrada(app);
