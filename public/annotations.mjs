@@ -496,14 +496,18 @@ AnnotationController.prototype.initialize = function() {
            as do marcador ao tamanho natural; ele inteiro encolhe e cresce
            com a distância. */
         .annotation-marker {
-            --largura-da-miniatura: 144px;
+            /* Eram 144 (e 108 no telemóvel) até 2026-11-12, quando se
+               pediram um pouco mais pequenas: tudo encolheu um sexto, o
+               nome também (ver .miniatura-nome), para o mais comprido,
+               "Mapa dos Bairros", continuar a caber inteiro. */
+            --largura-da-miniatura: 120px;
             --traco-da-miniatura: 2.5px;
         }
         /* Num telemóvel, ao alto ou deitado, as miniaturas do tamanho do
            computador tapavam meio bairro. */
         @media (max-width: 600px), (max-height: 500px) {
             .annotation-marker {
-                --largura-da-miniatura: 108px;
+                --largura-da-miniatura: 90px;
             }
         }
         .miniatura-traco {
@@ -578,8 +582,8 @@ AnnotationController.prototype.initialize = function() {
         }
         .miniatura-nome {
             color: #fff;
-            padding: 5px 10px;
-            font-size: 0.75rem;
+            padding: 4px 8px;
+            font-size: 0.625rem;
             font-weight: 600;
             white-space: nowrap;
             overflow: hidden;
