@@ -45,6 +45,11 @@ const VERSAO = 2;
 // distância está inteiro, a menos de dois terços dela já sumiu.
 const DISTANCIA_A_QUE_SOMEM = 170;
 
+// Quanto de cada prédio se vê, mesmo longe da câmara: nunca estão
+// inteiros, deixam sempre passar um pouco do que está atrás (o bairro, o
+// céu), com os mesmos pontinhos de quando se passa perto. 1 seria opaco.
+const OPACIDADE = 0.8;
+
 /**
  * Liga os prédios ao mapa.
  *
@@ -145,8 +150,10 @@ export function ligarEdificios(app, { ligado: ligadoAoInicio = true } = {}) {
         // a câmara de abertura fica mesmo por cima dos prédios a sul do
         // bairro, e quem anda pela orla passa rente a outros. A maquete
         // nunca se pode pôr à frente do bairro. Pontinhos, e não
-        // transparência a sério, para não ser preciso ordenar nada.
+        // transparência a sério, para não ser preciso ordenar nada. Longe,
+        // ficam na OPACIDADE de base (os pontinhos já lá estão, mais ralos).
         material.opacityDither = DITHER_BAYER8;
+        material.opacity = OPACIDADE;
         material.getShaderChunks(SHADERLANGUAGE_GLSL).set('opacityPS', `
 uniform float material_opacity;
 uniform float material_alphaDitherScale;
