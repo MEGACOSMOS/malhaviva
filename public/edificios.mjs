@@ -48,7 +48,7 @@ const DISTANCIA_A_QUE_SOMEM = 170;
 // Quanto de cada prédio se vê, mesmo longe da câmara: nunca estão
 // inteiros, deixam sempre passar um pouco do que está atrás (o bairro, o
 // céu), com os mesmos pontinhos de quando se passa perto. 1 seria opaco.
-const OPACIDADE = 0.8;
+const OPACIDADE = 0.6;
 
 /**
  * Liga os prédios ao mapa.
