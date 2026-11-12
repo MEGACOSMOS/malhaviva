@@ -1,6 +1,7 @@
 import {
     Color, Entity, Layer, Mesh, MeshInstance, StandardMaterial,
-    PRIMITIVE_TRIANGLES, DITHER_BAYER8, SHADERLANGUAGE_GLSL, SHADERLANGUAGE_WGSL
+    PRIMITIVE_TRIANGLES, DITHER_BAYER8, BLEND_NORMAL, FUNC_LESSEQUAL,
+    SHADERLANGUAGE_GLSL, SHADERLANGUAGE_WGSL
 } from 'playcanvas';
 
 /**
@@ -24,7 +25,14 @@ import {
  * O ficheiro traz os vértices já na posição do mapa e a cor já sombreada
  * (paredes viradas ao sol mais claras, pé das paredes mais escuro, e um
  * esbatimento para o fundo à medida que se afastam). Aqui é só pô-los no
- * motor: um desenho só, sem luzes, sem contas a cada imagem.
+ * motor, sem luzes, sem contas a cada imagem.
+ *
+ * São um véu, não blocos maciços: deixam sempre ver um pouco do que está
+ * atrás (OPACIDADE). Para o véu ser igual de perto e de longe, cada
+ * imagem desenha-os duas vezes: primeiro só a forma, invisível, para cada
+ * prédio tapar o que fica atrás dele (o bairro e os outros prédios); depois
+ * a cor, por cima, a deixar passar o céu. Assim, onde há dois prédios um
+ * atrás do outro, vê-se só o da frente, e não um véu mais carregado.
  *
  * São desenhados por cima da cúpula do céu, numa camada que vem logo a
  * seguir a ela. A cúpula tem 430 metros de raio e é desenhada à distância
@@ -45,9 +53,11 @@ const VERSAO = 2;
 // distância está inteiro, a menos de dois terços dela já sumiu.
 const DISTANCIA_A_QUE_SOMEM = 170;
 
-// Quanto de cada prédio se vê, mesmo longe da câmara: nunca estão
-// inteiros, deixam sempre passar um pouco do que está atrás (o bairro, o
-// céu), com os mesmos pontinhos de quando se passa perto. 1 seria opaco.
+// Quanto de cada prédio se vê, a qualquer distância: nunca estão inteiros,
+// deixam sempre passar um pouco do céu que está atrás. 1 seria opaco.
+// Um véu liso, e não pontinhos: os pontinhos têm sempre o mesmo tamanho no
+// ecrã, e num prédio pequeno, ao longe, pareciam uma peneira, enquanto num
+// prédio grande, a meia distância, pareciam uma parede inteira.
 const OPACIDADE = 0.6;
 
 /**
@@ -86,6 +96,9 @@ export function ligarEdificios(app, { ligado: ligadoAoInicio = true } = {}) {
         const ceu = camadas.getLayerByName('Skybox');
         const depoisDoCeu = ceu ? camadas.getOpaqueIndex(ceu) + 1 : camadas.layerList.length;
         camadas.insertOpaque(camada, depoisDoCeu);
+        // A metade transparente da camada (a do véu) logo a seguir à forma,
+        // ainda antes do bairro.
+        camadas.insertTransparent(camada, camadas.getOpaqueIndex(camada) + 1);
         // Todas as câmaras que desenham o mundo passam a desenhar também
         // esta camada (a do mapa e a dos óculos de VR, que é a mesma).
         const mundo = camadas.getLayerByName('World');
@@ -136,25 +149,26 @@ export function ligarEdificios(app, { ligado: ligadoAoInicio = true } = {}) {
         malha.update(PRIMITIVE_TRIANGLES);
 
         // Sem luz: a sombra já vem na cor de cada vértice.
-        const material = new StandardMaterial();
-        material.name = 'edificios';
-        material.useLighting = false;
-        material.useSkybox = false;
-        material.useFog = false;
-        material.useTonemap = false;
-        material.diffuse = new Color(0, 0, 0);
-        material.emissive = new Color(1, 1, 1);
-        material.emissiveVertexColor = true;
-        material.vertexColorGamma = true;
-        // Perto da câmara, os prédios desfazem-se em pontinhos até sumirem:
-        // a câmara de abertura fica mesmo por cima dos prédios a sul do
-        // bairro, e quem anda pela orla passa rente a outros. A maquete
-        // nunca se pode pôr à frente do bairro. Pontinhos, e não
-        // transparência a sério, para não ser preciso ordenar nada. Longe,
-        // ficam na OPACIDADE de base (os pontinhos já lá estão, mais ralos).
-        material.opacityDither = DITHER_BAYER8;
-        material.opacity = OPACIDADE;
-        material.getShaderChunks(SHADERLANGUAGE_GLSL).set('opacityPS', `
+        function fazerMaterial(nome) {
+            const material = new StandardMaterial();
+            material.name = nome;
+            material.useLighting = false;
+            material.useSkybox = false;
+            material.useFog = false;
+            material.useTonemap = false;
+            material.diffuse = new Color(0, 0, 0);
+            material.emissive = new Color(1, 1, 1);
+            material.emissiveVertexColor = true;
+            material.vertexColorGamma = true;
+            // Perto da câmara, os prédios desfazem-se em pontinhos até
+            // sumirem: a câmara de abertura fica mesmo por cima dos prédios a
+            // sul do bairro, e quem anda pela orla passa rente a outros. A
+            // maquete nunca se pode pôr à frente do bairro. Aqui têm de ser
+            // pontinhos: um véu mais leve continuava a tapar o bairro, porque
+            // a forma tapa o que está atrás; os pontinhos abrem buracos nela.
+            // As duas passagens abrem exactamente os mesmos buracos.
+            material.opacityDither = DITHER_BAYER8;
+            material.getShaderChunks(SHADERLANGUAGE_GLSL).set('opacityPS', `
 uniform float material_opacity;
 uniform float material_alphaDitherScale;
 uniform vec4 uEdificiosPerto;
@@ -162,7 +176,7 @@ void getOpacity() {
     float d = distance(vPositionW, uEdificiosPerto.xyz);
     dAlpha = material_opacity * smoothstep(uEdificiosPerto.w * 0.65, uEdificiosPerto.w, d);
 }`);
-        material.getShaderChunks(SHADERLANGUAGE_WGSL).set('opacityPS', `
+            material.getShaderChunks(SHADERLANGUAGE_WGSL).set('opacityPS', `
 uniform material_opacity: f32;
 uniform material_alphaDitherScale: f32;
 uniform uEdificiosPerto: vec4f;
@@ -170,8 +184,26 @@ fn getOpacity() {
     let d = distance(vPositionW, uniform.uEdificiosPerto.xyz);
     dAlpha = uniform.material_opacity * smoothstep(uniform.uEdificiosPerto.w * 0.65, uniform.uEdificiosPerto.w, d);
 }`);
-        material.shaderChunksVersion = '2.8';
-        material.update();
+            material.shaderChunksVersion = '2.8';
+            return material;
+        }
+
+        // 1.ª passagem: só a forma, sem cor, para tapar o que está atrás.
+        const forma = fazerMaterial('edificios-forma');
+        forma.redWrite = forma.greenWrite = forma.blueWrite = forma.alphaWrite = false;
+        forma.update();
+
+        // 2.ª passagem: a cor, em véu, só na face da frente de cada prédio
+        // (a que a forma deixou marcada). Os pontinhos de perto continuam a
+        // contar só com a distância à câmara, e não com o véu (alphaDither):
+        // são os mesmos da forma.
+        const veu = fazerMaterial('edificios-veu');
+        veu.opacity = OPACIDADE;
+        veu.alphaDither = 1;
+        veu.blendType = BLEND_NORMAL;
+        veu.depthWrite = false;
+        veu.depthFunc = FUNC_LESSEQUAL;
+        veu.update();
 
         const camara = app.root.findByName('camera');
         const perto = new Float32Array([0, 0, 0, DISTANCIA_A_QUE_SOMEM]);
@@ -179,13 +211,14 @@ fn getOpacity() {
             if (!camara || !entidade || !entidade.enabled) return;
             const p = camara.getPosition();
             perto[0] = p.x; perto[1] = p.y; perto[2] = p.z;
-            material.setParameter('uEdificiosPerto', perto);
+            forma.setParameter('uEdificiosPerto', perto);
+            veu.setParameter('uEdificiosPerto', perto);
         });
 
         const camada = criarCamada();
         entidade = new Entity('edificios');
         entidade.addComponent('render', {
-            meshInstances: [new MeshInstance(malha, material)],
+            meshInstances: [new MeshInstance(malha, forma), new MeshInstance(malha, veu)],
             layers: [camada.id],
             castShadows: false,
             receiveShadows: false
