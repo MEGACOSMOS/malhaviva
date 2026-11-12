@@ -2,9 +2,16 @@
 """
 Assa a panoramica do Olho de Aguia com os acertos ja embutidos.
 
-A mesma imagem serve duas vezes: e a paragem 360 do Olho de Aguia, vista
-tal e qual, e e o ceu que envolve o bairro (ai com a cor esbatida no
-navegador, ver AJUSTES_PADRAO em public/ceu-fotografia.mjs).
+A vista do alto do bairro esta no site em dois ficheiros:
+
+  - public/olho-de-aguia-360.jpg - a paragem 360 do Olho de Aguia. E o que
+    este guiao escreve.
+  - public/ceu-olho-de-aguia.jpg - o ceu que envolve o bairro (a cupula).
+    Este guiao NAO lhe toca. E a imagem tal como estava antes de
+    2026-11-12, feita com as contas antigas (ver mais abaixo), e fica
+    assim por pedido: "A cupula nao deve mudar de cores, apenas o olho de
+    aguia". A cor dela foi afinada a olho contra o bairro, com essa imagem
+    (ver AJUSTES_PADRAO em public/ceu-fotografia.mjs).
 
 As contas sao feitas uma so vez, a partir do original de doze mil pontos
 de largura e em virgula flutuante, e o resultado e guardado numa imagem
@@ -55,7 +62,8 @@ Image.MAX_IMAGE_PIXELS = None
 
 # O original, em virgula flutuante e luz linear, com 12272 x 6136 pontos.
 ORIGINAL = r"C:\Users\malve\Videos\Malha Viva\Imagens\HDRi\HDRi - Preenchimento Generativo.exr"
-SAIDA = os.path.join('public', 'ceu-olho-de-aguia.jpg')
+# Só a paragem do Olho de Aguia; o ceu do bairro fica como esta.
+SAIDA = os.path.join('public', 'olho-de-aguia-360.jpg')
 
 # Largura da imagem a escrever. E a largura com que o site trabalha o ceu
 # antes de o arrumar nas seis faces do cubo: mais do que isto seria peso

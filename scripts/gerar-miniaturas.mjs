@@ -107,7 +107,7 @@ const testemunhos = [...anotacoes.matchAll(/^\s*video:\s*"([^"]+)"/gm)].map((m) 
 
 // O nome de cada ficheiro é o de nomeDaMiniatura, em annotations.mjs.
 const trabalho = [
-    ['olho-de-aguia', (d) => deFotografia(join(PUBLICO, 'ceu-olho-de-aguia.jpg'), d)],
+    ['olho-de-aguia', (d) => deFotografia(join(PUBLICO, 'olho-de-aguia-360.jpg'), d)],
     ['retroceder', (d) => deFotografia(local(enderecoDa(FOTOGRAFIAS[0], LARGURA_NITIDA)), d)],
     // A vista com que o mapa dos bairros abre (scripts/fazer-vista-dos-bairros.py).
     ['mapa-dos-bairros', (d) => deFotografia(join(PUBLICO, 'mapa-dos-bairros', 'vista.jpg'), d)],

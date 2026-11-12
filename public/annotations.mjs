@@ -255,11 +255,12 @@ AnnotationController.prototype.initialize = function() {
             label: "Olho de Águia",
             is360: true,
             isImage: true,
-            // A mesma panorâmica que envolve o bairro, já preparada para
-            // a web. Antes apontava para o ficheiro original, num formato
-            // que o navegador não sabe abrir sozinho e com muitos megabytes
-            // pelo meio — a janela abria vazia.
-            imagePath: "/ceu-olho-de-aguia.jpg",
+            // A panorâmica do alto do bairro, já preparada para a web, com
+            // as cores da fotografia (ver scripts/assar-ceu.py). É a mesma
+            // vista que envolve o bairro como céu, mas esse continua com as
+            // cores de antes, num ficheiro à parte (ceu-olho-de-aguia.jpg):
+            // a cúpula não muda, só o Olho de Águia.
+            imagePath: "/olho-de-aguia-360.jpg",
             element: null
         },
         {
