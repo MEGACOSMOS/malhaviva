@@ -1003,14 +1003,14 @@
            indicações deslizam. */
         #percurso-voltar {
             position: absolute;
-            top: 6px;
-            right: 6px;
+            top: 8px;
+            right: 8px;
             z-index: 2;
             display: flex;
             align-items: center;
             justify-content: center;
-            width: 40px;
-            height: 40px;
+            width: 44px;
+            height: 44px;
             padding: 0;
             background: transparent;
             border: 0;
@@ -1024,10 +1024,6 @@
                 color: #ffffff;
                 background: rgba(255, 255, 255, 0.1);
             }
-        }
-        /* A origem e a casa não passam por baixo da seta. */
-        .percurso-pontas {
-            padding-right: 36px;
         }
 
         /* A localização: um quadrado escuro com o fio do site, no canto de
@@ -1085,10 +1081,14 @@
 
         /* De onde para onde: a origem e a casa, cada uma com o seu sinal
            (o quadrado da entrada no bairro, ou a seta de quem anda; e o
-           quadrado cheio da casa), ligados por uma fila de pontinhos. */
+           quadrado cheio da casa), ligados por uma fila de pontinhos.
+           Param bem antes da seta de Voltar: ela tem o seu canto só para
+           si, com folga à volta, e não fica encostada ao fim da linha da
+           origem. (Esta folga tem de viver aqui, e não numa regra à parte
+           mais acima: o `padding: 0` apagava-a.) */
         .percurso-pontas {
             margin: 0;
-            padding: 0;
+            padding: 0 60px 0 0;
             list-style: none;
         }
         .percurso-pontas li {
