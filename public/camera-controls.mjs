@@ -196,10 +196,11 @@ const SUAVIDADE_DO_DEDO = 12.0;
 const VELOCIDADE_DO_DEDO = 1.6;
 
 // ─── Apontar e ir ───
-// Um clique (ou um toque) num sítio do bairro leva a câmara até lá: sem
-// descer, sem se virar e sem se inclinar, desliza pelo chão na direcção
-// dele — à mesma altura e a olhar como olhava — e fica muito mais perto.
-// Nunca recua. Com o rato, uma pirâmide branca de bico para baixo, pousada
+// Um clique (ou um toque) num sítio do bairro leva a câmara até lá: vira-se
+// para ele, até o ter a direito à frente, no meio do ecrã, e desliza pelo
+// chão na direcção dele — sem descer e sem se inclinar, à mesma altura e a
+// olhar tão para baixo como olhava — e fica muito mais perto. Nunca recua.
+// Com o rato, uma pirâmide branca de bico para baixo, pousada
 // sobre um quadrado deitado no chão, mostra antes do clique o sítio aonde
 // ele leva. A viagem demora mais ou menos o mesmo, perto ou longe — e por
 // isso, quanto mais longe o sítio, mais depressa se anda. Começa devagar e
@@ -228,6 +229,10 @@ const VIAGEM_APROXIMACAO = 0.3;
 // ecrã. Não chega tão perto que ele fique mais do que isto abaixo do meio
 // da vista, em graus: assim nunca sai pelo fundo do ecrã.
 const VIAGEM_ABAIXO_DO_MEIO = 20;
+
+// Um sítio quase a pique debaixo da câmara — a menos destes graus da
+// vertical — não está para lado nenhum: aí a câmara não se vira.
+const VIAGEM_SEM_VOLTA = 10;
 
 // A pirâmide que mostra o sítio: a altura com que se vê no ecrã, em pontos
 // (é do mesmo tamanho perto ou longe), e de quanto em quanto tempo se
@@ -1381,12 +1386,14 @@ class CameraControls extends Script {
     /**
      * Põe a câmara a caminho de um sítio do bairro.
      *
-     * A câmara não desce, não se vira e não se inclina: fica à mesma
-     * altura e a olhar como olhava, e desliza pelo chão na direcção do
-     * sítio — de lado, o bastante para o ter à frente, e para a frente até
-     * só faltar VIAGEM_APROXIMACAO do caminho. Nunca recua: com o sítio já
-     * perto, só desliza de lado. E não chega tão perto que o sítio fique
-     * mais de VIAGEM_ABAIXO_DO_MEIO graus abaixo do meio da vista.
+     * A câmara vira-se para o sítio, pelo lado mais curto, até o ter a
+     * direito à frente — no meio do ecrã, de um lado ao outro —, e desliza
+     * pelo chão na direcção dele até só faltar VIAGEM_APROXIMACAO do
+     * caminho. Não desce e não se inclina: fica à mesma altura e a olhar
+     * tão para baixo como olhava. Nunca recua: com o sítio já perto, só se
+     * vira. E não chega tão perto que o sítio fique mais de
+     * VIAGEM_ABAIXO_DO_MEIO graus abaixo do meio da vista. Um sítio quase a
+     * pique debaixo dela (VIAGEM_SEM_VOLTA) não a faz virar.
      *
      * @param {Vec3} sitio - Para onde ir.
      * @private
@@ -1401,31 +1408,50 @@ class CameraControls extends Script {
         while (inclinacao > 180) inclinacao -= 360;
         while (inclinacao < -180) inclinacao += 360;
 
-        // Para onde se olha continua igual; o que conta é quanto o sítio
-        // está à frente, nessa direcção, pelo chão.
-        const rumo = angulos.y * math.DEG_TO_RAD;
+        const dx = sitio.x - posicao.x;
+        const dz = sitio.z - posicao.z;
+        const peloChao = Math.hypot(dx, dz);
+        const desnivel = Math.max(0.5, posicao.y - sitio.y);
+
+        // Para onde a câmara fica a olhar: a direito para o sítio, pelo
+        // chão — o rumo em que a frente (−sen, −cos) aponta para ele.
+        let volta = 0;
+        if (Math.atan2(peloChao, desnivel) * math.RAD_TO_DEG > VIAGEM_SEM_VOLTA) {
+            volta = Math.atan2(-dx, -dz) * math.RAD_TO_DEG - angulos.y;
+            while (volta > 180) volta -= 360;
+            while (volta < -180) volta += 360;
+        }
+        const rumo1 = angulos.y + volta;
+
+        // O que conta é quanto o sítio está à frente, nessa direcção, pelo
+        // chão.
+        const rumo = rumo1 * math.DEG_TO_RAD;
         const frenteX = -Math.sin(rumo);
         const frenteZ = -Math.cos(rumo);
-        const aFrente = (sitio.x - posicao.x) * frenteX + (sitio.z - posicao.z) * frenteZ;
-        const desnivel = Math.max(0.5, posicao.y - sitio.y);
+        const aFrente = dx * frenteX + dz * frenteZ;
 
         // Fica a faltar só uma fracção do caminho — mas não tão perto que
         // o sítio escorregue para o fundo do ecrã, e nunca para trás.
         const olharMaisBaixo = Math.min(89, Math.max(0, -inclinacao) + VIAGEM_ABAIXO_DO_MEIO);
         const pertoDeMais = desnivel / Math.tan(olharMaisBaixo * math.DEG_TO_RAD);
         const fica = Math.max(0, Math.min(aFrente, Math.max(aFrente * VIAGEM_APROXIMACAO, pertoDeMais)));
-        const para = new Vec3(sitio.x - frenteX * fica, posicao.y, sitio.z - frenteZ * fica);
+        const para = aFrente > 0 ?
+            new Vec3(sitio.x - frenteX * fica, posicao.y, sitio.z - frenteZ * fica) :
+            posicao.clone();
 
         const percurso = posicao.distance(para);
-        if (percurso < 0.05) {
+        if (percurso < 0.05 && Math.abs(volta) < 0.5) {
             return;
         }
 
         // Quanto mais longe, mais tempo — mas a crescer muito menos do que
         // a distância: é isso que faz andar mais depressa quando se aponta
-        // para longe.
-        const duracao = VIAGEM_DURACAO_MINIMA +
-            VIAGEM_DURACAO_EXTRA * Math.min(percurso / VIAGEM_DISTANCIA_LONGA, 1);
+        // para longe. E uma volta grande também leva o seu tempo, para não
+        // ser um safanão.
+        const duracao = VIAGEM_DURACAO_MINIMA + VIAGEM_DURACAO_EXTRA * Math.max(
+            Math.min(percurso / VIAGEM_DISTANCIA_LONGA, 1),
+            Math.abs(volta) / 180
+        );
 
         this._viagem = {
             de: posicao.clone(),
@@ -1434,7 +1460,7 @@ class CameraControls extends Script {
             inclinacao0: inclinacao,
             inclinacao1: inclinacao,
             rumo0: angulos.y,
-            rumo1: angulos.y,
+            rumo1,
             t: 0,
             duracao
         };
