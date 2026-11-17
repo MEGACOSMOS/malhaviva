@@ -89,6 +89,7 @@ await avaliar(`(async () => {
         proj(p) { cam.camera._viewMatDirty = true; const s = cam.camera.worldToScreen(new pc.Vec3(p[0], p[1], p[2])); return [s.x, s.y]; },
         pose() { const p = cam.getPosition(); const c = this.ctl._pose.angles; return { x: p.x, y: p.y, z: p.z, inclinacao: c.x, rumo: c.y }; },
         async ponto(x, y) { const p = await this.ctl._lerPonto(x, y); return p ? [p.x, p.y, p.z] : null; },
+        alturaDoPivo() { const c = this.ctl; return c._alturaDoPivo === undefined ? c._alturaDoChao : c._alturaDoPivo; },
         gestos: []
     };
     window.addEventListener('gestoNoBairro', (e) => window.__t.gestos.push(e.detail.gesto));
@@ -272,15 +273,72 @@ async function arrastarAPassos(dy, passos, modificadores) {
 }
 const diferencas = v => v.slice(1).map((x, i) => x - v[i]);
 
-// Inclinar para o horizonte com o Ctrl, já perto do chão: a câmara desce até
-// à altura mínima, e tem de lá chegar a abrandar.
+// A distância da câmara ao meio do ecrã, pelo raio do meio, até à altura do
+// sítio à volta do qual se roda (a mesma altura para todas as contas).
+const distanciaAoMeio = (y, inclinacao, h) => (y - h) / Math.sin(-inclinacao * Math.PI / 180);
+
+// Inclinar para o horizonte com o Ctrl, já perto do chão: a câmara chega à
+// altura mínima a abrandar, e desliza por ele para trás, sem parar.
 await voltarAoInicio();
 for (let i = 0; i < 4; i++) { await rato('mouseWheel', L / 2, A / 2, { deltaX: 0, deltaY: -100 }); await dormir(60); }
 await dormir(1200);
+let inicioDoChao = await pose();
 let g = await arrastarAPassos(-3, 70, 2);
 let s = maiorSalto(diferencas(g.inclinacoes));
-prova('Ctrl + arrastar para cima até à altura mínima: abranda, sem batida', s.salto < 0.35 && s.ultimo < 0.15 && Math.min(...g.alturas) >= 14.99,
-    `maior salto ${(s.salto * 100).toFixed(0)} % da velocidade, último passo ${(s.ultimo * 100).toFixed(0)} %, mais baixo ${Math.min(...g.alturas).toFixed(2)} m`);
+let hPivo = await avaliar('window.__t.alturaDoPivo()');
+let dAntes = distanciaAoMeio(inicioDoChao.y, inicioDoChao.inclinacao, hPivo);
+let dMaior = Math.max(...g.alturas.map((y, i) => distanciaAoMeio(y, g.inclinacoes[i], hPivo)));
+prova('Ctrl + arrastar para cima até ao chão: desliza para trás por ele, a abrandar, sem batida',
+    s.salto < 0.35 && s.ultimo < 0.15 && Math.min(...g.alturas) >= 14.99 && dMaior > dAntes * 1.1,
+    `maior salto ${(s.salto * 100).toFixed(0)} % da velocidade, último passo ${(s.ultimo * 100).toFixed(0)} %, mais baixo ${Math.min(...g.alturas).toFixed(2)} m, distância ao meio ${dAntes.toFixed(0)} → ${dMaior.toFixed(0)} m`);
+
+// …e inclinando de volta até ao ângulo do princípio, a câmara volta à
+// distância a que estava: o que o chão a afastou desfaz-se.
+let p = await pose();
+let y0 = A / 2;
+await rato('mouseMoved', L / 2, y0);
+await rato('mousePressed', L / 2, y0, { button: 'left', buttons: 1, clickCount: 1, modifiers: 2 });
+for (let i = 0; i < 120 && p.inclinacao > inicioDoChao.inclinacao + 0.05; i++) {
+    y0 += 1;
+    await rato('mouseMoved', L / 2, y0, { button: 'left', buttons: 1, modifiers: 2 });
+    await umaImagem();
+    p = await pose();
+}
+await rato('mouseReleased', L / 2, y0, { button: 'left', buttons: 0, clickCount: 1, modifiers: 2 });
+await dormir(300);
+hPivo = await avaliar('window.__t.alturaDoPivo()');
+dAntes = distanciaAoMeio(inicioDoChao.y, inicioDoChao.inclinacao, hPivo);
+let dDepois = distanciaAoMeio(p.y, p.inclinacao, hPivo);
+prova('… e ao voltar ao mesmo ângulo, volta à mesma distância', Math.abs(dDepois - dAntes) / dAntes < 0.02,
+    `distância ao meio ${dAntes.toFixed(1)} → ${dDepois.toFixed(1)} m (inclinação ${inicioDoChao.inclinacao.toFixed(1)} → ${p.inclinacao.toFixed(1)})`);
+
+// No tecto: inclinar para a vista de cima aproxima a câmara do meio (ela não
+// pode subir); inclinando de volta até ao ângulo do princípio, afasta-se
+// outra vez até onde estava — e não fica a descer mais perto do que
+// estava, a apertar contra o chão.
+await voltarAoInicio();
+const inicioDoTecto = await pose();
+g = await arrastarAPassos(3, 25, 2);
+hPivo = await avaliar('window.__t.alturaDoPivo()');
+const dMenor = Math.min(...g.alturas.map((y, i) => distanciaAoMeio(y, g.inclinacoes[i], hPivo)));
+p = await pose();
+y0 = A / 2;
+await rato('mouseMoved', L / 2, y0);
+await rato('mousePressed', L / 2, y0, { button: 'left', buttons: 1, clickCount: 1, modifiers: 2 });
+for (let i = 0; i < 120 && p.inclinacao < inicioDoTecto.inclinacao - 0.05; i++) {
+    y0 -= 1;
+    await rato('mouseMoved', L / 2, y0, { button: 'left', buttons: 1, modifiers: 2 });
+    await umaImagem();
+    p = await pose();
+}
+await rato('mouseReleased', L / 2, y0, { button: 'left', buttons: 0, clickCount: 1, modifiers: 2 });
+await dormir(300);
+hPivo = await avaliar('window.__t.alturaDoPivo()');
+dAntes = distanciaAoMeio(inicioDoTecto.y, inicioDoTecto.inclinacao, hPivo);
+dDepois = distanciaAoMeio(p.y, p.inclinacao, hPivo);
+prova('Ctrl para a vista de cima no tecto aproxima; de volta ao mesmo ângulo, desfaz a aproximação',
+    dMenor < dAntes * 0.9 && Math.abs(dDepois - dAntes) / dAntes < 0.02 && Math.abs(p.y - inicioDoTecto.y) < 1,
+    `distância ao meio ${dAntes.toFixed(1)} → ${dMenor.toFixed(1)} (no tecto) → ${dDepois.toFixed(1)} m; altura ${inicioDoTecto.y.toFixed(1)} → ${p.y.toFixed(1)} m`);
 
 // Inclinar para a vista de cima com o Ctrl, abaixo do tecto: a câmara sobe, e
 // tem de chegar ao tecto a abrandar.

@@ -220,9 +220,8 @@ const PERTO_MINIMO = 4;
 
 // Os limites não são paredes. Chegando-se a um, o gesto rende cada vez
 // menos, e o limite alcança-se devagar, sem batida (ver `andarAteAoLimite`):
-// nos últimos ZONA_DA_INCLINACAO graus antes de um limite da inclinação (a
-// vista a pique, o horizonte, ou o ângulo em que a câmara chegaria à altura
-// mínima), nos últimos ZONA_DA_ALTURA metros antes da altura mínima ou do
+// nos últimos ZONA_DA_INCLINACAO graus antes da vista a pique e do
+// horizonte, nos últimos ZONA_DA_ALTURA metros antes da altura mínima ou do
 // tecto, e nos últimos ZONA_DE_PERTO metros antes do sítio para onde se
 // aproxima.
 const ZONA_DA_INCLINACAO = 8;
@@ -551,6 +550,19 @@ class CameraControls extends Script {
      * @private
      */
     _alturaDoPivo = undefined;
+
+    /**
+     * Quanto o tecto ou a altura mínima mudaram a distância da câmara ao
+     * meio do ecrã, enquanto se inclinava (ver `_rodarEInclinar`): negativo
+     * se o tecto a aproximou, positivo se o chão a afastou. Inclinando no
+     * outro sentido, desfaz-se. Arrastar o bairro e rodá-lo não o mudam;
+     * aproximar ou afastar com a roda, a pinça ou as teclas, as viagens e o
+     * recentrar dão-lhe uma distância nova, e ele volta a zero.
+     *
+     * @type {number}
+     * @private
+     */
+    _desvio = 0;
 
     /**
      * Se as teclas (ou o stick) já estavam a rodar na imagem anterior:
@@ -1901,6 +1913,9 @@ class CameraControls extends Script {
             return 1;
         }
         pos.set(nx, ny, nz);
+        // A distância nova é a que se escolheu: o que o tecto ou o chão
+        // tinham mudado ao inclinar já não se desfaz.
+        this._desvio = 0;
         return f;
     }
 
@@ -1930,13 +1945,22 @@ class CameraControls extends Script {
 
     /**
      * Roda e inclina o bairro à volta do sítio que está no meio do ecrã,
-     * como no Google Maps: rodar anda à volta dele; inclinar mantém a
-     * distância a ele e muda o ângulo — sem descer abaixo da altura mínima
-     * (aí não inclina mais) e sem subir acima do tecto (aí chega-se mais
-     * perto dele). Nenhum destes limites é uma parede: a inclinação abranda
-     * nos últimos graus antes deles, e a subida nos últimos metros antes do
-     * tecto, e chega-se lá devagar (ver `andarAteAoLimite`). Antes, a câmara
-     * parava de repente ao chegar à altura mínima.
+     * como no Google Maps: rodar anda à volta dele; inclinar muda o ângulo
+     * à mesma distância dele.
+     *
+     * Só que a câmara não passa do tecto nem da altura mínima. Chegando a um
+     * deles desliza por ele, e o meio continua no meio: no tecto (a caminho
+     * da vista de cima) aproxima-se do meio, à mesma altura; no chão (a
+     * caminho do horizonte) afasta-se dele. Chega-se a esses limites a
+     * abrandar, e a inclinação abranda nos últimos graus antes da vista a
+     * pique e do horizonte (ver `andarAteAoLimite`).
+     *
+     * O que um limite mudou na distância desfaz-se ao voltar para trás. A
+     * câmara lembra-se da distância a que estava (ver `_desvio`) e,
+     * inclinando no outro sentido, volta primeiro a ela, à mesma altura: a
+     * aproximação do tecto desfaz-se, e a câmara já não desce mais perto do
+     * que estava até ficar a apertar contra o chão. Inclinar para lá e para
+     * cá deixa-a onde estava.
      *
      * @param {number} grausRumo - Quanto rodar (mais é para a esquerda).
      * @param {number} grausInclinacao - Quanto inclinar (mais é para o
@@ -1961,27 +1985,35 @@ class CameraControls extends Script {
             return;
         }
         const antes = entreMeiaVolta(angulos.x);
-        let depois;
-        if (grausInclinacao > 0) {
-            // Para o horizonte a câmara desce, à mesma distância do meio. O
-            // limite é o horizonte permitido, ou o ângulo em que ela chegaria
-            // à altura mínima — o que vier primeiro.
-            const seno = math.clamp((ALTURA_MINIMA - pivo.y) / distancia, 0, 1);
-            const noChao = -Math.asin(seno) * math.RAD_TO_DEG;
-            const limite = Math.min(INCLINACAO_MAXIMA, noChao);
-            depois = antes + andarAteAoLimite(grausInclinacao, limite - antes, ZONA_DA_INCLINACAO);
-        } else {
-            depois = antes - andarAteAoLimite(-grausInclinacao, antes - INCLINACAO_MINIMA, ZONA_DA_INCLINACAO);
-        }
-        // Para a vista de cima a câmara sobe. À mesma distância do meio
-        // subia até `alturaPedida`; perto do tecto sobe cada vez menos, e
-        // para o meio continuar no meio chega-se mais perto dele.
+        const depois = grausInclinacao > 0
+            ? antes + andarAteAoLimite(grausInclinacao, INCLINACAO_MAXIMA - antes, ZONA_DA_INCLINACAO)
+            : antes - andarAteAoLimite(-grausInclinacao, antes - INCLINACAO_MINIMA, ZONA_DA_INCLINACAO);
         let d = distancia;
         const seno = Math.sin(-depois * math.DEG_TO_RAD);
         if (seno > 1e-3) {
-            const alturaPedida = pivo.y + distancia * seno;
-            const subida = andarAteAoLimite(alturaPedida - pos.y, this._tectoAgora() - pos.y, ZONA_DA_ALTURA);
-            d = Math.max(PERTO_MINIMO, (pos.y + subida - pivo.y) / seno);
+            // A distância a que a câmara estaria sem os limites, e a que a
+            // deixa à mesma altura com a inclinação nova.
+            const nominal = Math.max(PERTO_MINIMO, distancia - this._desvio);
+            const aMesmaAltura = (pos.y - pivo.y) / seno;
+            if (this._desvio < -1e-3 && depois > antes) {
+                // Aproximada pelo tecto, e a voltar para o horizonte:
+                // afasta-se outra vez, à mesma altura, até onde estava.
+                d = Math.min(nominal, Math.max(distancia, aMesmaAltura));
+            } else if (this._desvio > 1e-3 && depois < antes) {
+                // Afastada pelo chão, e a voltar para a vista de cima:
+                // aproxima-se outra vez, à mesma altura, até onde estava.
+                d = Math.max(nominal, Math.min(distancia, aMesmaAltura));
+            } else {
+                // À mesma distância do meio ia para `alturaPedida`. Perto do
+                // tecto sobe cada vez menos, e perto do chão desce cada vez
+                // menos — e a distância acerta-se para o meio ficar no meio.
+                const alturaPedida = pivo.y + distancia * seno;
+                const altura = alturaPedida >= pos.y
+                    ? pos.y + andarAteAoLimite(alturaPedida - pos.y, this._tectoAgora() - pos.y, ZONA_DA_ALTURA)
+                    : pos.y - andarAteAoLimite(pos.y - alturaPedida, pos.y - ALTURA_MINIMA, ZONA_DA_ALTURA);
+                d = Math.max(PERTO_MINIMO, (altura - pivo.y) / seno);
+            }
+            this._desvio = d - nominal;
         }
         angulos.x = depois;
         const p = depois * math.DEG_TO_RAD;
@@ -2106,6 +2138,7 @@ class CameraControls extends Script {
      */
     _aproximarDe(sitio) {
         this.fire('mexeu');
+        this._desvio = 0;
         const posicao = this._pose.position;
         const angulos = this._pose.angles;
         const p = entreMeiaVolta(angulos.x) * math.DEG_TO_RAD;
@@ -2532,6 +2565,7 @@ class CameraControls extends Script {
     recenter(position, focus) {
         this._viagem = null;
         this._largarTudo();
+        this._desvio = 0;
         this._boundsArmed = false;
         this._entryLimit = null;
         this._lastInsideValid = false;
@@ -2562,6 +2596,7 @@ class CameraControls extends Script {
         this._boundsArmed = false;
         this._entryLimit = null;
         this._lastInsideValid = false;
+        this._desvio = 0;
         const angulos = this._pose.angles;
         let inclinacao0 = angulos.x;
         while (inclinacao0 > 180) inclinacao0 -= 360;
