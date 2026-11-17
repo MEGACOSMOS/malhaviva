@@ -40,13 +40,13 @@ const tmpV4 = new Vec3();
 /**
  * Se a tecla Alt está a ser carregada.
  *
- * O motor conhece o Shift e o Ctrl, mas não o Alt — e é o Alt (tal como o
- * Shift) que aqui faz as setas deixarem de andar e passarem a rodar e a
- * inclinar o bairro. Fica portanto por nossa conta, numa escuta só, posta
- * à primeira vez que alguém precise dela.
+ * O motor conhece o Shift e o Ctrl, mas não o Alt — e é o Alt que aqui
+ * faz as setas deixarem de andar e passarem a olhar. Fica portanto por
+ * nossa conta, numa escuta só, posta à primeira vez que alguém precise
+ * dela.
  *
  * De caminho trava o que o navegador faria com Alt e uma seta, que é ir
- * para a página anterior ou seguinte. Sem isso, quem tentasse rodar para
+ * para a página anterior ou seguinte. Sem isso, quem tentasse olhar para
  * a esquerda saía do bairro.
  *
  * @returns {boolean} Se o Alt está em baixo.
@@ -70,7 +70,7 @@ function altCarregado() {
             altEmBaixo = e.altKey;
         });
         // Quem sai da janela com o Alt em baixo não o larga cá dentro: sem
-        // isto, as setas ficavam a rodar para sempre.
+        // isto, as setas ficavam a olhar para sempre.
         window.addEventListener('blur', () => { altEmBaixo = false; });
     }
     return altEmBaixo;
@@ -137,8 +137,10 @@ const entreMeiaVolta = (graus) => {
 // dedos a tocar ao mesmo tempo afastam; e dois toques com o segundo a ficar
 // e a arrastar aproximam (para baixo) e afastam (para cima).
 //
-// No teclado, as setas e o W A S D andam, o + e o − aproximam e afastam, e
-// com o Shift (ou o Alt) as setas rodam e inclinam.
+// O teclado é o de sempre (a pedido de quem fez o site): as setas e o
+// W A S D andam pelo chão, mais depressa com o Shift e mais devagar com o
+// Ctrl, e com o Alt as setas olham à volta sem sair do sítio. Do Google
+// Maps ficou só o + e o −, que aproximam e afastam.
 
 // Quanto o rato ou o dedo podem mexer, entre carregar e largar, para ainda
 // contar como clique ou toque (pontos de ecrã), e quanto pode durar
@@ -197,8 +199,8 @@ const ZOOM_DE_UM_DEDO = 0.008;
 const ZOOM_SUAVIDADE = 0.09;
 
 // Rodar e inclinar com o rato (graus por ponto de ecrã), com dois dedos a
-// subir ou a descer (graus por ponto), e com as teclas ou o stick do
-// comando (graus por segundo, com a tecla toda carregada).
+// subir ou a descer (graus por ponto), e com o stick direito do comando
+// (graus por segundo, com o stick todo inclinado).
 const RODAR_COM_O_RATO = 0.35;
 const INCLINAR_COM_O_RATO = 0.3;
 const INCLINAR_COM_OS_DEDOS = 0.35;
@@ -531,6 +533,16 @@ class CameraControls extends Script {
      * @private
      */
     _giroDasTeclas = new Vec2();
+
+    /**
+     * Quanto falta olhar com o Alt e as setas (graus de rumo e de
+     * inclinação): cada imagem com as teclas em baixo pede mais, e a vista
+     * vai atrás, com suavidade.
+     *
+     * @type {Vec2}
+     * @private
+     */
+    _olharPorFazer = new Vec2();
 
     /**
      * A altura do chão do bairro, como a última leitura à placa gráfica a
@@ -1572,6 +1584,7 @@ class CameraControls extends Script {
         this._zoomAnimado = null;
         this._giroAnimado = null;
         this._giroDasTeclas.set(0, 0);
+        this._olharPorFazer.set(0, 0);
         if (this._smoothMoveVelocity) {
             this._smoothMoveVelocity.set(0, 0, 0);
         }
@@ -2196,18 +2209,6 @@ class CameraControls extends Script {
     }
 
     /**
-     * Quanto mais alta a câmara, mais depressa as teclas e o comando a
-     * levam pelo chão: é o mesmo bocado de ecrã por segundo, perto ou
-     * longe, como no Google Maps.
-     *
-     * @returns {number} A escala da velocidade.
-     * @private
-     */
-    _escalaDaAltura() {
-        return math.clamp((this._pose.position.y - this._alturaDoChao) / 45, 0.35, 1.6);
-    }
-
-    /**
      * Mexe no bairro conforme os gestos que estão a ser feitos, com a
      * última posição de cada ponteiro.
      *
@@ -2784,10 +2785,12 @@ class CameraControls extends Script {
             return;
         }
 
-        // Com o Shift ou o Alt em baixo, as setas rodam e inclinam em vez
-        // de andar. O WASD anda na mesma, para se poder andar e rodar ao
-        // mesmo tempo.
-        const setasARodar = altCarregado() || this._state.shift > 0;
+        // Com o Alt em baixo, as setas deixam de andar: passam a olhar à
+        // volta, sem sair do sítio. O WASD anda na mesma, para se poder
+        // andar e olhar ao mesmo tempo. (É o teclado de sempre: ficou assim
+        // a pedido de quem fez o site, depois de os gestos do rato e dos
+        // dedos passarem a ser os do Google Maps.)
+        const aOlhar = altCarregado();
 
         // Quem pega nos comandos fica com a câmara: um gesto, uma tecla de
         // andar ou de rodar, um stick do comando param a viagem onde ela
@@ -2815,10 +2818,10 @@ class CameraControls extends Script {
         }
 
         // 3. Andar com as teclas e com o stick esquerdo, pelo chão, para o
-        //    lado para onde a vista está virada. Quanto mais alta a câmara,
-        //    mais depressa (ver `_escalaDaAltura`).
+        //    lado para onde a vista está virada, à velocidade de sempre:
+        //    mais depressa com o Shift, mais devagar com o Ctrl.
         const andar = tmpV3.copy(this._state.axis);
-        if (!setasARodar) {
+        if (!aOlhar) {
             andar.add(this._setas);
         }
         if (andar.lengthSq() > 1) {
@@ -2843,7 +2846,8 @@ class CameraControls extends Script {
         const frenteZ = -Math.cos(rumo);
         const direitaX = Math.cos(rumo);
         const direitaZ = -Math.sin(rumo);
-        const rapidez = this.moveSpeed * this._escalaDaAltura();
+        const rapidez = this._state.shift > 0 ? this.moveFastSpeed :
+            this._state.ctrl > 0 ? this.moveSlowSpeed : this.moveSpeed;
         const alvo = tmpV4.set(
             (frenteX * andar.z + direitaX * andar.x) * rapidez,
             0,
@@ -2861,15 +2865,42 @@ class CameraControls extends Script {
             this._avisarGesto('mover');
         }
 
-        // 4. Rodar e inclinar com o Shift (ou o Alt) e as setas, ou com o
-        //    stick direito, à volta do meio do ecrã: para a direita roda
-        //    para a direita, para cima inclina para o horizonte.
+        // 4. Olhar à volta com o Alt e as setas, sem sair do sítio, como
+        //    sempre: para a direita vira-se para a direita, para cima olha
+        //    mais para cima. Cada imagem pede mais um bocado de volta, e a
+        //    vista vai atrás do que foi pedido com a suavidade de sempre
+        //    (a do comando de voo do motor, que era quem fazia isto).
+        const olhar = this.rotateSpeed * this.rotateJoystickSens * 60 * dt;
+        if (aOlhar && (this._setas.x || this._setas.z)) {
+            this._olharPorFazer.x -= this._setas.x * olhar;
+            this._olharPorFazer.y += this._setas.z * olhar;
+            // A volta muda o sítio do meio do ecrã: o que o tecto ou o chão
+            // tinham mudado ao inclinar já não se desfaz.
+            this._desvio = 0;
+            if (this._setas.x) {
+                this._avisarGesto('rodar');
+            }
+            if (this._setas.z) {
+                this._avisarGesto('inclinar');
+            }
+        }
+        if (Math.abs(this._olharPorFazer.x) > 1e-4 || Math.abs(this._olharPorFazer.y) > 1e-4) {
+            const k = damp(0.98, dt);
+            const rumoAgora = this._olharPorFazer.x * k;
+            const inclinacaoAgora = this._olharPorFazer.y * k;
+            this._pose.angles.y += rumoAgora;
+            this._pose.angles.x += inclinacaoAgora;
+            this._olharPorFazer.x -= rumoAgora;
+            this._olharPorFazer.y -= inclinacaoAgora;
+        } else {
+            this._olharPorFazer.set(0, 0);
+        }
+
+        // E rodar e inclinar com o stick direito, à volta do meio do ecrã:
+        // para a direita roda para a direita, para cima inclina para o
+        // horizonte.
         let rodar = -rightStick[0];
         let inclinar = -rightStick[1];
-        if (setasARodar) {
-            rodar -= this._setas.x;
-            inclinar += this._setas.z;
-        }
         rodar = math.clamp(rodar, -1, 1);
         inclinar = math.clamp(inclinar, -1, 1);
         if ((rodar || inclinar) && !this._aRodarDeTecla) {

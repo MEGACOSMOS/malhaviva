@@ -9,7 +9,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title data-i18n-titulo="ctl.titulo">Controlos do Mapa — Malha Viva</title>
     <meta name="description" content="Guia dos controlos do visualizador 3D Malha Viva. Navega como num mapa: arrasta com o rato, aproxima com o scroll, roda com Ctrl.">
-    <script src="/idiomas.js?v=56"></script>
+    <script src="/idiomas.js?v=58"></script>
     <script src="/logotipo.js?v=1"></script>
     <script src="/comando-paginas.js?v=7" defer></script>
 
@@ -692,7 +692,7 @@
             <div class="section-header">
                 <h2 class="section-title" data-i18n="ctl.teclado">Teclado</h2>
             </div>
-            <p class="section-desc" data-i18n="ctl.tecladoDesc">Dá para tudo sem rato. No bairro as setas e o WASD movem o mapa, o + e o − aproximam e afastam, e com o Shift ou o Alt em baixo as setas rodam e inclinam. Nas paragens 360º o WASD vira a cabeça. Com uma janela aberta, as setas dos lados passam ao testemunho ou à paragem do lado, como as setas desenhadas de cada lado dela.</p>
+            <p class="section-desc" data-i18n="ctl.tecladoDesc">Dá para tudo sem rato. No bairro as setas andam, como o WASD, mais depressa com o Shift e mais devagar com o Ctrl; com o Alt em baixo passam a olhar à volta, e o + e o − aproximam e afastam. Nas paragens 360º o WASD vira a cabeça. Com uma janela aberta, as setas dos lados passam ao testemunho ou à paragem do lado, como as setas desenhadas de cada lado dela.</p>
             <div class="grupo-titulo" data-i18n="ctl.gpNoBairro">No bairro</div>
             <div class="controls-table">
                 <div class="control-row">
@@ -716,11 +716,9 @@
                     </div>
                 </div>
                 <div class="control-row">
-                    <span class="control-action" data-i18n="ctl.rodar">Rodar e inclinar</span>
+                    <span class="control-action" data-i18n="ctl.olhar">Olhar à volta</span>
                     <div class="control-keys">
-                        <span class="kbd accent" data-i18n="ctl.tecShiftSetas">Shift + setas</span>
-                        <span class="key-separator" data-i18n="ctl.ou">ou</span>
-                        <span class="kbd" data-i18n="ctl.tecAltSetas">Alt + setas</span>
+                        <span class="kbd accent" data-i18n="ctl.tecAltSetas">Alt + setas</span>
                     </div>
                 </div>
                 <div class="control-row">
@@ -728,6 +726,18 @@
                     <div class="control-keys">
                         <span class="kbd accent">+</span>
                         <span class="kbd accent">−</span>
+                    </div>
+                </div>
+                <div class="control-row">
+                    <span class="control-action" data-i18n="ctl.movimentoRapido">Movimento rápido</span>
+                    <div class="control-keys">
+                        <span class="kbd accent">Shift</span>
+                    </div>
+                </div>
+                <div class="control-row">
+                    <span class="control-action" data-i18n="ctl.movimentoLento">Movimento lento</span>
+                    <div class="control-keys">
+                        <span class="kbd accent">Ctrl</span>
                     </div>
                 </div>
                 <div class="control-row">

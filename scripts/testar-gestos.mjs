@@ -392,25 +392,61 @@ prova('duplo clique: o sítio vem para o meio do ecrã', Math.hypot(onde[0] - L 
 prova('duplo clique: aproxima', dd1 < dd0 * 0.75, `${dd0.toFixed(1)} → ${dd1.toFixed(1)} m`);
 await foto('6-duplo');
 
-// ── 7. Teclado: setas andam, Shift+setas rodam, + e − aproximam
+// ── 7. Teclado, o de sempre: as setas e o WASD andam (mais depressa com o
+//    Shift, mais devagar com o Ctrl), o Alt e as setas olham à volta sem
+//    sair do sítio; e o + e o − aproximam e afastam.
 const tecla = async (key, code, vk, ms = 400, modifiers = 0) => {
     await enviar('Input.dispatchKeyEvent', { type: 'rawKeyDown', key, code, windowsVirtualKeyCode: vk, modifiers });
     await dormir(ms);
     await enviar('Input.dispatchKeyEvent', { type: 'keyUp', key, code, windowsVirtualKeyCode: vk, modifiers });
     await dormir(600);
 };
+// Uma tecla com outra a segurar (o Shift, o Ctrl ou o Alt).
+const comTecla = async (mod, key, code, vk, ms) => {
+    const bit = { Shift: 8, Control: 2, Alt: 1 }[mod.key];
+    await enviar('Input.dispatchKeyEvent', { type: 'rawKeyDown', key: mod.key, code: mod.code, windowsVirtualKeyCode: mod.vk, modifiers: bit });
+    await tecla(key, code, vk, ms, bit);
+    await enviar('Input.dispatchKeyEvent', { type: 'keyUp', key: mod.key, code: mod.code, windowsVirtualKeyCode: mod.vk, modifiers: 0 });
+    await dormir(300);
+};
+const SHIFT = { key: 'Shift', code: 'ShiftLeft', vk: 16 };
+const CTRL = { key: 'Control', code: 'ControlLeft', vk: 17 };
+const ALT = { key: 'Alt', code: 'AltLeft', vk: 18 };
+const andou = (a, b) => Math.hypot(b.x - a.x, b.z - a.z);
+
 await voltarAoInicio();
 p0 = await pose();
 await tecla('ArrowUp', 'ArrowUp', 38, 500);
 p1 = await pose();
-prova('seta para cima: anda para a frente, à mesma altura', Math.hypot(p1.x - p0.x, p1.z - p0.z) > 3 && Math.abs(p1.y - p0.y) < 0.01, `andou ${Math.hypot(p1.x - p0.x, p1.z - p0.z).toFixed(1)} m`);
-p0 = p1;
-await enviar('Input.dispatchKeyEvent', { type: 'rawKeyDown', key: 'Shift', code: 'ShiftLeft', windowsVirtualKeyCode: 16, modifiers: 8 });
-await tecla('ArrowRight', 'ArrowRight', 39, 500, 8);
-await enviar('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Shift', code: 'ShiftLeft', windowsVirtualKeyCode: 16, modifiers: 0 });
-await dormir(300);
+const normal = andou(p0, p1);
+prova('seta para cima: anda para a frente, à mesma altura e sem rodar', normal > 3 && Math.abs(p1.y - p0.y) < 0.01 && Math.abs(p1.rumo - p0.rumo) < 0.01, `andou ${normal.toFixed(1)} m`);
+
+await voltarAoInicio();
+p0 = await pose();
+await tecla('KeyW', 'KeyW', 87, 500);
 p1 = await pose();
-prova('Shift + seta para a direita: roda para a direita', p1.rumo < p0.rumo - 10, `rumo ${p0.rumo.toFixed(1)} → ${p1.rumo.toFixed(1)}`);
+prova('W: anda como a seta para cima', Math.abs(andou(p0, p1) - normal) / normal < 0.15, `andou ${andou(p0, p1).toFixed(1)} m (a seta, ${normal.toFixed(1)} m)`);
+
+await voltarAoInicio();
+p0 = await pose();
+await comTecla(SHIFT, 'ArrowUp', 'ArrowUp', 38, 500);
+p1 = await pose();
+prova('Shift + seta para cima: anda mais depressa (65 m/s em vez de 25)', andou(p0, p1) > normal * 2, `andou ${andou(p0, p1).toFixed(1)} m (sem Shift, ${normal.toFixed(1)} m)`);
+
+await voltarAoInicio();
+p0 = await pose();
+await comTecla(CTRL, 'ArrowUp', 'ArrowUp', 38, 500);
+p1 = await pose();
+prova('Ctrl + seta para cima: anda mais devagar (7 m/s em vez de 25)', andou(p0, p1) < normal * 0.5 && andou(p0, p1) > 0.2, `andou ${andou(p0, p1).toFixed(1)} m (sem Ctrl, ${normal.toFixed(1)} m)`);
+
+await voltarAoInicio();
+p0 = await pose();
+await comTecla(ALT, 'ArrowRight', 'ArrowRight', 39, 600);
+p1 = await pose();
+prova('Alt + seta para a direita: olha para a direita sem sair do sítio', p1.rumo < p0.rumo - 5 && andou(p0, p1) < 0.01 && Math.abs(p1.y - p0.y) < 0.01,
+    `rumo ${p0.rumo.toFixed(1)} → ${p1.rumo.toFixed(1)}, andou ${andou(p0, p1).toFixed(3)} m`);
+const enderecoDepois = await avaliar('location.pathname');
+prova('Alt + seta não faz o navegador voltar à página anterior', enderecoDepois === '/', enderecoDepois);
 p0 = await pose();
 const centro = await ponto(L / 2, A / 2);
 await enviar('Input.dispatchKeyEvent', { type: 'keyDown', key: '+', code: 'Equal', windowsVirtualKeyCode: 187, text: '+' });
