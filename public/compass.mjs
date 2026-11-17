@@ -7,11 +7,18 @@ CompassController.prototype.NORTH_OFFSET = 3.5;
 
 CompassController.prototype.initialize = function() {
     this.compassNeedle = document.getElementById('compass-needle');
-    // Ângulo mostrado, sem saltos: cresce/decresce continuamente para lá
-    // de ±180º, para que a transição CSS nunca dê a volta pelo lado errado.
+    // O ângulo que a agulha tem agora, para só se lhe mexer quando muda.
     this.shownRotation = null;
 };
 
+/**
+ * Vira a agulha com a câmara, a cada imagem.
+ *
+ * Corre depois dos comandos da câmara (vem a seguir a eles na lista dos
+ * guiões da câmara, no index.html), por isso lê a câmara já no sítio desta
+ * imagem — e a agulha vai com ela, sem transição nenhuma por cima: uma
+ * transição deixava-a sempre um pouco atrás quando se roda o bairro.
+ */
 CompassController.prototype.update = function(dt) {
     if (!this.compassNeedle) return;
 
@@ -24,14 +31,7 @@ CompassController.prototype.update = function(dt) {
     const yaw = Math.atan2(-right.z, right.x) * pc.math.RAD_TO_DEG;
 
     const target = yaw - this.NORTH_OFFSET;
-
-    if (this.shownRotation === null) {
-        this.shownRotation = target;
-    } else {
-        // Caminho mais curto entre o ângulo mostrado e o novo (-180..180).
-        const delta = ((target - this.shownRotation) % 360 + 540) % 360 - 180;
-        this.shownRotation += delta;
-    }
-
-    this.compassNeedle.style.transform = `rotate(${this.shownRotation}deg)`;
+    if (this.shownRotation !== null && Math.abs(target - this.shownRotation) < 0.01) return;
+    this.shownRotation = target;
+    this.compassNeedle.style.transform = `rotate(${target.toFixed(2)}deg)`;
 };

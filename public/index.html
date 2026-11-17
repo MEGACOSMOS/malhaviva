@@ -2264,11 +2264,14 @@
             }
         }
 
+        /* Sem transição: a agulha vira com a câmara na mesma imagem (ver
+           compass.mjs). Com uma transição, cada imagem recomeçava a
+           deslizar para o ângulo novo, e a agulha ia sempre atrás. */
         #compass-needle {
             position: relative;
             width: 100%;
             height: 100%;
-            transition: transform 0.1s ease-out;
+            will-change: transform;
         }
 
         /* Só o ícone, sem caixa, como os do cabeçalho: branco, e com o
@@ -5073,7 +5076,7 @@
         <pc-asset id="annotations-script" src="./annotations.mjs?v=122" type="script"></pc-asset>
         <pc-asset id="measure-script" src="./measure.mjs?v=1" type="script"></pc-asset>
         <pc-asset id="escala-script" src="./escala.mjs?v=2" type="script"></pc-asset>
-        <pc-asset id="compass-script" src="./compass.mjs?v=2" type="script"></pc-asset>
+        <pc-asset id="compass-script" src="./compass.mjs?v=3" type="script"></pc-asset>
 
         <!-- Scene -->
         <pc-scene>

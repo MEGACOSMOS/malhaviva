@@ -375,6 +375,31 @@ if (temBussola) {
     p1 = await pose();
     const norte = await avaliar(`window.__t.cam.script.compassController.NORTH_OFFSET`);
     prova('bússola: vira para norte', Math.abs(((p1.rumo - norte) % 360 + 540) % 360 - 180) < 1, `rumo ${p1.rumo.toFixed(1)} (norte = ${norte})`);
+
+    // A agulha vai com a câmara na mesma imagem: rodando o bairro com o
+    // Ctrl, o ângulo que se vê na agulha (o desenhado, a meio de qualquer
+    // transição) é o da câmara nesse instante.
+    await voltarAoInicio();
+    const diferencaDaAgulha = `(() => {
+        const m = getComputedStyle(document.getElementById('compass-needle')).transform;
+        const v = m.startsWith('matrix(') ? m.slice(7, -1).split(',').map(Number) : [1, 0];
+        const agulha = Math.atan2(v[1], v[0]) * 180 / Math.PI;
+        const r = window.__t.cam.right;
+        const rumo = Math.atan2(-r.z, r.x) * 180 / Math.PI;
+        const d = ((agulha - (rumo - window.__t.cam.script.compassController.NORTH_OFFSET)) % 360 + 540) % 360 - 180;
+        return Math.abs(d);
+    })()`;
+    let atraso = 0;
+    await rato('mouseMoved', L / 2, A / 2);
+    await rato('mousePressed', L / 2, A / 2, { button: 'left', buttons: 1, clickCount: 1, modifiers: 2 });
+    for (let i = 1; i <= 30; i++) {
+        await rato('mouseMoved', L / 2 + 10 * i, A / 2, { button: 'left', buttons: 1, modifiers: 2 });
+        await umaImagem();
+        atraso = Math.max(atraso, await avaliar(diferencaDaAgulha));
+    }
+    await rato('mouseReleased', L / 2 + 300, A / 2, { button: 'left', buttons: 0, clickCount: 1, modifiers: 2 });
+    await dormir(300);
+    prova('bússola: a agulha vai com a câmara, sem atraso', atraso < 0.5, `maior diferença ${atraso.toFixed(2)}º`);
 }
 
 // ── 9. Dedos
