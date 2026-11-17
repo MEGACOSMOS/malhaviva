@@ -151,7 +151,7 @@
 
     <!-- As línguas do site. Fica antes de tudo o resto para o texto
          nascer já na língua certa, sem piscar em português primeiro. -->
-    <script src="/idiomas.js?v=55"></script>
+    <script src="/idiomas.js?v=56"></script>
     <script src="/legendas.js?v=3"></script>
 
     <!-- O quadrado de espera, o mesmo em todo o site. Fica antes de o
@@ -1857,7 +1857,8 @@
            e nasce e some com o quadrado. */
         #header button.adaptavel::after,
         #header a.adaptavel::after,
-        #partilhar-btn::after {
+        #partilhar-btn::after,
+        #compass-container::after {
             content: "";
             position: absolute;
             inset: 0;
@@ -1890,12 +1891,14 @@
         @media (hover: hover) {
             #header button.adaptavel:hover,
             #header a.adaptavel:hover,
-            #partilhar-btn:hover {
+            #partilhar-btn:hover,
+            #compass-container:hover {
                 background: #05050a;
             }
             #header button.adaptavel:hover::after,
             #header a.adaptavel:hover::after,
-            #partilhar-btn:hover::after {
+            #partilhar-btn:hover::after,
+            #compass-container:hover::after {
                 opacity: 1;
             }
         }
@@ -2228,24 +2231,36 @@
            dela na mesma vertical que o centro dele. O botão tem 40 de
            largo e está à margem do cabeçalho (24, ou 16 no telemóvel); a
            bússola tem 36, e por isso afasta-se mais 2 da margem. */
+        /* A bússola é um botão, como a do Google Maps: carregar nela vira
+           o bairro para norte. Do tamanho e no alinhamento dos ícones do
+           cabeçalho, com o mesmo quadrado escuro a nascer com o rato. */
         #compass-container {
             position: fixed;
-            top: 80px;
-            right: calc(24px + (40px - 36px) / 2);
-            width: 36px;
-            height: 36px;
+            top: 78px;
+            right: 24px;
+            width: 40px;
+            height: 40px;
             z-index: 90;
             display: flex;
             align-items: center;
             justify-content: center;
+            padding: 2px;
             background: transparent;
             border: none;
-            pointer-events: none;
+            border-radius: 0;
+            color: #ffffff;
+            cursor: pointer;
+            transition: background 0.15s ease;
+        }
+
+        #compass-container:focus-visible {
+            outline: 2px solid rgba(255, 255, 255, 0.95);
+            outline-offset: 3px;
         }
 
         @media (max-width: 640px) {
             #compass-container {
-                right: calc(16px + (40px - 36px) / 2);
+                right: 16px;
             }
         }
 
@@ -4225,14 +4240,14 @@
     })();
     </script>
 
-    <div id="compass-container">
-        <svg id="compass-needle" viewBox="0 0 24 24" fill="none">
+    <button type="button" id="compass-container" aria-label="Virar o mapa para norte" title="Virar o mapa para norte" data-i18n-aria="bus.norte" data-i18n-title="bus.norte">
+        <svg id="compass-needle" viewBox="0 0 24 24" fill="none" aria-hidden="true">
             <!-- Fundo branco apenas na metade Norte -->
             <polygon points="12,2 16,12 8,12" fill="#ffffff" />
             <!-- Contorno contínuo de toda a agulha (diamante) -->
             <polygon points="12,2 16,12 12,22 8,12" fill="none" stroke="#ffffff" stroke-width="1.2" stroke-linejoin="miter" stroke-miterlimit="10" />
         </svg>
-    </div>
+    </button>
 
     <!-- As instruções de navegação, para quem chega pela primeira vez. -->
     <div id="instrucoes" role="dialog" aria-modal="false" aria-labelledby="instrucoes-cabeca" hidden>
@@ -4841,7 +4856,7 @@
 
         <!-- Assets -->
         <pc-asset id="splat-scene" src="splat/lod-meta.json" type="gsplat"></pc-asset>
-        <pc-asset id="camera-controls-script" src="./camera-controls.mjs?v=54" type="script"></pc-asset>
+        <pc-asset id="camera-controls-script" src="./camera-controls.mjs?v=55" type="script"></pc-asset>
         <pc-asset id="camera-coords-script" src="./coords.mjs?v=7" type="script"></pc-asset>
         <pc-asset id="annotations-script" src="./annotations.mjs?v=122" type="script"></pc-asset>
         <pc-asset id="measure-script" src="./measure.mjs?v=1" type="script"></pc-asset>
@@ -6698,6 +6713,24 @@ void modifySplatColor(vec3 center, inout vec4 color) {
                 }
             }
         });
+
+        // A bússola, como a do Google Maps: carregar nela vira o bairro para
+        // norte, à volta do meio do ecrã (ver `virarParaNorte` em
+        // camera-controls.mjs). A agulha sabe em que rumo o norte fica para
+        // cima (ver compass.mjs).
+        const bussola = document.getElementById('compass-container');
+        if (bussola) {
+            bussola.addEventListener('click', () => {
+                const pcApp = document.querySelector('pc-app');
+                const camara = pcApp && pcApp.app && pcApp.app.root.findByName('camera');
+                const guioes = camara && camara.script;
+                const comandos = guioes && guioes.cameraControls;
+                const agulha = guioes && guioes.compassController;
+                if (comandos && comandos.virarParaNorte) {
+                    comandos.virarParaNorte(agulha ? agulha.NORTH_OFFSET : 0);
+                }
+            });
+        }
     </script>
 
     <!-- A pesquisa das casas e o percurso até elas, no bairro em 3D (ver

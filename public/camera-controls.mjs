@@ -1,25 +1,13 @@
 import {
     math,
-    BLEND_NORMAL,
-    Color,
-    CULLFACE_NONE,
-    DualGestureSource,
-    Entity,
     FlyController,
     FocusController,
     GamepadSource,
-    InputFrame,
     KeyboardMouseSource,
-    Mesh,
-    MeshInstance,
-    MultiTouchSource,
     OrbitController,
     Picker,
     Pose,
-    PROJECTION_PERSPECTIVE,
-    Quat,
     Script,
-    StandardMaterial,
     Vec2,
     Vec3
 } from 'playcanvas';
@@ -44,30 +32,21 @@ class ComandoDeJogo extends GamepadSource {
     }
 }
 
-/**
- * @typedef {object} CameraControlsState
- * @property {Vec3} axis - The axis.
- * @property {number} shift - The shift.
- * @property {number} ctrl - The ctrl.
- * @property {number[]} mouse - The mouse.
- * @property {number} touches - The touches.
- */
-
 const tmpV1 = new Vec3();
 const tmpV2 = new Vec3();
-const tmpQ1 = new Quat();
-const tmpQ2 = new Quat();
+const tmpV3 = new Vec3();
+const tmpV4 = new Vec3();
 
 /**
  * Se a tecla Alt está a ser carregada.
  *
- * O motor conhece o Shift e o Ctrl, mas não o Alt — e é o Alt que aqui
- * faz as setas deixarem de andar e passarem a olhar. Fica portanto por
- * nossa conta, numa escuta só, posta à primeira vez que alguém precise
- * dela.
+ * O motor conhece o Shift e o Ctrl, mas não o Alt — e é o Alt (tal como o
+ * Shift) que aqui faz as setas deixarem de andar e passarem a rodar e a
+ * inclinar o bairro. Fica portanto por nossa conta, numa escuta só, posta
+ * à primeira vez que alguém precise dela.
  *
  * De caminho trava o que o navegador faria com Alt e uma seta, que é ir
- * para a página anterior ou seguinte. Sem isso, quem tentasse olhar para
+ * para a página anterior ou seguinte. Sem isso, quem tentasse rodar para
  * a esquerda saía do bairro.
  *
  * @returns {boolean} Se o Alt está em baixo.
@@ -91,18 +70,13 @@ function altCarregado() {
             altEmBaixo = e.altKey;
         });
         // Quem sai da janela com o Alt em baixo não o larga cá dentro: sem
-        // isto, as setas ficavam a olhar para sempre.
+        // isto, as setas ficavam a rodar para sempre.
         window.addEventListener('blur', () => { altEmBaixo = false; });
     }
     return altEmBaixo;
 }
 
 const pose = new Pose();
-
-const frame = new InputFrame({
-    move: [0, 0, 0],
-    rotate: [0, 0, 0]
-});
 
 /**
  * Calculate the damp rate.
@@ -131,145 +105,133 @@ const applyDeadZone = (stick, low, high) => {
 };
 
 /**
- * Converts screen space mouse deltas to world space pan vector.
+ * Um ângulo em graus, trazido para entre -180 e 180.
  *
- * @param {CameraComponent} camera - The camera component.
- * @param {number} dx - The mouse delta x value.
- * @param {number} dy - The mouse delta y value.
- * @param {number} dz - The world space zoom delta value.
- * @param {Vec3} [out] - The output vector to store the pan result.
- * @returns {Vec3} - The pan vector in world space.
- * @private
+ * @param {number} graus - O ângulo.
+ * @returns {number} O mesmo ângulo, entre -180 e 180.
  */
-const screenToWorld = (camera, dx, dy, dz, out = new Vec3()) => {
-    const { system, fov, aspectRatio, horizontalFov, projection, orthoHeight } = camera;
-    const { width, height } = system.app.graphicsDevice.clientRect;
-
-    // normalize deltas to device coord space
-    out.set(
-        -(dx / width) * 2,
-        (dy / height) * 2,
-        0
-    );
-
-    // calculate half size of the view frustum at the current distance
-    const halfSize = tmpV2.set(0, 0, 0);
-    if (projection === PROJECTION_PERSPECTIVE) {
-        const halfSlice = dz * Math.tan(0.5 * fov * math.DEG_TO_RAD);
-        if (horizontalFov) {
-            halfSize.set(
-                halfSlice,
-                halfSlice / aspectRatio,
-                0
-            );
-        } else {
-            halfSize.set(
-                halfSlice * aspectRatio,
-                halfSlice,
-                0
-            );
-        }
-    } else {
-        halfSize.set(
-            orthoHeight * aspectRatio,
-            orthoHeight,
-            0
-        );
-    }
-
-    // scale by device coord space
-    out.mul(halfSize);
-
-    return out;
+const entreMeiaVolta = (graus) => {
+    let a = graus % 360;
+    if (a > 180) a -= 360;
+    if (a <= -180) a += 360;
+    return a;
 };
 
-/**
- * @enum {string}
- */
-// eslint-disable-next-line no-unused-vars
-// Quão depressa a vista apanha o dedo no telemóvel: mais baixo, mais
-// acentuados o arranque e a travagem. Não muda o caminho todo.
-const SUAVIDADE_DO_DEDO = 12.0;
-
-// Quantas vezes o arrasto de um dedo vira a vista, em relação ao que o
-// dedo anda: com 1 o bairro fica colado ao dedo; com 2 vira o dobro.
-const VELOCIDADE_DO_DEDO = 1.6;
-
-// ─── Apontar e ir ───
-// Um clique (ou um toque) num sítio do bairro leva a câmara até lá: vira-se
-// para ele, até o ter a direito à frente, no meio do ecrã, e desliza pelo
-// chão na direcção dele — sem descer e sem se inclinar, à mesma altura e a
-// olhar tão para baixo como olhava — e fica muito mais perto. Nunca recua.
-// Com o rato, uma pirâmide branca de bico para baixo, pousada
-// sobre um quadrado deitado no chão, mostra antes do clique o sítio aonde
-// ele leva. A viagem demora mais ou menos o mesmo, perto ou longe — e por
-// isso, quanto mais longe o sítio, mais depressa se anda. Começa devagar e
-// acaba devagar.
+// ─── Navegar como no Google Maps ───
+//
+// O bairro mexe-se como o mapa do Google Maps, no computador e no
+// telemóvel.
+//
+// Com o rato: arrastar agarra o chão e puxa-o — o sítio onde se carregou
+// fica debaixo do rato até se largar, e largado com balanço o bairro ainda
+// desliza um pouco; a roda aproxima e afasta, em direcção ao que está
+// debaixo do rato; Ctrl (ou Shift) e arrastar, ou arrastar com o botão
+// direito, roda o bairro (para os lados) e inclina-o (para cima e para
+// baixo) à volta do meio do ecrã; o duplo clique aproxima e traz esse sítio
+// para o meio. Um clique sozinho não mexe no bairro: os cliques são dos
+// marcadores.
+//
+// Com os dedos: um dedo arrasta; dois dedos aproximam e afastam (a pinça),
+// rodam (a rodar um à volta do outro) e arrastam, tudo ao mesmo tempo; dois
+// dedos a subir ou a descer juntos inclinam; dois toques aproximam; dois
+// dedos a tocar ao mesmo tempo afastam; e dois toques com o segundo a ficar
+// e a arrastar aproximam (para baixo) e afastam (para cima).
+//
+// No teclado, as setas e o W A S D andam, o + e o − aproximam e afastam, e
+// com o Shift (ou o Alt) as setas rodam e inclinam.
 
 // Quanto o rato ou o dedo podem mexer, entre carregar e largar, para ainda
-// contar como clique e não como arrasto (pontos de ecrã).
+// contar como clique ou toque (pontos de ecrã), e quanto pode durar
+// (milissegundos).
 const CLIQUE_MEXIDA_RATO = 6;
 const CLIQUE_MEXIDA_DEDO = 12;
-// Quanto tempo pode durar um clique, em milissegundos. Mais do que isto é
-// alguém a segurar o bairro, não a apontar.
 const CLIQUE_DURACAO_MAXIMA = 450;
 
-// A duração da viagem, em segundos: a mais curta, e quanto se lhe soma até
-// à distância em que deixa de crescer (em metros). Assim uma viagem de dez
-// metros anda a uns dez metros por segundo e uma de duzentos a mais de cem.
-const VIAGEM_DURACAO_MINIMA = 0.9;
-const VIAGEM_DURACAO_EXTRA = 0.6;
+// Dois cliques (ou dois toques) contam como duplos com menos disto entre o
+// primeiro largar e o segundo carregar, e a menos disto um do outro.
+const DUPLO_INTERVALO = 320;
+const DUPLO_DISTANCIA = 30;
+
+// Dois dedos a tocar e a largar em menos disto, sem mexer, afastam.
+const TOQUE_DE_DOIS_DEDOS = 300;
+
+// O arrasto só começa a mexer no bairro depois de o rato ou o dedo andarem
+// isto (pontos de ecrã): assim um clique com a mão a tremer não arrasta.
+const ARRASTO_MINIMO_RATO = 3;
+const ARRASTO_MINIMO_DEDO = 6;
+
+// Até onde, pelo chão, pode ir o sítio agarrado quando o rato ou o dedo
+// vão para perto do horizonte (metros): dali para cima o bairro deixa de
+// andar, em vez de dar saltos de centenas de metros.
+const ALCANCE_DO_ARRASTO = 350;
+
+// Os sítios lidos à placa gráfica mais longe do que isto, pelo chão, são a
+// paisagem ao fundo ou o céu, e não servem para agarrar (metros).
+const LONGE_DE_MAIS = 450;
+
+// O balanço depois de largar um arrasto: quanto tempo leva a perder a
+// força (segundos, a constante de tempo), a velocidade abaixo da qual
+// pára e a mais alta com que pode sair (metros por segundo). Só há
+// balanço se o rato ou o dedo ainda andavam há menos de BALANCO_PARADO
+// milissegundos: quem pára antes de largar não quer que o bairro fuja.
+const BALANCO_TEMPO = 0.35;
+const BALANCO_MINIMO = 0.8;
+const BALANCO_MAXIMO = 260;
+const BALANCO_PARADO = 70;
+
+// A roda do rato: cada ponto de roda multiplica a distância ao sítio
+// debaixo do rato por e^(pontos × isto). Num rato, cada passo da roda são
+// cem pontos, e um passo aproxima para três quartos da distância. A pinça
+// de um teclado tátil chega com o Ctrl e aos bocadinhos.
+const ZOOM_DA_RODA = 0.0029;
+const ZOOM_DA_PINCA_TATIL = 0.012;
+// O + e o − do teclado, e o duplo clique (que também traz o sítio para o
+// meio): quanto fica da distância.
+const ZOOM_DAS_TECLAS = 0.7;
+const ZOOM_DO_DUPLO = 0.5;
+// Dois toques com o segundo a arrastar: cada ponto de ecrã para baixo
+// multiplica a distância por e^(-isto).
+const ZOOM_DE_UM_DEDO = 0.008;
+// Quão depressa o zoom da roda e das teclas chega onde foi pedido
+// (segundos, a constante de tempo).
+const ZOOM_SUAVIDADE = 0.09;
+
+// Rodar e inclinar com o rato (graus por ponto de ecrã), com dois dedos a
+// subir ou a descer (graus por ponto), e com as teclas ou o stick do
+// comando (graus por segundo, com a tecla toda carregada).
+const RODAR_COM_O_RATO = 0.35;
+const INCLINAR_COM_O_RATO = 0.3;
+const INCLINAR_COM_OS_DEDOS = 0.35;
+const RODAR_COM_AS_TECLAS = 70;
+const INCLINAR_COM_AS_TECLAS = 40;
+// Dois dedos só começam a rodar o bairro depois de rodarem isto um à volta
+// do outro (graus): uma pinça nunca é perfeitamente direita.
+const RODAR_COM_OS_DEDOS_A_PARTIR_DE = 15;
+
+// Quanto a câmara pode olhar para baixo (a pique) e quanto pode ir para o
+// horizonte, em graus. Como no Google Maps, não se olha para o céu.
+const INCLINACAO_MINIMA = -89.5;
+const INCLINACAO_MAXIMA = -10;
+
+// A altura mínima a que a câmara anda (metros, no sistema do mapa), e o
+// mais perto que o zoom chega do sítio para onde se aproxima.
+const ALTURA_MINIMA = 15;
+const PERTO_MINIMO = 4;
+
+// A viagem do duplo clique: quanto demora (segundos), e quanto mais
+// demora até à distância em que deixa de crescer (metros).
+const VIAGEM_DURACAO_MINIMA = 0.55;
+const VIAGEM_DURACAO_EXTRA = 0.35;
 const VIAGEM_DISTANCIA_LONGA = 150;
 
-// Quanto se aproxima do sítio em cada clique: do que faltava andar pelo
-// chão até ele, fica a faltar só esta fracção.
-const VIAGEM_APROXIMACAO = 0.3;
-
-// A câmara não se inclina, e por isso, ao aproximar-se, o sítio desce no
-// ecrã. Não chega tão perto que ele fique mais do que isto abaixo do meio
-// da vista, em graus: assim nunca sai pelo fundo do ecrã.
-const VIAGEM_ABAIXO_DO_MEIO = 20;
-
-// Um sítio quase a pique debaixo da câmara — a menos destes graus da
-// vertical — não está para lado nenhum: aí a câmara não se vira.
-const VIAGEM_SEM_VOLTA = 10;
-
-// A pirâmide que mostra o sítio: a altura com que se vê no ecrã, em pontos
-// (é do mesmo tamanho perto ou longe), e de quanto em quanto tempo se
-// pergunta outra vez à placa gráfica que sítio está debaixo do rato, em
-// milissegundos.
-const PIRAMIDE_PONTOS = 26;
-const PIRAMIDE_LEITURA_MS = 80;
-// A que altura, em graus, a pirâmide parece estar a ser vista, por muito
-// que a câmara olhe para baixo (ver `_atualizarPiramide`).
-const PIRAMIDE_ELEVACAO = 25;
-// As cores das faces, do verde dos testemunhos: a de cima mais clara, as
-// dos lados alternadas, para se perceber que é uma pirâmide e não um
-// triângulo.
-const PIRAMIDE_CORES = {
-    topo: [255, 255, 255],
-    clara: [225, 225, 225],
-    escura: [160, 160, 160]
-};
-// O quadrado deitado no chão por baixo da pirâmide: o lado, em relação à
-// altura da pirâmide, e a grossura do contorno, em relação ao lado.
-const QUADRADO_LADO = 1.3;
-const QUADRADO_TRACO = 0.08;
-// Para o quadrado se deitar como o chão — numa encosta, num telhado —
-// pergunta-se também pelos sítios a esta distância do rato, em pontos de
-// ecrã, para a direita e para baixo. Um chão mais inclinado do que
-// QUADRADO_INCLINACAO_MAXIMA graus é uma parede ou um engano, e aí o
-// quadrado fica deitado a direito.
-const QUADRADO_VIZINHOS = 24;
-const QUADRADO_INCLINACAO_MAXIMA = 40;
-
-// A que altura fica o chão do bairro, para quando a placa gráfica não diz
-// onde se carregou (em metros, no sistema do mapa).
+// A que altura fica o chão do bairro, para quando a placa gráfica ainda não
+// disse o que está debaixo do rato (em metros, no sistema do mapa). Cada
+// leitura acerta esta conta.
 const ALTURA_DO_CHAO = -3;
 
 // Até onde um sítio pode estar para lá da beira do terreno e ainda contar
 // como bairro (em metros). Mais longe é o céu ou a paisagem ao fundo, e aí
-// o clique não leva a lado nenhum.
+// o duplo clique só aproxima, sem lá ir.
 const FOLGA_FORA_DO_TERRENO = 25;
 
 /**
@@ -280,13 +242,6 @@ const FOLGA_FORA_DO_TERRENO = 25;
  * @returns {number} De zero a um.
  */
 const entradaESaida = t => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
-
-const MobileInputLayout = {
-    JOYSTICK_JOYSTICK: 'joystick-joystick',
-    JOYSTICK_TOUCH: 'joystick-touch',
-    TOUCH_JOYSTICK: 'touch-joystick',
-    TOUCH_TOUCH: 'touch-touch'
-};
 
 /**
  * Provides orbit, fly and pan camera controls, driven by mouse, touch and gamepad input. Movement
@@ -361,18 +316,6 @@ class CameraControls extends Script {
     _desktopInput = new KeyboardMouseSource();
 
     /**
-     * @type {MultiTouchSource}
-     * @private
-     */
-    _orbitMobileInput = new MultiTouchSource();
-
-    /**
-     * @type {DualGestureSource}
-     * @private
-     */
-    _flyMobileInput = new DualGestureSource();
-
-    /**
      * @type {GamepadSource}
      * @private
      */
@@ -417,15 +360,11 @@ class CameraControls extends Script {
     _mode;
 
     /**
-     * @type {CameraControlsState}
-     * @private
-     */
-    /**
      * O que as setas estão a pedir, somado à parte do WASD.
      *
-     * Fica à parte porque as setas têm dois trabalhos — andar, ou olhar
-     * com o Alt em baixo — e só assim se lhes pode dar um ou outro sem
-     * partir a soma.
+     * Fica à parte porque as setas têm dois trabalhos — andar, ou rodar e
+     * inclinar com o Shift ou o Alt em baixo — e só assim se lhes pode dar
+     * um ou outro sem partir a soma.
      *
      * @type {Vec3}
      * @private
@@ -433,8 +372,8 @@ class CameraControls extends Script {
     _setas = new Vec3();
 
     /**
-     * A viagem em curso, de um clique no bairro até ao sítio apontado, ou
-     * nada. Ver `_irAte`.
+     * A viagem em curso — a do duplo clique, até ao sítio apontado, ou uma
+     * das da navegação (ver `viajar`) —, ou nada.
      *
      * @type {{de: Vec3, para: Vec3, inclinacao0: number, inclinacao1: number,
      *         rumo0: number, rumo1: number, t: number, duracao: number}|null}
@@ -443,8 +382,8 @@ class CameraControls extends Script {
     _viagem = null;
 
     /**
-     * O leitor de profundidade que diz em que sítio do bairro se carregou.
-     * Nasce no primeiro clique.
+     * O leitor de profundidade que diz que sítio do bairro está debaixo do
+     * rato ou do dedo. Nasce no primeiro gesto.
      *
      * @type {Picker|null}
      * @private
@@ -452,50 +391,142 @@ class CameraControls extends Script {
     _leitorDoSitio = null;
 
     /**
-     * A pirâmide branca que mostra o sítio aonde o clique leva, e o que se
-     * sabe do rato para a pôr lá. Nasce na primeira vez que faz falta.
+     * Os gestos do rato e dos dedos em cima do bairro (ver
+     * `_escutarGestos`): os ponteiros carregados, o gesto em curso e o que
+     * ele agarrou.
      *
-     * @type {{entidade: Entity, material: StandardMaterial}|null}
      * @private
      */
-    _piramide = null;
+    _gestos = {
+        // Os ponteiros (o rato, ou cada dedo) carregados na tela, pela
+        // ordem em que pousaram.
+        ponteiros: new Map(),
+        // O gesto em curso: 'mover', 'rodar', 'dois', 'segundoToque',
+        // 'zoomDedo', ou nada. Cada gesto novo tem um número novo, para as
+        // leituras à placa gráfica que cheguem tarde saberem se ainda são
+        // dele.
+        modo: null,
+        numero: 0,
+        // O ponteiro que manda num gesto de um só.
+        principal: null,
+        // Já andou o bastante para mexer no bairro.
+        arrastou: false,
+        // O sítio agarrado (fica debaixo do rato, do dedo ou do meio dos
+        // dois dedos) e até onde pode ir, pelo chão.
+        ancora: new Vec3(),
+        alcance: ALCANCE_DO_ARRASTO,
+        // A altura do sítio à volta do qual se roda e inclina (o do meio
+        // do ecrã).
+        alturaDoPivo: ALTURA_DO_CHAO,
+        // Por onde a câmara andou nos últimos instantes do arrasto, para o
+        // balanço ao largar, e quando o ponteiro se mexeu pela última vez.
+        rasto: [],
+        ultimoMovimento: 0,
+        // Rodar e inclinar com o rato: onde estava o rato no instante
+        // anterior, e quanto já andou para cada lado (para se saber que
+        // gesto foi).
+        ultX: 0,
+        ultY: 0,
+        somaX: 0,
+        somaY: 0,
+        // Dois dedos: como estavam ao pousar e no instante anterior, o que
+        // o gesto é ('mapa' ou 'inclinar', decidido nos primeiros pontos), e
+        // quanto já rodaram um à volta do outro.
+        t0Dois: 0,
+        dist0: 0,
+        decidido: null,
+        ultMeioX: 0,
+        ultMeioY: 0,
+        ultDist: 0,
+        ultAngulo: 0,
+        giroAcumulado: 0,
+        aRodar: false,
+        // O último clique e o último toque, para se saber se o seguinte
+        // faz um duplo.
+        ultimoClique: null,
+        ultimoToque: null,
+        // Mexeu-se no bairro desde a última imagem (é pegar na câmara: ver
+        // 'mexeu').
+        pegou: false
+    };
 
     /**
+     * O zoom a deslizar (roda, teclas, toques), ou nada: o sítio para onde
+     * se aproxima, quanto falta (em logaritmo da distância) e, para a
+     * roda, onde está o rato.
+     *
+     * @type {{ancora: Vec3, falta: number, x: number|null, y: number|null, quando: number}|null}
      * @private
      */
-    _apontar = {
-        // Onde está o rato, na tela, e se está em cima dela.
-        x: 0,
-        y: 0,
-        dentro: false,
-        // Com um botão em baixo o rato está a arrastar, não a apontar.
-        aArrastar: false,
-        // Mexeu-se desde a última pergunta à placa gráfica.
-        mexeu: false,
-        aLer: false,
-        ultimaLeitura: 0,
-        // O sítio debaixo do rato, ou nada (céu, fora do bairro), e para
-        // onde aponta o chão lá — e para onde aponta o quadrado, que vai
-        // atrás dele devagar.
-        sitio: null,
-        chao: new Vec3(0, 1, 0),
-        chaoDoQuadrado: new Vec3(0, 1, 0),
-        // Onde a pirâmide está desenhada, e quanto se vê (de zero a um).
-        onde: new Vec3(),
-        opacidade: 0,
-        tempo: 0,
-        // Onde a câmara estava na última pergunta: se ela andar, o sítio
-        // debaixo do rato muda, mesmo com o rato parado.
-        camara: new Vec3(),
-        angulos: new Vec3()
-    };
+    _zoomAnimado = null;
+
+    /**
+     * A volta a deslizar até ao norte (ver `virarParaNorte`), em graus que
+     * faltam, ou nada.
+     *
+     * @type {number|null}
+     * @private
+     */
+    _giroAnimado = null;
+
+    /**
+     * O balanço depois de largar um arrasto: a velocidade, em metros por
+     * segundo, ou nada.
+     *
+     * @type {Vec3|null}
+     * @private
+     */
+    _balanco = null;
+
+    /**
+     * A velocidade a que as teclas (e o stick do comando) rodam e
+     * inclinam, a acompanhar a tecla com suavidade.
+     *
+     * @type {Vec2}
+     * @private
+     */
+    _giroDasTeclas = new Vec2();
+
+    /**
+     * A altura do chão do bairro, como a última leitura à placa gráfica a
+     * deu: é o chão que se agarra enquanto a leitura de um gesto novo não
+     * chega.
+     *
+     * @type {number}
+     * @private
+     */
+    _alturaDoChao = ALTURA_DO_CHAO;
+
+    /**
+     * A altura do sítio no meio do ecrã, à volta do qual se roda e
+     * inclina (ver `_pedirAlturaDoPivo`).
+     *
+     * @type {number|undefined}
+     * @private
+     */
+    _alturaDoPivo = undefined;
+
+    /**
+     * Se as teclas (ou o stick) já estavam a rodar na imagem anterior:
+     * ao começar, pergunta-se a altura do meio do ecrã.
+     *
+     * @type {boolean}
+     * @private
+     */
+    _aRodarDeTecla = false;
+
+    /**
+     * Quando se avisou, por nome, que cada gesto foi feito (ver
+     * `_avisarGesto`).
+     *
+     * @private
+     */
+    _gestosAvisados = {};
 
     _state = {
         axis: new Vec3(),
         shift: 0,
-        ctrl: 0,
-        mouse: [0, 0, 0],
-        touches: 0
+        ctrl: 0
     };
 
     /**
@@ -942,43 +973,6 @@ class CameraControls extends Script {
     }
 
     /**
-     * The joystick event name for the UI position for the base and stick elements.
-     * The event name is appended with the side: 'left' or 'right'.
-     *
-     * @attribute
-     * @title Joystick Base Event Name
-     * @type {string}
-     */
-    joystickEventName = 'joystick';
-
-    /**
-     * The layout of the mobile input. The layout can be one of the following:
-     *
-     * - `joystick-joystick`: Two virtual joysticks.
-     * - `joystick-touch`: One virtual joystick and one touch.
-     * - `touch-joystick`: One touch and one virtual joystick.
-     * - `touch-touch`: Two touches.
-     *
-     * Default is `joystick-touch`.
-     *
-     * @attribute
-     * @title Use Virtual Gamepad
-     * @type {MobileInputLayout}
-     * @default joystick-touch
-     */
-    set mobileInputLayout(layout) {
-        if (!/(?:joystick|touch)-(?:joystick|touch)/.test(layout)) {
-            console.warn(`CameraControls: invalid mobile input layout: ${layout}`);
-            return;
-        }
-        this._flyMobileInput.layout = layout;
-    }
-
-    get mobileInputLayout() {
-        return this._flyMobileInput.layout;
-    }
-
-    /**
      * The gamepad dead zone.
      *
      * @attribute
@@ -998,46 +992,13 @@ class CameraControls extends Script {
         // set orbit controller defaults
         this._orbitController.zoomRange = new Vec2(0.01, Infinity);
 
-        // attach input
+        // O teclado e o comando de jogo vêm pelo motor. O rato e os dedos
+        // são ouvidos à parte, para se saber sempre onde estão no ecrã (ver
+        // `_escutarGestos`); do que o motor diz deles só fica o travar do
+        // menu do botão direito e do deslizar da página com a roda.
         this._desktopInput.attach(this.app.graphicsDevice.canvas);
-        this._orbitMobileInput.attach(this.app.graphicsDevice.canvas);
-        this._flyMobileInput.attach(this.app.graphicsDevice.canvas);
         this._gamepadInput.attach(this.app.graphicsDevice.canvas);
-
-        // Apontar e ir: um clique no bairro leva a câmara até lá.
-        this._escutarCliques(this.app.graphicsDevice.canvas);
-
-        // Native wheel event for FOV Zoom - Attaching to window with capture to bypass engine suppression
-        if (typeof window !== 'undefined') {
-            window.addEventListener('wheel', (e) => {
-                if (!this._initialFov) {
-                    this._initialFov = this._camera?.fov || 60;
-                    this._targetFov = this._initialFov;
-                }
-                
-                const delta = Math.sign(e.deltaY);
-                if (delta !== 0) {
-                    // e.deltaY > 0 is scroll down (zoom out / increase FOV)
-                    // e.deltaY < 0 is scroll up (zoom in / decrease FOV)
-                    this._targetFov += delta * 5; 
-                    this._targetFov = Math.max(15, Math.min(this._initialFov, this._targetFov));
-                }
-            }, { passive: true, capture: true });
-        }
-
-        // expose ui events
-        this._flyMobileInput.on('joystick:position:left', ([bx, by, sx, sy]) => {
-            if (this._mode !== 'fly') {
-                return;
-            }
-            this.app.fire(`${this.joystickEventName}:left`, bx, by, sx, sy);
-        });
-        this._flyMobileInput.on('joystick:position:right', ([bx, by, sx, sy]) => {
-            if (this._mode !== 'fly') {
-                return;
-            }
-            this.app.fire(`${this.joystickEventName}:right`, bx, by, sx, sy);
-        });
+        this._escutarGestos(this.app.graphicsDevice.canvas);
 
         // pose
         const startPos = this._camera.entity.getPosition();
@@ -1045,15 +1006,14 @@ class CameraControls extends Script {
         this._pose.look(startPos, startTarget);
 
         // mode
-        this._setMode('orbit');
+        this._setMode('fly');
 
-        // state
+        // Desligada (com uma janela ou um menu à frente, ou nos óculos), a
+        // câmara esquece o que vinha a meio: teclas, gestos, balanços.
         this.on('state', () => {
-            // discard inputs
             this._desktopInput.read();
-            this._orbitMobileInput.read();
-            this._flyMobileInput.read();
             this._gamepadInput.read();
+            this._largarTudo();
         });
 
         // destroy
@@ -1065,137 +1025,304 @@ class CameraControls extends Script {
      */
     _destroy() {
         this._desktopInput.destroy();
-        this._orbitMobileInput.destroy();
-        this._flyMobileInput.destroy();
         this._gamepadInput.destroy();
 
         this._flyController.destroy();
         this._orbitController.destroy();
 
-        if (this._largarCliques) {
-            this._largarCliques();
+        if (this._largarGestos) {
+            this._largarGestos();
         }
     }
 
     /**
-     * Ouve o rato e os dedos em cima do bairro.
+     * Ouve o rato, os dedos, a roda e as teclas + e − em cima do bairro
+     * (ver "Navegar como no Google Maps", no princípio do ficheiro).
      *
-     * O rato a passar por cima diz onde pôr a pirâmide. Um clique leva a
-     * câmara: conta como clique o que se larga depressa e quase no mesmo
-     * sítio em que se carregou, com o botão esquerdo, sem Ctrl, Shift nem
-     * Alt, e com um dedo só do princípio ao fim — dois dedos são pinça ou
-     * deslize, nunca um clique. Os marcadores e os menus estão por cima do
-     * bairro e ficam-lhe com o rato; aqui só chega o que é do bairro, e o
-     * rato que passa para cima deles sai do bairro (e a pirâmide some).
+     * Aqui só se toma nota de onde estão os ponteiros e de que gesto
+     * começou; o bairro mexe-se a cada imagem, em `update`, com a última
+     * posição de cada ponteiro (ver `_aplicarGestos`). Os marcadores e os
+     * menus estão por cima do bairro e ficam-lhe com o rato: aqui só chega
+     * o que é do bairro.
      *
      * @param {HTMLCanvasElement} tela - A tela onde o bairro é desenhado.
      * @private
      */
-    _escutarCliques(tela) {
-        /** @type {Map<number, {x: number, y: number, t: number}>} */
-        const pousados = new Map();
-        let variosDedos = false;
-        const apontar = this._apontar;
-
-        // Só o rato aponta: um dedo não passa por cima de nada sem tocar.
-        const aoMexer = (e) => {
-            if (e.pointerType !== 'mouse') {
-                return;
-            }
+    _escutarGestos(tela) {
+        const g = this._gestos;
+        const naTela = (e) => {
             const caixa = tela.getBoundingClientRect();
-            apontar.x = e.clientX - caixa.left;
-            apontar.y = e.clientY - caixa.top;
-            apontar.dentro = true;
-            apontar.aArrastar = e.buttons !== 0;
-            apontar.mexeu = true;
+            return [e.clientX - caixa.left, e.clientY - caixa.top];
         };
+
+        // A mão aberta por cima do bairro, como no Google Maps; fechada
+        // enquanto o agarra.
+        tela.style.cursor = 'grab';
 
         const aoPousar = (e) => {
-            if (pousados.size === 0) {
-                variosDedos = false;
+            if (!this._podeMexer()) {
+                return;
             }
-            pousados.set(e.pointerId, { x: e.clientX, y: e.clientY, t: performance.now() });
-            if (pousados.size > 1) {
-                variosDedos = true;
+            const rato = e.pointerType === 'mouse';
+            // Um rato de cada vez; dedos, contam os dois primeiros.
+            if (rato ? g.ponteiros.size > 0 : g.ponteiros.size >= 2) {
+                return;
             }
-            if (e.pointerType === 'mouse') {
-                apontar.aArrastar = true;
+            // O botão do meio não abre o deslizar automático do navegador.
+            if (rato && e.button === 1) {
+                e.preventDefault();
+            }
+            const [x, y] = naTela(e);
+            const agora = performance.now();
+            const ponteiro = { id: e.pointerId, tipo: e.pointerType, x, y, x0: x, y0: y, t0: agora };
+            g.ponteiros.set(e.pointerId, ponteiro);
+            try {
+                tela.setPointerCapture(e.pointerId);
+            } catch (erro) { /* segue sem: os gestos só contam em cima da tela */ }
+
+            // Pegar no bairro pára o que estava a andar sozinho.
+            this._balanco = null;
+            this._zoomAnimado = null;
+            this._giroAnimado = null;
+
+            if (rato) {
+                const rodar = e.button === 1 || e.button === 2 ||
+                    (e.button === 0 && (e.ctrlKey || e.metaKey || e.shiftKey));
+                if (rodar) {
+                    this._comecarARodar(ponteiro);
+                } else if (e.button === 0) {
+                    this._comecarAMover(ponteiro);
+                } else {
+                    g.ponteiros.delete(e.pointerId);
+                }
+                return;
+            }
+            if (g.ponteiros.size === 2) {
+                this._comecarDoisDedos();
+                return;
+            }
+            const antes = g.ultimoToque;
+            if (antes && agora - antes.t < DUPLO_INTERVALO &&
+                    Math.hypot(x - antes.x, y - antes.y) < DUPLO_DISTANCIA) {
+                this._comecarSegundoToque(ponteiro);
+            } else {
+                this._comecarAMover(ponteiro);
             }
         };
 
-        const aoLargar = (e) => {
-            if (e.pointerType === 'mouse') {
-                aoMexer(e);
-                apontar.aArrastar = false;
-            }
-            const inicio = pousados.get(e.pointerId);
-            pousados.delete(e.pointerId);
-            if (!inicio || variosDedos) {
+        const aoMexer = (e) => {
+            const ponteiro = g.ponteiros.get(e.pointerId);
+            if (!ponteiro) {
                 return;
             }
-            if (e.pointerType === 'mouse' && e.button !== 0) {
-                return;
-            }
-            if (e.ctrlKey || e.shiftKey || e.altKey || e.metaKey) {
-                return;
-            }
-            const mexida = Math.hypot(e.clientX - inicio.x, e.clientY - inicio.y);
-            const limite = e.pointerType === 'mouse' ? CLIQUE_MEXIDA_RATO : CLIQUE_MEXIDA_DEDO;
-            if (mexida > limite || performance.now() - inicio.t > CLIQUE_DURACAO_MAXIMA) {
-                return;
-            }
-            this._cliqueNoBairro(e.clientX, e.clientY);
-        };
-
-        // O navegador tirou o dedo ao site (para rolar, para um gesto dele):
-        // o que ia a meio já não é um clique.
-        const aoDesistir = (e) => {
-            pousados.delete(e.pointerId);
-            variosDedos = true;
-            if (e.pointerType === 'mouse') {
-                apontar.aArrastar = false;
+            const [x, y] = naTela(e);
+            if (x !== ponteiro.x || y !== ponteiro.y) {
+                ponteiro.x = x;
+                ponteiro.y = y;
+                g.ultimoMovimento = performance.now();
             }
         };
 
-        const aoSair = (e) => {
-            if (e.pointerType === 'mouse') {
-                apontar.dentro = false;
+        /**
+         * Um ponteiro saiu: o rato largou-se, o dedo levantou-se — ou o
+         * navegador ficou com ele (`desistiu`), e aí não conta como clique
+         * nem como toque.
+         *
+         * @param {PointerEvent} e - O aviso.
+         * @param {boolean} desistiu - Se o navegador tirou o ponteiro.
+         */
+        const aoLargar = (e, desistiu) => {
+            const ponteiro = g.ponteiros.get(e.pointerId);
+            if (!ponteiro) {
+                return;
             }
+            if (!desistiu) {
+                const [x, y] = naTela(e);
+                ponteiro.x = x;
+                ponteiro.y = y;
+            }
+            g.ponteiros.delete(e.pointerId);
+            try {
+                if (tela.hasPointerCapture(e.pointerId)) {
+                    tela.releasePointerCapture(e.pointerId);
+                }
+            } catch (erro) { /* já não o tinha */ }
+            const agora = performance.now();
+            const mexida = Math.hypot(ponteiro.x - ponteiro.x0, ponteiro.y - ponteiro.y0);
+            const depressa = agora - ponteiro.t0 <= CLIQUE_DURACAO_MAXIMA;
+
+            if (ponteiro.tipo === 'mouse') {
+                const arrastou = g.arrastou;
+                this._acabarGesto(!desistiu);
+                const clique = !desistiu && e.button === 0 && !arrastou && depressa &&
+                    mexida <= CLIQUE_MEXIDA_RATO &&
+                    !e.ctrlKey && !e.metaKey && !e.shiftKey && !e.altKey;
+                if (!clique) {
+                    g.ultimoClique = null;
+                    return;
+                }
+                const antes = g.ultimoClique;
+                if (antes && agora - antes.t < DUPLO_INTERVALO + 130 &&
+                        Math.hypot(ponteiro.x - antes.x, ponteiro.y - antes.y) < DUPLO_DISTANCIA) {
+                    g.ultimoClique = null;
+                    this._duploNoBairro(ponteiro.x, ponteiro.y);
+                } else {
+                    g.ultimoClique = { t: agora, x: ponteiro.x, y: ponteiro.y };
+                }
+                return;
+            }
+
+            // Os dedos.
+            if (g.modo === 'dois') {
+                // Os dois a tocar e a largar sem mexer: afastar.
+                if (!desistiu && !g.decidido && agora - g.t0Dois <= TOQUE_DE_DOIS_DEDOS) {
+                    this._toqueDeDoisDedos();
+                }
+                g.ultimoToque = null;
+                const resta = g.ponteiros.values().next().value;
+                if (resta) {
+                    // Fica um dedo: continua a arrastar com ele.
+                    this._comecarAMover(resta, true);
+                } else {
+                    this._acabarGesto(false);
+                }
+                return;
+            }
+            if (g.modo === 'segundoToque') {
+                if (!desistiu && depressa && mexida <= CLIQUE_MEXIDA_DEDO) {
+                    this._duploNoBairro(ponteiro.x, ponteiro.y);
+                }
+                g.ultimoToque = null;
+                this._acabarGesto(false);
+                return;
+            }
+            if (g.modo === 'zoomDedo') {
+                g.ultimoToque = null;
+                this._acabarGesto(false);
+                return;
+            }
+            const toque = !desistiu && !g.restoDeDois && !g.arrastou && depressa &&
+                mexida <= CLIQUE_MEXIDA_DEDO;
+            this._acabarGesto(!desistiu);
+            g.ultimoToque = toque ? { t: agora, x: ponteiro.x, y: ponteiro.y } : null;
         };
+        const aoLevantar = e => aoLargar(e, false);
+        const aoPerder = e => aoLargar(e, true);
+
+        const aoRodarARoda = (e) => {
+            if (!this._podeMexer()) {
+                return;
+            }
+            e.preventDefault();
+            let pontos = e.deltaY;
+            if (e.deltaMode === 1) {
+                pontos *= 33;
+            } else if (e.deltaMode === 2) {
+                pontos *= 800;
+            }
+            if (!pontos) {
+                return;
+            }
+            // Cada passo da roda vale um passo de zoom, seja qual for o
+            // rato: o Chrome conta-o como 100 pontos num, 120 ou 150 noutro.
+            // Os bocadinhos de um teclado tátil passam como vêm.
+            if (!e.ctrlKey) {
+                pontos = Math.sign(pontos) * Math.min(Math.abs(pontos), 100);
+            }
+            const [x, y] = naTela(e);
+            this._zoomNoPonto(x, y, pontos * (e.ctrlKey ? ZOOM_DA_PINCA_TATIL : ZOOM_DA_RODA));
+        };
+
+        // O + e o − aproximam e afastam, em direcção ao meio do ecrã. Com o
+        // Ctrl são do navegador (o tamanho da página), e dentro de uma
+        // caixa de escrever são letras.
+        const editavel = alvo => !!alvo && (alvo.isContentEditable ||
+            /^(INPUT|TEXTAREA|SELECT)$/.test(alvo.tagName || ''));
+        const aoCarregarNaTecla = (e) => {
+            if (!this._podeMexer() || e.ctrlKey || e.metaKey || e.altKey || editavel(e.target) ||
+                    this._janelaAFrente()) {
+                return;
+            }
+            let fator = 0;
+            if (e.key === '+' || e.key === '=' || e.code === 'NumpadAdd') {
+                fator = ZOOM_DAS_TECLAS;
+            } else if (e.key === '-' || e.key === '_' || e.code === 'NumpadSubtract') {
+                fator = 1 / ZOOM_DAS_TECLAS;
+            }
+            if (!fator) {
+                return;
+            }
+            e.preventDefault();
+            this._zoomNoMeio(Math.log(fator));
+        };
+
+        // Quem sai da janela a meio de um gesto não o larga cá dentro.
+        const aoSairDaJanela = () => this._largarTudo();
 
         tela.addEventListener('pointerdown', aoPousar);
-        tela.addEventListener('pointerup', aoLargar);
-        tela.addEventListener('pointercancel', aoDesistir);
         tela.addEventListener('pointermove', aoMexer);
-        tela.addEventListener('pointerleave', aoSair);
+        tela.addEventListener('pointerup', aoLevantar);
+        tela.addEventListener('pointercancel', aoPerder);
+        tela.addEventListener('lostpointercapture', aoPerder);
+        tela.addEventListener('wheel', aoRodarARoda, { passive: false });
+        window.addEventListener('keydown', aoCarregarNaTecla);
+        window.addEventListener('blur', aoSairDaJanela);
 
-        this._largarCliques = () => {
+        this._largarGestos = () => {
             tela.removeEventListener('pointerdown', aoPousar);
-            tela.removeEventListener('pointerup', aoLargar);
-            tela.removeEventListener('pointercancel', aoDesistir);
             tela.removeEventListener('pointermove', aoMexer);
-            tela.removeEventListener('pointerleave', aoSair);
+            tela.removeEventListener('pointerup', aoLevantar);
+            tela.removeEventListener('pointercancel', aoPerder);
+            tela.removeEventListener('lostpointercapture', aoPerder);
+            tela.removeEventListener('wheel', aoRodarARoda);
+            window.removeEventListener('keydown', aoCarregarNaTecla);
+            window.removeEventListener('blur', aoSairDaJanela);
         };
     }
 
     /**
-     * Se, neste momento, apontar para o bairro leva a algum lado.
+     * Se neste momento o bairro se pode mexer à mão: não com os óculos
+     * postos (os de VR ou os de cartão), nem com a câmara desligada.
      *
-     * Não se vai a lado nenhum com os óculos postos, nem com a
-     * ferramenta de medir ligada no menu de desenvolvedor — aí o clique
-     * é dela.
+     * @returns {boolean} Se pode.
+     * @private
+     */
+    _podeMexer() {
+        if (!this.enabled || this.app.xr?.active) {
+            return false;
+        }
+        return !(typeof document !== 'undefined' && document.body.classList.contains('em-cartao'));
+    }
+
+    /**
+     * Se há uma janela à frente do bairro (um vídeo, uma paragem 360º):
+     * aí as teclas são dela.
+     *
+     * @returns {boolean} Se há.
+     * @private
+     */
+    _janelaAFrente() {
+        if (typeof document === 'undefined') {
+            return false;
+        }
+        return ['video-modal', 'modal-360'].some((id) => {
+            const el = document.getElementById(id);
+            return !!el && el.style.display !== 'none' && getComputedStyle(el).display !== 'none';
+        });
+    }
+
+    /**
+     * Se, neste momento, o duplo clique leva a algum lado: com a ferramenta
+     * de medir ligada no menu de desenvolvedor, os cliques são dela.
      *
      * @returns {boolean} Se leva.
      * @private
      */
     _podeApontar() {
-        if (!this.enabled || this.app.xr?.active) {
+        if (!this._podeMexer()) {
             return false;
         }
         if (typeof document !== 'undefined') {
-            if (document.body.classList.contains('em-cartao')) {
-                return false;
-            }
             const medir = document.getElementById('dev-measure-mode');
             if (medir && medir.checked) {
                 return false;
@@ -1205,59 +1332,322 @@ class CameraControls extends Script {
     }
 
     /**
-     * Carregou-se num ponto do bairro: descobre-se que sítio é, e vai-se lá.
+     * Diz a quem queira ouvir que um gesto foi feito — as instruções do
+     * site esperam por cada um para passar ao seguinte (ver
+     * "As instruções", no index.html). Os nomes são 'mover', 'aproximar',
+     * 'rodar' e 'inclinar'. O mesmo gesto, repetido seguido, só se diz de
+     * tempos a tempos.
      *
-     * @param {number} x - Onde se carregou, em pontos da janela.
-     * @param {number} y - Onde se carregou, em pontos da janela.
+     * @param {string} nome - O gesto.
      * @private
      */
-    _cliqueNoBairro(x, y) {
-        if (!this._podeApontar()) {
+    _avisarGesto(nome) {
+        const agora = performance.now();
+        const antes = this._gestosAvisados[nome];
+        if (antes !== undefined && agora - antes < 400) {
             return;
         }
-        const caixa = this.app.graphicsDevice.canvas.getBoundingClientRect();
-        this._sitioEm(x - caixa.left, y - caixa.top).then((sitio) => {
-            if (sitio) {
-                this._irAte(sitio);
+        this._gestosAvisados[nome] = agora;
+        this.fire('gesto', nome);
+        if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('gestoNoBairro', { detail: { gesto: nome } }));
+        }
+    }
+
+    /**
+     * Começa a arrastar o bairro com um ponteiro (o rato, ou um dedo).
+     *
+     * @param {object} ponteiro - O ponteiro.
+     * @param {boolean} [restoDeDois] - É o dedo que ficou de um gesto de
+     * dois: continua a arrastar logo, sem esperar que ande, e não conta
+     * como toque.
+     * @private
+     */
+    _comecarAMover(ponteiro, restoDeDois = false) {
+        const g = this._gestos;
+        const alturaAgarrada = g.ancora.y;
+        g.modo = 'mover';
+        g.numero++;
+        g.principal = ponteiro.id;
+        g.arrastou = restoDeDois;
+        g.restoDeDois = restoDeDois;
+        g.rasto.length = 0;
+        if (restoDeDois) {
+            // Agarra o chão debaixo do dedo que ficou, à altura do que os
+            // dois agarravam: sem leitura nova, sem salto.
+            this._agarrar(ponteiro.x, ponteiro.y, alturaAgarrada, false);
+        } else {
+            this._agarrar(ponteiro.x, ponteiro.y, null, true);
+        }
+        if (ponteiro.tipo === 'mouse') {
+            this.app.graphicsDevice.canvas.style.cursor = 'grabbing';
+        }
+    }
+
+    /**
+     * Começa a rodar e a inclinar o bairro com o rato (Ctrl, Shift, ou o
+     * botão direito ou do meio).
+     *
+     * @param {object} ponteiro - O rato.
+     * @private
+     */
+    _comecarARodar(ponteiro) {
+        const g = this._gestos;
+        g.modo = 'rodar';
+        g.numero++;
+        g.principal = ponteiro.id;
+        g.arrastou = false;
+        g.ultX = ponteiro.x;
+        g.ultY = ponteiro.y;
+        g.somaX = 0;
+        g.somaY = 0;
+        this._pedirAlturaDoPivo();
+        this.app.graphicsDevice.canvas.style.cursor = 'grabbing';
+    }
+
+    /**
+     * Pousou o segundo dedo: começa o gesto de dois dedos. O que ele é —
+     * pinça, rodar e arrastar ao mesmo tempo, ou inclinar — decide-se nos
+     * primeiros pontos que os dedos andarem (ver `_aplicarGestos`).
+     *
+     * @private
+     */
+    _comecarDoisDedos() {
+        const g = this._gestos;
+        const [a, b] = g.ponteiros.values();
+        g.modo = 'dois';
+        g.numero++;
+        g.principal = null;
+        g.arrastou = false;
+        g.restoDeDois = false;
+        g.t0Dois = performance.now();
+        a.x0 = a.x;
+        a.y0 = a.y;
+        b.x0 = b.x;
+        b.y0 = b.y;
+        const meioX = (a.x + b.x) / 2;
+        const meioY = (a.y + b.y) / 2;
+        g.dist0 = Math.max(1, Math.hypot(b.x - a.x, b.y - a.y));
+        g.ultDist = g.dist0;
+        g.ultAngulo = Math.atan2(b.y - a.y, b.x - a.x);
+        g.ultMeioX = meioX;
+        g.ultMeioY = meioY;
+        g.decidido = null;
+        g.giroAcumulado = 0;
+        g.aRodar = false;
+        g.ultimoToque = null;
+        this._agarrar(meioX, meioY, null, true);
+        this._pedirAlturaDoPivo();
+    }
+
+    /**
+     * O dedo pousou logo a seguir a um toque, no mesmo sítio: são dois
+     * toques. Se largar já, aproxima; se ficar e arrastar, é o zoom de um
+     * dedo só.
+     *
+     * @param {object} ponteiro - O dedo.
+     * @private
+     */
+    _comecarSegundoToque(ponteiro) {
+        const g = this._gestos;
+        g.modo = 'segundoToque';
+        g.numero++;
+        g.principal = ponteiro.id;
+        g.arrastou = false;
+        g.restoDeDois = false;
+        g.ultY = ponteiro.y;
+        this._agarrar(ponteiro.x, ponteiro.y, null, true);
+    }
+
+    /**
+     * Acaba o gesto em curso. Se era um arrasto largado com balanço, o
+     * bairro ainda desliza um pouco, e vai parando.
+     *
+     * @param {boolean} comBalanco - Se pode haver balanço.
+     * @private
+     */
+    _acabarGesto(comBalanco) {
+        const g = this._gestos;
+        if (comBalanco && g.modo === 'mover' && g.arrastou) {
+            const agora = performance.now();
+            const rasto = g.rasto.filter(r => agora - r.t <= 100);
+            if (rasto.length >= 2 && agora - g.ultimoMovimento <= BALANCO_PARADO) {
+                const a = rasto[0];
+                const b = rasto[rasto.length - 1];
+                const segundos = (b.t - a.t) / 1000;
+                if (segundos > 0.01) {
+                    const velocidade = new Vec3((b.x - a.x) / segundos, 0, (b.z - a.z) / segundos);
+                    const rapidez = velocidade.length();
+                    if (rapidez > BALANCO_MINIMO * 2) {
+                        if (rapidez > BALANCO_MAXIMO) {
+                            velocidade.mulScalar(BALANCO_MAXIMO / rapidez);
+                        }
+                        this._balanco = velocidade;
+                    }
+                }
+            }
+        }
+        g.modo = null;
+        g.numero++;
+        g.principal = null;
+        g.arrastou = false;
+        g.restoDeDois = false;
+        g.rasto.length = 0;
+        if (this.app && this.app.graphicsDevice && this.app.graphicsDevice.canvas) {
+            this.app.graphicsDevice.canvas.style.cursor = 'grab';
+        }
+    }
+
+    /**
+     * Esquece tudo o que vinha a meio: os gestos, os balanços, as teclas a
+     * rodar.
+     *
+     * @private
+     */
+    _largarTudo() {
+        const g = this._gestos;
+        g.ponteiros.clear();
+        this._acabarGesto(false);
+        g.ultimoClique = null;
+        g.ultimoToque = null;
+        this._balanco = null;
+        this._zoomAnimado = null;
+        this._giroAnimado = null;
+        this._giroDasTeclas.set(0, 0);
+        if (this._smoothMoveVelocity) {
+            this._smoothMoveVelocity.set(0, 0, 0);
+        }
+    }
+
+    /**
+     * Agarra o sítio que está num ponto do ecrã, para o gesto em curso.
+     *
+     * Na hora, o sítio é onde o raio desse ponto bate no chão, à altura
+     * dada (ou à do chão, como a última leitura o deu). Pedindo-se `ler`,
+     * pergunta-se depois à placa gráfica o que lá está de facto — um
+     * telhado, a rua, a encosta —, e quando ela responder (uma ou duas
+     * imagens depois) o sítio agarrado passa a ser, no mesmo raio que o
+     * ponteiro faz nesse instante, o que está a essa altura: o bairro não
+     * salta, e o que se agarrou fica colado ao dedo.
+     *
+     * @param {number} px - Na tela, da esquerda.
+     * @param {number} py - Na tela, de cima.
+     * @param {number|null} altura - A altura do chão a agarrar, ou nada.
+     * @param {boolean} ler - Se se pergunta à placa gráfica.
+     * @private
+     */
+    _agarrar(px, py, altura, ler) {
+        const g = this._gestos;
+        const camara = this._pose.position;
+        const h = Math.min(altura !== null && altura !== undefined ? altura : this._alturaDoChao, camara.y - 2);
+        this._noPlano(this._raio(px, py, tmpV1), h, ALCANCE_DO_ARRASTO, g.ancora);
+        g.alcance = Math.max(ALCANCE_DO_ARRASTO,
+            1.25 * Math.hypot(g.ancora.x - camara.x, g.ancora.z - camara.z));
+        if (!ler) {
+            return;
+        }
+        const numero = g.numero;
+        this._lerPonto(px, py).then((ponto) => {
+            if (!ponto || g.numero !== numero || !g.modo) {
+                return;
+            }
+            this._alturaDoChao = ponto.y;
+            const onde = this._ondeAgarra();
+            if (!onde) {
+                return;
+            }
+            const agora = this._pose.position;
+            this._noPlano(this._raio(onde[0], onde[1], tmpV1), Math.min(ponto.y, agora.y - 2),
+                ALCANCE_DO_ARRASTO, g.ancora);
+            g.alcance = Math.max(ALCANCE_DO_ARRASTO,
+                1.25 * Math.hypot(g.ancora.x - agora.x, g.ancora.z - agora.z));
+        });
+    }
+
+    /**
+     * O ponto do ecrã que segura o sítio agarrado, neste instante: o
+     * ponteiro, num gesto de um; o meio dos dois dedos, num de dois; o
+     * sítio do segundo toque, no zoom de um dedo.
+     *
+     * @returns {number[]|null} O ponto, na tela.
+     * @private
+     */
+    _ondeAgarra() {
+        const g = this._gestos;
+        if (g.modo === 'dois') {
+            const [a, b] = g.ponteiros.values();
+            return a && b ? [(a.x + b.x) / 2, (a.y + b.y) / 2] : null;
+        }
+        const p = g.ponteiros.get(g.principal);
+        if (!p) {
+            return null;
+        }
+        return (g.modo === 'segundoToque' || g.modo === 'zoomDedo') ? [p.x0, p.y0] : [p.x, p.y];
+    }
+
+    /**
+     * Pergunta à placa gráfica a altura do que está no meio do ecrã: é à
+     * volta dele que se roda e inclina. Até a resposta chegar, vale a do
+     * chão.
+     *
+     * @private
+     */
+    _pedirAlturaDoPivo() {
+        const tela = this.app.graphicsDevice.canvas;
+        if (this._alturaDoPivo === undefined) {
+            this._alturaDoPivo = this._alturaDoChao;
+        }
+        this._lerPonto((tela.clientWidth || 2) / 2, (tela.clientHeight || 2) / 2).then((ponto) => {
+            if (ponto) {
+                this._alturaDoPivo = ponto.y;
+                this._alturaDoChao = ponto.y;
             }
         });
     }
 
     /**
-     * O sítio do bairro que está num ponto do ecrã, ou nada se ali só
-     * houver céu.
-     *
-     * Pergunta-se à placa gráfica a que distância está o que ela desenhou
-     * nesse ponto — é a maneira de acertar no telhado, na rua ou na encosta
-     * que lá está de facto. A pirâmide sai de cena enquanto se pergunta,
-     * para não ser ela a resposta. Se a placa não souber, vale o chão do
-     * bairro, um plano à altura de ALTURA_DO_CHAO.
+     * O sítio do bairro que está num ponto do ecrã, lido à placa gráfica,
+     * ou nada — se ali só houver céu, a paisagem muito ao fundo, ou se a
+     * placa não o souber dizer.
      *
      * @param {number} px - Na tela, da esquerda.
      * @param {number} py - Na tela, de cima.
      * @returns {Promise<Vec3|null>} O sítio.
      * @private
      */
-    _sitioEm(px, py) {
-        const noChao = () => this._sitioValido(this._sitioNoChao(px, py));
+    _lerPonto(px, py, tentativas = 3) {
         const ler = this._prepararLeitura();
         if (!ler) {
-            return Promise.resolve(noChao());
+            return Promise.resolve(null);
         }
-        return ler(px, py)
-        .then(ponto => (ponto ? this._sitioValido(ponto) : noChao()))
-        .catch(() => noChao());
+        return ler(px, py).then((ponto) => {
+            if (!ponto || !isFinite(ponto.x) || !isFinite(ponto.y) || !isFinite(ponto.z)) {
+                // Logo a seguir a um salto da câmara o bairro ainda se está a
+                // arrumar para a vista nova, e a leitura sai vazia: tenta-se
+                // de novo um instante depois.
+                if (tentativas > 1) {
+                    return new Promise(r => setTimeout(r, 60)).then(() => this._lerPonto(px, py, tentativas - 1));
+                }
+                return null;
+            }
+            const camara = this._pose.position;
+            if (ponto.y > camara.y - 1) {
+                return null;
+            }
+            if (Math.hypot(ponto.x - camara.x, ponto.z - camara.z) > LONGE_DE_MAIS) {
+                return null;
+            }
+            return ponto;
+        }).catch(() => null);
     }
 
     /**
      * Manda a placa gráfica desenhar o bairro para o leitor de
      * profundidade, e devolve com que se lê, depois, o sítio que está em
-     * cada ponto do ecrã — tantos pontos quantos se quiser, desta mesma
-     * vez. Ou nada, se a placa não o souber fazer.
+     * cada ponto do ecrã. Ou nada, se a placa não o souber fazer.
      *
      * A um quarto da resolução chega para acertar num sítio, e poupa a
-     * placa gráfica. A pirâmide e o quadrado saem de cena enquanto se
-     * desenha, para não serem eles a resposta.
+     * placa gráfica.
      *
      * @returns {((px: number, py: number) => Promise<Vec3|null>)|null} O
      * leitor.
@@ -1268,8 +1658,6 @@ class CameraControls extends Script {
         const ESCALA = 0.25;
         const largura = Math.max(1, Math.floor(tela.clientWidth * ESCALA));
         const altura = Math.max(1, Math.floor(tela.clientHeight * ESCALA));
-        const marcas = this._piramide ?
-            [this._piramide.entidade, this._piramide.quadrado].filter(e => e.enabled) : [];
 
         try {
             if (!this._leitorDoSitio) {
@@ -1277,12 +1665,9 @@ class CameraControls extends Script {
             } else if (this._leitorDoSitio.width !== largura || this._leitorDoSitio.height !== altura) {
                 this._leitorDoSitio.resize(largura, altura);
             }
-            marcas.forEach((e) => { e.enabled = false; });
             this._leitorDoSitio.prepare(this._camera, this.app.scene);
         } catch (e) {
             return null;
-        } finally {
-            marcas.forEach((e) => { e.enabled = true; });
         }
 
         const leitor = this._leitorDoSitio;
@@ -1291,71 +1676,6 @@ class CameraControls extends Script {
             const y = math.clamp(Math.floor(py * ESCALA), 0, altura - 1);
             return leitor.getWorldPointAsync(x, y).then(ponto => (ponto ? ponto.clone() : null));
         };
-    }
-
-    /**
-     * Como `_sitioEm`, e também para que lado está virado o chão nesse
-     * sítio: pergunta-se pelos pontos um pouco à direita e um pouco abaixo,
-     * e o chão é o plano que passa pelos três. Se algum faltar, ou o chão
-     * sair mais inclinado do que QUADRADO_INCLINACAO_MAXIMA, fica a direito.
-     *
-     * @param {number} px - Na tela, da esquerda.
-     * @param {number} py - Na tela, de cima.
-     * @returns {Promise<{sitio: Vec3|null, chao: Vec3}>} O sítio, e para
-     * onde aponta o chão lá (para cima, se não se souber).
-     * @private
-     */
-    _sitioEChaoEm(px, py) {
-        const aDireito = () => new Vec3(0, 1, 0);
-        const noChao = () => ({ sitio: this._sitioValido(this._sitioNoChao(px, py)), chao: aDireito() });
-        const ler = this._prepararLeitura();
-        if (!ler) {
-            return Promise.resolve(noChao());
-        }
-        return Promise.all([
-            ler(px, py),
-            ler(px + QUADRADO_VIZINHOS, py),
-            ler(px, py + QUADRADO_VIZINHOS)
-        ]).then(([meio, direita, baixo]) => {
-            if (!meio) {
-                return noChao();
-            }
-            let chao = aDireito();
-            if (direita && baixo) {
-                const lado = new Vec3().sub2(direita, meio);
-                const fundo = new Vec3().sub2(baixo, meio);
-                const normal = new Vec3().cross(lado, fundo);
-                if (normal.y < 0) {
-                    normal.mulScalar(-1);
-                }
-                if (normal.length() > 1e-6) {
-                    normal.normalize();
-                    if (Math.acos(math.clamp(normal.y, -1, 1)) * math.RAD_TO_DEG <= QUADRADO_INCLINACAO_MAXIMA) {
-                        chao = normal;
-                    }
-                }
-            }
-            return { sitio: this._sitioValido(meio), chao };
-        }).catch(() => noChao());
-    }
-
-    /**
-     * Onde o raio que sai da câmara por um ponto do ecrã bate no chão do
-     * bairro, ou nada se o raio for para o céu.
-     *
-     * @param {number} px - Na tela, da esquerda.
-     * @param {number} py - Na tela, de cima.
-     * @returns {Vec3|null} O sítio.
-     * @private
-     */
-    _sitioNoChao(px, py) {
-        const origem = this._camera.screenToWorld(px, py, this._camera.nearClip, new Vec3());
-        const direcao = this._camera.screenToWorld(px, py, this._camera.farClip, new Vec3()).sub(origem).normalize();
-        if (direcao.y > -0.01) {
-            return null;
-        }
-        const t = (ALTURA_DO_CHAO - origem.y) / direcao.y;
-        return t > 0 ? origem.add(direcao.mulScalar(t)) : null;
     }
 
     /**
@@ -1384,75 +1704,367 @@ class CameraControls extends Script {
     }
 
     /**
-     * Põe a câmara a caminho de um sítio do bairro.
+     * O raio que sai da câmara por um ponto do ecrã, contado a partir de
+     * onde a câmara está agora (e não de onde estava na imagem anterior:
+     * dentro de uma imagem ela pode já ter andado).
      *
-     * A câmara vira-se para o sítio, pelo lado mais curto, até o ter a
-     * direito à frente — no meio do ecrã, de um lado ao outro —, e desliza
-     * pelo chão na direcção dele até só faltar VIAGEM_APROXIMACAO do
-     * caminho. Não desce e não se inclina: fica à mesma altura e a olhar
-     * tão para baixo como olhava. Nunca recua: com o sítio já perto, só se
-     * vira. E não chega tão perto que o sítio fique mais de
-     * VIAGEM_ABAIXO_DO_MEIO graus abaixo do meio da vista. Um sítio quase a
-     * pique debaixo dela (VIAGEM_SEM_VOLTA) não a faz virar.
-     *
-     * @param {Vec3} sitio - Para onde ir.
+     * @param {number} px - Na tela, da esquerda.
+     * @param {number} py - Na tela, de cima.
+     * @param {Vec3} out - Onde pôr a direcção do raio.
+     * @returns {Vec3} A direcção, de comprimento um.
      * @private
      */
-    _irAte(sitio) {
-        // Carregar num sítio também é pegar na câmara (ver 'mexeu').
+    _raio(px, py, out) {
+        const tela = this.app.graphicsDevice.canvas;
+        const largura = tela.clientWidth || 1;
+        const altura = tela.clientHeight || 1;
+        const aspecto = largura / altura;
+        const abertura = (this._camera.fov || 60) * 0.5 * math.DEG_TO_RAD;
+        const meiaAltura = this._camera.horizontalFov ? Math.tan(abertura) / aspecto : Math.tan(abertura);
+        const meiaLargura = meiaAltura * aspecto;
+        const nx = (2 * px / largura - 1) * meiaLargura;
+        const ny = (1 - 2 * py / altura) * meiaAltura;
+        const p = this._pose.angles.x * math.DEG_TO_RAD;
+        const r = this._pose.angles.y * math.DEG_TO_RAD;
+        const cp = Math.cos(p);
+        const sp = Math.sin(p);
+        const cr = Math.cos(r);
+        const sr = Math.sin(r);
+        // A frente, a direita e o cima da câmara.
+        return out.set(
+            -sr * cp + cr * nx + sr * sp * ny,
+            sp + cp * ny,
+            -cr * cp - sr * nx + cr * sp * ny
+        ).normalize();
+    }
+
+    /**
+     * Onde um raio da câmara bate num chão plano, à altura dada — mas
+     * nunca mais longe, pelo chão, do que `alcance` (perto do horizonte o
+     * raio iria bater muito longe, ou nunca).
+     *
+     * @param {Vec3} direcao - A direcção do raio.
+     * @param {number} altura - A altura do chão.
+     * @param {number} alcance - Até onde, pelo chão.
+     * @param {Vec3} out - Onde pôr o sítio.
+     * @returns {Vec3} O sítio.
+     * @private
+     */
+    _noPlano(direcao, altura, alcance, out) {
+        const c = this._pose.position;
+        let t = direcao.y < -1e-6 ? (altura - c.y) / direcao.y : Infinity;
+        if (!(t > 0)) {
+            t = Infinity;
+        }
+        const pelaHorizontal = Math.hypot(direcao.x, direcao.z);
+        if (pelaHorizontal > 1e-6) {
+            t = Math.min(t, alcance / pelaHorizontal);
+        }
+        if (!isFinite(t)) {
+            t = Math.max(0, c.y - altura);
+        }
+        return out.set(c.x + direcao.x * t, c.y + direcao.y * t, c.z + direcao.z * t);
+    }
+
+    /**
+     * O sítio no meio do ecrã, à altura dada: é à volta dele que se roda e
+     * inclina.
+     *
+     * @param {number} altura - A altura do chão lá.
+     * @param {Vec3} out - Onde pôr o sítio.
+     * @returns {Vec3} O sítio.
+     * @private
+     */
+    _pivoDoMeio(altura, out) {
+        const p = this._pose.angles.x * math.DEG_TO_RAD;
+        const r = this._pose.angles.y * math.DEG_TO_RAD;
+        const frente = tmpV4.set(-Math.sin(r) * Math.cos(p), Math.sin(p), -Math.cos(r) * Math.cos(p));
+        return this._noPlano(frente, Math.min(altura, this._pose.position.y - 2), ALCANCE_DO_ARRASTO, out);
+    }
+
+    /**
+     * Arrasta a câmara pelo chão até o sítio agarrado ficar debaixo do
+     * ponto do ecrã dado.
+     *
+     * @param {number} px - Na tela, da esquerda.
+     * @param {number} py - Na tela, de cima.
+     * @param {Vec3} ancora - O sítio agarrado.
+     * @param {number} alcance - Até onde, pelo chão, pode ir.
+     * @private
+     */
+    _arrastarAte(px, py, ancora, alcance) {
+        const onde = this._noPlano(this._raio(px, py, tmpV1), ancora.y, alcance, tmpV2);
+        this._pose.position.x += ancora.x - onde.x;
+        this._pose.position.z += ancora.z - onde.z;
+    }
+
+    /**
+     * Aproxima a câmara de um sítio (ou afasta-a dele), pela linha que os
+     * une: o sítio fica no mesmo ponto do ecrã. Não desce abaixo da altura
+     * mínima, não sobe acima do tecto, não chega mais perto do que
+     * PERTO_MINIMO e não sai pela parede do céu — aí pára.
+     *
+     * @param {Vec3} ancora - O sítio.
+     * @param {number} fator - Quanto fica da distância (menos de um
+     * aproxima, mais de um afasta).
+     * @returns {number} O fator que se aplicou de facto (um, se nada).
+     * @private
+     */
+    _aproximar(ancora, fator) {
+        if (!(fator > 0) || Math.abs(fator - 1) < 1e-6) {
+            return 1;
+        }
+        const pos = this._pose.position;
+        const dx = pos.x - ancora.x;
+        const dy = pos.y - ancora.y;
+        const dz = pos.z - ancora.z;
+        const distancia = Math.sqrt(dx * dx + dy * dy + dz * dz);
+        if (distancia < 1e-3) {
+            return 1;
+        }
+        const tecto = this._tectoAgora();
+        let minimo = PERTO_MINIMO / distancia;
+        let maximo = Infinity;
+        if (dy > 1e-3) {
+            minimo = Math.max(minimo, (ALTURA_MINIMA - ancora.y) / dy);
+            maximo = Math.min(maximo, (tecto - ancora.y) / dy);
+        } else if (dy < -1e-3) {
+            minimo = Math.max(minimo, (tecto - ancora.y) / dy);
+            maximo = Math.min(maximo, (ALTURA_MINIMA - ancora.y) / dy);
+        }
+        let f = fator;
+        if (f < 1) {
+            f = Math.max(f, Math.min(1, minimo));
+        } else {
+            f = Math.min(f, Math.max(1, maximo));
+        }
+        if (Math.abs(f - 1) < 1e-6) {
+            return 1;
+        }
+        const nx = ancora.x + dx * f;
+        const ny = ancora.y + dy * f;
+        const nz = ancora.z + dz * f;
+        if (f > 1 && !this.podeEstar(nx, ny, nz)) {
+            return 1;
+        }
+        pos.set(nx, ny, nz);
+        return f;
+    }
+
+    /**
+     * Roda a câmara à volta da vertical que passa por um sítio: a câmara
+     * anda à volta dele e vira-se o mesmo tanto, e o sítio fica no mesmo
+     * ponto do ecrã.
+     *
+     * @param {Vec3} pivo - O sítio.
+     * @param {number} graus - Quanto (mais é para a esquerda).
+     * @private
+     */
+    _rodarAVoltaDe(pivo, graus) {
+        if (!graus) {
+            return;
+        }
+        const r = graus * math.DEG_TO_RAD;
+        const c = Math.cos(r);
+        const s = Math.sin(r);
+        const pos = this._pose.position;
+        const ox = pos.x - pivo.x;
+        const oz = pos.z - pivo.z;
+        pos.x = pivo.x + ox * c + oz * s;
+        pos.z = pivo.z - ox * s + oz * c;
+        this._pose.angles.y += graus;
+    }
+
+    /**
+     * Roda e inclina o bairro à volta do sítio que está no meio do ecrã,
+     * como no Google Maps: rodar anda à volta dele; inclinar mantém a
+     * distância a ele e muda o ângulo — sem descer abaixo da altura mínima
+     * (aí não inclina mais) e sem subir acima do tecto (aí chega-se mais
+     * perto dele).
+     *
+     * @param {number} grausRumo - Quanto rodar (mais é para a esquerda).
+     * @param {number} grausInclinacao - Quanto inclinar (mais é para o
+     * horizonte, menos para a vista de cima).
+     * @private
+     */
+    _rodarEInclinar(grausRumo, grausInclinacao) {
+        if (this._alturaDoPivo === undefined) {
+            this._alturaDoPivo = this._alturaDoChao;
+        }
+        const pivo = this._pivoDoMeio(this._alturaDoPivo, tmpV3);
+        if (grausRumo) {
+            this._rodarAVoltaDe(pivo, grausRumo);
+        }
+        if (!grausInclinacao) {
+            return;
+        }
+        const pos = this._pose.position;
+        const angulos = this._pose.angles;
+        const distancia = pos.distance(pivo);
+        if (distancia < 1e-3) {
+            return;
+        }
+        const antes = entreMeiaVolta(angulos.x);
+        let depois = math.clamp(antes + grausInclinacao, INCLINACAO_MINIMA, INCLINACAO_MAXIMA);
+        if (grausInclinacao > 0) {
+            // Para o horizonte a câmara desce: pára à altura mínima.
+            const seno = math.clamp((ALTURA_MINIMA - pivo.y) / distancia, 0, 1);
+            const noChao = -Math.asin(seno) * math.RAD_TO_DEG;
+            depois = Math.max(antes, Math.min(depois, noChao));
+        }
+        let d = distancia;
+        const sobe = Math.sin(-depois * math.DEG_TO_RAD);
+        const tecto = this._tectoAgora();
+        if (sobe > 1e-3 && pivo.y + d * sobe > tecto) {
+            d = Math.max(PERTO_MINIMO, (tecto - pivo.y) / sobe);
+        }
+        angulos.x = depois;
+        const p = depois * math.DEG_TO_RAD;
+        const r = angulos.y * math.DEG_TO_RAD;
+        pos.set(
+            pivo.x + Math.sin(r) * Math.cos(p) * d,
+            pivo.y - Math.sin(p) * d,
+            pivo.z + Math.cos(r) * Math.cos(p) * d
+        );
+    }
+
+    /**
+     * Começa (ou continua) o zoom a deslizar em direcção a um ponto do
+     * ecrã — o da roda do rato. Rodadas seguidas no mesmo sítio somam-se.
+     * Um ponto acima do horizonte não é sítio nenhum: aí aproxima-se do
+     * meio do ecrã.
+     *
+     * @param {number} x - Na tela, da esquerda.
+     * @param {number} y - Na tela, de cima.
+     * @param {number} logaritmo - Quanto, em logaritmo da distância
+     * (negativo aproxima).
+     * @private
+     */
+    _zoomNoPonto(x, y, logaritmo) {
+        const direcao = this._raio(x, y, tmpV1);
+        if (direcao.y > -0.03) {
+            this._zoomNoMeio(logaritmo);
+            return;
+        }
+        const agora = performance.now();
+        const z = this._zoomAnimado;
+        this._gestos.pegou = true;
+        this._avisarGesto('aproximar');
+        if (z && z.x !== null && Math.hypot(z.x - x, z.y - y) < 6 && agora - z.quando < 600) {
+            z.falta += logaritmo;
+            z.quando = agora;
+            return;
+        }
+        const camara = this._pose.position;
+        const ancora = this._noPlano(direcao, Math.min(this._alturaDoChao, camara.y - 2), ALCANCE_DO_ARRASTO, new Vec3());
+        const novo = { ancora, falta: (z ? z.falta : 0) + logaritmo, x, y, quando: agora };
+        this._zoomAnimado = novo;
+        this._lerPonto(x, y).then((ponto) => {
+            if (!ponto || this._zoomAnimado !== novo) {
+                return;
+            }
+            this._alturaDoChao = ponto.y;
+            // O sítio passa a ser o que está mesmo debaixo do rato, no raio
+            // que ele faz agora — o mesmo de antes, que o zoom não o tira de
+            // lá.
+            this._noPlano(this._raio(x, y, tmpV1), Math.min(ponto.y, this._pose.position.y - 2),
+                ALCANCE_DO_ARRASTO, novo.ancora);
+        });
+    }
+
+    /**
+     * Começa (ou continua) o zoom a deslizar em direcção ao meio do ecrã —
+     * o das teclas + e −, e o dos dois dedos a tocar.
+     *
+     * @param {number} logaritmo - Quanto, em logaritmo da distância
+     * (negativo aproxima).
+     * @private
+     */
+    _zoomNoMeio(logaritmo) {
+        if (this._alturaDoPivo === undefined) {
+            this._alturaDoPivo = this._alturaDoChao;
+        }
+        const z = this._zoomAnimado;
+        this._gestos.pegou = true;
+        this._avisarGesto('aproximar');
+        if (z && z.x === null) {
+            z.falta += logaritmo;
+            z.quando = performance.now();
+            return;
+        }
+        const ancora = this._pivoDoMeio(this._alturaDoPivo, new Vec3());
+        this._zoomAnimado = { ancora, falta: (z ? z.falta : 0) + logaritmo, x: null, y: null, quando: performance.now() };
+        this._pedirAlturaDoPivo();
+    }
+
+    /**
+     * Dois cliques, ou dois toques, num sítio: como no Google Maps,
+     * aproxima e traz esse sítio para o meio do ecrã. Fora do bairro (o
+     * céu, a paisagem ao fundo) só aproxima.
+     *
+     * @param {number} x - Na tela, da esquerda.
+     * @param {number} y - Na tela, de cima.
+     * @private
+     */
+    _duploNoBairro(x, y) {
+        if (!this._podeApontar()) {
+            return;
+        }
+        this._avisarGesto('aproximar');
+        this._lerPonto(x, y).then((ponto) => {
+            const sitio = this._sitioValido(ponto);
+            if (sitio) {
+                this._alturaDoChao = sitio.y;
+                this._aproximarDe(sitio);
+            } else {
+                this._zoomNoPonto(x, y, Math.log(ZOOM_DO_DUPLO));
+            }
+        });
+    }
+
+    /**
+     * Dois dedos a tocar ao mesmo tempo: como no Google Maps, afasta.
+     *
+     * @private
+     */
+    _toqueDeDoisDedos() {
+        this._zoomNoMeio(-Math.log(ZOOM_DO_DUPLO));
+    }
+
+    /**
+     * Leva a câmara, a deslizar, até ter o sítio no meio do ecrã, a metade
+     * da distância — virada para o mesmo lado e tão inclinada como estava.
+     * Não desce abaixo da altura mínima nem sobe acima do tecto.
+     *
+     * @param {Vec3} sitio - O sítio.
+     * @private
+     */
+    _aproximarDe(sitio) {
         this.fire('mexeu');
         const posicao = this._pose.position;
         const angulos = this._pose.angles;
-
-        let inclinacao = angulos.x;
-        while (inclinacao > 180) inclinacao -= 360;
-        while (inclinacao < -180) inclinacao += 360;
-
-        const dx = sitio.x - posicao.x;
-        const dz = sitio.z - posicao.z;
-        const peloChao = Math.hypot(dx, dz);
-        const desnivel = Math.max(0.5, posicao.y - sitio.y);
-
-        // Para onde a câmara fica a olhar: a direito para o sítio, pelo
-        // chão — o rumo em que a frente (−sen, −cos) aponta para ele.
-        let volta = 0;
-        if (Math.atan2(peloChao, desnivel) * math.RAD_TO_DEG > VIAGEM_SEM_VOLTA) {
-            volta = Math.atan2(-dx, -dz) * math.RAD_TO_DEG - angulos.y;
-            while (volta > 180) volta -= 360;
-            while (volta < -180) volta += 360;
+        const p = entreMeiaVolta(angulos.x) * math.DEG_TO_RAD;
+        const r = angulos.y * math.DEG_TO_RAD;
+        const frente = new Vec3(-Math.sin(r) * Math.cos(p), Math.sin(p), -Math.cos(r) * Math.cos(p));
+        const desce = -frente.y;
+        let distancia = Math.max(PERTO_MINIMO, posicao.distance(sitio) * ZOOM_DO_DUPLO);
+        if (desce > 0.01) {
+            distancia = Math.max(distancia, (ALTURA_MINIMA - sitio.y) / desce);
+            const tecto = this._tectoAgora();
+            if (sitio.y + distancia * desce > tecto) {
+                distancia = Math.max(PERTO_MINIMO, (tecto - sitio.y) / desce);
+            }
         }
-        const rumo1 = angulos.y + volta;
-
-        // O que conta é quanto o sítio está à frente, nessa direcção, pelo
-        // chão.
-        const rumo = rumo1 * math.DEG_TO_RAD;
-        const frenteX = -Math.sin(rumo);
-        const frenteZ = -Math.cos(rumo);
-        const aFrente = dx * frenteX + dz * frenteZ;
-
-        // Fica a faltar só uma fracção do caminho — mas não tão perto que
-        // o sítio escorregue para o fundo do ecrã, e nunca para trás.
-        const olharMaisBaixo = Math.min(89, Math.max(0, -inclinacao) + VIAGEM_ABAIXO_DO_MEIO);
-        const pertoDeMais = desnivel / Math.tan(olharMaisBaixo * math.DEG_TO_RAD);
-        const fica = Math.max(0, Math.min(aFrente, Math.max(aFrente * VIAGEM_APROXIMACAO, pertoDeMais)));
-        const para = aFrente > 0 ?
-            new Vec3(sitio.x - frenteX * fica, posicao.y, sitio.z - frenteZ * fica) :
-            posicao.clone();
-
+        const para = new Vec3(
+            sitio.x - frente.x * distancia,
+            sitio.y - frente.y * distancia,
+            sitio.z - frente.z * distancia
+        );
         const percurso = posicao.distance(para);
-        if (percurso < 0.05 && Math.abs(volta) < 0.5) {
+        if (percurso < 0.05) {
             return;
         }
-
-        // Quanto mais longe, mais tempo — mas a crescer muito menos do que
-        // a distância: é isso que faz andar mais depressa quando se aponta
-        // para longe. E uma volta grande também leva o seu tempo, para não
-        // ser um safanão.
-        const duracao = VIAGEM_DURACAO_MINIMA + VIAGEM_DURACAO_EXTRA * Math.max(
-            Math.min(percurso / VIAGEM_DISTANCIA_LONGA, 1),
-            Math.abs(volta) / 180
-        );
-
+        const inclinacao = entreMeiaVolta(angulos.x);
         this._viagem = {
             de: posicao.clone(),
             para,
@@ -1460,225 +2072,292 @@ class CameraControls extends Script {
             inclinacao0: inclinacao,
             inclinacao1: inclinacao,
             rumo0: angulos.y,
-            rumo1,
+            rumo1: angulos.y,
             t: 0,
-            duracao
+            duracao: VIAGEM_DURACAO_MINIMA + VIAGEM_DURACAO_EXTRA * Math.min(percurso / VIAGEM_DISTANCIA_LONGA, 1)
         };
     }
 
     /**
-     * Faz a pirâmide: quatro faces de lado, que se juntam num bico em
-     * baixo, e o quadrado de cima. Tem um metro de alto e o bico no ponto
-     * (0, 0, 0) — é escalada e posta no sítio a cada imagem.
+     * Vira o bairro para o norte, a deslizar, à volta do meio do ecrã —
+     * como a bússola do Google Maps. A inclinação não muda.
      *
-     * É desenhada por cima de tudo, na última camada que o motor desenha
-     * (a das coisas de ecrã): numa camada anterior, o bairro era pintado
-     * depois dela e tapava-a.
-     *
-     * @private
+     * @param {number} [rumo] - O rumo em que o norte fica para cima no
+     * ecrã (a bússola sabe qual é: ver compass.mjs).
      */
-    _fazerPiramide() {
-        const L = 0.42;
-        const cantos = [[-L, 1, -L], [L, 1, -L], [L, 1, L], [-L, 1, L]];
-        const posicoes = [];
-        const cores = [];
-        const indices = [];
-        const juntar = (ponto, cor) => {
-            posicoes.push(ponto[0], ponto[1], ponto[2]);
-            cores.push(cor[0], cor[1], cor[2], 255);
-            return posicoes.length / 3 - 1;
-        };
-        for (let i = 0; i < 4; i++) {
-            const cor = i % 2 ? PIRAMIDE_CORES.escura : PIRAMIDE_CORES.clara;
-            const a = juntar([0, 0, 0], cor);
-            const b = juntar(cantos[i], cor);
-            const c = juntar(cantos[(i + 1) % 4], cor);
-            indices.push(a, c, b);
-        }
-        const topo = cantos.map(canto => juntar(canto, PIRAMIDE_CORES.topo));
-        indices.push(topo[0], topo[1], topo[2], topo[0], topo[2], topo[3]);
-
-        const malha = new Mesh(this.app.graphicsDevice);
-        malha.setPositions(posicoes);
-        malha.setColors32(cores);
-        malha.setIndices(indices);
-        malha.update();
-
-        const material = new StandardMaterial();
-        material.useLighting = false;
-        material.diffuse = new Color(0, 0, 0);
-        material.emissive = new Color(1, 1, 1);
-        material.emissiveVertexColor = true;
-        material.cull = CULLFACE_NONE;
-        material.depthTest = false;
-        material.depthWrite = false;
-        material.blendType = BLEND_NORMAL;
-        material.opacity = 0;
-        material.update();
-
-        const entidade = new Entity('destino-do-clique');
-        const camada = this.app.scene.layers.getLayerByName('UI') ||
-            this.app.scene.layers.getLayerByName('World');
-        entidade.addComponent('render', {
-            meshInstances: [new MeshInstance(malha, material)],
-            layers: camada ? [camada.id] : undefined,
-            castShadows: false,
-            receiveShadows: false
-        });
-        entidade.enabled = false;
-        this.app.root.addChild(entidade);
-
-        // O quadrado deitado no chão: só o contorno, branco, com um metro
-        // de lado e o meio no ponto (0, 0, 0). Aparece e some com a
-        // pirâmide, pelo mesmo material.
-        const fora = 0.5;
-        const dentro = 0.5 - QUADRADO_TRACO;
-        const cantosDeFora = [[-fora, -fora], [fora, -fora], [fora, fora], [-fora, fora]];
-        const cantosDeDentro = [[-dentro, -dentro], [dentro, -dentro], [dentro, dentro], [-dentro, dentro]];
-        const posicoesDoQuadrado = [];
-        const coresDoQuadrado = [];
-        [...cantosDeFora, ...cantosDeDentro].forEach(([x, z]) => {
-            posicoesDoQuadrado.push(x, 0, z);
-            coresDoQuadrado.push(255, 255, 255, 255);
-        });
-        const indicesDoQuadrado = [];
-        for (let i = 0; i < 4; i++) {
-            const j = (i + 1) % 4;
-            indicesDoQuadrado.push(i, j, 4 + j, i, 4 + j, 4 + i);
-        }
-        const malhaDoQuadrado = new Mesh(this.app.graphicsDevice);
-        malhaDoQuadrado.setPositions(posicoesDoQuadrado);
-        malhaDoQuadrado.setColors32(coresDoQuadrado);
-        malhaDoQuadrado.setIndices(indicesDoQuadrado);
-        malhaDoQuadrado.update();
-
-        const quadrado = new Entity('chao-do-clique');
-        quadrado.addComponent('render', {
-            meshInstances: [new MeshInstance(malhaDoQuadrado, material)],
-            layers: camada ? [camada.id] : undefined,
-            castShadows: false,
-            receiveShadows: false
-        });
-        quadrado.enabled = false;
-        this.app.root.addChild(quadrado);
-
-        this._piramide = { entidade, quadrado, material, opacidade: -1 };
-    }
-
-    /**
-     * A pirâmide e o quadrado a cada imagem: onde estão, quanto se vêem, e
-     * o balanço.
-     *
-     * Durante uma viagem ficam pousados no sítio para onde se vai. Fora
-     * disso, seguem o rato — quando ele está em cima do bairro, sem estar
-     * a arrastar — e deslizam de um sítio para o outro em vez de saltar. De
-     * PIRAMIDE_LEITURA_MS em PIRAMIDE_LEITURA_MS pergunta-se à placa
-     * gráfica o que está debaixo do rato, se o rato ou a câmara se tiverem
-     * mexido. Aparecem e somem a esbater-se. A pirâmide balança um nada no
-     * ar, a rodar devagar, para se ver que está viva; o quadrado fica
-     * deitado no chão, inclinado como ele, e com os lados alinhados com a
-     * vista.
-     *
-     * @param {number} dt - O tempo desde a imagem anterior.
-     * @private
-     */
-    _atualizarPiramide(dt) {
-        const apontar = this._apontar;
-        let alvo = null;
-
-        if (this._viagem && this._viagem.sitio) {
-            alvo = this._viagem.sitio;
-        } else if (apontar.dentro && !apontar.aArrastar && this._mode === 'fly' && this._podeApontar()) {
-            const camara = this._camera.entity;
-            const andou = camara.getPosition().distance(apontar.camara) > 0.01 ||
-                camara.getEulerAngles().distance(apontar.angulos) > 0.05;
-            const agora = performance.now();
-            if (!apontar.aLer && (apontar.mexeu || andou) && agora - apontar.ultimaLeitura > PIRAMIDE_LEITURA_MS) {
-                apontar.aLer = true;
-                apontar.mexeu = false;
-                apontar.ultimaLeitura = agora;
-                apontar.camara.copy(camara.getPosition());
-                apontar.angulos.copy(camara.getEulerAngles());
-                this._sitioEChaoEm(apontar.x, apontar.y).then(({ sitio, chao }) => {
-                    apontar.sitio = sitio;
-                    apontar.chao.copy(chao);
-                    apontar.aLer = false;
-                });
-            }
-            alvo = apontar.sitio;
-        }
-
-        if (!this._piramide) {
-            if (!alvo) {
-                return;
-            }
-            this._fazerPiramide();
-        }
-        const { entidade, quadrado, material } = this._piramide;
-
-        // Aparecer e sumir, a esbater.
-        apontar.opacidade = math.lerp(apontar.opacidade, alvo ? 1 : 0, Math.min(1, 12 * dt));
-        if (!alvo && apontar.opacidade < 0.02) {
-            apontar.opacidade = 0;
-            entidade.enabled = false;
-            quadrado.enabled = false;
+    virarParaNorte(rumo = 0) {
+        const falta = entreMeiaVolta(rumo - this._pose.angles.y);
+        if (Math.abs(falta) < 0.05) {
             return;
         }
-        if (Math.abs(this._piramide.opacidade - apontar.opacidade) > 0.01) {
-            this._piramide.opacidade = apontar.opacidade;
-            material.opacity = apontar.opacidade;
-            material.update();
+        this._viagem = null;
+        this._pedirAlturaDoPivo();
+        this._giroAnimado = falta;
+        this.fire('mexeu');
+        this._avisarGesto('rodar');
+    }
+
+    /**
+     * Quanto mais alta a câmara, mais depressa as teclas e o comando a
+     * levam pelo chão: é o mesmo bocado de ecrã por segundo, perto ou
+     * longe, como no Google Maps.
+     *
+     * @returns {number} A escala da velocidade.
+     * @private
+     */
+    _escalaDaAltura() {
+        return math.clamp((this._pose.position.y - this._alturaDoChao) / 45, 0.35, 1.6);
+    }
+
+    /**
+     * Mexe no bairro conforme os gestos que estão a ser feitos, com a
+     * última posição de cada ponteiro.
+     *
+     * @private
+     */
+    _aplicarGestos() {
+        const g = this._gestos;
+        if (!g.modo) {
+            return;
         }
 
-        // Onde: a deslizar para o sítio novo; a nascer, já lá.
-        if (alvo) {
-            if (!entidade.enabled || apontar.opacidade < 0.1) {
-                apontar.onde.copy(alvo);
-                apontar.chaoDoQuadrado.copy(apontar.chao);
-            } else {
-                apontar.onde.lerp(apontar.onde, alvo, Math.min(1, 18 * dt));
-                apontar.chaoDoQuadrado.lerp(apontar.chaoDoQuadrado, apontar.chao, Math.min(1, 10 * dt)).normalize();
+        if (g.modo === 'mover') {
+            const p = g.ponteiros.get(g.principal);
+            if (!p) {
+                return;
             }
+            if (!g.arrastou) {
+                const limiar = p.tipo === 'mouse' ? ARRASTO_MINIMO_RATO : ARRASTO_MINIMO_DEDO;
+                if (Math.hypot(p.x - p.x0, p.y - p.y0) < limiar) {
+                    return;
+                }
+                g.arrastou = true;
+            }
+            const pos = this._pose.position;
+            const antesX = pos.x;
+            const antesZ = pos.z;
+            this._arrastarAte(p.x, p.y, g.ancora, g.alcance);
+            if (Math.abs(pos.x - antesX) + Math.abs(pos.z - antesZ) > 1e-6) {
+                g.pegou = true;
+                this._avisarGesto('mover');
+            }
+            const agora = performance.now();
+            g.rasto.push({ t: agora, x: pos.x, z: pos.z });
+            while (g.rasto.length > 2 && agora - g.rasto[0].t > 150) {
+                g.rasto.shift();
+            }
+            return;
         }
-        entidade.enabled = true;
-        quadrado.enabled = true;
 
-        // Do mesmo tamanho no ecrã, perto ou longe.
-        const tela = this.app.graphicsDevice.canvas;
-        const distancia = this._camera.entity.getPosition().distance(apontar.onde);
-        const tamanho = distancia * 2 * Math.tan(this._camera.fov * 0.5 * math.DEG_TO_RAD) *
-            PIRAMIDE_PONTOS / Math.max(1, tela.clientHeight);
+        if (g.modo === 'rodar') {
+            const p = g.ponteiros.get(g.principal);
+            if (!p) {
+                return;
+            }
+            const dx = p.x - g.ultX;
+            const dy = p.y - g.ultY;
+            g.ultX = p.x;
+            g.ultY = p.y;
+            if (!g.arrastou) {
+                if (Math.hypot(p.x - p.x0, p.y - p.y0) < ARRASTO_MINIMO_RATO) {
+                    return;
+                }
+                g.arrastou = true;
+            }
+            if (!dx && !dy) {
+                return;
+            }
+            g.somaX += Math.abs(dx);
+            g.somaY += Math.abs(dy);
+            this._rodarEInclinar(-dx * RODAR_COM_O_RATO, -dy * INCLINAR_COM_O_RATO);
+            g.pegou = true;
+            if (g.somaX > 20) {
+                this._avisarGesto('rodar');
+            }
+            if (g.somaY > 20) {
+                this._avisarGesto('inclinar');
+            }
+            return;
+        }
 
-        apontar.tempo += dt;
-        const balanco = tamanho * (0.2 + 0.12 * Math.sin(apontar.tempo * 4));
-        entidade.setPosition(apontar.onde.x, apontar.onde.y + balanco, apontar.onde.z);
-        entidade.setLocalScale(tamanho, tamanho, tamanho);
+        if (g.modo === 'segundoToque' || g.modo === 'zoomDedo') {
+            const p = g.ponteiros.get(g.principal);
+            if (!p) {
+                return;
+            }
+            if (g.modo === 'segundoToque') {
+                if (Math.hypot(p.x - p.x0, p.y - p.y0) < CLIQUE_MEXIDA_DEDO) {
+                    return;
+                }
+                g.modo = 'zoomDedo';
+                g.ultY = p.y;
+                return;
+            }
+            const dy = p.y - g.ultY;
+            g.ultY = p.y;
+            if (dy) {
+                this._aproximar(g.ancora, Math.exp(-dy * ZOOM_DE_UM_DEDO));
+                g.pegou = true;
+                this._avisarGesto('aproximar');
+            }
+            return;
+        }
 
-        // A rodar devagar sobre si. Com a câmara a olhar muito para baixo,
-        // a pirâmide deita-se um pouco para longe dela: vista de cima era só
-        // o quadrado do topo, e assim vê-se sempre como se estivesse a
-        // PIRAMIDE_ELEVACAO graus de altura — com o bico no sítio na mesma.
-        const descida = -this._pose.angles.x;
-        const deitar = Math.max(0, descida - PIRAMIDE_ELEVACAO);
-        tmpQ1.setFromAxisAngle(Vec3.UP, this._pose.angles.y);
-        tmpQ2.setFromAxisAngle(Vec3.RIGHT, -deitar);
-        tmpQ1.mul(tmpQ2);
-        tmpQ2.setFromAxisAngle(Vec3.UP, apontar.tempo * 45);
-        tmpQ1.mul(tmpQ2);
-        entidade.setRotation(tmpQ1);
+        if (g.modo === 'dois') {
+            const [a, b] = g.ponteiros.values();
+            if (!a || !b) {
+                return;
+            }
+            const meioX = (a.x + b.x) / 2;
+            const meioY = (a.y + b.y) / 2;
+            const distancia = Math.max(1, Math.hypot(b.x - a.x, b.y - a.y));
+            const angulo = Math.atan2(b.y - a.y, b.x - a.x);
 
-        // O quadrado, deitado no chão debaixo do bico: primeiro virado como
-        // a vista, depois inclinado como o chão. Fica um nada acima dele,
-        // para não se misturar com a terra.
-        const chao = apontar.chaoDoQuadrado;
-        tmpQ1.setFromDirections(Vec3.UP, chao);
-        tmpQ2.setFromAxisAngle(Vec3.UP, this._pose.angles.y);
-        tmpQ1.mul(tmpQ2);
-        quadrado.setRotation(tmpQ1);
-        const folga = tamanho * 0.03;
-        quadrado.setPosition(apontar.onde.x + chao.x * folga, apontar.onde.y + chao.y * folga, apontar.onde.z + chao.z * folga);
-        const lado = tamanho * QUADRADO_LADO;
-        quadrado.setLocalScale(lado, lado, lado);
+            if (!g.decidido) {
+                const ax = a.x - a.x0;
+                const ay = a.y - a.y0;
+                const bx = b.x - b.x0;
+                const by = b.y - b.y0;
+                const ma = Math.hypot(ax, ay);
+                const mb = Math.hypot(bx, by);
+                if (Math.max(ma, mb) < 8 && Math.abs(distancia - g.dist0) < 8) {
+                    // Ainda não se sabe o que é: espera-se mais um pouco.
+                    g.ultMeioX = meioX;
+                    g.ultMeioY = meioY;
+                    g.ultDist = distancia;
+                    g.ultAngulo = angulo;
+                    return;
+                }
+                // Inclinar: os dois dedos lado a lado, a subir ou a descer
+                // juntos, sem se afastarem um do outro.
+                const aoAlto = (vx, vy) => Math.abs(vy) > 1.5 * Math.abs(vx);
+                const ladoALado = Math.abs(b.y0 - a.y0) < Math.abs(b.x0 - a.x0);
+                const juntos = ay * by > 0;
+                const pinca = Math.abs(distancia - g.dist0) / g.dist0;
+                g.decidido = (ma > 4 && mb > 4 && aoAlto(ax, ay) && aoAlto(bx, by) &&
+                    juntos && ladoALado && pinca < 0.15) ? 'inclinar' : 'mapa';
+            }
+
+            if (g.decidido === 'inclinar') {
+                const dy = meioY - g.ultMeioY;
+                if (dy) {
+                    this._rodarEInclinar(0, -dy * INCLINAR_COM_OS_DEDOS);
+                    g.pegou = true;
+                    this._avisarGesto('inclinar');
+                }
+            } else {
+                // A pinça: o sítio entre os dedos fica onde está, e o resto
+                // aproxima-se ou afasta-se dele.
+                const fator = g.ultDist / distancia;
+                if (Math.abs(fator - 1) > 1e-4) {
+                    this._aproximar(g.ancora, fator);
+                    g.pegou = true;
+                    if (Math.abs(distancia - g.dist0) > 24) {
+                        this._avisarGesto('aproximar');
+                    }
+                }
+                // Rodar: os dedos a rodar um à volta do outro rodam o
+                // bairro com eles, depois de passarem do limiar.
+                let volta = angulo - g.ultAngulo;
+                while (volta > Math.PI) volta -= 2 * Math.PI;
+                while (volta < -Math.PI) volta += 2 * Math.PI;
+                const graus = volta * math.RAD_TO_DEG;
+                if (!g.aRodar) {
+                    g.giroAcumulado += graus;
+                    if (Math.abs(g.giroAcumulado) >= RODAR_COM_OS_DEDOS_A_PARTIR_DE) {
+                        g.aRodar = true;
+                    }
+                } else if (graus) {
+                    this._rodarAVoltaDe(g.ancora, graus);
+                    g.pegou = true;
+                    this._avisarGesto('rodar');
+                }
+                // E o sítio agarrado vai com o meio dos dedos.
+                const pos = this._pose.position;
+                const antesX = pos.x;
+                const antesZ = pos.z;
+                this._arrastarAte(meioX, meioY, g.ancora, g.alcance);
+                if (Math.abs(pos.x - antesX) + Math.abs(pos.z - antesZ) > 1e-6) {
+                    g.pegou = true;
+                    if (Math.hypot(meioX - (a.x0 + b.x0) / 2, meioY - (a.y0 + b.y0) / 2) > 24) {
+                        this._avisarGesto('mover');
+                    }
+                }
+            }
+            g.ultMeioX = meioX;
+            g.ultMeioY = meioY;
+            g.ultDist = distancia;
+            g.ultAngulo = angulo;
+        }
+    }
+
+    /**
+     * O zoom a deslizar: anda a cada imagem uma parte do que falta, e
+     * acaba devagar.
+     *
+     * @param {number} dt - O tempo desta imagem, em segundos.
+     * @private
+     */
+    _aplicarZoomAnimado(dt) {
+        const z = this._zoomAnimado;
+        if (!z) {
+            return;
+        }
+        let passo = z.falta * (1 - Math.exp(-dt / ZOOM_SUAVIDADE));
+        if (Math.abs(z.falta) < 0.002) {
+            passo = z.falta;
+        }
+        const pedido = Math.exp(passo);
+        const feito = this._aproximar(z.ancora, pedido);
+        z.falta -= passo;
+        // Bateu num limite: o resto fica por fazer.
+        if (Math.abs(Math.log(feito) - passo) > 1e-6) {
+            z.falta = 0;
+        }
+        if (Math.abs(z.falta) < 1e-6) {
+            this._zoomAnimado = null;
+        }
+    }
+
+    /**
+     * A volta a deslizar até ao norte (ver `virarParaNorte`).
+     *
+     * @param {number} dt - O tempo desta imagem, em segundos.
+     * @private
+     */
+    _aplicarGiro(dt) {
+        if (this._giroAnimado === null) {
+            return;
+        }
+        let passo = this._giroAnimado * (1 - Math.exp(-dt / 0.15));
+        if (Math.abs(this._giroAnimado) < 0.05) {
+            passo = this._giroAnimado;
+        }
+        this._giroAnimado -= passo;
+        this._rodarEInclinar(passo, 0);
+        if (Math.abs(this._giroAnimado) < 1e-4) {
+            this._giroAnimado = null;
+        }
+    }
+
+    /**
+     * O balanço depois de largar um arrasto: o bairro continua a deslizar
+     * e vai parando.
+     *
+     * @param {number} dt - O tempo desta imagem, em segundos.
+     * @private
+     */
+    _aplicarBalanco(dt) {
+        const v = this._balanco;
+        if (!v) {
+            return;
+        }
+        this._pose.position.x += v.x * dt;
+        this._pose.position.z += v.z * dt;
+        v.mulScalar(Math.exp(-dt / BALANCO_TEMPO));
+        if (v.length() < BALANCO_MINIMO) {
+            this._balanco = null;
+        }
     }
 
     /**
@@ -1732,34 +2411,36 @@ class CameraControls extends Script {
     }
 
     /**
+     * Olha para um ponto, à mesma distância a que se está dele (ou à de
+     * abertura), vindo do lado de onde se olha agora.
+     *
      * @param {Vec3} focus - The focus point.
      * @param {boolean} [resetZoom] - Whether to reset the zoom.
      */
     focus(focus, resetZoom = false) {
-        this._viagem = null;
-        this._setMode('focus');
         const zoomDist = resetZoom ?
-            this._startZoomDist : this._camera.entity.getPosition().distance(focus);
+            this._startZoomDist : this._pose.position.distance(focus);
         const position = tmpV1.copy(this._camera.entity.forward)
         .mulScalar(-zoomDist)
         .add(focus);
-        this._controller.attach(pose.look(position, focus));
+        this.recenter(position, focus);
     }
 
     /**
+     * Vira-se para um ponto, sem sair do sítio (ou à distância de
+     * abertura dele).
+     *
      * @param {Vec3} focus - The focus point.
      * @param {boolean} [resetZoom] - Whether to reset the zoom.
      */
     look(focus, resetZoom = false) {
-        this._viagem = null;
-        this._setMode('focus');
         const position = resetZoom ?
-            tmpV1.copy(this._camera.entity.getPosition())
+            tmpV1.copy(this._pose.position)
             .sub(focus)
             .normalize()
             .mulScalar(this._startZoomDist)
-            .add(focus) : this._camera.entity.getPosition();
-        this._controller.attach(pose.look(position, focus));
+            .add(focus) : this._pose.position.clone();
+        this.recenter(position, focus);
     }
 
     /**
@@ -1767,9 +2448,7 @@ class CameraControls extends Script {
      * @param {Vec3} position - The start point.
      */
     reset(focus, position) {
-        this._viagem = null;
-        this._setMode('focus');
-        this._controller.attach(pose.look(position, focus));
+        this.recenter(position, focus);
     }
 
     /**
@@ -1785,6 +2464,7 @@ class CameraControls extends Script {
      */
     recenter(position, focus) {
         this._viagem = null;
+        this._largarTudo();
         this._boundsArmed = false;
         this._entryLimit = null;
         this._lastInsideValid = false;
@@ -1962,32 +2642,27 @@ class CameraControls extends Script {
         dt = Math.min(dt, 0.1);
         const { keyCode } = KeyboardMouseSource;
 
-        const { key, button, mouse, wheel } = this._desktopInput.read();
-        const { touch, pinch, count } = this._orbitMobileInput.read();
-        const { leftInput, rightInput } = this._flyMobileInput.read();
+        // O teclado e o comando de jogo vêm do motor; o rato, os dedos e a
+        // roda são ouvidos à parte (ver `_escutarGestos`), e o que o motor
+        // diz deles deita-se fora.
+        const { key } = this._desktopInput.read();
         const { leftStick, rightStick } = this._gamepadInput.read();
-
-        // apply dead zone to gamepad sticks
         applyDeadZone(leftStick, this.gamepadDeadZone.x, this.gamepadDeadZone.y);
         applyDeadZone(rightStick, this.gamepadDeadZone.x, this.gamepadDeadZone.y);
 
-        // Com o Alt em baixo, as setas deixam de andar: passam a olhar, e
-        // é isso que dá a volta à vista a quem não tem rato. O WASD anda
-        // na mesma, para se poder andar e olhar ao mesmo tempo.
-        const aOlhar = altCarregado() ? 1 : 0;
-
-        // As setas têm conta à parte, e não se lhes trava a soma.
+        // As teclas carregadas.
         //
         // O motor não diz que teclas estão em baixo: diz o que mudou desde
         // a imagem anterior — mais um ao carregar, menos um ao largar — e é
         // somando isso que se sabe o que está a ser premido. Uma soma
         // dessas tem de ficar sempre completa: travá-la a meio, só na
         // metade de carregar, deixava o largar por descontar e a câmara
-        // ficava com um empurrão fantasma para sempre. Somam-se as duas,
-        // portanto, e o Alt só decide para onde é que a das setas vai.
+        // ficava com um empurrão fantasma para sempre. Somam-se as setas à
+        // parte do WASD, e o Shift (ou o Alt) só decide para onde é que a
+        // das setas vai.
         this._state.axis.add(tmpV1.set(
             key[keyCode.D] - key[keyCode.A],
-            0, // Q and E keys disabled: (key[keyCode.E] - key[keyCode.Q]),
+            0,
             key[keyCode.W] - key[keyCode.S]
         ));
         this._setas.add(tmpV1.set(
@@ -1995,346 +2670,131 @@ class CameraControls extends Script {
             0,
             key[keyCode.UP] - key[keyCode.DOWN]
         ));
-        for (let i = 0; i < this._state.mouse.length; i++) {
-            this._state.mouse[i] += button[i];
-        }
         this._state.shift += key[keyCode.SHIFT];
         this._state.ctrl += key[keyCode.CTRL];
-        this._state.touches += count[0];
 
-        // Quem pega nos comandos fica com a câmara: uma tecla de andar, a
-        // roda, um arrasto com o rato ou com o dedo, uma pinça ou um stick
-        // do comando param a viagem onde ela vai. E diz-se a quem esteja a
-        // levar a câmara (a navegação, quando ela segue a seta de quem anda:
-        // ver navegacao-3d.mjs), para a largar.
-        const botaoEmBaixo = this._state.mouse.some(b => b > 0);
-        const pegou = this._state.axis.lengthSq() > 0 ||
-            this._setas.lengthSq() > 0 ||
-            wheel[0] !== 0 ||
-            pinch[0] !== 0 ||
-            (botaoEmBaixo && (mouse[0] !== 0 || mouse[1] !== 0)) ||
-            touch[0] !== 0 || touch[1] !== 0 ||
-            leftStick[0] !== 0 || leftStick[1] !== 0 ||
-            rightStick[0] !== 0 || rightStick[1] !== 0;
-        if (pegou) {
-            this._viagem = null;
-            this.fire('mexeu');
-        }
-
-        // FPS: Always Fly Mode
-        this._setMode('fly');
-
-        const orbit = +(this._mode === 'orbit');
-        const fly = +(this._mode === 'fly');
-        const double = +(this._state.touches > 1);
-        const desktopPan = +(this._state.shift || this._state.mouse[1]);
-        // Com o Ctrl em baixo, arrastar com o rato não roda a vista: agarra o
-        // bairro e puxa-o, e a câmara anda na horizontal com ele.
-        const ctrlArrasto = this._state.ctrl > 0 && this._state.mouse[0] > 0;
-        const mobileJoystick = +(this._flyMobileInput.layout.endsWith('joystick'));
-
-        // rate-based multipliers (keyboard, gamepad, virtual joystick)
-        const moveMult = (this._state.shift ? this.moveFastSpeed : this._state.ctrl ?
-            this.moveSlowSpeed : this.moveSpeed) * dt;
-        const rotateJoystickMult = this.rotateSpeed * this.rotateJoystickSens * 60 * dt;
-
-        // delta-based multipliers (mouse, touch, wheel)
-        const rotateDeltaMult = this.rotateSpeed;
-        const zoomDeltaMult = this.zoomSpeed;
-        const zoomTouchDeltaMult = this.zoomSpeed * this.zoomPinchSens;
-
-        const { deltas } = frame;
-
-        // O que anda é o WASD mais, se o Alt não estiver em baixo, as setas.
-        const keyMove = this._state.axis.clone();
-        if (!aOlhar) {
-            keyMove.add(this._setas);
-        }
-        keyMove.normalize();
-        
-        const panMove = screenToWorld(this._camera, mouse[0], mouse[1], this._pose.distance);
-        const v = tmpV1.set(0, 0, 0); // Reuse v for rotate below
-        v.add(panMove.mulScalar(orbit * desktopPan * +this.enablePan));
-        
         if (this._initialY === undefined) {
             this._initialY = this._camera.entity.getPosition().y;
         }
 
-        // FPS FOV Zoom (Mobile Pinch) and WASD Slide
-        if (!this._initialFov) {
-            this._initialFov = this._camera.fov || 60;
-            this._targetFov = this._initialFov;
-        }
-
-        // Gesture Mutual Exclusion
-        let activePinch = pinch[0];
-        let activeTouchX = touch[0];
-        let activeTouchY = touch[1];
-
-        if (double === 1) {
-            const slideMag = Math.sqrt(touch[0] * touch[0] + touch[1] * touch[1]);
-            const pinchMag = Math.abs(pinch[0]);
-            
-            if (!this._twoFingerGesture) {
-                this._accumulatedSlide = (this._accumulatedSlide || 0) + slideMag;
-                this._accumulatedPinch = (this._accumulatedPinch || 0) + pinchMag;
-                
-                // Independent higher thresholds to ignore micro-displacements (wiggles)
-                // Anchor zoom produces 2x pinch compared to slide.
-                if (this._accumulatedPinch > 25 && this._accumulatedPinch > this._accumulatedSlide) {
-                    this._twoFingerGesture = 'pinch';
-                } else if (this._accumulatedSlide > 20) {
-                    this._twoFingerGesture = 'slide';
-                }
-            }
-            
-            if (this._twoFingerGesture === 'slide') {
-                activePinch = 0;
-            } else if (this._twoFingerGesture === 'pinch') {
-                activeTouchX = 0;
-                activeTouchY = 0;
-            } else {
-                // Not enough movement yet to decide, suppress both to avoid jitter
-                activePinch = 0;
-                activeTouchX = 0;
-                activeTouchY = 0;
-            }
-        } else {
-            this._twoFingerGesture = null;
-            this._accumulatedSlide = 0;
-            this._accumulatedPinch = 0;
-        }
-
-        // Apply continuous zoom as camera movement instead of FOV
-        if (!this._zoomOffset) this._zoomOffset = 0;
-        
-        if (wheel && wheel[0] !== 0) {
-            // Sensibilidade muito mais reduzida: de 15.0 para 3.0
-            this._zoomOffset += Math.sign(wheel[0]) * -3.0;
-        }
-        if (double === 1 && activePinch !== 0) {
-            this._zoomOffset += activePinch * -0.1;
-        }
-
-        // Suaviza os deltas de toque para um pan (arrasto) suave, com metade da duração anterior.
-        // Acontece sempre para que o abrandamento (ease out) continue mesmo depois de largar.
-        if (!this._smoothTouchPan) this._smoothTouchPan = new Vec2(0, 0);
-        const targetPanX = (double === 1) ? activeTouchX : 0;
-        const targetPanY = (double === 1) ? activeTouchY : 0;
-        this._smoothTouchPan.x = math.lerp(this._smoothTouchPan.x, targetPanX, 5.0 * dt);
-        this._smoothTouchPan.y = math.lerp(this._smoothTouchPan.y, targetPanY, 5.0 * dt);
-
-        // Dois dedos a deslizar andam com a câmara, pelo mesmo sítio que
-        // as teclas: para o lado para onde os dedos vão, e para a frente
-        // quando sobem.
-        if (Math.abs(this._smoothTouchPan.x) > 0.001 || Math.abs(this._smoothTouchPan.y) > 0.001) {
-            keyMove.x += this._smoothTouchPan.x * 0.10;
-            keyMove.z += this._smoothTouchPan.y * 0.10; // Inverted Z
-        }
-
-        // O stick esquerdo entra pelo mesmo sítio que as teclas, e não pelo
-        // do motor.
-        //
-        // Mais abaixo, no bloco do movimento à moda dos jogos, a posição
-        // que o motor calculou é deitada fora e refeita à mão a partir
-        // deste keyMove. Enquanto o stick só falasse ao motor, o que ele
-        // dissesse morria ali: a vista rodava com o stick direito, mas a
-        // câmara nunca saía do sítio com o esquerdo.
-        //
-        // O comprimento é limitado a um porque o stick vem multiplicado
-        // pela conta da zona morta e chega a passar dos dois — sem isto,
-        // andava-se com o comando ao dobro da velocidade das teclas.
-        if (leftStick[0] !== 0 || leftStick[1] !== 0) {
-            keyMove.x += leftStick[0];
-            keyMove.z -= leftStick[1];
-            const passo = Math.sqrt(keyMove.x * keyMove.x + keyMove.z * keyMove.z);
-            if (passo > 1) {
-                keyMove.x /= passo;
-                keyMove.z /= passo;
-            }
-        }
-
-        // Fix FOV to initial
-        this._camera.fov = this._initialFov || 60;
-
-        // Dynamic LOD based on FOV (Zooming in increases LOD quality)
-        if (this._initialFov && this._camera) {
-            const fovRatio = this._initialFov / this._camera.fov; 
-            
-            if (!this._splatGsplat) {
-                const splatEl = document.querySelector('pc-entity[name="gsplat-scene"]');
-                if (splatEl && splatEl.entity && splatEl.entity.gsplat) {
-                    this._splatGsplat = splatEl.entity.gsplat;
-                }
-            }
-            
-            if (this._splatGsplat) {
-                const isLow = typeof window !== 'undefined' && window.actualQuality === 'low';
-                const isMed = typeof window !== 'undefined' && window.actualQuality === 'med';
-                
-                // Estes valores mandam mesmo (reescrevem a cada imagem os que
-                // ficam definidos no arranque da pagina) e tem de acompanhar
-                // os do index.html.
-                let baseDist = 150;
-                if (isLow) baseDist = 70;
-                else if (isMed) baseDist = 110;
-                // Quando o index.html ja a decidiu (e no modo Automatico a
-                // vai mexendo conforme a fluidez), manda a dele.
-                if (typeof window !== 'undefined' && window.distanciaDoDetalhe > 0) {
-                    baseDist = window.distanciaDoDetalhe;
-                }
-                
-                this._splatGsplat.lodBaseDistance = baseDist * fovRatio;
-            }
-        }
-
-        // desktop rotate (Drag to Look)
-        v.set(0, 0, 0);
-        
-        // Target rotation based on mouse input (reduced multiplier to 0.4 for better tracking and slower speed)
-        const targetRotate = tmpV2.set(-mouse[0] * 0.4, -mouse[1] * 0.4, 0).mulScalar(ctrlArrasto ? 0 : rotateDeltaMult);
-        
-        v.add(targetRotate);
-        deltas.rotate.append([v.x, v.y, v.z]);
-
-
-        // Um dedo no ecrã arrasta o bairro, para o lado para onde vai. Cada
-        // ponto do ecrã que o dedo anda vale os graus que esse ponto ocupa
-        // na abertura da câmara, vezes VELOCIDADE_DO_DEDO; por isso ao
-        // aproximar o dedo abranda com ela. O filtro dá o arranque e a
-        // travagem suaves, sem mudar o caminho todo.
-        // Suavizamos o input (low-pass filter) para garantir
-        // uma animação de ease in e ease out agradável.
-        if (!this._smoothTouchRotate) this._smoothTouchRotate = new Vec2(0, 0);
-        const telaDoDedo = this.app.graphicsDevice.canvas;
-        const medidaDaTela = (this._camera.horizontalFov ? telaDoDedo.clientWidth : telaDoDedo.clientHeight) || 1;
-        const grausPorPonto = (this._camera.fov || 60) / medidaDaTela;
-        const targetRotX = -(1 - double) * touch[0] * VELOCIDADE_DO_DEDO;
-        const targetRotY = -(1 - double) * touch[1] * VELOCIDADE_DO_DEDO;
-        const ritmo = Math.min(1, SUAVIDADE_DO_DEDO * dt);
-        this._smoothTouchRotate.x = math.lerp(this._smoothTouchRotate.x, targetRotX, ritmo);
-        this._smoothTouchRotate.y = math.lerp(this._smoothTouchRotate.y, targetRotY, ritmo);
-
-        v.set(0, 0, 0);
-        const touchRotate = tmpV2.set(this._smoothTouchRotate.x, this._smoothTouchRotate.y, 0);
-        v.add(touchRotate.mulScalar(grausPorPonto));
-        deltas.rotate.append([v.x, v.y, v.z]);
-
-        // A vista segue o dedo com o mesmo amortecimento do rato,
-        // garantindo um movimento mais uniforme e com uma animação 
-        // de ease in e out natural e suave.
-
-        // gamepad move
-        v.set(0, 0, 0);
-        const stickMove = tmpV2.set(leftStick[0], 0, -leftStick[1]);
-        v.add(stickMove.mulScalar(fly * moveMult));
-        deltas.move.append([v.x, v.y, v.z]);
-
-        // gamepad rotate
-        v.set(0, 0, 0);
-        const stickRotate = tmpV2.set(rightStick[0], rightStick[1], 0);
-        v.add(stickRotate.mulScalar(fly * rotateJoystickMult));
-        deltas.rotate.append([v.x, v.y, v.z]);
-
-        // As setas a olhar, com o Alt em baixo. Entram pelo mesmo sítio que
-        // o stick direito do comando, e à mesma velocidade: é a mesma
-        // volta, dada por outra mão.
-        if (aOlhar) {
-            v.set(0, 0, 0);
-            const setaOlhar = tmpV2.set(this._setas.x, -this._setas.z, 0);
-            v.add(setaOlhar.mulScalar(fly * rotateJoystickMult));
-            deltas.rotate.append([v.x, v.y, v.z]);
-        }
-
-        // check if XR is active for frame discard
+        // Nos óculos de VR é o corpo de quem os tem postos que manda.
         if (this.app.xr?.active) {
-            frame.read();
             return;
         }
 
-        // check focus end
-        if (this._mode === 'focus') {
-            const focusInterrupt = deltas.move.length() + deltas.rotate.length() > 0;
-            const focusComplete = this._focusController.complete();
-            if (focusInterrupt || focusComplete) {
-                this._setMode('orbit');
-            }
+        // Com o Shift ou o Alt em baixo, as setas rodam e inclinam em vez
+        // de andar. O WASD anda na mesma, para se poder andar e rodar ao
+        // mesmo tempo.
+        const setasARodar = altCarregado() || this._state.shift > 0;
+
+        // Quem pega nos comandos fica com a câmara: um gesto, uma tecla de
+        // andar ou de rodar, um stick do comando param a viagem onde ela
+        // vai. E diz-se a quem esteja a levar a câmara (a navegação, quando
+        // ela segue a seta de quem anda: ver navegacao-3d.mjs), para a
+        // largar.
+        const g = this._gestos;
+        const teclas = this._state.axis.lengthSq() > 0 || this._setas.lengthSq() > 0;
+        const sticks = leftStick[0] !== 0 || leftStick[1] !== 0 ||
+            rightStick[0] !== 0 || rightStick[1] !== 0;
+
+        // 1. Os gestos do rato e dos dedos.
+        this._aplicarGestos();
+        // 2. O zoom e a volta a deslizar, e o balanço de um arrasto largado.
+        this._aplicarZoomAnimado(dt);
+        this._aplicarGiro(dt);
+        if (!g.modo) {
+            this._aplicarBalanco(dt);
         }
 
-        if (!this._lastValidPos) {
-            this._lastValidPos = this._camera.entity.getPosition().clone();
-            this._lastValidAngles = this._camera.entity.getEulerAngles().clone();
+        if (g.pegou || teclas || sticks) {
+            g.pegou = false;
+            this._viagem = null;
+            this.fire('mexeu');
         }
 
-        const oldPosX = this._lastValidPos.x;
-        const oldPosY = this._lastValidPos.y;
-        const oldPosZ = this._lastValidPos.z;
-        const oldPitch = this._lastValidAngles.x;
-        const oldYaw = this._lastValidAngles.y;
-        const oldRoll = this._lastValidAngles.z;
-
-        // Save the manual position we maintained from the last frame
-        const currentPos = this._pose.position.clone();
-        
-        // update controller by consuming frame
-        this._pose.copy(this._controller.update(frame, dt));
-        
-        // --- FPS WASD MANUAL XZ MOVEMENT ---
-        if (this._mode === 'fly') {
-            // Restore our manual position (ignoring the controller's unaware position entirely!)
-            this._pose.position.copy(currentPos);
-            
-            if (!this._smoothMoveVelocity) {
-                this._smoothMoveVelocity = new Vec3(0, 0, 0);
+        // 3. Andar com as teclas e com o stick esquerdo, pelo chão, para o
+        //    lado para onde a vista está virada. Quanto mais alta a câmara,
+        //    mais depressa (ver `_escalaDaAltura`).
+        const andar = tmpV3.copy(this._state.axis);
+        if (!setasARodar) {
+            andar.add(this._setas);
+        }
+        if (andar.lengthSq() > 1) {
+            andar.normalize();
+        }
+        // O stick vem multiplicado pela conta da zona morta e chega a
+        // passar dos dois — limitado a um, anda à velocidade das teclas.
+        if (leftStick[0] !== 0 || leftStick[1] !== 0) {
+            andar.x += leftStick[0];
+            andar.z -= leftStick[1];
+            const passo = Math.hypot(andar.x, andar.z);
+            if (passo > 1) {
+                andar.x /= passo;
+                andar.z /= passo;
             }
-
-            const yaw = this._pose.angles.y * math.DEG_TO_RAD;
-            const flatForwardX = -Math.sin(yaw);
-            const flatForwardZ = -Math.cos(yaw);
-            const flatRightX = Math.cos(yaw);
-            const flatRightZ = -Math.sin(yaw);
-            
-            // Target movement based on input
-            let moveX = flatForwardX * keyMove.z + flatRightX * keyMove.x;
-            let moveZ = flatForwardZ * keyMove.z + flatRightZ * keyMove.x;
-            
-            const targetVec = tmpV1.set(moveX, 0, moveZ);
-            if (targetVec.length() > 0.0001) {
-                targetVec.mulScalar(fly * moveMult);
-            } else {
-                targetVec.set(0, 0, 0);
-            }
-            
-            // Apply ease in and out (inertia)
-            this._smoothMoveVelocity.lerp(this._smoothMoveVelocity, targetVec, 5.0 * dt);
-
-            if (this._smoothMoveVelocity.length() > 0.00001) {
-                this._pose.position.add(this._smoothMoveVelocity);
-            }
-
-            // Ctrl + arrastar: o bairro segue o rato. Cada ponto de ecrã que
-            // o rato anda vale, em metros, o que um ponto de ecrã vale no
-            // chão à altura a que a câmara está — assim o que está debaixo
-            // do cursor fica debaixo do cursor, seja de perto ou de longe.
-            if (ctrlArrasto && (mouse[0] !== 0 || mouse[1] !== 0)) {
-                const altura = Math.max(3, this._pose.position.y);
-                const tela = this.app.graphicsDevice.canvas;
-                const alturaDaTela = (tela && tela.clientHeight) || 1;
-                const metrosPorPonto = 2 * altura * Math.tan(this._camera.fov * 0.5 * math.DEG_TO_RAD) / alturaDaTela;
-                const lado = -mouse[0] * metrosPorPonto;
-                const frente = mouse[1] * metrosPorPonto;
-                this._pose.position.x += flatRightX * lado + flatForwardX * frente;
-                this._pose.position.z += flatRightZ * lado + flatForwardZ * frente;
-            }
-            // NO ATTACH HERE!
+        }
+        if (!this._smoothMoveVelocity) {
+            this._smoothMoveVelocity = new Vec3();
+        }
+        const rumo = this._pose.angles.y * math.DEG_TO_RAD;
+        const frenteX = -Math.sin(rumo);
+        const frenteZ = -Math.cos(rumo);
+        const direitaX = Math.cos(rumo);
+        const direitaZ = -Math.sin(rumo);
+        const rapidez = this.moveSpeed * this._escalaDaAltura();
+        const alvo = tmpV4.set(
+            (frenteX * andar.z + direitaX * andar.x) * rapidez,
+            0,
+            (frenteZ * andar.z + direitaZ * andar.x) * rapidez
+        );
+        // Arranca e trava com suavidade.
+        this._smoothMoveVelocity.lerp(this._smoothMoveVelocity, alvo, Math.min(1, 5 * dt));
+        if (this._smoothMoveVelocity.lengthSq() > 1e-8) {
+            this._pose.position.x += this._smoothMoveVelocity.x * dt;
+            this._pose.position.z += this._smoothMoveVelocity.z * dt;
+        } else {
+            this._smoothMoveVelocity.set(0, 0, 0);
+        }
+        if (andar.lengthSq() > 0) {
+            this._avisarGesto('mover');
         }
 
-        // --- Apontar e ir: a viagem até ao sítio do clique ---
-        // A cada imagem a câmara é posta no ponto da viagem que o relógio
-        // manda, pela curva que começa e acaba devagar; e o comando de voo
-        // fica a saber onde ela está, para, ao chegar, continuar dali sem
-        // dar um salto para trás.
-        if (this._viagem && this._mode === 'fly') {
+        // 4. Rodar e inclinar com o Shift (ou o Alt) e as setas, ou com o
+        //    stick direito, à volta do meio do ecrã: para a direita roda
+        //    para a direita, para cima inclina para o horizonte.
+        let rodar = -rightStick[0];
+        let inclinar = -rightStick[1];
+        if (setasARodar) {
+            rodar -= this._setas.x;
+            inclinar += this._setas.z;
+        }
+        rodar = math.clamp(rodar, -1, 1);
+        inclinar = math.clamp(inclinar, -1, 1);
+        if ((rodar || inclinar) && !this._aRodarDeTecla) {
+            this._aRodarDeTecla = true;
+            this._pedirAlturaDoPivo();
+        } else if (!rodar && !inclinar) {
+            this._aRodarDeTecla = false;
+        }
+        const ritmo = Math.min(1, 8 * dt);
+        this._giroDasTeclas.x = math.lerp(this._giroDasTeclas.x, rodar * RODAR_COM_AS_TECLAS, ritmo);
+        this._giroDasTeclas.y = math.lerp(this._giroDasTeclas.y, inclinar * INCLINAR_COM_AS_TECLAS, ritmo);
+        if (Math.abs(this._giroDasTeclas.x) > 0.01 || Math.abs(this._giroDasTeclas.y) > 0.01) {
+            this._rodarEInclinar(this._giroDasTeclas.x * dt, this._giroDasTeclas.y * dt);
+        } else {
+            this._giroDasTeclas.set(0, 0);
+        }
+        if (rodar) {
+            this._avisarGesto('rodar');
+        }
+        if (inclinar) {
+            this._avisarGesto('inclinar');
+        }
+
+        // 5. A viagem: a do duplo clique, ou uma da navegação. A cada
+        //    imagem a câmara é posta no ponto da viagem que o relógio
+        //    manda, pela curva que começa e acaba devagar.
+        if (this._viagem) {
             const viagem = this._viagem;
             viagem.t = Math.min(1, viagem.t + dt / viagem.duracao);
             const k = viagem.aVelocidadeCerta ? viagem.t : entradaESaida(viagem.t);
@@ -2344,7 +2804,6 @@ class CameraControls extends Script {
                 math.lerp(viagem.rumo0, viagem.rumo1, k),
                 0
             );
-            this._controller.attach(this._pose, false);
             if (this._smoothMoveVelocity) {
                 this._smoothMoveVelocity.set(0, 0, 0);
             }
@@ -2353,104 +2812,21 @@ class CameraControls extends Script {
             }
         }
 
-        // --- HARD CLAMP PITCH TO PREVENT FLIPPING ---
-        let currentPitch = this._pose.angles.x;
-        while (currentPitch > 180) currentPitch -= 360;
-        while (currentPitch < -180) currentPitch += 360;
-
-        if (currentPitch < -89.5 || currentPitch > 89.5) {
-            const targetPitch = Math.max(-89.5, Math.min(89.5, currentPitch));
-            this._pose.angles.x = targetPitch;
-            
-            if (this._mode === 'orbit') {
-                const focus = this._pose.getFocus(tmpV2).clone();
-                const dist = this._pose.position.distance(focus);
-                
-                // Recalculate position based on the clamped pitch
-                const ex = targetPitch * math.DEG_TO_RAD;
-                const ey = this._pose.angles.y * math.DEG_TO_RAD;
-                
-                const cx = Math.cos(ex);
-                const sx = Math.sin(ex);
-                const cy = Math.cos(ey);
-                const sy = Math.sin(ey);
-                
-                this._pose.position.set(
-                    focus.x + (cx * sy) * dist,
-                    focus.y + (-sx) * dist,
-                    focus.z + (cx * cy) * dist
-                );
-                
-                // Re-sync controller so it doesn't bounce back
-                this._controller.attach(this._pose, false);
-            }
-        }
-        
-        const rawPosX = this._pose.position.x;
-        const rawPosY = this._pose.position.y;
-        const rawPosZ = this._pose.position.z;
-        const rawPitch = this._pose.angles.x;
-        const rawYaw = this._pose.angles.y;
-        const rawRoll = this._pose.angles.z;
-        
-        // Aplica o movimento do zoom (aproximar/afastar) antes dos limites de chão e teto
-        if (this._zoomOffset && Math.abs(this._zoomOffset) > 0.001) {
-            let moveThisFrame = math.lerp(0, this._zoomOffset, 12.0 * dt);
-            
-            const pitch = this._pose.angles.x * math.DEG_TO_RAD;
-            const yaw = this._pose.angles.y * math.DEG_TO_RAD;
-            // Vetor em direção ao centro do ecrã (forward)
-            const trueForwardX = -Math.sin(yaw) * Math.cos(pitch);
-            const trueForwardY = Math.sin(pitch);
-            const trueForwardZ = -Math.cos(yaw) * Math.cos(pitch);
-            
-            const nextY = this._pose.position.y + trueForwardY * moveThisFrame;
-            const MIN_ALTITUDE = 15.0;
-            const MAX_ALTITUDE = this._tectoAgora();
-            
-            // Impede deslizar pelo chão ou teto quando forçamos o zoom contra eles
-            if (nextY < MIN_ALTITUDE || nextY > MAX_ALTITUDE) {
-                if (Math.abs(trueForwardY) > 0.0001) {
-                    const limite = nextY < MIN_ALTITUDE ? MIN_ALTITUDE : MAX_ALTITUDE;
-                    moveThisFrame = (limite - this._pose.position.y) / trueForwardY;
-                } else {
-                    moveThisFrame = 0;
-                }
-                this._zoomOffset = 0; // Trava o momento instantaneamente
-            } else {
-                this._zoomOffset -= moveThisFrame;
-            }
-            
-            this._pose.position.x += trueForwardX * moveThisFrame;
-            this._pose.position.y += trueForwardY * moveThisFrame;
-            this._pose.position.z += trueForwardZ * moveThisFrame;
-            
-            // Atualizar o controlador para não ressaltar
-            if (this._mode === 'orbit') {
-                const focus = this._pose.getFocus(tmpV2).clone();
-                this._pose.look(this._pose.position, focus);
-                this._controller.attach(this._pose, false);
-            }
-        }
+        // 6. Os limites.
+        //
+        // A inclinação: entre a vista a pique e um pouco acima do
+        // horizonte nunca — como no Google Maps, não se olha para o céu.
+        this._pose.angles.x = math.clamp(entreMeiaVolta(this._pose.angles.x), INCLINACAO_MINIMA, INCLINACAO_MAXIMA);
+        this._pose.angles.z = 0;
 
         // Chão e tecto: os da cúpula do céu, e só com a travagem ligada.
         const baixo = this._alturaMinima();
         const alto = this._alturaMaxima();
         if (this._pose.position.y < baixo) {
             this._pose.position.y = baixo;
-            if (this._mode === 'orbit') {
-                const focus = this._pose.getFocus(tmpV2).clone();
-                this._pose.look(this._pose.position, focus);
-                this._controller.attach(this._pose, false);
-            }
         }
         if (this._pose.position.y > alto) {
             this._pose.position.y = alto;
-            if (this._mode === 'orbit') {
-                const focus = this._pose.getFocus(tmpV2).clone();
-                this._pose.look(this._pose.position, focus);
-                this._controller.attach(this._pose, false);
-            }
         }
 
         let isAtBoundary = false;
@@ -2471,11 +2847,8 @@ class CameraControls extends Script {
                 const encolher = parede / distancia;
                 pos.x = cupula.centroX + dx * encolher;
                 pos.z = cupula.centroZ + dz * encolher;
-                if (this._mode === 'orbit') {
-                    const focus = this._pose.getFocus(tmpV2).clone();
-                    this._pose.look(pos, focus);
-                    this._controller.attach(this._pose, false);
-                }
+                // O balanço morre contra a parede.
+                this._balanco = null;
             } else if (distancia > parede - EDGE_EPS) {
                 isAtBoundary = true;
             }
@@ -2513,14 +2886,9 @@ class CameraControls extends Script {
                 }
 
                 isAtBoundary = true;
+                this._balanco = null;
                 this._lastInsideX = pos.x;
                 this._lastInsideZ = pos.z;
-
-                if (this._mode === 'orbit') {
-                    const focus = this._pose.getFocus(tmpV2).clone();
-                    this._pose.look(this._pose.position, focus);
-                    this._controller.attach(this._pose, false);
-                }
             }
         } else if (this.travagem && this.maxDistance > 0 &&
                 this._pose.position.length() >= this.maxDistance - EDGE_EPS) {
@@ -2528,11 +2896,6 @@ class CameraControls extends Script {
             isAtBoundary = true;
             if (this._pose.position.length() > this.maxDistance) {
                 this._pose.position.normalize().mulScalar(this.maxDistance);
-                if (this._mode === 'orbit') {
-                    const focus = this._pose.getFocus(tmpV2).clone();
-                    this._pose.look(this._pose.position, focus);
-                    this._controller.attach(this._pose, false);
-                }
             }
         }
 
@@ -2545,26 +2908,45 @@ class CameraControls extends Script {
             }
         }
 
-        // --- GLOBAL ALTITUDE LIMITS ---
-        // Impede que a câmara fure o chão (trespassar o gaussian) 
-        // e repõe o teto de altitude original da câmara (ou o tecto alto da
-        // navegação, enquanto ele durar: ver `subirOTecto`).
-        const MIN_ALTITUDE = 15.0;
-        if (this._pose.position.y < MIN_ALTITUDE) {
-            this._pose.position.y = MIN_ALTITUDE;
+        // A altura: nunca abaixo da mínima (furava o bairro), e nunca acima
+        // do tecto — o da vista de abertura, ou o tecto alto da navegação,
+        // enquanto ele durar (ver `subirOTecto`).
+        if (this._pose.position.y < ALTURA_MINIMA) {
+            this._pose.position.y = ALTURA_MINIMA;
         }
         const tecto = this._tectoAgora();
         if (this._pose.position.y > tecto) {
             this._pose.position.y = tecto;
         }
 
+        // 7. O detalhe do bairro.
+        //
+        // A abertura da câmara fica sempre a de origem; e a distância do
+        // detalhe fino é reescrita a cada imagem, a partir da que o
+        // index.html decidiu (e que no modo Automático o afinador de
+        // fluidez vai mexendo).
+        if (!this._initialFov) {
+            this._initialFov = this._camera.fov || 60;
+        }
+        this._camera.fov = this._initialFov;
+        if (!this._splatGsplat && typeof document !== 'undefined') {
+            const splatEl = document.querySelector('pc-entity[name="gsplat-scene"]');
+            if (splatEl && splatEl.entity && splatEl.entity.gsplat) {
+                this._splatGsplat = splatEl.entity.gsplat;
+            }
+        }
+        if (this._splatGsplat) {
+            const nivel = typeof window !== 'undefined' ? window.actualQuality : null;
+            // Estes valores têm de acompanhar os do index.html.
+            let distanciaDoDetalhe = nivel === 'low' ? 70 : nivel === 'med' ? 110 : 150;
+            if (typeof window !== 'undefined' && window.distanciaDoDetalhe > 0) {
+                distanciaDoDetalhe = window.distanciaDoDetalhe;
+            }
+            this._splatGsplat.lodBaseDistance = distanciaDoDetalhe;
+        }
+
         this._camera.entity.setPosition(this._pose.position);
         this._camera.entity.setEulerAngles(this._pose.angles);
-        
-        this._lastValidPos.copy(this._pose.position);
-        this._lastValidAngles.copy(this._pose.angles);
-
-        this._atualizarPiramide(dt);
     }
 }
 
