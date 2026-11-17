@@ -2440,6 +2440,10 @@ AnnotationController.prototype.mostrarParagem360 = function(ann, sentido) {
     this.tapar360EnquantoChega(ann);
 
     clearTimeout(this.esperaDaJanela360);
+    // O Retroceder é uma página leve, sem cena 3D para montar, e começa a
+    // andar mal abre: a janela dele nasce logo, sem o meio segundo de
+    // espera das outras.
+    const esperaDaJanela = ann.timelapse ? 0 : 500;
     this.esperaDaJanela360 = setTimeout(() => {
         if (this.paragem360 !== ann || palco.modal.style.display === 'none') return;
         const janela = document.createElement('iframe');
@@ -2473,7 +2477,7 @@ AnnotationController.prototype.mostrarParagem360 = function(ann, sentido) {
         });
         // Por cima do rodapé de reserva, por baixo da imagem parada.
         palco.moldura.insertBefore(janela, palco.moldura.querySelector('.previa-do-meio:not(.a-sair)'));
-    }, 500);
+    }, esperaDaJanela);
 
     const lista = this.paragens360();
     const onde = lista.indexOf(ann);
