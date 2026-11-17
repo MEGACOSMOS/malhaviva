@@ -151,7 +151,7 @@
 
     <!-- As línguas do site. Fica antes de tudo o resto para o texto
          nascer já na língua certa, sem piscar em português primeiro. -->
-    <script src="/idiomas.js?v=56"></script>
+    <script src="/idiomas.js?v=57"></script>
     <script src="/legendas.js?v=3"></script>
 
     <!-- O quadrado de espera, o mesmo em todo o site. Fica antes de o
@@ -2232,19 +2232,19 @@
            largo e está à margem do cabeçalho (24, ou 16 no telemóvel); a
            bússola tem 36, e por isso afasta-se mais 2 da margem. */
         /* A bússola é um botão, como a do Google Maps: carregar nela vira
-           o bairro para norte. Do tamanho e no alinhamento dos ícones do
-           cabeçalho, com o mesmo quadrado escuro a nascer com o rato. */
+           o bairro para norte. No sítio e do tamanho de sempre, com o mesmo
+           quadrado escuro dos ícones do cabeçalho a nascer com o rato. */
         #compass-container {
             position: fixed;
-            top: 78px;
-            right: 24px;
-            width: 40px;
-            height: 40px;
+            top: 80px;
+            right: calc(24px + (40px - 36px) / 2);
+            width: 36px;
+            height: 36px;
             z-index: 90;
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 2px;
+            padding: 0;
             background: transparent;
             border: none;
             border-radius: 0;
@@ -2260,7 +2260,7 @@
 
         @media (max-width: 640px) {
             #compass-container {
-                right: 16px;
+                right: calc(16px + (40px - 36px) / 2);
             }
         }
 
@@ -2482,22 +2482,20 @@
             }
         }
 
-        /* ─── Instruções de navegação ───
-           Um cartão ao meio do ecrã, na primeira visita, vestido como os
-           menus: um passo de cada vez, cada um com um desenho animado,
-           um título e uma frase. Passa-se de um para o outro com as setas
-           de cada lado dos quadradinhos dos passos, em baixo, dentro do
-           cartão, como no ecrã dos vídeos; no último, a seta da direita dá
-           lugar a uma cruz. A cruz do canto fecha a qualquer altura. O
-           bairro continua a mexer-se à volta dele. */
+        /* ─── As instruções ───
+           Na primeira visita (e quando se pedem, em Controlos), por cima
+           do próprio bairro. Primeiro os gestos: cada um é desenhado no
+           meio do ecrã, a convidar a fazê-lo no bairro que está por baixo,
+           e o passo avança sozinho quando se faz (ou com a seta). Depois um
+           foco sobre as peças do site — os marcadores, o céu, a pesquisa,
+           os controlos —, com o resto do ecrã a escurecer e um fio branco a
+           ligá-las ao cartão do texto, como o das miniaturas. O texto vai
+           num cartão pequeno, vestido como os menus. Nada disto tapa o
+           bairro ao rato e aos dedos: só o cartão se carrega. */
         #instrucoes {
             position: fixed;
             inset: 0;
             z-index: 400;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 16px;
             pointer-events: none;
             opacity: 0;
             transition: opacity 0.35s ease;
@@ -2508,84 +2506,313 @@
         #instrucoes.aberta {
             opacity: 1;
         }
+        /* Com um vídeo ou uma paragem aberta por cima, as instruções
+           esperam escondidas, e voltam quando ela fechar. */
+        #instrucoes.aberta.de-lado {
+            opacity: 0;
+            visibility: hidden;
+        }
         body.em-cartao #instrucoes {
             display: none !important;
         }
 
-        .instrucoes-moldura {
-            position: relative;
-            pointer-events: auto;
-            transform: translateY(8px) scale(0.98);
-            transition: transform 0.35s ease;
+        /* O véu dos passos com foco: escurece tudo menos as peças de que se
+           fala, que ficam num quadrado branco a pulsar. */
+        #instrucoes .ins-veu {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            transition: opacity 0.4s ease;
         }
-        #instrucoes.aberta .instrucoes-moldura {
-            transform: none;
+        #instrucoes.com-foco .ins-veu {
+            opacity: 1;
+        }
+        #instrucoes .ins-sombra {
+            fill: rgba(5, 5, 10, 0.62);
+        }
+        #instrucoes .ins-moldura {
+            fill: none;
+            stroke: #ffffff;
+            stroke-width: 2.5;
+        }
+        #instrucoes .ins-onda {
+            fill: none;
+            stroke: #ffffff;
+            stroke-width: 2;
+            transform-box: fill-box;
+            transform-origin: center;
+            animation: ins-onda 1.8s ease-out infinite;
+        }
+        @keyframes ins-onda {
+            0% { opacity: 0.9; transform: scale(1); }
+            75%, 100% { opacity: 0; transform: scale(1.3); }
+        }
+        #instrucoes .ins-poste {
+            stroke: #ffffff;
+            stroke-width: 2;
         }
 
-        .instrucoes-cartao {
-            position: relative;
-            width: min(360px, calc(100vw - 32px));
-            padding: 16px 20px 10px;
+        /* ── Os gestos ──
+           Desenhados com as linhas brancas do site, no meio do bairro, com
+           uma sombra escura à volta para se lerem sobre os telhados claros.
+           Só se desenha o rato a quem tem rato, e o dedo a quem tem dedo. */
+        #instrucoes .ins-gesto {
+            position: absolute;
+            left: 50%;
+            top: 44%;
+            width: min(380px, 84vw);
+            transform: translate(-50%, -50%);
+            filter: drop-shadow(0 0 2px rgba(5, 5, 10, 0.95)) drop-shadow(0 0 12px rgba(5, 5, 10, 0.55));
+            opacity: 0;
+            transition: opacity 0.35s ease;
+        }
+        #instrucoes .ins-gesto.ativo {
+            opacity: 1;
+        }
+        #instrucoes .ins-gesto.feito {
+            opacity: 0;
+            transition-duration: 0.7s;
+        }
+        #instrucoes .ins-gesto svg {
+            display: block;
+            width: 100%;
+            height: auto;
+            overflow: visible;
+        }
+        #instrucoes .so-toque { display: none; }
+        #instrucoes.por-toque .so-rato { display: none; }
+        #instrucoes.por-toque .so-toque { display: inline; }
+
+        #instrucoes .ins-traco {
+            fill: none;
+            stroke: #ffffff;
+            stroke-width: 3;
+            stroke-linecap: square;
+            stroke-linejoin: miter;
+        }
+        #instrucoes .ins-dedo {
+            fill: rgba(255, 255, 255, 0.9);
+            stroke: rgba(5, 5, 10, 0.6);
+            stroke-width: 1.5;
+        }
+        /* O quadrado que se abre onde se carrega. */
+        #instrucoes .ins-anel {
+            fill: none;
+            stroke: #ffffff;
+            stroke-width: 2.5;
+            transform-box: fill-box;
+            transform-origin: center;
+            opacity: 0;
+        }
+
+        /* Mover: carrega-se, arrasta-se, larga-se — e fica o rasto. */
+        #instrucoes .ins-mover-mao {
+            transform: translate(96px, 118px);
+            animation: ins-mover-mao 2.8s ease-in-out infinite;
+        }
+        @keyframes ins-mover-mao {
+            0% { transform: translate(96px, 118px); opacity: 0; }
+            10% { transform: translate(96px, 118px); opacity: 1; }
+            20% { transform: translate(96px, 118px) scale(0.86); }
+            68% { transform: translate(204px, 66px) scale(0.86); }
+            76% { transform: translate(204px, 66px) scale(1); opacity: 1; }
+            92%, 100% { transform: translate(204px, 66px); opacity: 0; }
+        }
+        #instrucoes .ins-mover-anel {
+            animation: ins-mover-anel 2.8s ease-out infinite;
+        }
+        @keyframes ins-mover-anel {
+            0%, 18% { opacity: 0; transform: scale(0.5); }
+            20% { opacity: 1; transform: scale(0.5); }
+            40%, 100% { opacity: 0; transform: scale(1.6); }
+        }
+        #instrucoes .ins-mover-rasto {
+            stroke-dasharray: 120;
+            stroke-dashoffset: 120;
+            opacity: 0.75;
+            animation: ins-mover-rasto 2.8s ease-in-out infinite;
+        }
+        @keyframes ins-mover-rasto {
+            0%, 20% { stroke-dashoffset: 120; opacity: 0.75; }
+            68%, 80% { stroke-dashoffset: 0; opacity: 0.75; }
+            94%, 100% { stroke-dashoffset: 0; opacity: 0; }
+        }
+        #instrucoes .ins-mover-setas {
+            opacity: 0.85;
+        }
+
+        /* Aproximar: quadrados a crescer a partir do sítio para onde se
+           vai, e a roda do rato a rodar (ou dois dedos a afastar). */
+        #instrucoes .ins-crescer {
+            fill: none;
+            stroke: #ffffff;
+            stroke-width: 2.5;
+            transform-box: fill-box;
+            transform-origin: center;
+            opacity: 0;
+            animation: ins-crescer 1.8s ease-out infinite;
+        }
+        #instrucoes .ins-crescer:nth-of-type(2) { animation-delay: 0.6s; }
+        #instrucoes .ins-crescer:nth-of-type(3) { animation-delay: 1.2s; }
+        @keyframes ins-crescer {
+            0% { opacity: 0; transform: scale(0.3); }
+            15% { opacity: 0.95; }
+            100% { opacity: 0; transform: scale(2.4); }
+        }
+        #instrucoes .ins-roda {
+            animation: ins-roda 0.6s linear infinite;
+        }
+        @keyframes ins-roda {
+            from { transform: translateY(0); opacity: 1; }
+            to { transform: translateY(6px); opacity: 0; }
+        }
+        #instrucoes .ins-pinca-a {
+            transform: translate(132px, 102px);
+            animation: ins-pinca-a 2.4s ease-in-out infinite;
+        }
+        @keyframes ins-pinca-a {
+            0%, 15% { transform: translate(132px, 102px); opacity: 0; }
+            20% { opacity: 1; }
+            70%, 82% { transform: translate(96px, 130px); opacity: 1; }
+            95%, 100% { transform: translate(96px, 130px); opacity: 0; }
+        }
+        #instrucoes .ins-pinca-b {
+            transform: translate(168px, 78px);
+            animation: ins-pinca-b 2.4s ease-in-out infinite;
+        }
+        @keyframes ins-pinca-b {
+            0%, 15% { transform: translate(168px, 78px); opacity: 0; }
+            20% { opacity: 1; }
+            70%, 82% { transform: translate(204px, 50px); opacity: 1; }
+            95%, 100% { transform: translate(204px, 50px); opacity: 0; }
+        }
+
+        /* Rodar e inclinar: o Ctrl carregado e o rato a fazer o arco (ou
+           dois dedos a rodar e depois a subir juntos). */
+        #instrucoes .ins-tecla rect {
+            fill: transparent;
+            stroke: #ffffff;
+            stroke-width: 2.5;
+            animation: ins-tecla 2.8s ease infinite;
+        }
+        #instrucoes .ins-tecla text {
+            fill: #ffffff;
+            font-family: var(--font-main);
+            font-size: 15px;
+            font-weight: 700;
+            text-anchor: middle;
+            dominant-baseline: central;
+            animation: ins-letra 2.8s ease infinite;
+        }
+        @keyframes ins-tecla {
+            0%, 8% { fill: transparent; }
+            14%, 80% { fill: #ffffff; }
+            88%, 100% { fill: transparent; }
+        }
+        @keyframes ins-letra {
+            0%, 8% { fill: #ffffff; }
+            14%, 80% { fill: #05050a; }
+            88%, 100% { fill: #ffffff; }
+        }
+        #instrucoes .ins-rodar-mao {
+            transform: translate(110px, 128px);
+            animation: ins-rodar-mao 2.8s ease-in-out infinite;
+        }
+        @keyframes ins-rodar-mao {
+            0%, 16% { transform: translate(110px, 128px); opacity: 0; }
+            22% { transform: translate(110px, 128px); opacity: 1; }
+            32% { transform: translate(129px, 136px); }
+            42% { transform: translate(151px, 139px); }
+            52% { transform: translate(174px, 134px); }
+            62% { transform: translate(196px, 120px); }
+            78% { transform: translate(196px, 86px); opacity: 1; }
+            92%, 100% { transform: translate(196px, 86px); opacity: 0; }
+        }
+        #instrucoes .ins-rodar-dedos {
+            transform-box: view-box;
+            transform-origin: 150px 92px;
+            animation: ins-rodar-dedos 3s ease-in-out infinite;
+        }
+        @keyframes ins-rodar-dedos {
+            0%, 10% { transform: rotate(0deg); opacity: 0; }
+            16% { transform: rotate(0deg); opacity: 1; }
+            46%, 54% { transform: rotate(50deg); opacity: 1; }
+            80% { transform: translateY(-34px) rotate(50deg); opacity: 1; }
+            92%, 100% { transform: translateY(-34px) rotate(50deg); opacity: 0; }
+        }
+        #instrucoes .ins-seta-curva,
+        #instrucoes .ins-seta-cima {
+            opacity: 0.85;
+        }
+
+        /* ── O cartão ──
+           Pequeno, em baixo ao meio nos gestos; ao pé da peça, ligado a
+           ela pelo fio, nos passos com foco. */
+        #instrucoes .instrucoes-cartao {
+            position: absolute;
+            left: 50%;
+            bottom: calc(28px + env(safe-area-inset-bottom, 0px));
+            transform: translateX(-50%);
+            width: min(400px, calc(100vw - 32px));
+            box-sizing: border-box;
+            padding: 14px 18px 6px;
             background: linear-gradient(to bottom, rgba(255,255,255,0.05), transparent), #05050a;
             box-shadow: 0 4px 15px rgba(0,0,0,0.4);
             color: var(--color-text);
+            pointer-events: auto;
             outline: none;
+            transition: opacity 0.25s ease;
+        }
+        #instrucoes .instrucoes-cartao.ao-pe {
+            bottom: auto;
+            transform: none;
+        }
+        #instrucoes .instrucoes-cartao.a-trocar {
+            opacity: 0;
         }
 
-        /* O título do cartão, como o primeiro título de cada menu: com
-           espaço à direita para a cruz. */
-        .instrucoes-cartao > .settings-title {
+        /* O cabeçalho do cartão, como o primeiro título dos menus, com o
+           passo em que se vai e espaço à direita para a cruz. */
+        .instrucoes-cabeca {
+            display: flex;
+            gap: 10px;
             padding-right: 28px;
-            margin-bottom: 14px;
+            margin-bottom: 8px;
         }
-
-        .instrucoes-passos {
-            display: grid;
-        }
-        .instrucoes-passo {
-            grid-area: 1 / 1;
-            text-align: center;
-        }
-        /* Os escondidos continuam a ocupar lugar, invisíveis: é por eles
-           que o cartão tem sempre a altura do passo mais comprido. */
-        .instrucoes-passo[hidden] {
-            display: block;
-            visibility: hidden;
-        }
-        .instrucoes-passo.entra-da-direita {
-            animation: ins-passo-direita 0.35s ease both;
-        }
-        .instrucoes-passo.entra-da-esquerda {
-            animation: ins-passo-esquerda 0.35s ease both;
-        }
-        @keyframes ins-passo-direita {
-            from { opacity: 0; transform: translateX(18px); }
-            to { opacity: 1; transform: none; }
-        }
-        @keyframes ins-passo-esquerda {
-            from { opacity: 0; transform: translateX(-18px); }
-            to { opacity: 1; transform: none; }
-        }
-
-        .instrucoes-desenho {
-            aspect-ratio: 2 / 1;
-            margin-bottom: 16px;
-            background: rgba(255, 255, 255, 0.03);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            overflow: hidden;
-        }
-        .instrucoes-desenho svg {
-            display: block;
-            width: 100%;
-            height: 100%;
+        .instrucoes-cabeca .instrucoes-numero {
+            color: rgba(255, 255, 255, 0.45);
         }
 
         .instrucoes-titulo {
+            display: flex;
+            align-items: center;
+            gap: 8px;
             margin: 0 0 6px;
             font-size: 0.95rem;
             font-weight: 600;
             letter-spacing: -0.01em;
             color: var(--color-text);
+        }
+        /* O visto que se desenha quando o gesto foi feito. */
+        .instrucoes-certo {
+            width: 18px;
+            height: 18px;
+            flex: none;
+            fill: none;
+            stroke: #ffffff;
+            stroke-width: 3;
+            stroke-linecap: square;
+            stroke-linejoin: miter;
+            stroke-dasharray: 24;
+            stroke-dashoffset: 24;
+            opacity: 0;
+        }
+        #instrucoes .instrucoes-cartao.feito .instrucoes-certo {
+            opacity: 1;
+            stroke-dashoffset: 0;
+            transition: stroke-dashoffset 0.4s ease, opacity 0.1s ease;
         }
 
         .instrucoes-texto {
@@ -2595,14 +2822,14 @@
             line-height: 1.5;
             color: var(--color-text-muted);
         }
-
         /* Em baixo: a seta para trás, os passos em quadradinhos (cheio o
-           que se está a ver) e a seta para a frente. */
+           que se está a ver, meio cheios os que já se fizeram) e a seta
+           para a frente — que no último passo é a cruz de saída. */
         .instrucoes-navegacao {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            margin: 8px -8px 0;
+            margin: 6px -10px 0;
         }
         .instrucoes-pontos {
             display: flex;
@@ -2636,6 +2863,9 @@
             outline: 2px solid rgba(255, 255, 255, 0.9);
             outline-offset: 3px;
         }
+        .instrucoes-pontos button.visto {
+            background: rgba(255, 255, 255, 0.45);
+        }
         .instrucoes-pontos button.atual {
             background: #ffffff;
             border-color: #ffffff;
@@ -2667,8 +2897,8 @@
             transition: color 0.2s ease, transform 0.2s ease, opacity 0.2s ease;
         }
         .instrucoes-seta svg {
-            width: 32px;
-            height: 32px;
+            width: 30px;
+            height: 30px;
         }
         .instrucoes-seta:hover {
             color: #ffffff;
@@ -2684,249 +2914,34 @@
         .instrucoes-seta.escondida {
             visibility: hidden;
         }
-        /* No último passo a seta da direita é a cruz de saída. Vai sem
-           caixa, desenhada como as setas, e acende e cresce como elas. */
+        /* Num gesto ainda por fazer, a seta da direita é saltar: fica mais
+           apagada, para o convite ser o gesto e não a seta. */
+        .instrucoes-cartao.a-espera .instrucoes-seta.direita {
+            color: rgba(255, 255, 255, 0.35);
+        }
 
         @media (max-width: 640px) {
-            .instrucoes-cartao {
-                padding: 14px 14px 8px;
+            #instrucoes .instrucoes-cartao {
+                padding: 12px 14px 4px;
+                bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+            }
+            #instrucoes .ins-gesto {
+                top: 40%;
             }
         }
 
-        /* ── Os desenhos ──
-           Linhas brancas finas, quadrados e a cor dos marcadores: o mesmo
-           desenho do site. Cada um dá a volta em poucos segundos e
-           recomeça. */
-        #instrucoes .ins-branco {
-            fill: none;
-            stroke: #ffffff;
-            stroke-width: 2;
-            stroke-linecap: square;
-            stroke-linejoin: miter;
-        }
-        #instrucoes .ins-dedo {
-            fill: rgba(255, 255, 255, 0.85);
-            stroke: rgba(5, 5, 10, 0.6);
-            stroke-width: 1.5;
-        }
-
-        /* Só se desenha o rato a quem tem rato, e o dedo a quem tem dedo. */
-        #instrucoes .so-toque { display: none; }
-        #instrucoes.por-toque .so-rato { display: none; }
-        #instrucoes.por-toque .so-toque { display: inline; }
-
-        /* O quadrado que se abre onde se carrega, igual ao do bairro. */
-        #instrucoes .ins-anel {
-            fill: none;
-            stroke: #ffffff;
-            stroke-width: 2.5;
-            transform-box: fill-box;
-            transform-origin: center;
-            opacity: 0;
-        }
-
-        /* 1 · Ir até um sítio: o rato vai, a pirâmide branca aparece no
-           sítio, pousada no seu quadrado, carrega-se, e a câmara
-           aproxima-se sem se inclinar — o chão cresce a partir do
-           horizonte, que fica onde está, e o sítio vem para o meio e para
-           baixo, como se vê quando a câmara anda para a frente.
-
-           A pirâmide nasce invisível e apaga-se antes de a volta
-           recomeçar: acesa no fim de uma volta e apagada no começo da
-           seguinte, piscava. */
-        #instrucoes .ins-ir-aproxima {
-            animation: ins-ir-aproxima 4s ease-in-out infinite;
-        }
-        @keyframes ins-ir-aproxima {
-            0%, 44% { transform: translate(0, 0) scale(1); opacity: 1; }
-            80%, 88% { transform: translate(-130px, -15.4px) scale(1.35); opacity: 1; }
-            94% { transform: translate(-130px, -15.4px) scale(1.35); opacity: 0; }
-            95% { transform: translate(0, 0) scale(1); opacity: 0; }
-            100% { transform: translate(0, 0) scale(1); opacity: 1; }
-        }
-        #instrucoes .ins-ir-sitio {
-            transform: translate(200px, 104px);
-            animation: ins-ir-sitio 4s ease-in-out infinite;
-        }
-        @keyframes ins-ir-sitio {
-            0%, 44% { transform: translate(200px, 104px); }
-            80%, 93% { transform: translate(140px, 125px); }
-            94%, 100% { transform: translate(200px, 104px); }
-        }
-        #instrucoes .ins-ir-piramide {
-            opacity: 0;
-            animation: ins-ir-piramide 4s ease infinite;
-        }
-        @keyframes ins-ir-piramide {
-            0%, 22% { opacity: 0; }
-            30%, 86% { opacity: 1; }
-            92%, 100% { opacity: 0; }
-        }
-        #instrucoes .ins-boia {
-            animation: ins-boia 1.2s ease-in-out infinite;
-        }
-        #instrucoes .ins-ir-cursor {
-            transform: translate(200px, 104px);
-            animation: ins-ir-cursor 4s ease-in-out infinite;
-        }
-        @keyframes ins-ir-cursor {
-            0% { transform: translate(72px, 34px); opacity: 0; }
-            8% { transform: translate(72px, 34px); opacity: 1; }
-            32% { transform: translate(200px, 104px); }
-            38% { transform: translate(200px, 104px) scale(0.82); }
-            42% { transform: translate(200px, 104px) scale(1); opacity: 1; }
-            50% { transform: translate(200px, 104px); opacity: 1; }
-            60%, 100% { transform: translate(200px, 104px); opacity: 0; }
-        }
-
-        /* 2 · Olhar à volta: arrasta-se, e o horizonte vai atrás. O rato,
-           desenhado com o botão da esquerda carregado no mesmo sítio em que
-           está no passo da roda, anda um pouco para o lado com a seta. */
-        #instrucoes .ins-olhar-vista {
-            animation: ins-olhar-vista 4s ease-in-out infinite;
-        }
-        @keyframes ins-olhar-vista {
-            0%, 12% { transform: translateX(0); }
-            50%, 62% { transform: translateX(-70px); }
-            100% { transform: translateX(0); }
-        }
-        #instrucoes .ins-olhar-mao {
-            transform: translate(170px, 96px);
-            animation: ins-olhar-mao 4s ease-in-out infinite;
-        }
-        @keyframes ins-olhar-mao {
-            0%, 12% { transform: translate(170px, 96px); }
-            50%, 62% { transform: translate(100px, 96px); }
-            100% { transform: translate(170px, 96px); }
-        }
-        #instrucoes .ins-olhar-rato {
-            transform: translate(240px, 56px);
-            animation: ins-olhar-rato 4s ease-in-out infinite;
-        }
-        @keyframes ins-olhar-rato {
-            0%, 12% { transform: translate(240px, 56px); }
-            50%, 62% { transform: translate(222px, 56px); }
-            100% { transform: translate(240px, 56px); }
-        }
-
-        /* 3 · Aproximar e afastar: a roda gira, ou os dedos abrem. */
-        #instrucoes .ins-zoom-vista {
-            transform-origin: 140px 92px;
-            animation: ins-zoom-vista 4s ease-in-out infinite;
-        }
-        @keyframes ins-zoom-vista {
-            0%, 12% { transform: scale(1); }
-            46%, 62% { transform: scale(1.7); }
-            96%, 100% { transform: scale(1); }
-        }
-        #instrucoes .ins-roda {
-            animation: ins-roda 0.5s linear infinite;
-        }
-        @keyframes ins-roda {
-            from { transform: translateY(0); opacity: 1; }
-            to { transform: translateY(5px); opacity: 0; }
-        }
-        #instrucoes .ins-dedo-a {
-            transform: translate(122px, 104px);
-            animation: ins-dedo-a 4s ease-in-out infinite;
-        }
-        @keyframes ins-dedo-a {
-            0%, 12% { transform: translate(122px, 104px); }
-            46%, 62% { transform: translate(96px, 124px); }
-            96%, 100% { transform: translate(122px, 104px); }
-        }
-        #instrucoes .ins-dedo-b {
-            transform: translate(158px, 80px);
-            animation: ins-dedo-b 4s ease-in-out infinite;
-        }
-        @keyframes ins-dedo-b {
-            0%, 12% { transform: translate(158px, 80px); }
-            46%, 62% { transform: translate(184px, 60px); }
-            96%, 100% { transform: translate(158px, 80px); }
-        }
-
-        /* 4 · Teclado: acendem-se o W, o A, o S e o D, um de cada vez. */
-        #instrucoes .ins-tecla rect {
-            fill: transparent;
-            stroke: rgba(255, 255, 255, 0.5);
-            stroke-width: 2.5;
-            animation: ins-tecla 3.6s ease infinite;
-        }
-        #instrucoes .ins-tecla text {
-            fill: #ffffff;
-            font-family: var(--font-main);
-            font-size: 14px;
-            font-weight: 700;
-            text-anchor: middle;
-            dominant-baseline: central;
-            animation: ins-letra 3.6s ease infinite;
-        }
-        #instrucoes .ins-tecla:nth-of-type(2) rect, #instrucoes .ins-tecla:nth-of-type(2) text { animation-delay: 0.9s; }
-        #instrucoes .ins-tecla:nth-of-type(3) rect, #instrucoes .ins-tecla:nth-of-type(3) text { animation-delay: 1.8s; }
-        #instrucoes .ins-tecla:nth-of-type(4) rect, #instrucoes .ins-tecla:nth-of-type(4) text { animation-delay: 2.7s; }
-        @keyframes ins-tecla {
-            0% { fill: transparent; stroke: rgba(255, 255, 255, 0.5); }
-            4%, 22% { fill: #ffffff; stroke: #ffffff; }
-            27%, 100% { fill: transparent; stroke: rgba(255, 255, 255, 0.5); }
-        }
-        @keyframes ins-letra {
-            0% { fill: #ffffff; }
-            4%, 22% { fill: #05050a; }
-            27%, 100% { fill: #ffffff; }
-        }
-
-        /* 5 · As histórias: carrega-se num marcador e abre-se a janela. */
-        #instrucoes .ins-marcador-a {
-            animation: ins-boia 1.8s ease-in-out infinite;
-        }
-        #instrucoes .ins-marcador-b {
-            animation: ins-boia 1.8s ease-in-out 0.9s infinite;
-        }
-        @keyframes ins-boia {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-3px); }
-        }
-        #instrucoes .ins-hist-cursor {
-            transform: translate(113px, 60px);
-            animation: ins-hist-cursor 4s ease-in-out infinite;
-        }
-        @keyframes ins-hist-cursor {
-            0% { transform: translate(40px, 120px); opacity: 0; }
-            8% { transform: translate(40px, 120px); opacity: 1; }
-            34% { transform: translate(113px, 60px); }
-            38% { transform: translate(113px, 60px) scale(0.82); }
-            42% { transform: translate(113px, 60px) scale(1); opacity: 1; }
-            52%, 100% { transform: translate(113px, 60px); opacity: 0; }
-        }
-        #instrucoes .ins-hist-anel {
-            animation: ins-hist-anel 4s ease-out infinite;
-        }
-        @keyframes ins-hist-anel {
-            0%, 37% { opacity: 0; transform: scale(0.6); }
-            39% { opacity: 1; transform: scale(0.6); }
-            56%, 100% { opacity: 0; transform: scale(1.6); }
-        }
-        #instrucoes .ins-janela {
-            transform-origin: 113px 52px;
-            opacity: 0;
-            animation: ins-janela 4s ease-out infinite;
-        }
-        @keyframes ins-janela {
-            0%, 44% { opacity: 0; transform: scale(0.2); }
-            58% { opacity: 1; transform: scale(1); }
-            88% { opacity: 1; transform: scale(1); }
-            96%, 100% { opacity: 0; transform: scale(1); }
-        }
-
-        /* Quem pediu ao sistema menos movimento vê cada desenho parado. */
+        /* Quem pediu ao sistema menos movimento vê cada gesto parado, no
+           meio do caminho. */
         @media (prefers-reduced-motion: reduce) {
             #instrucoes svg *,
-            .instrucoes-passo {
+            #instrucoes .ins-gesto * {
                 animation: none !important;
             }
-            #instrucoes .ins-janela,
-            #instrucoes .ins-ir-piramide {
-                opacity: 1;
+            #instrucoes .ins-mover-rasto {
+                stroke-dashoffset: 0;
+            }
+            #instrucoes .ins-crescer {
+                opacity: 0.7;
             }
         }
 
@@ -3983,7 +3998,7 @@
                 </div>
                 <!-- Só aparece no modo de poupança (ver `setQuality`): diz
                      porque é que nenhum modo está escolhido. -->
-                <p id="qualidade-poupanca" class="settings-nota" data-i18n="def.poupanca" hidden>O aparelho ficou sem memória gráfica e o bairro está a poupá-la. Escolha um modo para sair da poupança.</p>
+                <p id="qualidade-poupanca" class="settings-nota" data-i18n="def.poupanca" hidden>O aparelho ficou sem memória gráfica e o bairro está a poupá-la. Escolhe um modo para sair da poupança.</p>
 
                 <!-- O que se vê no bairro e se pode dispensar: os
                      marcadores de cada tipo, as miniaturas por cima
@@ -4249,193 +4264,106 @@
         </svg>
     </button>
 
-    <!-- As instruções de navegação, para quem chega pela primeira vez. -->
-    <div id="instrucoes" role="dialog" aria-modal="false" aria-labelledby="instrucoes-cabeca" hidden>
-        <!-- Os pedaços de desenho que se repetem de passo para passo. As
-             cores vão escritas em cada um, e não na folha de estilos: o que
-             é repetido com <use> não apanha as regras da página. -->
-        <svg width="0" height="0" style="position: absolute" aria-hidden="true" focusable="false">
+    <!-- As instruções: os gestos desenhados por cima do bairro, a convidar
+         a fazê-los, e depois um foco sobre as peças do site (ver "As
+         instruções", na folha de estilos, e o código logo a seguir). -->
+    <div id="instrucoes" hidden>
+        <!-- O véu dos passos com foco: escuro, com um buraco por cada peça
+             de que se fala, e o fio que liga a peça ao cartão. -->
+        <svg class="ins-veu" aria-hidden="true" focusable="false">
             <defs>
-                <clipPath id="ins-recorte-chao"><rect x="-400" y="44" width="1100" height="120"></rect></clipPath>
-                <!-- O chão do bairro, em perspectiva, até ao horizonte. -->
-                <g id="ins-chao">
-                    <g clip-path="url(#ins-recorte-chao)">
-                        <path fill="none" stroke="rgba(255,255,255,0.22)" stroke-width="1.5" d="M-400 54H700M-400 68H700M-400 88H700M-400 116H700M-400 150H700"></path>
-                        <path fill="none" stroke="rgba(255,255,255,0.22)" stroke-width="1.5" d="M140 30L-500 164M140 30L-340 164M140 30L-180 164M140 30L-40 164M140 30L50 164M140 30L140 164M140 30L230 164M140 30L320 164M140 30L460 164M140 30L620 164M140 30L780 164"></path>
-                    </g>
-                    <path fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="1.5" d="M-400 44H700"></path>
-                </g>
-                <!-- Umas casas pousadas no chão. -->
-                <g id="ins-casas">
-                    <rect fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.45)" stroke-width="1.5" x="54" y="72" width="24" height="10"></rect>
-                    <rect fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.45)" stroke-width="1.5" x="196" y="68" width="28" height="11"></rect>
-                    <rect fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.45)" stroke-width="1.5" x="104" y="98" width="32" height="14"></rect>
-                    <rect fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.45)" stroke-width="1.5" x="22" y="108" width="36" height="16"></rect>
-                    <rect fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.45)" stroke-width="1.5" x="212" y="102" width="38" height="16"></rect>
-                    <rect fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.45)" stroke-width="1.5" x="150" y="60" width="18" height="8"></rect>
-                </g>
-                <!-- A pirâmide verde de bico para baixo, com o bico no ponto
-                     (0, 0): a mesma que aparece no bairro debaixo do rato. -->
-                <g id="ins-piramide">
-                    <polygon points="-9,-17 0,-13 0,0" fill="#e1e1e1"></polygon>
-                    <polygon points="0,-13 9,-17 0,0" fill="#a0a0a0"></polygon>
-                    <polygon points="-9,-17 0,-21 9,-17 0,-13" fill="#ffffff"></polygon>
-                </g>
-                <!-- O quadrado deitado no chão por baixo da pirâmide, visto
-                     em perspectiva, com o meio logo abaixo do bico dela. -->
-                <g id="ins-quadrado">
-                    <polygon points="-11,-1 11,-1 14,6 -14,6" fill="none" stroke="#ffffff" stroke-width="1.75" stroke-linejoin="miter"></polygon>
-                </g>
-                <!-- A seta do rato, com o bico no ponto (0, 0). -->
-                <g id="ins-seta-rato"><path fill="#ffffff" stroke="#05050a" stroke-width="1.2" stroke-linejoin="round" d="M0 0L0 17L4.6 12.8L8 20L11 18.6L7.7 11.6L13 11.6Z"></path></g>
+                <mask id="ins-buracos" maskUnits="userSpaceOnUse">
+                    <rect x="0" y="0" width="100%" height="100%" fill="#ffffff"></rect>
+                    <g class="ins-buracos"></g>
+                </mask>
             </defs>
+            <rect class="ins-sombra" x="0" y="0" width="100%" height="100%" mask="url(#ins-buracos)"></rect>
+            <g class="ins-molduras"></g>
+            <line class="ins-poste" x1="0" y1="0" x2="0" y2="0" visibility="hidden"></line>
         </svg>
 
-        <div class="instrucoes-moldura">
-            <div class="instrucoes-cartao" tabindex="-1">
-                <button type="button" class="menu-fechar" aria-label="Fechar as instruções" title="Fechar as instruções" data-i18n-aria="ins.fechar" data-i18n-title="ins.fechar">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true">
-                        <line x1="5" y1="5" x2="19" y2="19"></line>
-                        <line x1="19" y1="5" x2="5" y2="19"></line>
-                    </svg>
+        <!-- 1 · Mover o mapa: carrega-se, arrasta-se e larga-se. -->
+        <div class="ins-gesto" data-gesto="mover" aria-hidden="true">
+            <svg viewBox="0 0 300 180">
+                <path class="ins-traco ins-mover-rasto" d="M96 118L204 66"></path>
+                <rect class="ins-anel ins-mover-anel" x="84" y="106" width="24" height="24"></rect>
+                <g class="ins-mover-mao">
+                    <path class="so-rato" fill="#ffffff" stroke="#05050a" stroke-width="1.2" stroke-linejoin="round" d="M0 0L0 22L6 16.6L10.4 26L14.3 24.2L10 15.1L17 15.1Z"></path>
+                    <circle class="so-toque ins-dedo" cx="0" cy="0" r="13"></circle>
+                </g>
+            </svg>
+        </div>
+
+        <!-- 2 · Aproximar e afastar: o bairro cresce a partir do sítio do
+             rato, com a roda a rodar (ou dois dedos a afastar). -->
+        <div class="ins-gesto" data-gesto="zoom" aria-hidden="true">
+            <svg viewBox="0 0 300 180">
+                <rect class="ins-crescer" x="138" y="80" width="24" height="24"></rect>
+                <rect class="ins-crescer" x="138" y="80" width="24" height="24"></rect>
+                <rect class="ins-crescer" x="138" y="80" width="24" height="24"></rect>
+                <g class="so-rato">
+                    <path fill="#ffffff" stroke="#05050a" stroke-width="1.2" stroke-linejoin="round" transform="translate(150 92)" d="M0 0L0 22L6 16.6L10.4 26L14.3 24.2L10 15.1L17 15.1Z"></path>
+                    <g transform="translate(222 48)">
+                        <rect x="0" y="0" width="36" height="56" fill="#05050a" stroke="#ffffff" stroke-width="3"></rect>
+                        <line x1="0" y1="22" x2="36" y2="22" stroke="#ffffff" stroke-width="2.5"></line>
+                        <line class="ins-roda" x1="18" y1="5" x2="18" y2="13" stroke="#ffffff" stroke-width="4"></line>
+                    </g>
+                </g>
+                <g class="so-toque">
+                    <g class="ins-pinca-a"><circle class="ins-dedo" cx="0" cy="0" r="13"></circle></g>
+                    <g class="ins-pinca-b"><circle class="ins-dedo" cx="0" cy="0" r="13"></circle></g>
+                </g>
+            </svg>
+        </div>
+
+        <!-- 3 · Rodar e inclinar: o Ctrl carregado e o rato a fazer o arco,
+             e depois a subir (ou dois dedos a rodar e a subir juntos). -->
+        <div class="ins-gesto" data-gesto="rodar" aria-hidden="true">
+            <svg viewBox="0 0 300 180">
+                <path class="ins-traco ins-seta-curva" d="M100 142Q150 170 204 134"></path>
+                <polyline class="ins-traco ins-seta-curva" points="191 130 204 134 202 147"></polyline>
+                <path class="ins-traco ins-seta-cima" d="M236 124V70"></path>
+                <polyline class="ins-traco ins-seta-cima" points="227 79 236 70 245 79"></polyline>
+                <g class="so-rato">
+                    <g class="ins-tecla"><rect x="44" y="40" width="58" height="34"></rect><text x="73" y="57">Ctrl</text></g>
+                    <g class="ins-rodar-mao">
+                        <path fill="#ffffff" stroke="#05050a" stroke-width="1.2" stroke-linejoin="round" d="M0 0L0 22L6 16.6L10.4 26L14.3 24.2L10 15.1L17 15.1Z"></path>
+                    </g>
+                </g>
+                <g class="so-toque">
+                    <g class="ins-rodar-dedos">
+                        <circle class="ins-dedo" cx="108" cy="92" r="13"></circle>
+                        <circle class="ins-dedo" cx="192" cy="92" r="13"></circle>
+                    </g>
+                </g>
+            </svg>
+        </div>
+
+        <!-- O cartão do texto. -->
+        <div class="instrucoes-cartao" role="dialog" aria-modal="false" aria-labelledby="instrucoes-titulo" aria-describedby="instrucoes-texto" tabindex="-1">
+            <button type="button" class="menu-fechar" aria-label="Fechar as instruções" title="Fechar as instruções" data-i18n-aria="ins.fechar" data-i18n-title="ins.fechar">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true">
+                    <line x1="5" y1="5" x2="19" y2="19"></line>
+                    <line x1="19" y1="5" x2="5" y2="19"></line>
+                </svg>
+            </button>
+            <div class="settings-title instrucoes-cabeca"><span data-i18n="ins.titulo">Como navegar</span><span class="instrucoes-numero"></span></div>
+            <h2 class="instrucoes-titulo" id="instrucoes-titulo"><span class="instrucoes-nome"></span><svg class="instrucoes-certo" viewBox="0 0 24 24" aria-hidden="true"><polyline points="4 12.5 10 18.5 20 6.5"></polyline></svg></h2>
+            <p class="instrucoes-texto" id="instrucoes-texto"></p>
+            <div class="instrucoes-navegacao">
+                <button type="button" class="instrucoes-seta esquerda" aria-label="Anterior" title="Anterior" data-i18n-aria="palco.anterior" data-i18n-title="palco.anterior">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true"><polyline points="15 18 9 12 15 6"></polyline></svg>
                 </button>
-                <div class="settings-title" id="instrucoes-cabeca" data-i18n="ins.titulo">Como navegar</div>
-
-                <!-- Os passos ficam uns por cima dos outros, na mesma casa:
-                     o cartão tem sempre o tamanho do maior, e não salta. -->
-                <div class="instrucoes-passos">
-                <!-- 1 · Ir até um sítio -->
-                <section class="instrucoes-passo" data-rato="ins.irRato" data-toque="ins.irToque">
-                    <div class="instrucoes-desenho" aria-hidden="true">
-                        <svg viewBox="0 0 280 140">
-                            <g class="ins-ir-aproxima">
-                                <use href="#ins-chao"></use>
-                                <use href="#ins-casas"></use>
-                                <g transform="translate(200 0)"><use href="#ins-casas"></use></g>
-                            </g>
-                            <g class="ins-ir-sitio"><g class="ins-ir-piramide"><use href="#ins-quadrado"></use><g class="ins-boia"><use href="#ins-piramide"></use></g></g></g>
-                            <g class="ins-cursor ins-ir-cursor">
-                                <use class="so-rato" href="#ins-seta-rato"></use>
-                                <circle class="so-toque ins-dedo" cx="0" cy="0" r="10"></circle>
-                            </g>
-                        </svg>
-                    </div>
-                    <h2 class="instrucoes-titulo" data-i18n="ins.irTitulo">Ir até um sítio</h2>
-                    <p class="instrucoes-texto">Clica num sítio do bairro e a câmara leva-te até lá.</p>
-                </section>
-
-                <!-- 2 · Olhar à volta -->
-                <section class="instrucoes-passo" data-rato="ins.olharRato" data-toque="ins.olharToque" hidden>
-                    <div class="instrucoes-desenho" aria-hidden="true">
-                        <svg viewBox="0 0 280 140">
-                            <use href="#ins-chao"></use>
-                            <g class="ins-olhar-vista">
-                                <path class="ins-branco" d="M-120 44V36H-96V26H-84V38H-50V22H-40V34H-6V30H30V40H62V24H74V14H84V30H118V38H150V24H176V34H206V18H216V30H246V36H286V26H312V40H350V30H380V44" style="stroke-width: 1.5"></path>
-                                <g transform="translate(-60 0)"><use href="#ins-casas"></use></g>
-                                <use href="#ins-casas"></use>
-                                <g transform="translate(240 0)"><use href="#ins-casas"></use></g>
-                            </g>
-                            <g class="so-rato">
-                                <g class="ins-olhar-rato">
-                                    <rect x="0" y="0" width="22" height="32" fill="#05050a" stroke="#ffffff" stroke-width="2"></rect>
-                                    <rect x="1" y="1" width="10" height="12" fill="#ffffff"></rect>
-                                    <line x1="0" y1="13" x2="22" y2="13" stroke="#ffffff" stroke-width="1.5"></line>
-                                    <line x1="11" y1="0" x2="11" y2="13" stroke="#ffffff" stroke-width="1.5"></line>
-                                </g>
-                            </g>
-                            <g class="ins-cursor ins-olhar-mao">
-                                <use class="so-rato" href="#ins-seta-rato"></use>
-                                <circle class="so-toque ins-dedo" cx="0" cy="0" r="10"></circle>
-                            </g>
-                        </svg>
-                    </div>
-                    <h2 class="instrucoes-titulo" data-i18n="ins.olharTitulo">Olhar à volta</h2>
-                    <p class="instrucoes-texto">Arrasta com o rato para rodar a vista.</p>
-                </section>
-
-                <!-- 3 · Aproximar e afastar -->
-                <section class="instrucoes-passo" data-rato="ins.zoomRato" data-toque="ins.zoomToque" hidden>
-                    <div class="instrucoes-desenho" aria-hidden="true">
-                        <svg viewBox="0 0 280 140">
-                            <g class="ins-zoom-vista"><use href="#ins-chao"></use><use href="#ins-casas"></use></g>
-                            <g class="so-rato" transform="translate(240 56)">
-                                <rect x="0" y="0" width="22" height="32" fill="#05050a" stroke="#ffffff" stroke-width="2"></rect>
-                                <line x1="0" y1="13" x2="22" y2="13" stroke="#ffffff" stroke-width="1.5"></line>
-                                <line class="ins-roda" x1="11" y1="3" x2="11" y2="8" stroke="#ffffff" stroke-width="2.5"></line>
-                            </g>
-                            <g class="so-toque">
-                                <g class="ins-dedo-a"><circle class="ins-dedo" cx="0" cy="0" r="10"></circle></g>
-                                <g class="ins-dedo-b"><circle class="ins-dedo" cx="0" cy="0" r="10"></circle></g>
-                            </g>
-                        </svg>
-                    </div>
-                    <h2 class="instrucoes-titulo" data-i18n="ins.zoomTitulo">Aproximar e afastar</h2>
-                    <p class="instrucoes-texto">Usa a roda do rato.</p>
-                </section>
-
-                <!-- 4 · Teclado (só para quem tem teclado) -->
-                <section class="instrucoes-passo" data-so="rato" data-rato="ins.teclado" hidden>
-                    <div class="instrucoes-desenho" aria-hidden="true">
-                        <svg viewBox="0 0 280 140">
-                            <g>
-                                <g class="ins-tecla"><rect x="124" y="30" width="32" height="32"></rect><text x="140" y="46">W</text></g>
-                                <g class="ins-tecla"><rect x="86" y="68" width="32" height="32"></rect><text x="102" y="84">A</text></g>
-                                <g class="ins-tecla"><rect x="124" y="68" width="32" height="32"></rect><text x="140" y="84">S</text></g>
-                                <g class="ins-tecla"><rect x="162" y="68" width="32" height="32"></rect><text x="178" y="84">D</text></g>
-                            </g>
-                        </svg>
-                    </div>
-                    <h2 class="instrucoes-titulo" data-i18n="ins.tecladoTitulo">Andar com o teclado</h2>
-                    <p class="instrucoes-texto">As teclas W A S D ou as setas levam-te pelo bairro.</p>
-                </section>
-
-                <!-- 5 · As histórias -->
-                <section class="instrucoes-passo" data-rato="ins.historias" data-toque="ins.historias" hidden>
-                    <div class="instrucoes-desenho" aria-hidden="true">
-                        <svg viewBox="0 0 280 140">
-                            <use href="#ins-chao"></use>
-                            <g class="ins-marcador-a">
-                                <rect x="98" y="37" width="30" height="30" fill="#10b981"></rect>
-                                <svg x="102" y="41" width="22" height="22" viewBox="0 0 24 24"><g class="ins-branco"><rect x="2" y="6" width="13" height="12"></rect><polygon points="15 12, 22 6, 22 18"></polygon></g></svg>
-                            </g>
-                            <g class="ins-marcador-b">
-                                <rect x="156" y="37" width="30" height="30" fill="#ff0000"></rect>
-                                <svg x="160" y="41" width="22" height="22" viewBox="0 0 24 24"><g class="ins-branco"><polygon points="2 4, 12 6.67, 22 4, 22 20, 12 17.33, 2 20"></polygon><polyline points="5.4 18.7, 8.8 12.6, 11.3 17"></polyline><polyline points="11.3 15.6, 14.2 10.4, 18.9 18.8"></polyline><circle cx="6" cy="8.8" r="1"></circle></g></svg>
-                            </g>
-                            <rect class="ins-anel ins-hist-anel" x="98" y="37" width="30" height="30"></rect>
-                            <g class="ins-janela">
-                                <rect x="58" y="16" width="164" height="100" fill="#05050a" stroke="#505054" stroke-width="2.5"></rect>
-                                <polygon points="132 50 132 82 158 66" fill="#ffffff"></polygon>
-                                <line x1="70" y1="104" x2="210" y2="104" stroke="rgba(255,255,255,0.3)" stroke-width="2"></line>
-                                <line x1="70" y1="104" x2="120" y2="104" stroke="#ffffff" stroke-width="2"></line>
-                            </g>
-                            <g class="ins-cursor ins-hist-cursor">
-                                <use class="so-rato" href="#ins-seta-rato"></use>
-                                <circle class="so-toque ins-dedo" cx="0" cy="0" r="10"></circle>
-                            </g>
-                        </svg>
-                    </div>
-                    <h2 class="instrucoes-titulo" data-i18n="ins.historiasTitulo">Ver as histórias</h2>
-                    <p class="instrucoes-texto">Os marcadores abrem os testemunhos e as rotas.</p>
-                </section>
-
-                </div>
-
-                <div class="instrucoes-navegacao">
-                    <button type="button" class="instrucoes-seta esquerda" aria-label="Anterior" title="Anterior" data-i18n-aria="palco.anterior" data-i18n-title="palco.anterior">
-                        <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true"><polyline points="15 18 9 12 15 6"></polyline></svg>
-                    </button>
-                    <div class="instrucoes-pontos"></div>
-                    <button type="button" class="instrucoes-seta direita" aria-label="Seguinte" title="Seguinte" data-i18n-aria="palco.seguinte" data-i18n-title="palco.seguinte"></button>
-                </div>
-                <p class="instrucoes-anuncio" aria-live="polite"></p>
+                <div class="instrucoes-pontos"></div>
+                <button type="button" class="instrucoes-seta direita" aria-label="Seguinte" title="Seguinte" data-i18n-aria="palco.seguinte" data-i18n-title="palco.seguinte"></button>
             </div>
+            <p class="instrucoes-anuncio" aria-live="polite"></p>
         </div>
     </div>
 
     <script>
     /**
-     * As instruções de navegação.
+     * As instruções.
      *
      * Aparecem uma vez, na primeira visita, pouco depois de o ecrã de
      * espera sair; fechadas, fica escrito na memória do navegador e não
@@ -4443,11 +4371,18 @@
      * endereço (é para lá que aponta "Rever as instruções", na página dos
      * controlos).
      *
-     * Quem tem dedo em vez de rato vê os desenhos e as frases dos dedos,
-     * e não vê o passo do teclado. As setas de cada lado passam de passo;
-     * no último, a da direita é uma cruz e fecha. Também se passa com as
-     * setas do teclado e se fecha com o Escape, enquanto o cartão tiver o
-     * foco.
+     * São por cima do próprio site. Os três primeiros passos são gestos —
+     * mover, aproximar, rodar e inclinar —, desenhados no meio do bairro a
+     * convidar a fazê-los: cada um espera que se faça o gesto no bairro (a
+     * câmara avisa-o: ver `_avisarGesto` em camera-controls.mjs), marca-o
+     * com um visto e passa sozinho ao seguinte. A seta da direita salta-o.
+     * Os outros passos põem um foco sobre as peças de que falam — os
+     * marcadores, o céu, a pesquisa, os controlos e a bússola —, que vão
+     * atrás delas quando o bairro mexe. Quem tem dedo em vez de rato vê os
+     * desenhos e as frases dos dedos. No último passo a seta da direita é
+     * uma cruz e fecha; a cruz do canto fecha a qualquer altura, e o
+     * Escape também. Com um vídeo ou uma paragem aberta por cima, as
+     * instruções esperam escondidas.
      */
     (function () {
         const caixa = document.getElementById('instrucoes');
@@ -4455,45 +4390,124 @@
         if (!caixa || !overlay) return;
 
         const CHAVE = 'instrucoes';
-        const t = (chave) => (window.Idiomas && window.Idiomas.t(chave)) || '';
+        const NS = 'http://www.w3.org/2000/svg';
+        const t = (chave, senao) => (window.Idiomas && window.Idiomas.t(chave)) || senao || '';
         const traduzir = (el) => { if (window.Idiomas) window.Idiomas.aplicar(el); };
 
-        const SETA_DIREITA = '<svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true"><polyline points="9 18 15 12 9 6"></polyline></svg>';
-        const CRUZ = '<svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true"><path d="M7 7L17 17M17 7L7 17"></path></svg>';
+        const SETA_DIREITA = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true"><polyline points="9 18 15 12 9 6"></polyline></svg>';
+        const CRUZ = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true"><path d="M7 7L17 17M17 7L7 17"></path></svg>';
+
+        // Quanto o foco fica à volta da peça, e a distância do cartão a
+        // ela (pontos de ecrã).
+        const FOLGA = 8;
+        const AFASTAMENTO = 26;
+        const MARGEM = 16;
 
         const porToque = !!(window.matchMedia && window.matchMedia('(hover: none) and (pointer: coarse)').matches);
         caixa.classList.toggle('por-toque', porToque);
 
-        // Os passos que servem a este aparelho; os outros saem.
-        const passos = [];
-        caixa.querySelectorAll('.instrucoes-passo').forEach((passo) => {
-            if (porToque && passo.dataset.so === 'rato') {
-                passo.remove();
-                return;
-            }
-            const texto = passo.querySelector('.instrucoes-texto');
-            const chave = porToque ? passo.dataset.toque : passo.dataset.rato;
-            if (texto && chave) texto.setAttribute('data-i18n', chave);
-            passos.push(passo);
-        });
-
         const cartao = caixa.querySelector('.instrucoes-cartao');
-        const pontos = caixa.querySelector('.instrucoes-pontos');
-        const anuncio = caixa.querySelector('.instrucoes-anuncio');
-        const esquerda = caixa.querySelector('.instrucoes-seta.esquerda');
-        const direita = caixa.querySelector('.instrucoes-seta.direita');
+        const nomeEl = cartao.querySelector('.instrucoes-nome');
+        const textoEl = cartao.querySelector('.instrucoes-texto');
+        const numeroEl = cartao.querySelector('.instrucoes-numero');
+        const pontos = cartao.querySelector('.instrucoes-pontos');
+        const anuncio = cartao.querySelector('.instrucoes-anuncio');
+        const esquerda = cartao.querySelector('.instrucoes-seta.esquerda');
+        const direita = cartao.querySelector('.instrucoes-seta.direita');
         const fecharBotao = cartao.querySelector('.menu-fechar');
+        const buracos = caixa.querySelector('.ins-buracos');
+        const molduras = caixa.querySelector('.ins-molduras');
+        const poste = caixa.querySelector('.ins-poste');
+        const desenhos = {};
+        caixa.querySelectorAll('.ins-gesto').forEach((d) => { desenhos[d.dataset.gesto] = d; });
+
+        // ── As peças de que se fala ──
+
+        /**
+         * A caixa de uma peça, se ela estiver à vista no ecrã; senão nada.
+         *
+         * @param {Element|null} el - A peça.
+         * @returns {DOMRect|null} A caixa.
+         */
+        const aVista = (el) => {
+            if (!el || !el.isConnected) return null;
+            if (el.closest('[aria-hidden="true"]')) return null;
+            if (el.checkVisibility && !el.checkVisibility({ opacityProperty: true, visibilityProperty: true })) return null;
+            const r = el.getBoundingClientRect();
+            if (r.width < 2 || r.height < 2) return null;
+            if (r.right < 8 || r.bottom < 8 || r.left > window.innerWidth - 8 || r.top > window.innerHeight - 8) return null;
+            return r;
+        };
+
+        /**
+         * O marcador de um tipo que está mais perto do meio do ecrã, fora
+         * do cabeçalho e das beiras.
+         *
+         * @param {string} seletor - Os marcadores.
+         * @returns {DOMRect|null} A caixa do quadrado dele.
+         */
+        const marcadorDoMeio = (seletor) => {
+            let melhor = null;
+            let menor = Infinity;
+            document.querySelectorAll(seletor).forEach((m) => {
+                const r = aVista(m) && aVista(m.querySelector('.marker-dot') || m);
+                if (!r || r.top < 70 || r.bottom > window.innerHeight - 40) return;
+                const d = Math.hypot(r.left + r.width / 2 - window.innerWidth / 2, r.top + r.height / 2 - window.innerHeight / 2);
+                if (d < menor) { menor = d; melhor = r; }
+            });
+            return melhor;
+        };
+
+        // Um testemunho e uma rota, os que estiverem mais ao meio.
+        const alvosDasHistorias = () => [
+            marcadorDoMeio('.annotation-marker[data-tipo="testemunho"]'),
+            marcadorDoMeio('.annotation-marker[data-tipo="360"]:not(.marcador-do-ceu)')
+        ].filter(Boolean);
+
+        // A fila do céu: o Retroceder, o Olho de Águia e o Mapa dos Bairros.
+        const alvosDoCeu = () => Array.from(document.querySelectorAll('.annotation-marker.marcador-do-ceu'))
+            .map(m => aVista(m) && aVista(m.querySelector('.marker-dot') || m))
+            .filter(Boolean);
+
+        // A pesquisa: a caixa de escrever, a lupa, ou — no telemóvel, onde a
+        // lupa vive no menu — o botão do menu.
+        const pesquisaNoMenu = () => !aVista(document.getElementById('pesquisa-campo')) &&
+            !aVista(document.getElementById('pesquisa-abrir'));
+        const alvoDaPesquisa = () => {
+            const r = aVista(document.getElementById('pesquisa-campo')) ||
+                aVista(document.getElementById('pesquisa-abrir')) ||
+                aVista(document.getElementById('menu-btn'));
+            return r ? [r] : [];
+        };
+
+        // Os Controlos (ou o menu, onde eles vivem no telemóvel) e a bússola.
+        const controlosNoMenu = () => !aVista(document.getElementById('help-btn'));
+        const alvosDoResto = () => [
+            aVista(document.getElementById('help-btn')) || aVista(document.getElementById('menu-btn')),
+            aVista(document.getElementById('compass-container'))
+        ].filter(Boolean);
+
+        // ── Os passos ──
+        const PASSOS = [
+            { titulo: 'ins.moverTitulo', texto: porToque ? 'ins.moverToque' : 'ins.moverRato', gestos: ['mover'], desenho: 'mover' },
+            { titulo: 'ins.zoomTitulo', texto: porToque ? 'ins.zoomToque' : 'ins.zoomRato', gestos: ['aproximar'], desenho: 'zoom' },
+            { titulo: 'ins.rodarTitulo', texto: porToque ? 'ins.rodarToque' : 'ins.rodarRato', gestos: ['rodar', 'inclinar'], desenho: 'rodar' },
+            { titulo: 'ins.historiasTitulo', texto: porToque ? 'ins.historiasToque' : 'ins.historias', alvos: alvosDasHistorias },
+            { titulo: 'ins.ceuTitulo', texto: 'ins.ceu', alvos: alvosDoCeu },
+            { titulo: 'ins.pesquisaTitulo', texto: () => (pesquisaNoMenu() ? 'ins.pesquisaMenu' : 'ins.pesquisa'), alvos: alvoDaPesquisa },
+            { titulo: 'ins.restoTitulo', texto: () => (controlosNoMenu() ? 'ins.restoMenu' : 'ins.resto'), alvos: alvosDoResto }
+        ];
 
         // Um quadradinho por passo; carregar num leva a esse passo.
-        passos.forEach((passo, i) => {
+        PASSOS.forEach((passo, i) => {
             const ponto = document.createElement('button');
             ponto.type = 'button';
-            ponto.addEventListener('click', () => { if (i !== atual) mostrar(i, i > atual ? 1 : -1); });
+            ponto.addEventListener('click', () => { if (i !== atual) trocar(() => mostrar(i)); });
             pontos.appendChild(ponto);
         });
         const nomearPontos = () => {
             Array.from(pontos.children).forEach((ponto, i) => {
-                const nome = t('ins.passo').replace('{n}', i + 1).replace('{total}', passos.length);
+                const nome = t('ins.passo', 'Passo {n} de {total}').replace('{n}', i + 1).replace('{total}', PASSOS.length);
                 ponto.setAttribute('aria-label', nome);
                 ponto.title = nome;
             });
@@ -4503,28 +4517,48 @@
 
         let atual = 0;
         let aberta = false;
+        let comecouEm = 0;
+        let relogioDoFeito = null;
+        let relogioDaTroca = null;
+        const feitos = new Set();
 
-        const anunciar = () => {
-            const passo = passos[atual];
-            const titulo = passo.querySelector('.instrucoes-titulo').textContent;
-            const texto = passo.querySelector('.instrucoes-texto').textContent;
-            anuncio.textContent = t('ins.passo').replace('{n}', atual + 1).replace('{total}', passos.length) +
-                '. ' + titulo + '. ' + texto;
+        const textoDe = passo => (typeof passo.texto === 'function' ? passo.texto() : passo.texto);
+
+        const escrever = () => {
+            const passo = PASSOS[atual];
+            nomeEl.textContent = t(passo.titulo);
+            textoEl.textContent = t(textoDe(passo));
+            numeroEl.textContent = (atual + 1) + ' / ' + PASSOS.length;
         };
 
-        const mostrar = (n, sentido) => {
-            atual = Math.max(0, Math.min(passos.length - 1, n));
-            passos.forEach((passo, i) => {
-                passo.hidden = i !== atual;
-                passo.classList.remove('entra-da-direita', 'entra-da-esquerda');
+        const anunciar = () => {
+            anuncio.textContent = t('ins.passo', 'Passo {n} de {total}').replace('{n}', atual + 1).replace('{total}', PASSOS.length) +
+                '. ' + nomeEl.textContent + '. ' + textoEl.textContent;
+        };
+
+        /**
+         * Mostra um passo: o desenho do gesto ou o foco, o texto, os
+         * quadradinhos e as setas.
+         *
+         * @param {number} n - O passo.
+         */
+        const mostrar = (n) => {
+            clearTimeout(relogioDoFeito);
+            atual = Math.max(0, Math.min(PASSOS.length - 1, n));
+            const passo = PASSOS[atual];
+            comecouEm = performance.now();
+            const gesto = !!passo.gestos;
+            const feito = feitos.has(atual);
+            Object.keys(desenhos).forEach((k) => {
+                desenhos[k].classList.toggle('ativo', gesto && passo.desenho === k && !feito);
+                desenhos[k].classList.remove('feito');
             });
-            if (sentido) {
-                const passo = passos[atual];
-                void passo.offsetWidth;
-                passo.classList.add(sentido > 0 ? 'entra-da-direita' : 'entra-da-esquerda');
-            }
+            caixa.classList.toggle('com-foco', !gesto);
+            cartao.classList.toggle('a-espera', gesto && !feito);
+            cartao.classList.toggle('feito', gesto && feito);
             Array.from(pontos.children).forEach((ponto, i) => {
                 ponto.classList.toggle('atual', i === atual);
+                ponto.classList.toggle('visto', i !== atual && (feitos.has(i) || i < atual));
                 if (i === atual) ponto.setAttribute('aria-current', 'step');
                 else ponto.removeAttribute('aria-current');
             });
@@ -4535,8 +4569,7 @@
             esquerda.tabIndex = primeiro ? -1 : 0;
 
             // No último, a seta da direita passa a ser a cruz de saída.
-            const ultimo = atual === passos.length - 1;
-            direita.classList.toggle('a-sair', ultimo);
+            const ultimo = atual === PASSOS.length - 1;
             direita.innerHTML = ultimo ? CRUZ : SETA_DIREITA;
             const chave = ultimo ? 'ins.fechar' : 'palco.seguinte';
             direita.setAttribute('data-i18n-aria', chave);
@@ -4544,8 +4577,191 @@
             // A tradução procura dentro do que se lhe dá: vai-se ao pai.
             traduzir(direita.parentNode);
 
+            escrever();
             anunciar();
+            arrumar();
         };
+
+        /**
+         * Troca de passo com o cartão a esbater-se e a voltar.
+         *
+         * @param {Function} fazer - A troca.
+         */
+        const trocar = (fazer) => {
+            clearTimeout(relogioDaTroca);
+            cartao.classList.add('a-trocar');
+            relogioDaTroca = setTimeout(() => {
+                fazer();
+                cartao.classList.remove('a-trocar');
+            }, 220);
+        };
+
+        const seguinte = () => {
+            if (atual >= PASSOS.length - 1) fechar();
+            else trocar(() => mostrar(atual + 1));
+        };
+        const anterior = () => { if (atual > 0) trocar(() => mostrar(atual - 1)); };
+
+        // O gesto feito no bairro: visto no título, o desenho apaga-se, e
+        // passa-se ao seguinte um instante depois.
+        window.addEventListener('gestoNoBairro', (e) => {
+            if (!aberta) return;
+            const passo = PASSOS[atual];
+            if (!passo.gestos || feitos.has(atual)) return;
+            if (performance.now() - comecouEm < 350) return;
+            if (passo.gestos.indexOf(e.detail && e.detail.gesto) < 0) return;
+            feitos.add(atual);
+            cartao.classList.remove('a-espera');
+            cartao.classList.add('feito');
+            const desenho = desenhos[passo.desenho];
+            if (desenho) desenho.classList.add('feito');
+            anuncio.textContent = t('ins.feito', 'Feito.');
+            const este = atual;
+            relogioDoFeito = setTimeout(() => { if (aberta && atual === este) seguinte(); }, 1400);
+        });
+
+        // ── O foco e o sítio do cartão ──
+
+        const garantirFilhos = (grupo, n, criar) => {
+            while (grupo.children.length < n) grupo.appendChild(criar());
+            while (grupo.children.length > n) grupo.lastChild.remove();
+        };
+        const porEm = (el, x, y, w, h) => {
+            el.setAttribute('x', x.toFixed(1));
+            el.setAttribute('y', y.toFixed(1));
+            el.setAttribute('width', w.toFixed(1));
+            el.setAttribute('height', h.toFixed(1));
+        };
+
+        const desenharFoco = (caixas) => {
+            garantirFilhos(buracos, caixas.length, () => {
+                const r = document.createElementNS(NS, 'rect');
+                r.setAttribute('fill', '#000000');
+                return r;
+            });
+            garantirFilhos(molduras, caixas.length, () => {
+                const g = document.createElementNS(NS, 'g');
+                const moldura = document.createElementNS(NS, 'rect');
+                moldura.setAttribute('class', 'ins-moldura');
+                const onda = document.createElementNS(NS, 'rect');
+                onda.setAttribute('class', 'ins-onda');
+                g.appendChild(moldura);
+                g.appendChild(onda);
+                return g;
+            });
+            caixas.forEach((r, i) => {
+                const x = r.left - FOLGA;
+                const y = r.top - FOLGA;
+                const w = r.width + 2 * FOLGA;
+                const h = r.height + 2 * FOLGA;
+                porEm(buracos.children[i], x, y, w, h);
+                porEm(molduras.children[i].children[0], x, y, w, h);
+                porEm(molduras.children[i].children[1], x, y, w, h);
+            });
+        };
+
+        const cartaoEmBaixo = () => {
+            cartao.classList.remove('ao-pe');
+            cartao.style.left = '';
+            cartao.style.top = '';
+            poste.setAttribute('visibility', 'hidden');
+        };
+
+        /**
+         * Põe o cartão ao pé das peças — por baixo delas, se estão em cima
+         * no ecrã, por cima, se estão em baixo — e o fio branco a ligá-lo à
+         * que lhe fica mais a direito. Se não couber nem por cima nem por
+         * baixo, fica em baixo ao meio, sem fio.
+         *
+         * @param {DOMRect[]} caixas - As peças.
+         */
+        const porOCartao = (caixas) => {
+            if (!caixas.length) {
+                cartaoEmBaixo();
+                return;
+            }
+            const u = { left: Infinity, top: Infinity, right: -Infinity, bottom: -Infinity };
+            caixas.forEach((r) => {
+                u.left = Math.min(u.left, r.left - FOLGA);
+                u.top = Math.min(u.top, r.top - FOLGA);
+                u.right = Math.max(u.right, r.right + FOLGA);
+                u.bottom = Math.max(u.bottom, r.bottom + FOLGA);
+            });
+            const largura = cartao.offsetWidth;
+            const altura = cartao.offsetHeight;
+            const vw = window.innerWidth;
+            const vh = window.innerHeight;
+            const meioX = (u.left + u.right) / 2;
+            const left = Math.max(MARGEM, Math.min(vw - largura - MARGEM, meioX - largura / 2));
+            const cabeAbaixo = u.bottom + AFASTAMENTO + altura + MARGEM <= vh;
+            const cabeAcima = u.top - AFASTAMENTO - altura >= MARGEM;
+            let top;
+            let abaixo;
+            if (cabeAbaixo && ((u.top + u.bottom) / 2 < vh * 0.55 || !cabeAcima)) {
+                top = u.bottom + AFASTAMENTO;
+                abaixo = true;
+            } else if (cabeAcima) {
+                top = u.top - AFASTAMENTO - altura;
+                abaixo = false;
+            } else {
+                cartaoEmBaixo();
+                return;
+            }
+            cartao.classList.add('ao-pe');
+            cartao.style.left = left.toFixed(1) + 'px';
+            cartao.style.top = top.toFixed(1) + 'px';
+
+            // O fio vai à peça que o cartão alcança a direito.
+            let alvo = null;
+            let menor = Infinity;
+            caixas.forEach((r) => {
+                const x = Math.max(left + 14, Math.min(left + largura - 14, (r.left + r.right) / 2));
+                if (x < r.left - FOLGA || x > r.right + FOLGA) return;
+                const d = abaixo ? top - (r.bottom + FOLGA) : (r.top - FOLGA) - (top + altura);
+                if (d >= 0 && d < menor) { menor = d; alvo = { x, r }; }
+            });
+            if (!alvo) {
+                poste.setAttribute('visibility', 'hidden');
+                return;
+            }
+            poste.setAttribute('x1', alvo.x.toFixed(1));
+            poste.setAttribute('x2', alvo.x.toFixed(1));
+            poste.setAttribute('y1', (abaixo ? alvo.r.bottom + FOLGA : alvo.r.top - FOLGA).toFixed(1));
+            poste.setAttribute('y2', (abaixo ? top : top + altura).toFixed(1));
+            poste.setAttribute('visibility', 'visible');
+        };
+
+        // Uma janela por cima de tudo (um vídeo, uma paragem), ou a
+        // navegação até uma casa: as instruções esperam escondidas.
+        const janelaAFrente = () => document.body.classList.contains('a-navegar') ||
+            ['video-modal', 'modal-360'].some((id) => {
+                const el = document.getElementById(id);
+                return !!el && el.style.display !== 'none' && getComputedStyle(el).display !== 'none';
+            });
+
+        const arrumar = () => {
+            if (!aberta) return;
+            caixa.classList.toggle('de-lado', janelaAFrente());
+            const passo = PASSOS[atual];
+            if (passo.gestos) {
+                desenharFoco([]);
+                cartaoEmBaixo();
+                return;
+            }
+            const caixas = passo.alvos();
+            desenharFoco(caixas);
+            porOCartao(caixas);
+        };
+
+        // As peças mexem-se com o bairro: o foco vai atrás delas a cada
+        // imagem, enquanto as instruções estiverem abertas.
+        const ciclo = () => {
+            if (!aberta) return;
+            arrumar();
+            requestAnimationFrame(ciclo);
+        };
+
+        // ── Abrir e fechar ──
 
         // Fechadas uma vez, não voltam. Fica escrito em dois sítios da
         // memória do navegador — se um falhar ou for limpo, o outro
@@ -4562,46 +4778,42 @@
         const abrir = () => {
             if (aberta) return;
             aberta = true;
+            feitos.clear();
             caixa.hidden = false;
-            mostrar(0, 0);
+            mostrar(0);
             requestAnimationFrame(() => requestAnimationFrame(() => caixa.classList.add('aberta')));
+            requestAnimationFrame(ciclo);
             try { cartao.focus({ preventScroll: true }); } catch (e) { cartao.focus(); }
         };
 
         const fechar = () => {
             if (!aberta) return;
             aberta = false;
+            clearTimeout(relogioDoFeito);
+            clearTimeout(relogioDaTroca);
+            cartao.classList.remove('a-trocar');
             guardarVistas();
             if (caixa.contains(document.activeElement)) document.activeElement.blur();
-            caixa.classList.remove('aberta');
+            caixa.classList.remove('aberta', 'com-foco', 'de-lado');
             setTimeout(() => { if (!aberta) caixa.hidden = true; }, 350);
         };
-
-        const seguinte = () => {
-            if (atual >= passos.length - 1) fechar();
-            else mostrar(atual + 1, 1);
-        };
-        const anterior = () => { if (atual > 0) mostrar(atual - 1, -1); };
 
         direita.addEventListener('click', seguinte);
         esquerda.addEventListener('click', anterior);
         fecharBotao.addEventListener('click', fechar);
 
-        // As teclas ficam para o cartão enquanto o foco lá estiver: as
-        // setas não andam com o bairro por trás dele.
-        caixa.addEventListener('keydown', (e) => {
-            if (!aberta) return;
-            if (e.key === 'ArrowRight') { seguinte(); }
-            else if (e.key === 'ArrowLeft') { anterior(); }
-            else if (e.key === 'Escape') { fechar(); }
-            else return;
-            e.preventDefault();
-            e.stopPropagation();
+        // O Escape fecha — a não ser que haja uma janela à frente, que é
+        // dela.
+        window.addEventListener('keydown', (e) => {
+            if (aberta && e.key === 'Escape' && !janelaAFrente()) fechar();
         });
 
-        window.addEventListener('idiomamudou', () => { nomearPontos(); if (aberta) anunciar(); });
+        window.addEventListener('idiomamudou', () => {
+            nomearPontos();
+            if (aberta) { escrever(); anunciar(); }
+        });
 
-        // Na primeira visita — ou quando se pede — aparecem pouco depois
+        // Na primeira visita — ou quando se pedem — aparecem pouco depois
         // de o bairro aparecer.
         const vistas = jaVistas();
         const pedidas = /[?&]instrucoes(=|&|$)/.test(location.search);
