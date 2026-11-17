@@ -9,7 +9,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title data-i18n-titulo="ctl.titulo">Controlos do Mapa — Malha Viva</title>
     <meta name="description" content="Guia dos controlos do visualizador 3D Malha Viva. Navega como num mapa: arrasta com o rato, aproxima com o scroll, roda com Ctrl.">
-    <script src="/idiomas.js?v=50"></script>
+    <script src="/idiomas.js?v=56"></script>
     <script src="/logotipo.js?v=1"></script>
     <script src="/comando-paginas.js?v=7" defer></script>
 
@@ -639,48 +639,60 @@
         <p class="page-subtitle" data-i18n="ctl.sub">Guia completo para navegar pela reconstrução 3D do Bairro de Penajóia.</p>
         <a href="/?instrucoes" class="rever-instrucoes" data-i18n="ins.rever">Rever as instruções</a>
 
-        <!-- ─── Rato ─── -->
+        <!-- ─── Rato ───
+             Como no Google Maps (ver "Navegar como no Google Maps", em
+             camera-controls.mjs). -->
         <section class="section" id="rato">
             <div class="section-header">
                 <h2 class="section-title" data-i18n="ctl.rato">Rato</h2>
             </div>
             <div class="controls-table">
                 <div class="control-row">
-                    <span class="control-action" data-i18n="ctl.irAte">Ir até um sítio</span>
-                    <div class="control-keys">
-                        <span class="kbd accent" data-i18n="ctl.clicar">Clicar</span>
-                        <span class="key-separator" data-i18n="ctl.noSitio">num sítio do bairro</span>
-                    </div>
-                </div>
-                <div class="control-row">
-                    <span class="control-action" data-i18n="ctl.olhar">Olhar à volta</span>
+                    <span class="control-action" data-i18n="ctl.moverMapa">Mover o mapa</span>
                     <div class="control-keys">
                         <span class="kbd accent"><svg width="11" height="14" viewBox="0 0 12 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true" style="margin-right: 6px"><rect x="1" y="1" width="10" height="14"></rect><line x1="6" y1="4" x2="6" y2="7"></line></svg><span data-i18n="ctl.esquerdo">Esquerdo</span></span>
                         <span class="key-separator" data-i18n="ctl.maisArrastar">+ arrastar</span>
                     </div>
                 </div>
                 <div class="control-row">
-                    <span class="control-action" data-i18n="ctl.arrastarBairro">Arrastar o bairro</span>
+                    <span class="control-action" data-i18n="ctl.zoom">Aproximar / afastar</span>
+                    <div class="control-keys">
+                        <span class="kbd accent" data-i18n="ctl.rodaDoRato">Roda do rato</span>
+                    </div>
+                </div>
+                <div class="control-row">
+                    <span class="control-action" data-i18n="ctl.rodar">Rodar e inclinar</span>
                     <div class="control-keys">
                         <span class="kbd accent">Ctrl</span>
+                        <span class="key-separator" data-i18n="ctl.maisArrastar">+ arrastar</span>
+                        <span class="key-separator" data-i18n="ctl.ou">ou</span>
+                        <span class="kbd"><svg width="11" height="14" viewBox="0 0 12 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true" style="margin-right: 6px"><rect x="1" y="1" width="10" height="14"></rect><line x1="6" y1="4" x2="6" y2="7"></line></svg><span data-i18n="ctl.direito">Direito</span></span>
                         <span class="key-separator" data-i18n="ctl.maisArrastar">+ arrastar</span>
                     </div>
                 </div>
                 <div class="control-row">
-                    <span class="control-action" data-i18n="ctl.zoomVista">Aproximar visão (Zoom)</span>
+                    <span class="control-action" data-i18n="ctl.aproximarSitio">Aproximar e trazer ao meio</span>
                     <div class="control-keys">
-                        <span class="kbd">Scroll</span>
+                        <span class="kbd accent" data-i18n="ctl.duploClique">Duplo clique</span>
+                        <span class="key-separator" data-i18n="ctl.noSitio">num sítio do bairro</span>
+                    </div>
+                </div>
+                <div class="control-row">
+                    <span class="control-action" data-i18n="ctl.virarNorte">Virar para norte</span>
+                    <div class="control-keys">
+                        <span class="kbd accent" data-i18n="ctl.clicar">Clicar</span>
+                        <span class="key-separator" data-i18n="ctl.naBussola">na bússola</span>
                     </div>
                 </div>
             </div>
         </section>
 
         <!-- ─── Teclado ─── -->
-        <section class="section" id="teclado" data-principais="3">
+        <section class="section" id="teclado" data-principais="4">
             <div class="section-header">
                 <h2 class="section-title" data-i18n="ctl.teclado">Teclado</h2>
             </div>
-            <p class="section-desc" data-i18n="ctl.tecladoDesc">Dá para tudo sem rato. No bairro as setas andam, como o WASD; com o Alt em baixo passam a olhar à volta. Com uma janela aberta, as setas dos lados passam ao testemunho ou à paragem do lado, como as setas desenhadas de cada lado dela.</p>
+            <p class="section-desc" data-i18n="ctl.tecladoDesc">Dá para tudo sem rato. No bairro as setas e o WASD movem o mapa, o + e o − aproximam e afastam, e com o Shift ou o Alt em baixo as setas rodam e inclinam. Nas paragens 360º o WASD vira a cabeça. Com uma janela aberta, as setas dos lados passam ao testemunho ou à paragem do lado, como as setas desenhadas de cada lado dela.</p>
             <div class="grupo-titulo" data-i18n="ctl.gpNoBairro">No bairro</div>
             <div class="controls-table">
                 <div class="control-row">
@@ -704,21 +716,18 @@
                     </div>
                 </div>
                 <div class="control-row">
-                    <span class="control-action" data-i18n="ctl.olhar">Olhar à volta</span>
+                    <span class="control-action" data-i18n="ctl.rodar">Rodar e inclinar</span>
                     <div class="control-keys">
-                        <span class="kbd accent" data-i18n="ctl.tecAltSetas">Alt + setas</span>
+                        <span class="kbd accent" data-i18n="ctl.tecShiftSetas">Shift + setas</span>
+                        <span class="key-separator" data-i18n="ctl.ou">ou</span>
+                        <span class="kbd" data-i18n="ctl.tecAltSetas">Alt + setas</span>
                     </div>
                 </div>
                 <div class="control-row">
-                    <span class="control-action" data-i18n="ctl.movimentoRapido">Movimento rápido</span>
+                    <span class="control-action" data-i18n="ctl.zoom">Aproximar / afastar</span>
                     <div class="control-keys">
-                        <span class="kbd accent">Shift</span>
-                    </div>
-                </div>
-                <div class="control-row">
-                    <span class="control-action" data-i18n="ctl.movimentoLento">Movimento lento</span>
-                    <div class="control-keys">
-                        <span class="kbd accent">Ctrl</span>
+                        <span class="kbd accent">+</span>
+                        <span class="kbd accent">−</span>
                     </div>
                 </div>
                 <div class="control-row">
@@ -969,21 +978,15 @@
             </div>
         </section>
 
-        <!-- ─── Touch ─── -->
+        <!-- ─── Touch ───
+             Os gestos do Google Maps no telemóvel. -->
         <section class="section" id="toque">
             <div class="section-header">
                 <h2 class="section-title" data-i18n="ctl.toque">Ecrã Tátil</h2>
             </div>
             <div class="controls-table">
                 <div class="control-row">
-                    <span class="control-action" data-i18n="ctl.irAte">Ir até um sítio</span>
-                    <div class="control-keys">
-                        <span class="kbd accent" data-i18n="ctl.tocar">Tocar</span>
-                        <span class="key-separator" data-i18n="ctl.noSitio">num sítio do bairro</span>
-                    </div>
-                </div>
-                <div class="control-row">
-                    <span class="control-action" data-i18n="ctl.rodarCamara">Rodar a câmara</span>
+                    <span class="control-action" data-i18n="ctl.moverMapa">Mover o mapa</span>
                     <div class="control-keys">
                         <span class="kbd accent" data-i18n="ctl.umDedo">1 dedo</span>
                         <span class="key-separator" data-i18n="ctl.arrastarGesto">arrastar</span>
@@ -992,15 +995,49 @@
                 <div class="control-row">
                     <span class="control-action" data-i18n="ctl.zoom">Aproximar / afastar</span>
                     <div class="control-keys">
-                        <span class="kbd" data-i18n="ctl.doisDedos">2 dedos</span>
+                        <span class="kbd accent" data-i18n="ctl.doisDedos">2 dedos</span>
                         <span class="key-separator" data-i18n="ctl.pinca">pinça</span>
                     </div>
                 </div>
                 <div class="control-row">
-                    <span class="control-action" data-i18n="ctl.panDoisDedos">Mover lateralmente (Pan)</span>
+                    <span class="control-action" data-i18n="ctl.rodarDedos">Rodar</span>
                     <div class="control-keys">
-                        <span class="kbd" data-i18n="ctl.doisDedos">2 dedos</span>
-                        <span class="key-separator" data-i18n="ctl.arrastarGesto">arrastar</span>
+                        <span class="kbd accent" data-i18n="ctl.doisDedos">2 dedos</span>
+                        <span class="key-separator" data-i18n="ctl.rodarGesto">rodar</span>
+                    </div>
+                </div>
+                <div class="control-row">
+                    <span class="control-action" data-i18n="ctl.inclinar">Inclinar</span>
+                    <div class="control-keys">
+                        <span class="kbd accent" data-i18n="ctl.doisDedos">2 dedos</span>
+                        <span class="key-separator" data-i18n="ctl.paraCimaBaixo">arrastar para cima ou para baixo</span>
+                    </div>
+                </div>
+                <div class="control-row">
+                    <span class="control-action" data-i18n="ctl.aproximarSitio">Aproximar e trazer ao meio</span>
+                    <div class="control-keys">
+                        <span class="kbd accent" data-i18n="ctl.tocarDuas">Tocar duas vezes</span>
+                        <span class="key-separator" data-i18n="ctl.noSitio">num sítio do bairro</span>
+                    </div>
+                </div>
+                <div class="control-row">
+                    <span class="control-action" data-i18n="ctl.afastar">Afastar</span>
+                    <div class="control-keys">
+                        <span class="kbd accent" data-i18n="ctl.doisDedos">2 dedos</span>
+                        <span class="key-separator" data-i18n="ctl.tocarGesto">tocar</span>
+                    </div>
+                </div>
+                <div class="control-row">
+                    <span class="control-action" data-i18n="ctl.zoomUmDedo">Aproximar com um dedo</span>
+                    <div class="control-keys">
+                        <span class="kbd" data-i18n="ctl.tocarDuasArrastar">Tocar duas vezes e arrastar</span>
+                    </div>
+                </div>
+                <div class="control-row">
+                    <span class="control-action" data-i18n="ctl.virarNorte">Virar para norte</span>
+                    <div class="control-keys">
+                        <span class="kbd accent" data-i18n="ctl.tocar">Tocar</span>
+                        <span class="key-separator" data-i18n="ctl.naBussola">na bússola</span>
                     </div>
                 </div>
             </div>
