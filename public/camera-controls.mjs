@@ -218,6 +218,17 @@ const INCLINACAO_MAXIMA = -10;
 const ALTURA_MINIMA = 15;
 const PERTO_MINIMO = 4;
 
+// Os limites não são paredes. Chegando-se a um, o gesto rende cada vez
+// menos, e o limite alcança-se devagar, sem batida (ver `andarAteAoLimite`):
+// nos últimos ZONA_DA_INCLINACAO graus antes de um limite da inclinação (a
+// vista a pique, o horizonte, ou o ângulo em que a câmara chegaria à altura
+// mínima), nos últimos ZONA_DA_ALTURA metros antes da altura mínima ou do
+// tecto, e nos últimos ZONA_DE_PERTO metros antes do sítio para onde se
+// aproxima.
+const ZONA_DA_INCLINACAO = 8;
+const ZONA_DA_ALTURA = 8;
+const ZONA_DE_PERTO = 6;
+
 // A viagem do duplo clique: quanto demora (segundos), e quanto mais
 // demora até à distância em que deixa de crescer (metros).
 const VIAGEM_DURACAO_MINIMA = 0.55;
@@ -242,6 +253,41 @@ const FOLGA_FORA_DO_TERRENO = 25;
  * @returns {number} De zero a um.
  */
 const entradaESaida = t => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+
+/**
+ * Quanto se anda, de facto, em direcção a um limite.
+ *
+ * Até à zona antes do limite anda-se tudo o que se pede. Dentro dela a
+ * velocidade é proporcional ao que falta: quanto mais perto, mais devagar,
+ * e o limite alcança-se a abrandar, sem batida. A conta é a exacta desse
+ * abrandamento, e por isso dá o mesmo com passos grandes ou pequenos — com
+ * o rato depressa ou devagar, com muitas imagens por segundo ou poucas.
+ * Para longe do limite anda-se sempre tudo.
+ *
+ * @param {number} passo - Quanto se pede (positivo é em direcção ao limite).
+ * @param {number} falta - Quanto falta até ao limite.
+ * @param {number} zona - O tamanho da zona em que se abranda.
+ * @returns {number} Quanto se anda.
+ */
+const andarAteAoLimite = (passo, falta, zona) => {
+    if (!(passo > 0)) {
+        return passo;
+    }
+    if (!(falta > 0)) {
+        return 0;
+    }
+    let andado = 0;
+    if (falta > zona) {
+        const livre = Math.min(passo, falta - zona);
+        andado += livre;
+        passo -= livre;
+        falta -= livre;
+    }
+    if (passo > 0) {
+        andado += falta * (1 - Math.exp(-passo / zona));
+    }
+    return andado;
+};
 
 /**
  * Provides orbit, fly and pan camera controls, driven by mouse, touch and gamepad input. Movement
@@ -1801,8 +1847,9 @@ class CameraControls extends Script {
     /**
      * Aproxima a câmara de um sítio (ou afasta-a dele), pela linha que os
      * une: o sítio fica no mesmo ponto do ecrã. Não desce abaixo da altura
-     * mínima, não sobe acima do tecto, não chega mais perto do que
-     * PERTO_MINIMO e não sai pela parede do céu — aí pára.
+     * mínima, não sobe acima do tecto e não chega mais perto do que
+     * PERTO_MINIMO — e chega a esses limites a abrandar, sem batida (ver
+     * `andarAteAoLimite`). Contra a parede do céu, pára.
      *
      * @param {Vec3} ancora - O sítio.
      * @param {number} fator - Quanto fica da distância (menos de um
@@ -1823,22 +1870,28 @@ class CameraControls extends Script {
             return 1;
         }
         const tecto = this._tectoAgora();
-        let minimo = PERTO_MINIMO / distancia;
-        let maximo = Infinity;
-        if (dy > 1e-3) {
-            minimo = Math.max(minimo, (ALTURA_MINIMA - ancora.y) / dy);
-            maximo = Math.min(maximo, (tecto - ancora.y) / dy);
-        } else if (dy < -1e-3) {
-            minimo = Math.max(minimo, (tecto - ancora.y) / dy);
-            maximo = Math.min(maximo, (ALTURA_MINIMA - ancora.y) / dy);
+        // A câmara anda pela linha até ao sítio (aproximar) ou para trás
+        // dela (afastar); por cada metro que anda, sobe ou desce `inclina`.
+        const inclina = dy / distancia;
+        const aproximar = fator < 1;
+        let anda = distancia * Math.abs(1 - fator);
+        if (aproximar) {
+            anda = andarAteAoLimite(anda, distancia - PERTO_MINIMO, ZONA_DE_PERTO);
         }
-        let f = fator;
-        if (f < 1) {
-            f = Math.max(f, Math.min(1, minimo));
-        } else {
-            f = Math.min(f, Math.max(1, maximo));
+        // Aproximar de um sítio mais baixo, ou afastar de um mais alto,
+        // desce; o contrário sobe.
+        const desce = aproximar ? inclina > 1e-3 : inclina < -1e-3;
+        const sobe = aproximar ? inclina < -1e-3 : inclina > 1e-3;
+        const porMetro = Math.abs(inclina);
+        if (desce) {
+            const descida = andarAteAoLimite(anda * porMetro, pos.y - ALTURA_MINIMA, ZONA_DA_ALTURA);
+            anda = Math.min(anda, descida / porMetro);
+        } else if (sobe) {
+            const subida = andarAteAoLimite(anda * porMetro, tecto - pos.y, ZONA_DA_ALTURA);
+            anda = Math.min(anda, subida / porMetro);
         }
-        if (Math.abs(f - 1) < 1e-6) {
+        const f = aproximar ? 1 - anda / distancia : 1 + anda / distancia;
+        if (!(Math.abs(f - 1) > 1e-6)) {
             return 1;
         }
         const nx = ancora.x + dx * f;
@@ -1880,7 +1933,10 @@ class CameraControls extends Script {
      * como no Google Maps: rodar anda à volta dele; inclinar mantém a
      * distância a ele e muda o ângulo — sem descer abaixo da altura mínima
      * (aí não inclina mais) e sem subir acima do tecto (aí chega-se mais
-     * perto dele).
+     * perto dele). Nenhum destes limites é uma parede: a inclinação abranda
+     * nos últimos graus antes deles, e a subida nos últimos metros antes do
+     * tecto, e chega-se lá devagar (ver `andarAteAoLimite`). Antes, a câmara
+     * parava de repente ao chegar à altura mínima.
      *
      * @param {number} grausRumo - Quanto rodar (mais é para a esquerda).
      * @param {number} grausInclinacao - Quanto inclinar (mais é para o
@@ -1905,18 +1961,27 @@ class CameraControls extends Script {
             return;
         }
         const antes = entreMeiaVolta(angulos.x);
-        let depois = math.clamp(antes + grausInclinacao, INCLINACAO_MINIMA, INCLINACAO_MAXIMA);
+        let depois;
         if (grausInclinacao > 0) {
-            // Para o horizonte a câmara desce: pára à altura mínima.
+            // Para o horizonte a câmara desce, à mesma distância do meio. O
+            // limite é o horizonte permitido, ou o ângulo em que ela chegaria
+            // à altura mínima — o que vier primeiro.
             const seno = math.clamp((ALTURA_MINIMA - pivo.y) / distancia, 0, 1);
             const noChao = -Math.asin(seno) * math.RAD_TO_DEG;
-            depois = Math.max(antes, Math.min(depois, noChao));
+            const limite = Math.min(INCLINACAO_MAXIMA, noChao);
+            depois = antes + andarAteAoLimite(grausInclinacao, limite - antes, ZONA_DA_INCLINACAO);
+        } else {
+            depois = antes - andarAteAoLimite(-grausInclinacao, antes - INCLINACAO_MINIMA, ZONA_DA_INCLINACAO);
         }
+        // Para a vista de cima a câmara sobe. À mesma distância do meio
+        // subia até `alturaPedida`; perto do tecto sobe cada vez menos, e
+        // para o meio continuar no meio chega-se mais perto dele.
         let d = distancia;
-        const sobe = Math.sin(-depois * math.DEG_TO_RAD);
-        const tecto = this._tectoAgora();
-        if (sobe > 1e-3 && pivo.y + d * sobe > tecto) {
-            d = Math.max(PERTO_MINIMO, (tecto - pivo.y) / sobe);
+        const seno = Math.sin(-depois * math.DEG_TO_RAD);
+        if (seno > 1e-3) {
+            const alturaPedida = pivo.y + distancia * seno;
+            const subida = andarAteAoLimite(alturaPedida - pos.y, this._tectoAgora() - pos.y, ZONA_DA_ALTURA);
+            d = Math.max(PERTO_MINIMO, (pos.y + subida - pivo.y) / seno);
         }
         angulos.x = depois;
         const p = depois * math.DEG_TO_RAD;
@@ -2310,8 +2375,10 @@ class CameraControls extends Script {
         const pedido = Math.exp(passo);
         const feito = this._aproximar(z.ancora, pedido);
         z.falta -= passo;
-        // Bateu num limite: o resto fica por fazer.
-        if (Math.abs(Math.log(feito) - passo) > 1e-6) {
+        // Encostado a um limite, ou contra a parede do céu, já não anda
+        // nada: o resto fica por fazer. (Perto de um limite anda menos do
+        // que se pede, a abrandar — e isso não o pára: ver `_aproximar`.)
+        if (feito === 1 && Math.abs(passo) > 1e-6) {
             z.falta = 0;
         }
         if (Math.abs(z.falta) < 1e-6) {

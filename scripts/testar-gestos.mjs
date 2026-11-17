@@ -239,6 +239,70 @@ p1 = await pose();
 prova('Ctrl + arrastar para baixo: vista de cima, sem passar do tecto', p1.inclinacao < -60 && p1.y <= tecto + 0.02, `inclinação ${p1.inclinacao.toFixed(1)}, y=${p1.y.toFixed(1)}`);
 await foto('4-de-cima');
 
+// ── 4b. Os limites abrandam, sem batida
+// Depois de cada passo do rato espera-se que o motor desenhe, para cada
+// passo contar o que fez.
+const umaImagem = () => avaliar('new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(() => r(1))))');
+// O maior salto de velocidade entre dois passos seguidos, em fracção da
+// velocidade mais alta: perto de zero é suave; perto de um é uma parede (a
+// velocidade toda num passo e nada no seguinte).
+const maiorSalto = (passos) => {
+    const livre = Math.max(...passos.map(Math.abs)) || 1;
+    let salto = 0;
+    for (let i = 1; i < passos.length; i++) salto = Math.max(salto, Math.abs(passos[i] - passos[i - 1]) / livre);
+    return { salto, ultimo: Math.abs(passos[passos.length - 1]) / livre };
+};
+async function arrastarAPassos(dy, passos, modificadores) {
+    const inclinacoes = [];
+    const alturas = [];
+    let y = A / 2;
+    await rato('mouseMoved', L / 2, y);
+    await rato('mousePressed', L / 2, y, { button: 'left', buttons: 1, clickCount: 1, modifiers: modificadores });
+    for (let i = 0; i < passos; i++) {
+        y += dy;
+        await rato('mouseMoved', L / 2, y, { button: 'left', buttons: 1, modifiers: modificadores });
+        await umaImagem();
+        const p = await pose();
+        inclinacoes.push(p.inclinacao);
+        alturas.push(p.y);
+    }
+    await rato('mouseReleased', L / 2, y, { button: 'left', buttons: 0, clickCount: 1, modifiers: modificadores });
+    await dormir(300);
+    return { inclinacoes, alturas };
+}
+const diferencas = v => v.slice(1).map((x, i) => x - v[i]);
+
+// Inclinar para o horizonte com o Ctrl, já perto do chão: a câmara desce até
+// à altura mínima, e tem de lá chegar a abrandar.
+await voltarAoInicio();
+for (let i = 0; i < 4; i++) { await rato('mouseWheel', L / 2, A / 2, { deltaX: 0, deltaY: -100 }); await dormir(60); }
+await dormir(1200);
+let g = await arrastarAPassos(-3, 70, 2);
+let s = maiorSalto(diferencas(g.inclinacoes));
+prova('Ctrl + arrastar para cima até à altura mínima: abranda, sem batida', s.salto < 0.35 && s.ultimo < 0.15 && Math.min(...g.alturas) >= 14.99,
+    `maior salto ${(s.salto * 100).toFixed(0)} % da velocidade, último passo ${(s.ultimo * 100).toFixed(0)} %, mais baixo ${Math.min(...g.alturas).toFixed(2)} m`);
+
+// Inclinar para a vista de cima com o Ctrl, abaixo do tecto: a câmara sobe, e
+// tem de chegar ao tecto a abrandar.
+await voltarAoInicio();
+for (let i = 0; i < 2; i++) { await rato('mouseWheel', L / 2, A / 2, { deltaX: 0, deltaY: -100 }); await dormir(60); }
+await dormir(1200);
+g = await arrastarAPassos(3, 70, 2);
+s = maiorSalto(diferencas(g.alturas));
+prova('Ctrl + arrastar para baixo até ao tecto: a subida abranda, sem batida', s.salto < 0.35 && Math.max(...g.alturas) <= tecto + 0.02,
+    `maior salto ${(s.salto * 100).toFixed(0)} % da velocidade de subida, mais alto ${Math.max(...g.alturas).toFixed(2)} m (tecto ${tecto.toFixed(2)})`);
+
+// A roda até à altura mínima: a descida abranda antes de lá chegar.
+await voltarAoInicio();
+await avaliar(`(() => { window.__alturas = []; window.__t.app.on('postrender', () => window.__alturas.push(window.__t.cam.getPosition().y)); return 1; })()`);
+for (let i = 0; i < 14; i++) { await rato('mouseWheel', L / 2, A / 2, { deltaX: 0, deltaY: -100 }); await dormir(40); }
+await dormir(2500);
+const alturasDaRoda = JSON.parse(await avaliar('JSON.stringify(window.__alturas)'));
+const descidas = diferencas(alturasDaRoda).filter(d => d < -1e-4);
+s = maiorSalto(descidas);
+prova('roda até à altura mínima: a descida abranda, sem batida', s.ultimo < 0.1 && Math.min(...alturasDaRoda) >= 14.99,
+    `último passo ${(s.ultimo * 100).toFixed(0)} % da velocidade, mais baixo ${Math.min(...alturasDaRoda).toFixed(2)} m`);
+
 // ── 5. Botão direito também roda
 await voltarAoInicio();
 p0 = await pose();
