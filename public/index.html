@@ -151,7 +151,7 @@
 
     <!-- As línguas do site. Fica antes de tudo o resto para o texto
          nascer já na língua certa, sem piscar em português primeiro. -->
-    <script src="/idiomas.js?v=54"></script>
+    <script src="/idiomas.js?v=55"></script>
     <script src="/legendas.js?v=3"></script>
 
     <!-- O quadrado de espera, o mesmo em todo o site. Fica antes de o
@@ -2045,6 +2045,17 @@
             width: 16px;
             height: 16px;
             cursor: pointer;
+        }
+
+        /* Uma frase pequena por baixo de uma escolha, a explicá-la. */
+        .settings-nota {
+            margin: 12px 0 0;
+            font-size: 0.72rem;
+            line-height: 1.5;
+            color: var(--color-text-muted);
+        }
+        .settings-nota[hidden] {
+            display: none;
         }
 
 
@@ -3955,6 +3966,9 @@
                         <span data-i18n="def.baixo">Baixo (Mais Performance)</span>
                     </label>
                 </div>
+                <!-- Só aparece no modo de poupança (ver `setQuality`): diz
+                     porque é que nenhum modo está escolhido. -->
+                <p id="qualidade-poupanca" class="settings-nota" data-i18n="def.poupanca" hidden>O aparelho ficou sem memória gráfica e o bairro está a poupá-la. Escolha um modo para sair da poupança.</p>
 
                 <!-- O que se vê no bairro e se pode dispensar: os
                      marcadores de cada tipo, as miniaturas por cima
@@ -5254,13 +5268,20 @@ void modifySplatColor(vec3 center, inout vec4 color) {
         const isMed = actualQuality === 'med';
         const isLow = actualQuality === 'low';
         
-        // Setup initial UI states
-        document.getElementById('radio-auto').checked = (savedQuality === 'auto');
-        document.getElementById('radio-max').checked = (savedQuality === 'max');
-        document.getElementById('radio-high').checked = (savedQuality === 'high');
-        document.getElementById('radio-med').checked = (savedQuality === 'med');
-        document.getElementById('radio-low').checked = (savedQuality === 'low');
-        
+        // As escolhas do menu mostram o modo guardado. No modo de poupança
+        // (a placa gráfica desistiu nesta visita: ver "Quando a placa
+        // gráfica desiste") o bairro não está em nenhum deles, por isso
+        // nenhum fica marcado, e a frase por baixo diz porquê — e assim
+        // qualquer um, também o Automático, se pode escolher para sair dela.
+        const emPoupanca = !!window.modoDePoupanca;
+        document.getElementById('radio-auto').checked = !emPoupanca && (savedQuality === 'auto');
+        document.getElementById('radio-max').checked = !emPoupanca && (savedQuality === 'max');
+        document.getElementById('radio-high').checked = !emPoupanca && (savedQuality === 'high');
+        document.getElementById('radio-med').checked = !emPoupanca && (savedQuality === 'med');
+        document.getElementById('radio-low').checked = !emPoupanca && (savedQuality === 'low');
+        const notaDaPoupanca = document.getElementById('qualidade-poupanca');
+        if (notaDaPoupanca) notaDaPoupanca.hidden = !emPoupanca;
+
 
         function showUI() {
             overlay.classList.add('hidden');
@@ -5447,10 +5468,30 @@ void modifySplatColor(vec3 center, inout vec4 color) {
             setTimeout(() => requestAnimationFrame(contar), ARRANQUE);
         }
 
+        /**
+         * Muda o modo gráfico, a pedido de quem visita.
+         *
+         * Escolher manda sempre. Quando a placa gráfica fica sem memória a
+         * meio de uma visita, a página desce para o modo de poupança, e essa
+         * marca dura até se fechar o separador — e antes ganhava a tudo: o
+         * modo escolhido a seguir ficava guardado, mas a página voltava a
+         * abrir em poupança, e escolher um modo não mudava nada. Agora a
+         * escolha tira a marca (e a conta das vezes em que o motor não
+         * arrancou, que é da mesma desistência). Se o modo escolhido também
+         * não couber no aparelho, a descida recomeça do princípio: primeiro
+         * o Automático, depois a poupança.
+         *
+         * @param {string} mode - O modo escolhido.
+         */
         function setQuality(mode) {
-            if (mode === savedQuality) return;
+            if (mode === savedQuality && !window.modoDePoupanca) return;
+            try {
+                sessionStorage.removeItem('poupanca');
+                sessionStorage.removeItem('motor-sem-desenho');
+            } catch (e) { /* sem memória da sessão: vale o que ficar guardado */ }
             memoria.guardar('quality', mode);
-            // Reload the page to recreate the WebGL context with new antialias settings
+            // Recarrega, porque a densidade e o modelo do bairro só se
+            // escolhem quando o motor nasce.
             window.location.reload();
         }
 
