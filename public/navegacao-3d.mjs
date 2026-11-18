@@ -24,12 +24,16 @@
  *
  * As casas do lote F ficam fora da zona do drone: para elas, pousa-se no
  * chão, plana, uma fotografia de satélite do lote, que sai com o percurso.
+ *
+ * Também o local marcado (carregar sem largar num sítio do bairro) é
+ * daqui: o alfinete no sítio, o percurso até ele, e a câmara a ir vê-lo
+ * quando chega por uma ligação (ver "O local marcado", mais abaixo).
  */
 import {
     Vec3, Color, Entity, Mesh, MeshInstance, StandardMaterial, Texture,
     BLEND_NORMAL, CULLFACE_NONE, ADDRESS_CLAMP_TO_EDGE, FILTER_LINEAR, FILTER_LINEAR_MIPMAP_LINEAR
 } from 'playcanvas';
-import { alisar, arredondar, preencher, METROS_POR_MINUTO } from './navegacao.mjs?v=9';
+import { alisar, arredondar, preencher, METROS_POR_MINUTO } from './navegacao.mjs?v=10';
 import { endireitar } from './endireitar.mjs?v=1';
 
 // Quanto se alisa a linha, em metros (as contas são as do traçado de
@@ -126,6 +130,21 @@ const INCLINACAO_A_SEGUIR = 48;
 const ALTURA_A_SEGUIR = 30;
 const SETA_NA_VISTA = 0.28;
 
+// O local marcado (carregar sem largar num sítio do bairro): o alfinete
+// fica no sítio onde se carregou (um telhado, a rua), e o fim do percurso
+// até lá. Aberto de uma ligação, a câmara vai vê-lo desta inclinação e
+// desta altura acima dele, com ele ao meio da parte livre do ecrã; e a
+// altura do alfinete acerta-se ao que lá se vê (ver `acertarAAltura`), entre
+// o chão e ALTURA_DO_ALFINETE_MAXIMA acima dele.
+const INCLINACAO_DO_LOCAL = 55;
+const ALTURA_DO_LOCAL = 55;
+const ALTURA_DO_ALFINETE_MAXIMA = 25;
+// O alfinete desenhado: um quadrado branco com um bico a apontar para o
+// sítio, e um quadrado escuro dentro — o sinal do destino no painel.
+const ALFINETE = '<svg viewBox="0 0 28 40" aria-hidden="true">' +
+    '<path d="M2.5 2.5 H25.5 V25.5 H17.5 L14 37 L10.5 25.5 H2.5 Z" fill="#ffffff" stroke="#05050a" stroke-width="2.5" stroke-linejoin="miter"/>' +
+    '<rect x="9" y="9" width="10" height="10" fill="#05050a"/></svg>';
+
 // O lote F, que o drone não fotografou: a fotografia de satélite pousada
 // no chão, plana (ver scripts/navegacao/lote-f.py), um nada acima dele; e
 // quanto demora a aparecer e a sair, em segundos.
@@ -143,8 +162,9 @@ const RAIO_DA_TERRA = 6378137;
  * @param {object} opcoes - O que a página dá: `rede` (a Rede, já lida),
  *     `camara` (a entidade da câmara), `diz` (os textos das línguas),
  *     `folgas` (o que tapa o ecrã: {esquerda, cima, direita, baixo}, em
- *     pontos) e `quandoSeguir` (chamada quando a câmara passa a seguir a
- *     seta de quem anda, ou a larga).
+ *     pontos), `quandoSeguir` (chamada quando a câmara passa a seguir a
+ *     seta de quem anda, ou a larga) e `quandoCarregarNoLocal` (chamada
+ *     quando se carrega no alfinete do local marcado, sem percurso).
  * @returns {Promise<object>} O que se lhe pode pedir: mostrar o percurso
  *     até uma casa (`mostrar`), tirá-lo (`limpar`), tirá-lo e levar a
  *     câmara à vista de antes dele (`voltar`), voltar a enquadrá-lo
@@ -174,6 +194,19 @@ export async function prepararNavegacao3D(app, opcoes) {
         const a = (E - t[0]) / s;
         const b = (N - t[1]) / s;
         return [R[0][0] * a + R[1][0] * b, -(R[0][1] * a + R[1][1] * b)];
+    };
+    // E de volta: um ponto x, z da cena em graus — o sítio do local
+    // marcado, para o endereço que se partilha. (A rotação do registo é
+    // uma rotação: a inversa é a transposta.)
+    const naTerra = ([x, z]) => {
+        const a = R[0][0] * x - R[0][1] * z;
+        const b = R[1][0] * x - R[1][1] * z;
+        const E = a * s + t[0];
+        const N = b * s + t[1];
+        return [
+            (2 * Math.atan(Math.exp(N / RAIO_DA_TERRA)) - Math.PI / 2) * 180 / Math.PI,
+            E / RAIO_DA_TERRA * 180 / Math.PI
+        ];
     };
     // A altura do chão do bairro (o y da cena) num ponto x, z: entre os
     // quatro pontos da grelha à volta; fora dela, o da beira.
@@ -998,16 +1031,27 @@ export async function prepararNavegacao3D(app, opcoes) {
     // quem está a ver, que fica enquanto a localização estiver ligada.
     let marcadores = { entrada: null, casa: null };
     let voce = null;
+    // O local marcado (ver "O local marcado", mais abaixo): o alfinete, com
+    // o sítio dele.
+    let local = null;
     const nomear = () => {
         const numero = atual ? atual.casa.n : '';
+        const paraOLocal = !!(atual && atual.casa.tipo === 'local');
         if (marcadores.entrada) {
-            marcadores.entrada.el.setAttribute('aria-label', preencher(diz('nav.marcadorEntrada', 'Entrada do bairro, onde começa o percurso até à casa {numero}'), { numero }));
+            marcadores.entrada.el.setAttribute('aria-label', paraOLocal
+                ? diz('nav.marcadorEntradaLocal', 'Entrada do bairro, onde começa o percurso até ao local marcado')
+                : preencher(diz('nav.marcadorEntrada', 'Entrada do bairro, onde começa o percurso até à casa {numero}'), { numero }));
             marcadores.entrada.rotulo.textContent = diz('nav.entrada', 'Entrada');
         }
         if (marcadores.casa) {
             marcadores.casa.el.setAttribute('aria-label', preencher(diz('nav.marcadorCasa', 'Casa {numero}, onde acaba o percurso'), { numero }));
         }
         if (voce) voce.el.setAttribute('aria-label', diz('nav.marcadorVoce', 'Está aqui: o sítio onde está agora'));
+        if (local) {
+            local.el.setAttribute('aria-label', paraOLocal
+                ? diz('loc.marcadorFim', 'Local marcado, onde acaba o percurso')
+                : diz('loc.marcador', 'Local marcado: as direções até lá e a partilha'));
+        }
     };
     const tirarMarcadores = () => {
         for (const m of Object.values(marcadores)) if (m) m.el.remove();
@@ -1049,7 +1093,7 @@ export async function prepararNavegacao3D(app, opcoes) {
 
     // Antes de cada imagem ser desenhada, com a câmara já no sítio dela.
     app.on('prerender', () => {
-        const todos = [marcadores.entrada, marcadores.casa, voce].filter(Boolean);
+        const todos = [marcadores.entrada, marcadores.casa, voce, local].filter(Boolean);
         if (!atual && !todos.length) return;
         prepararEcra();
         if (atual) {
@@ -1079,7 +1123,9 @@ export async function prepararNavegacao3D(app, opcoes) {
         for (const m of todos) {
             const c = naCamara(m.ponto);
             const s = c[2] > 1 ? noEcra(c) : null;
-            const ve = !!s && s[0] > -40 && s[0] < ecra.largura + 40 && s[1] > -40 && s[1] < ecra.altura + 40;
+            // (Um marcador `escondido` ainda não está no mapa: o alfinete de
+            // uma ligação, antes de cair — ver `deixarCair`.)
+            const ve = !m.escondido && !!s && s[0] > -40 && s[0] < ecra.largura + 40 && s[1] > -40 && s[1] < ecra.altura + 40;
             if (ve !== m.visto) {
                 m.visto = ve;
                 m.el.classList.toggle('fora', !ve);
@@ -1258,11 +1304,13 @@ export async function prepararNavegacao3D(app, opcoes) {
     };
 
     /**
-     * Mostra o percurso até uma casa: de onde quem vê está, se se souber e
-     * for perto; senão, da entrada do bairro mais perto dela. A linha, os
-     * marcadores, e a câmara a ir até onde se vê tudo.
+     * Mostra o percurso até uma casa (ou até ao local marcado): de onde
+     * quem vê está, se se souber e for perto; senão, da entrada do bairro
+     * mais perto dela. A linha, os marcadores, e a câmara a ir até onde se
+     * vê tudo.
      *
-     * @param {object} casa - A casa (de rede.json).
+     * @param {object} casa - A casa (de rede.json), ou o local marcado
+     *     (Rede.destinoNoSitio, com o alfinete já posto: ver `marcarLocal`).
      * @param {object} [como] - `aqui` ({lat, lon}: onde a pessoa está) e
      *     `enquadrar` (se a câmara vai até ao percurso; sim, se não se
      *     disser).
@@ -1278,9 +1326,13 @@ export async function prepararNavegacao3D(app, opcoes) {
             const c = controlos();
             if (c && typeof c.vista === 'function') vistaDeAntes = c.vista();
         }
+        // O local marcado acaba a meio de um troço da rede, e não no nó de
+        // uma casa.
+        const paraOLocal = casa.tipo === 'local';
+        const destino = paraOLocal ? casa.naRede : casa.no;
         // Antes de tudo o resto: com uma casa F, o chão de lá é o plano da
         // fotografia, e o percurso assenta nele.
-        mostrarLoteF(eDoLoteF(casa));
+        mostrarLoteF(!paraOLocal && eDoLoteF(casa));
         let origem = null;
         let inicio = null;
         let ligacao = null;
@@ -1296,11 +1348,14 @@ export async function prepararNavegacao3D(app, opcoes) {
             }
         }
         if (!origem) {
-            const ent = rede.entradaPara(casa.no);
-            origem = { no: ent ? ent.no : casa.no };
+            // (Um local marcado numa estrada é a sua própria entrada.)
+            const ent = rede.entradaPara(destino);
+            if (ent && ent.sitio) origem = { troco: ent.sitio.troco, ao: ent.sitio.ao };
+            else if (ent) origem = { no: ent.no };
+            else origem = paraOLocal ? { troco: destino.troco, ao: destino.ao } : { no: casa.no };
             inicio = { tipo: 'entrada', rua: ent ? ent.rua : '' };
         }
-        const perc = rede.caminho(origem, casa.no);
+        const perc = rede.caminho(origem, destino);
         if (!perc) return null;
         const passos = rede.indicacoes(perc, casa, inicio);
         // Onde começa cada passo, em metros desde o princípio.
@@ -1318,11 +1373,12 @@ export async function prepararNavegacao3D(app, opcoes) {
         const [cx, cz] = naCena(casa.ponto);
         // Sobre a fotografia do lote F, o número pousa nela, como um
         // alfinete num mapa: de pé por cima de um telhado que ali não existe
-        // em 3D, deslizava sobre a fotografia quando a câmara mexia.
+        // em 3D, deslizava sobre a fotografia quando a câmara mexia. O local
+        // marcado acaba no alfinete, onde ele estiver.
         const telhado = casa.alto != null ? casa.alto + ACIMA_DO_TELHADO
             : loteFAVer ? chaoEm(cx, cz) + ACIMA_DO_CHAO
                 : chaoEm(cx, cz) + ACIMA_DO_CHAO_SEM_TELHADO;
-        const alvo = [cx, telhado, cz];
+        const alvo = paraOLocal && local ? local.ponto.slice() : [cx, telhado, cz];
         // A pontinhos: do fim da linha ao meio da casa (se ela não ficar
         // mesmo ao pé), e de onde a pessoa está até ao caminho (até ela lá
         // chegar).
@@ -1360,11 +1416,239 @@ export async function prepararNavegacao3D(app, opcoes) {
 
         tirarMarcadores();
         if (inicio.tipo === 'entrada') marcadores.entrada = fazerMarcador('inicio-3d', '', linha[0], () => verPasso(passos[0]));
-        marcadores.casa = fazerMarcador('destino-3d', casa.n, alvo, verCasa);
+        // O fim de um percurso até ao local marcado é o próprio alfinete.
+        if (!paraOLocal) marcadores.casa = fazerMarcador('destino-3d', casa.n, alvo, verCasa);
         nomear();
 
         if (mover) enquadrar();
         return atual;
+    };
+
+    // ---- O local marcado ----
+    //
+    // Carregar sem largar num sítio do bairro (ver camera-controls.mjs) põe
+    // lá um alfinete: o local marcado, de onde se pedem as direções até ele
+    // e a ligação para o partilhar (o painel é do index.html, em "O local
+    // marcado"). O alfinete fica no sítio que se viu debaixo do dedo — um
+    // telhado, a rua — e é o fim do percurso, quando se pedem as direções.
+    // Para quem não vê o ecrã é um botão com nome, na fila do Tab enquanto
+    // está à vista, como os outros marcadores (ver AGENTS.md).
+
+    /** Faz o alfinete cair no sítio dele (e aparecer, se estava escondido). */
+    const deixarCair = () => {
+        if (!local) return;
+        local.escondido = false;
+        local.el.classList.remove('a-cair');
+        // (Para a animação começar de novo, o navegador tem de dar pela
+        // falta da classe antes de ela voltar.)
+        void local.el.offsetWidth;
+        local.el.classList.add('a-cair');
+    };
+
+    /**
+     * Se um sítio fica no bairro em 3D (dentro do chão medido): uma
+     * ligação para um sítio de fora não abre o local marcado.
+     *
+     * @param {number} lat
+     * @param {number} lon
+     * @returns {boolean}
+     */
+    const dentroDoBairro = (lat, lon) => {
+        if (!Number.isFinite(lat) || !Number.isFinite(lon)) return false;
+        const [x, z] = naCena([lat, lon]);
+        return x >= chao.x0 && x <= chao.x0 + (chao.colunas - 1) * chao.passo &&
+            z >= chao.z0 && z <= chao.z0 + (chao.linhas - 1) * chao.passo;
+    };
+
+    /**
+     * Põe o alfinete num sítio: o que se viu debaixo do dedo (`ponto`, na
+     * cena), ou o de uma ligação ou do histórico (`lat`, `lon` e, se se
+     * souber, a altura `y`) — sem altura, no chão, até `acertarAAltura`
+     * saber o que lá está.
+     *
+     * @param {object} onde - `ponto` ([x, y, z] na cena), ou `lat`, `lon`
+     *     e `y`.
+     * @param {object} [como] - `escondido`: o alfinete fica por cair (ver
+     *     `deixarCair`); sem isto, cai já.
+     * @returns {{lat: number, lon: number, ponto: number[]}} Onde ficou.
+     */
+    const marcarLocal = ({ ponto = null, lat = 0, lon = 0, y = null }, { escondido = false } = {}) => {
+        tirarLocal();
+        let sitio = ponto;
+        if (sitio) {
+            [lat, lon] = naTerra([sitio[0], sitio[2]]);
+        } else {
+            const [x, z] = naCena([lat, lon]);
+            sitio = [x, Number.isFinite(y) ? y : chaoEm(x, z), z];
+        }
+        local = fazerMarcador('local-3d', '', sitio.slice(), () => {
+            if (atual && atual.casa.tipo === 'local') verCasa();
+            else if (opcoes.quandoCarregarNoLocal) opcoes.quandoCarregarNoLocal();
+        });
+        local.rotulo.innerHTML = ALFINETE;
+        local.lat = lat;
+        local.lon = lon;
+        local.escondido = true;
+        if (!escondido) deixarCair();
+        nomear();
+        return { lat, lon, ponto: local.ponto.slice() };
+    };
+
+    /** Tira o alfinete. */
+    const tirarLocal = () => {
+        if (local) local.el.remove();
+        local = null;
+    };
+
+    /**
+     * Uma câmara de onde se vê o sítio de cima, com ele ao meio da parte
+     * livre do ecrã (sem o painel e o cabeçalho), virada para onde a câmara
+     * já está virada: inclinada `graus` e a `altura` acima dele.
+     */
+    const vistaPara = (ponto, graus, altura) => {
+        const z = zonaLivre();
+        const u = frenteDaCamara();
+        const th = graus * Math.PI / 180;
+        // Quanto abaixo (ou acima) do meio do ecrã fica o meio da parte livre.
+        const alfa = Math.atan(((z.yMin + z.yMax) / 2) * z.tanV);
+        if (th - alfa < 0.05) return null;
+        const atras = altura / Math.tan(th - alfa);
+        let posicao = [ponto[0] - u[0] * atras, ponto[1] + altura, ponto[2] - u[1] * atras];
+        // E de lado, para ficar ao meio da parte livre (no computador, o
+        // painel tapa a esquerda).
+        const e = eixos(u, graus);
+        const fundo = ponto3([ponto[0] - posicao[0], ponto[1] - posicao[1], ponto[2] - posicao[2]], e.frente);
+        const lado = (z.xMin + z.xMax) / 2 * z.tanH * fundo;
+        posicao = posicao.map((v, i) => v - e.direita[i] * lado);
+        return { posicao, inclinacao: -graus, rumo: rumoDe(u[0], u[1]) };
+    };
+
+    /**
+     * Leva a câmara a ver o local marcado: de cima, a INCLINACAO_DO_LOCAL e
+     * ALTURA_DO_LOCAL acima dele (ou menos, debaixo do tecto), com ele ao
+     * meio da parte livre do ecrã. É o que se vê ao abrir uma ligação.
+     *
+     * @returns {number} Quanto demora a viagem, em segundos.
+     */
+    const verLocal = () => {
+        const c = controlos();
+        if (!local || !c || typeof c.viajar !== 'function') return 0;
+        deixarDeSeguir();
+        const altura = Math.max(ALTURA_MINIMA, Math.min(ALTURA_DO_LOCAL, tecto() - local.ponto[1]));
+        const vista = vistaPara(local.ponto, INCLINACAO_DO_LOCAL, altura);
+        if (!vista) return 0;
+        c.viajar(new Vec3(vista.posicao[0], vista.posicao[1], vista.posicao[2]), vista.inclinacao, vista.rumo, DURACAO_DA_VIAGEM);
+        return DURACAO_DA_VIAGEM;
+    };
+
+    /**
+     * Se o painel do local tapar o alfinete (no telemóvel o painel fica em
+     * baixo, e carregou-se lá em baixo), a câmara desliza até ele ficar à
+     * vista — à mesma altura e com a mesma inclinação.
+     */
+    const mostrarLocalSeTapado = () => {
+        const c = controlos();
+        if (!local || !c || typeof c.vista !== 'function') return;
+        prepararEcra();
+        const z = zonaLivre();
+        const cc = naCamara(local.ponto);
+        if (cc[2] > 1) {
+            const [sx, sy] = noEcra(cc);
+            const nx = sx / ecra.largura * 2 - 1;
+            const ny = 1 - sy / ecra.altura * 2;
+            if (nx >= z.xMin && nx <= z.xMax && ny >= z.yMin && ny <= z.yMax) return;
+        }
+        const agora = c.vista();
+        const vista = vistaPara(local.ponto, -agora.inclinacao, agora.posicao.y - local.ponto[1]);
+        if (!vista || !(agora.posicao.y - local.ponto[1] > 1)) return;
+        c.viajar(new Vec3(vista.posicao[0], vista.posicao[1], vista.posicao[2]), vista.inclinacao, vista.rumo, 0.7);
+    };
+
+    /**
+     * A altura do alfinete de um local que chegou por uma ligação: o
+     * endereço só diz a latitude e a longitude, e o alfinete começa no
+     * chão. Aqui pergunta-se à placa gráfica o que se vê nesse sítio — um
+     * telhado, um muro, a rua —, e o alfinete passa para lá.
+     *
+     * Um ponto (x, h, z) acima do que lá está fica no ar: a linha da câmara
+     * até ele só bate em alguma coisa depois de passar por ele. Abaixo,
+     * fica dentro (de uma casa, do chão): a linha bate antes de lá chegar.
+     * A altura do que lá está é onde uma coisa passa à outra, e procura-se
+     * ao meio, de metade em metade. No fim confere-se que a linha bate
+     * mesmo ali: se o que a tapa for outra coisa (uma casa mais alta à
+     * frente), o alfinete fica no chão.
+     *
+     * @returns {Promise<boolean>} Se acertou.
+     */
+    const acertarAAltura = async () => {
+        const c = controlos();
+        if (!local || !c || typeof c.lerPonto !== 'function') return false;
+        const eu = local;
+        const [x, , z] = eu.ponto;
+        const chaoAqui = chaoEm(x, z);
+        const ler = async (h) => {
+            prepararEcra();
+            const vista = naCamara([x, h, z]);
+            if (vista[2] < 1) return null;
+            const [sx, sy] = noEcra(vista);
+            if (sx < 0 || sy < 0 || sx > ecra.largura || sy > ecra.altura) return null;
+            const q = await c.lerPonto(sx, sy);
+            if (!q || eu !== local) return null;
+            const em = camara.getPosition();
+            const ateAoPonto = Math.hypot(x - em.x, h - em.y, z - em.z);
+            const ateAoQueSeVe = Math.hypot(q.x - em.x, q.y - em.y, q.z - em.z);
+            return { antes: ateAoQueSeVe < ateAoPonto - 0.15, q };
+        };
+        let dentro = chaoAqui - 1.5;
+        let noAr = chaoAqui + ALTURA_DO_ALFINETE_MAXIMA;
+        for (let k = 0; k < 7; k++) {
+            const meio = (dentro + noAr) / 2;
+            const r = await ler(meio);
+            if (!r) return false;
+            if (r.antes) dentro = meio;
+            else noAr = meio;
+        }
+        const h = noAr;
+        // A conferir: um nada abaixo, a linha tem de bater ali mesmo.
+        const r = await ler(h - 0.4);
+        if (!r || eu !== local) return false;
+        const longe = Math.hypot(r.q.x - x, r.q.y - h, r.q.z - z);
+        if (longe > 1.6) return false;
+        eu.ponto = [x, Math.max(chaoAqui, h), z];
+        return true;
+    };
+
+    /**
+     * Abre o local de uma ligação: a câmara vai vê-lo, a altura do alfinete
+     * acerta-se ao que lá está, e o alfinete cai.
+     *
+     * @param {number} lat
+     * @param {number} lon
+     * @param {(ponto: number[]) => void} [quandoCair] - Chamada quando o
+     *     alfinete cai, com o sítio onde ficou.
+     * @returns {{lat: number, lon: number, ponto: number[]}} Onde ficou (até
+     *     cair, no chão).
+     */
+    const abrirLocal = (lat, lon, quandoCair) => {
+        const onde = marcarLocal({ lat, lon }, { escondido: true });
+        const eu = local;
+        const demora = verLocal();
+        // Depois de a câmara chegar (e de o bairro ter tempo de se pôr
+        // nítido à volta do sítio), acerta-se a altura; cai, acertada ou
+        // não — e cai de certeza, mesmo que a placa gráfica não responda.
+        setTimeout(() => {
+            if (eu !== local) return;
+            let caiu = false;
+            const cair = () => {
+                if (caiu || eu !== local) return;
+                caiu = true;
+                deixarCair();
+                if (quandoCair) quandoCair(eu.ponto.slice());
+            };
+            acertarAAltura().then(cair, cair);
+            setTimeout(cair, 2500);
+        }, (demora + 0.6) * 1000);
+        return onde;
     };
 
     /** Tira o percurso e os seus marcadores. */
@@ -1378,6 +1662,9 @@ export async function prepararNavegacao3D(app, opcoes) {
         atual = null;
         vistaDeAntes = null;
         for (const qual of Object.keys(tracos)) escrever(qual, '');
+        // O alfinete do local marcado fica (o painel dele volta): deixa de
+        // ser o fim de um percurso.
+        nomear();
     };
 
     /** Tira o percurso e leva a câmara de volta a onde estava antes dele. */
@@ -1389,5 +1676,11 @@ export async function prepararNavegacao3D(app, opcoes) {
         if (vista && c && typeof c.viajar === 'function') c.viajar(vista.posicao, vista.inclinacao, vista.rumo, DURACAO_DA_VIAGEM);
     };
 
-    return { mostrar, limpar, voltar, enquadrar, verPasso, mostrarVoce, tirarVoce, seguir, aSeguir: () => seguindo, mudarLingua: nomear, atual: () => atual };
+    return {
+        mostrar, limpar, voltar, enquadrar, verPasso, mostrarVoce, tirarVoce, seguir,
+        aSeguir: () => seguindo, mudarLingua: nomear, atual: () => atual,
+        // O local marcado.
+        marcarLocal, tirarLocal, abrirLocal, verLocal, mostrarLocalSeTapado, dentroDoBairro,
+        local: () => (local ? { lat: local.lat, lon: local.lon, ponto: local.ponto.slice(), el: local.el } : null)
+    };
 }

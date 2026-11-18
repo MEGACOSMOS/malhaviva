@@ -9,8 +9,10 @@
  *    `wrangler.jsonc`), para se poder recusar o pré-carregamento (abaixo);
  *  - um endereço que não corresponda a nenhum ficheiro: o de uma casa
  *    (malhaviva.pt/d31, ver `casaDoEnderecoCurto`) é o bairro, aberto já
- *    com o percurso até ela; os outros têm sempre a resposta de que não
- *    existem.
+ *    com o percurso até ela; o de um local marcado
+ *    (malhaviva.pt/@38.670908,-9.181921, ver `localDoEndereco`) é o
+ *    bairro, aberto já com o local; os outros têm sempre a resposta de que
+ *    não existem.
  *
  * Porquê recusar o pré-carregamento. Quando alguém começa a escrever
  * "malhaviva.pt" na barra do Chrome, o Chrome adivinha para onde a pessoa
@@ -98,15 +100,68 @@ function enderecoCurto(casa: Casa, de: URL): string {
 }
 
 /**
+ * O endereço de um local marcado: malhaviva.pt/@38.670908,-9.181921 — a
+ * latitude e a longitude de um sítio do bairro, como no Google Maps. É a
+ * ligação que se partilha a partir do local marcado (carregar sem largar
+ * num sítio do bairro: ver "O local marcado", em public/index.html). Como
+ * o de uma casa, não é um ficheiro: é o próprio bairro, aberto já com o
+ * local marcado. Há aplicações que mandam a arroba e a vírgula escritas em
+ * código (%40, %2C): contam na mesma.
+ */
+const LOCAL = /^\/@(-?\d{1,2}(?:\.\d{1,8})?),(-?\d{1,3}(?:\.\d{1,8})?)(\/?)$/;
+
+type Local = { lat: number; lon: number };
+
+/** O local marcado de um endereço (/@38.670908,-9.181921), ou nada. */
+export function localDoEndereco(caminho: string): (Local & { barra: boolean }) | null {
+	let texto: string;
+	try {
+		texto = decodeURIComponent(caminho);
+	} catch {
+		return null;
+	}
+	const m = LOCAL.exec(texto);
+	if (!m) return null;
+	const lat = Number(m[1]);
+	const lon = Number(m[2]);
+	if (!(Math.abs(lat) <= 90 && Math.abs(lon) <= 180)) return null;
+	return { lat, lon, barra: m[3] === '/' };
+}
+
+/** O caminho de um local marcado, com seis casas decimais (um palmo). */
+export function caminhoDoLocal(local: Local): string {
+	return '/@' + local.lat.toFixed(6) + ',' + local.lon.toFixed(6);
+}
+
+/**
  * O bairro com o nome da casa no título, na descrição e na imagem do
  * endereço: é o que as aplicações de mensagens mostram na pré-visualização
  * ("Casa D31 — Bairro de Penajóia"). O número só tem letras, algarismos e
  * pontos (ver `CURTO`): pode ir para dentro da página tal como está.
  */
 function paginaDaCasa(pagina: Response, casa: Casa): Response {
-	const titulo = `Casa ${casa.numero} — Bairro de Penajóia`;
-	const descricao = `Como chegar à casa ${casa.numero} no Bairro de Penajóia: o caminho no bairro, passo a passo.`;
-	const endereco = 'https://malhaviva.pt' + caminhoDaCasa(casa);
+	return paginaComPrevisualizacao(pagina, {
+		titulo: `Casa ${casa.numero} — Bairro de Penajóia`,
+		descricao: `Como chegar à casa ${casa.numero} no Bairro de Penajóia: o caminho no bairro, passo a passo.`,
+		endereco: 'https://malhaviva.pt' + caminhoDaCasa(casa),
+	});
+}
+
+/**
+ * O bairro com o local marcado na pré-visualização: "Local marcado —
+ * Bairro de Penajóia". As coordenadas só têm algarismos, pontos e o sinal
+ * de menos (ver `LOCAL`), e vão para o endereço já arrumadas.
+ */
+function paginaDoLocal(pagina: Response, local: Local): Response {
+	return paginaComPrevisualizacao(pagina, {
+		titulo: 'Local marcado — Bairro de Penajóia',
+		descricao: 'Um local no Bairro de Penajóia: onde fica, e o caminho a pé até lá, passo a passo.',
+		endereco: 'https://malhaviva.pt' + caminhoDoLocal(local),
+	});
+}
+
+/** A página do bairro com o título, a descrição e o endereço dados. */
+function paginaComPrevisualizacao(pagina: Response, { titulo, descricao, endereco }: { titulo: string; descricao: string; endereco: string }): Response {
 	const propriedades: [string, string][] = [
 		['og:type', 'website'],
 		['og:site_name', 'Malha Viva'],
@@ -150,6 +205,20 @@ export default {
 			if (caminho.endsWith('/')) return Response.redirect(enderecoCurto(curta, endereco), 302);
 			const pagina = await env.ASSETS.fetch(new Request(new URL('/', endereco), pedido));
 			return pagina.ok ? paginaDaCasa(pagina, curta) : pagina;
+		}
+
+		// O endereço de um local marcado: o bairro, com o local. Com uma
+		// barra no fim, a página procurava o que precisa dentro dele: leva-se
+		// ao mesmo, sem a barra.
+		const local = localDoEndereco(caminho);
+		if (local) {
+			if (local.barra) {
+				const semBarra = new URL(caminhoDoLocal(local), endereco);
+				semBarra.search = endereco.search;
+				return Response.redirect(semBarra.toString(), 302);
+			}
+			const pagina = await env.ASSETS.fetch(new Request(new URL('/', endereco), pedido));
+			return pagina.ok ? paginaDoLocal(pagina, local) : pagina;
 		}
 
 		// Os endereços de antes vão dar ao curto: /casa/D31 (os primeiros

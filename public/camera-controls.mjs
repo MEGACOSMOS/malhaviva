@@ -129,13 +129,16 @@ const entreMeiaVolta = (graus) => {
 // direito, roda o bairro (para os lados) e inclina-o (para cima e para
 // baixo) à volta do meio do ecrã; o duplo clique aproxima e traz esse sítio
 // para o meio. Um clique sozinho não mexe no bairro: os cliques são dos
-// marcadores.
+// marcadores. Carregar sem largar (meio segundo, parado), ou carregar e
+// largar o botão direito sem arrastar, marca o sítio — o local marcado, com
+// as direções até lá e a partilha (ver `marcarAoPremir`).
 //
 // Com os dedos: um dedo arrasta; dois dedos aproximam e afastam (a pinça),
 // rodam (a rodar um à volta do outro) e arrastam, tudo ao mesmo tempo; dois
 // dedos a subir ou a descer juntos inclinam; dois toques aproximam; dois
-// dedos a tocar ao mesmo tempo afastam; e dois toques com o segundo a ficar
-// e a arrastar aproximam (para baixo) e afastam (para cima).
+// dedos a tocar ao mesmo tempo afastam; dois toques com o segundo a ficar
+// e a arrastar aproximam (para baixo) e afastam (para cima); e um dedo
+// parado no mesmo sítio, sem largar, marca-o.
 //
 // O teclado é o de sempre (a pedido de quem fez o site): as setas e o
 // W A S D andam pelo chão, mais depressa com o Shift e mais devagar com o
@@ -156,6 +159,18 @@ const DUPLO_DISTANCIA = 30;
 
 // Dois dedos a tocar e a largar em menos disto, sem mexer, afastam.
 const TOQUE_DE_DOIS_DEDOS = 300;
+
+// Carregar sem largar, como no Google Maps: o rato (o botão esquerdo) ou um
+// dedo parados num sítio do bairro durante isto (milissegundos) marcam esse
+// sítio — o local marcado, com as direções até lá e a partilha (ver "O local
+// marcado", no index.html). Parados quer dizer sem nunca se afastarem do
+// sítio onde pousaram mais do que um clique ou um toque deixam
+// (CLIQUE_MEXIDA_RATO, CLIQUE_MEXIDA_DEDO). No computador, o botão direito
+// carregado e largado sem arrastar marca também, como lá. A meio do tempo
+// (PREMIR_AVISO) avisa-se de que pode vir um, para a página ir buscando o
+// que precisa para o mostrar.
+const PREMIR_DURACAO = 500;
+const PREMIR_AVISO = 150;
 
 // O arrasto só começa a mexer no bairro depois de o rato ou o dedo andarem
 // isto (pontos de ecrã): assim um clique com a mão a tremer não arrasta.
@@ -492,10 +507,31 @@ class CameraControls extends Script {
         // faz um duplo.
         ultimoClique: null,
         ultimoToque: null,
+        // Se o ponteiro que manda pode ainda fazer um carregar sem largar
+        // (ver PREMIR_DURACAO), e se já se avisou de que pode vir um.
+        premir: false,
+        premirAvisado: false,
         // Mexeu-se no bairro desde a última imagem (é pegar na câmara: ver
         // 'mexeu').
         pegou: false
     };
+
+    /**
+     * Se carregar sem largar num sítio do bairro (ou carregar e largar o
+     * botão direito, sem arrastar) marca esse sítio. É a página que o liga,
+     * quando tem com que mostrar o local marcado (ver "O local marcado", no
+     * index.html), e que o desliga enquanto não faz sentido (a guiar até a
+     * um sítio). Desligado, carregar sem largar é só um arrasto que não
+     * andou.
+     *
+     * Marcar diz-se à página com o aviso 'premirNoBairro', na janela, com o
+     * sítio (x, y, z no bairro) e o ponto do ecrã onde se carregou; um
+     * instante antes, ainda com o rato ou o dedo em baixo, vem
+     * 'aPremirNoBairro', sem sítio.
+     *
+     * @type {boolean}
+     */
+    marcarAoPremir = false;
 
     /**
      * O zoom a deslizar (roda, teclas, toques), ou nada: o sítio para onde
@@ -1191,6 +1227,14 @@ class CameraControls extends Script {
                 ponteiro.y = y;
                 g.ultimoMovimento = performance.now();
             }
+            // Afastou-se do sítio onde pousou mais do que um clique deixa:
+            // já não é um carregar sem largar, nem que volte para trás.
+            if (g.premir && ponteiro.id === g.principal) {
+                const limite = ponteiro.tipo === 'mouse' ? CLIQUE_MEXIDA_RATO : CLIQUE_MEXIDA_DEDO;
+                if (Math.hypot(x - ponteiro.x0, y - ponteiro.y0) > limite) {
+                    g.premir = false;
+                }
+            }
         };
 
         /**
@@ -1223,7 +1267,21 @@ class CameraControls extends Script {
 
             if (ponteiro.tipo === 'mouse') {
                 const arrastou = g.arrastou;
+                const modo = g.modo;
                 this._acabarGesto(!desistiu);
+                // Largar depois de um carregar sem largar não é clique.
+                if (modo === 'premido') {
+                    g.ultimoClique = null;
+                    return;
+                }
+                // O botão direito carregado e largado sem arrastar: como no
+                // Google Maps no computador, marca o sítio.
+                if (!desistiu && e.button === 2 && modo === 'rodar' && !arrastou &&
+                        mexida <= CLIQUE_MEXIDA_RATO && this.marcarAoPremir && this._podeApontar()) {
+                    g.ultimoClique = null;
+                    this._marcarSitio(ponteiro.x, ponteiro.y);
+                    return;
+                }
                 const clique = !desistiu && e.button === 0 && !arrastou && depressa &&
                     mexida <= CLIQUE_MEXIDA_RATO &&
                     !e.ctrlKey && !e.metaKey && !e.shiftKey && !e.altKey;
@@ -1242,7 +1300,12 @@ class CameraControls extends Script {
                 return;
             }
 
-            // Os dedos.
+            // Os dedos. Largar depois de um carregar sem largar não é toque.
+            if (g.modo === 'premido') {
+                g.ultimoToque = null;
+                this._acabarGesto(false);
+                return;
+            }
             if (g.modo === 'dois') {
                 // Os dois a tocar e a largar sem mexer: afastar.
                 if (!desistiu && !g.decidido && agora - g.t0Dois <= TOQUE_DE_DOIS_DEDOS) {
@@ -1442,6 +1505,10 @@ class CameraControls extends Script {
         g.arrastou = restoDeDois;
         g.restoDeDois = restoDeDois;
         g.rasto.length = 0;
+        // Parado aqui o bastante, marca o sítio (ver `_vigiarPremir`). O
+        // dedo que fica de um gesto de dois já não.
+        g.premir = !restoDeDois;
+        g.premirAvisado = false;
         if (restoDeDois) {
             // Agarra o chão debaixo do dedo que ficou, à altura do que os
             // dois agarravam: sem leitura nova, sem salto.
@@ -1467,6 +1534,7 @@ class CameraControls extends Script {
         g.numero++;
         g.principal = ponteiro.id;
         g.arrastou = false;
+        g.premir = false;
         g.ultX = ponteiro.x;
         g.ultY = ponteiro.y;
         g.somaX = 0;
@@ -1490,6 +1558,7 @@ class CameraControls extends Script {
         g.principal = null;
         g.arrastou = false;
         g.restoDeDois = false;
+        g.premir = false;
         g.t0Dois = performance.now();
         a.x0 = a.x;
         a.y0 = a.y;
@@ -1525,6 +1594,7 @@ class CameraControls extends Script {
         g.principal = ponteiro.id;
         g.arrastou = false;
         g.restoDeDois = false;
+        g.premir = false;
         g.ultY = ponteiro.y;
         this._agarrar(ponteiro.x, ponteiro.y, null, true);
     }
@@ -1562,6 +1632,7 @@ class CameraControls extends Script {
         g.principal = null;
         g.arrastou = false;
         g.restoDeDois = false;
+        g.premir = false;
         g.rasto.length = 0;
         if (this.app && this.app.graphicsDevice && this.app.graphicsDevice.canvas) {
             this.app.graphicsDevice.canvas.style.cursor = 'grab';
@@ -2133,6 +2204,87 @@ class CameraControls extends Script {
     }
 
     /**
+     * Carregar sem largar: o rato ou o dedo de um arrasto que ficou parado
+     * no sítio onde pousou, PREMIR_DURACAO depois de pousar, marca esse
+     * sítio. A meio do tempo avisa-se de que pode vir um ('aPremirNoBairro').
+     *
+     * @private
+     */
+    _vigiarPremir() {
+        const g = this._gestos;
+        if (!g.premir || g.modo !== 'mover' || !this.marcarAoPremir) {
+            return;
+        }
+        const p = g.ponteiros.get(g.principal);
+        if (!p || !this._podeApontar()) {
+            return;
+        }
+        const tempo = performance.now() - p.t0;
+        if (!g.premirAvisado && tempo >= PREMIR_AVISO) {
+            g.premirAvisado = true;
+            this._avisarPremir('aPremirNoBairro', p.x, p.y, null);
+        }
+        if (tempo < PREMIR_DURACAO) {
+            return;
+        }
+        // O gesto acaba aqui: até largar, o ponteiro já não mexe no bairro,
+        // e largá-lo não é clique, nem toque, nem dá balanço. (Se o arrasto
+        // chegou a andar uns pontos, o sítio debaixo dele é o mesmo: era o
+        // que estava agarrado.)
+        g.premir = false;
+        g.modo = 'premido';
+        g.numero++;
+        g.arrastou = false;
+        g.rasto.length = 0;
+        g.ultimoClique = null;
+        g.ultimoToque = null;
+        this._balanco = null;
+        this._marcarSitio(p.x, p.y);
+    }
+
+    /**
+     * Marca o sítio do bairro que está num ponto do ecrã: lê-o à placa
+     * gráfica e, se for bairro (e não o céu, ou a paisagem ao fundo), diz-o
+     * à página ('premirNoBairro').
+     *
+     * @param {number} x - Na tela, da esquerda.
+     * @param {number} y - Na tela, de cima.
+     * @private
+     */
+    _marcarSitio(x, y) {
+        this._lerPonto(x, y).then((ponto) => {
+            const sitio = this._sitioValido(ponto);
+            if (sitio) {
+                this._avisarPremir('premirNoBairro', x, y, sitio);
+            }
+        });
+    }
+
+    /**
+     * Diz à página, na janela, que se carregou sem largar (ou que pode vir
+     * a ser).
+     *
+     * @param {string} nome - 'premirNoBairro' ou 'aPremirNoBairro'.
+     * @param {number} x - Na tela, da esquerda.
+     * @param {number} y - Na tela, de cima.
+     * @param {Vec3|null} sitio - O sítio do bairro, ou nada.
+     * @private
+     */
+    _avisarPremir(nome, x, y, sitio) {
+        if (typeof window === 'undefined') {
+            return;
+        }
+        const tela = this.app.graphicsDevice.canvas.getBoundingClientRect();
+        window.dispatchEvent(new CustomEvent(nome, {
+            detail: {
+                x: x + tela.left,
+                y: y + tela.top,
+                sitio: sitio ? { x: sitio.x, y: sitio.y, z: sitio.z } : null
+            }
+        }));
+    }
+
+    /**
      * Dois dedos a tocar ao mesmo tempo: como no Google Maps, afasta.
      *
      * @private
@@ -2206,6 +2358,20 @@ class CameraControls extends Script {
         this._giroAnimado = falta;
         this.fire('mexeu');
         this._avisarGesto('rodar');
+    }
+
+    /**
+     * O sítio do bairro que está num ponto do ecrã, lido à placa gráfica
+     * (ver `_lerPonto`), para quem precise de saber o que ali se vê — o
+     * local marcado que chega por uma ligação acerta assim a altura a que
+     * fica (ver navegacao-3d.mjs).
+     *
+     * @param {number} x - Na tela, da esquerda.
+     * @param {number} y - Na tela, de cima.
+     * @returns {Promise<Vec3|null>} O sítio, ou nada.
+     */
+    lerPonto(x, y) {
+        return this._lerPonto(x, y);
     }
 
     /**
@@ -2802,7 +2968,9 @@ class CameraControls extends Script {
         const sticks = leftStick[0] !== 0 || leftStick[1] !== 0 ||
             rightStick[0] !== 0 || rightStick[1] !== 0;
 
-        // 1. Os gestos do rato e dos dedos.
+        // 1. Os gestos do rato e dos dedos (e o carregar sem largar, que
+        //    acaba o gesto em que vinha).
+        this._vigiarPremir();
         this._aplicarGestos();
         // 2. O zoom e a volta a deslizar, e o balanço de um arrasto largado.
         this._aplicarZoomAnimado(dt);

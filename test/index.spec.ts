@@ -69,6 +69,45 @@ describe("servidor do Malha Viva", () => {
 		});
 	});
 
+	// O endereço de um local marcado (carregar sem largar num sítio do
+	// bairro) abre o bairro com o local: ver src/index.ts.
+	describe("o endereço de um local marcado", () => {
+		it("abre o bairro, com o local na pré-visualização", async () => {
+			for (const [caminho, ligacao] of [
+				["/@38.670908,-9.181921", "/@38.670908,-9.181921"],
+				["/@38.67,-9.18", "/@38.670000,-9.180000"],
+				["/%4038.670908%2C-9.181921", "/@38.670908,-9.181921"],
+			]) {
+				const response = await SELF.fetch("http://example.com" + caminho);
+				expect(response.status, caminho).toBe(200);
+				expect(response.headers.get("Cache-Control"), caminho).toBe("no-store");
+				const html = await response.text();
+				expect(html, caminho).toContain('<title data-i18n-titulo="cab.bairro" data-i18n-site-primeiro>Local marcado — Bairro de Penajóia</title>');
+				expect(html, caminho).toContain('property="og:title" content="Local marcado — Bairro de Penajóia"');
+				expect(html, caminho).toContain(`property="og:url" content="https://malhaviva.pt${ligacao}"`);
+				expect(html, caminho).toContain("<pc-app");
+			}
+		});
+
+		it("tira a barra do fim", async () => {
+			const response = await SELF.fetch("http://example.com/@38.670908,-9.181921/?idioma=en", { redirect: "manual" });
+			expect(response.status).toBe(302);
+			expect(response.headers.get("Location")).toBe("http://example.com/@38.670908,-9.181921?idioma=en");
+		});
+
+		it("não confunde outros endereços com o de um local", async () => {
+			for (const caminho of ["/@", "/@38.67", "/@38.67,", "/@abc,-9.18", "/@95.1,-9.18", "/@38.67,-190.5", "/@38.67,-9.18,17z", "/@38.67;-9.18", "/x@38.67,-9.18"]) {
+				const response = await SELF.fetch("http://example.com" + caminho);
+				expect(response.status, caminho).toBe(404);
+			}
+		});
+
+		it("recusa o pré-carregamento, como o do bairro", async () => {
+			const response = await SELF.fetch("http://example.com/@38.670908,-9.181921", { headers: { "Sec-Purpose": "prefetch;prerender" } });
+			expect(response.status).toBe(503);
+		});
+	});
+
 	// O Chrome pré-carrega em segundo plano a página que prevê que vai abrir.
 	// O motor 3D, a arrancar assim, deixa o separador preso: ver src/index.ts.
 	describe("pré-carregamento do Chrome (prerender)", () => {

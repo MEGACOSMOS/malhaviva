@@ -151,7 +151,7 @@
 
     <!-- As línguas do site. Fica antes de tudo o resto para o texto
          nascer já na língua certa, sem piscar em português primeiro. -->
-    <script src="/idiomas.js?v=58"></script>
+    <script src="/idiomas.js?v=59"></script>
     <script src="/legendas.js?v=3"></script>
 
     <!-- O quadrado de espera, o mesmo em todo o site. Fica antes de o
@@ -1719,6 +1719,205 @@
             outline-offset: 2px;
         }
 
+        /* O alfinete do local marcado (carregar sem largar num sítio do
+           bairro): um quadrado branco com um bico a apontar para o sítio e
+           um quadrado escuro dentro (desenhado em navegacao-3d.mjs), de pé
+           sobre uma sombra pequena no chão. Cai no sítio ao aparecer. */
+        .local-3d {
+            position: absolute;
+            left: 0;
+            top: 0;
+            will-change: transform;
+            pointer-events: auto;
+            cursor: pointer;
+            outline: none;
+            transition: opacity 0.2s ease;
+        }
+        .local-3d.fora {
+            opacity: 0;
+            pointer-events: none;
+        }
+        .local-3d::before {
+            content: "";
+            position: absolute;
+            left: -7px;
+            top: -3px;
+            width: 14px;
+            height: 6px;
+            border-radius: 50%;
+            background: rgba(0, 0, 0, 0.45);
+        }
+        .local-3d > span {
+            position: absolute;
+            left: -14px;
+            bottom: -3px;
+            width: 28px;
+            height: 40px;
+        }
+        .local-3d > span svg {
+            display: block;
+            width: 28px;
+            height: 40px;
+            filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.6));
+        }
+        .local-3d.a-cair > span {
+            animation: alfinete-cai 0.42s cubic-bezier(0.3, 1.35, 0.55, 1) both;
+        }
+        .local-3d.a-cair::before {
+            animation: sombra-do-alfinete 0.42s ease-out both;
+        }
+        @keyframes alfinete-cai {
+            from { transform: translateY(-34px); opacity: 0; }
+            35% { opacity: 1; }
+            to { transform: none; opacity: 1; }
+        }
+        @keyframes sombra-do-alfinete {
+            from { transform: scale(0.3); opacity: 0; }
+            to { transform: none; opacity: 1; }
+        }
+        .local-3d:focus-visible > span {
+            outline: 2px solid #ffffff;
+            outline-offset: 3px;
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .local-3d.a-cair > span,
+            .local-3d.a-cair::before {
+                animation: none;
+            }
+        }
+
+        /* Carregar sem largar no bairro marca um sítio: no iPhone, sem
+           isto, o mesmo gesto abria a lupa de escolher texto ou o menu de
+           copiar a imagem. */
+        pc-app canvas {
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+
+        /* ─── O local marcado ───
+           O painel do sítio marcado, com a roupa do do percurso: no
+           computador à esquerda, por baixo do cabeçalho; no telemóvel, em
+           baixo. Diz ao pé de que casa o sítio fica e as coordenadas dele,
+           e tem os dois botões — as direções até lá (o painel passa a ser
+           o do percurso) e a partilha da ligação. */
+        #local-painel {
+            position: fixed;
+            top: 84px;
+            left: 24px;
+            z-index: 91;
+            box-sizing: border-box;
+            width: 320px;
+            padding: 14px 16px 16px;
+            background: linear-gradient(to bottom, rgba(255, 255, 255, 0.05), transparent), #05050a;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+        }
+        #local-painel[hidden] {
+            display: none;
+        }
+        #local-fechar {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 44px;
+            height: 44px;
+            padding: 0;
+            background: transparent;
+            border: 0;
+            border-radius: 0;
+            color: rgba(255, 255, 255, 0.8);
+            cursor: pointer;
+            transition: color 0.15s ease, background 0.15s ease;
+        }
+        @media (hover: hover) {
+            #local-fechar:hover {
+                color: #ffffff;
+                background: rgba(255, 255, 255, 0.1);
+            }
+        }
+        #local-fechar:focus-visible {
+            outline: 2px solid rgba(255, 255, 255, 0.95);
+            outline-offset: 1px;
+        }
+        .local-cabeca {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            min-height: 30px;
+            padding-right: 52px;
+        }
+        .local-sinal {
+            flex: none;
+            display: flex;
+        }
+        .local-sinal svg {
+            width: 17px;
+            height: 24px;
+        }
+        #local-titulo {
+            margin: 0;
+            font-size: 1.15rem;
+            font-weight: 700;
+            outline: none;
+        }
+        #local-perto {
+            margin: 10px 0 0;
+            font-size: 0.8rem;
+            line-height: 1.4;
+            color: rgba(255, 255, 255, 0.85);
+        }
+        #local-perto:empty {
+            display: none;
+        }
+        #local-coordenadas {
+            margin: 4px 0 0;
+            font-size: 0.75rem;
+            color: rgba(255, 255, 255, 0.6);
+            font-variant-numeric: tabular-nums;
+            -webkit-user-select: all;
+            user-select: all;
+        }
+        .local-botoes {
+            display: flex;
+            gap: 8px;
+            margin-top: 14px;
+        }
+        .local-botoes .percurso-botao {
+            flex: 1 1 0;
+            min-width: 0;
+            min-height: 42px;
+            font-size: 0.85rem;
+        }
+        .local-botoes .percurso-botao.principal {
+            padding: 8px 12px;
+        }
+        @media (max-width: 640px) {
+            #local-painel {
+                top: auto;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                width: auto;
+                padding: 12px 16px calc(14px + env(safe-area-inset-bottom, 0px));
+                border-left: 0;
+                border-right: 0;
+                border-bottom: 0;
+            }
+            /* No fundo do ecrã, onde o painel fica, estão a escala, a
+               legenda e o botão de partilhar o site: saem enquanto ele lá
+               estiver, como com o painel do percurso. */
+            body.com-local #map-scale,
+            body.com-local #legenda-mapa,
+            body.com-local #partilhar-btn,
+            body.com-local #partilhar-menu {
+                display: none !important;
+            }
+        }
+
         /* Com um percurso à vista, os marcadores dos testemunhos e das
            rotas — e a legenda deles — apagam-se devagar: o bairro fica só
            com o caminho até à casa. Voltam, também devagar, quando o
@@ -2172,6 +2371,7 @@
         body.em-cartao #partilhar-menu,
         body.em-cartao #legenda-mapa,
         body.em-cartao #percurso-painel,
+        body.em-cartao #local-painel,
         body.em-cartao #percurso-localizar,
         body.em-cartao #percurso-3d,
         body.em-cartao #camera-stuck-popup {
@@ -4190,6 +4390,45 @@
         </div>
     </section>
 
+    <!-- O local marcado: carregar sem largar num sítio do bairro (como no
+         Google Maps), ou carregar nele com o botão direito, marca-o — um
+         alfinete no sítio e este painel. Daqui pedem-se as direções até lá
+         (o painel do percurso, acima) e a ligação para o partilhar
+         (malhaviva.pt/@38.670908,-9.181921). Uma ligação dessas abre o
+         bairro já com o local marcado. -->
+    <section id="local-painel" aria-labelledby="local-titulo" hidden>
+        <button type="button" id="local-fechar" aria-label="Fechar o local marcado" title="Fechar" data-i18n-aria="loc.fecharRotulo" data-i18n-title="loc.fechar">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true">
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+            </svg>
+        </button>
+        <div class="local-cabeca">
+            <span class="local-sinal" aria-hidden="true">
+                <svg viewBox="0 0 28 40"><path d="M2.5 2.5 H25.5 V25.5 H17.5 L14 37 L10.5 25.5 H2.5 Z" fill="#ffffff" stroke="#05050a" stroke-width="2.5" stroke-linejoin="miter"/><rect x="9" y="9" width="10" height="10" fill="#05050a"/></svg>
+            </span>
+            <h2 id="local-titulo" tabindex="-1" data-i18n="loc.titulo">Local marcado</h2>
+        </div>
+        <p id="local-perto"></p>
+        <p id="local-coordenadas"></p>
+        <div class="local-botoes">
+            <!-- As direções: o percurso a pé até aqui, desde a entrada do
+                 bairro (ou de onde se está, com a localização ligada). -->
+            <button type="button" class="percurso-botao principal" id="local-direcoes">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true"><polygon points="12 2, 22 12, 12 22, 2 12"></polygon><polyline points="9 15 9 11 15 11"></polyline><polyline points="12.5 8.5 15 11 12.5 13.5"></polyline></svg>
+                <span data-i18n="loc.direcoes">Direções</span>
+            </button>
+            <!-- Partilhar: no telemóvel, a folha de partilhar do próprio
+                 telemóvel; no computador, a ligação vai para a área de
+                 transferência, pronta a colar. -->
+            <button type="button" class="percurso-botao" id="local-partilhar">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true"><rect x="15" y="2" width="6" height="6"></rect><rect x="3" y="9" width="6" height="6"></rect><rect x="15" y="16" width="6" height="6"></rect><line x1="9" y1="10.5" x2="15" y2="6.5"></line><line x1="9" y1="13.5" x2="15" y2="17.5"></line></svg>
+                <span id="local-partilhar-texto" data-i18n="par.botao">Partilhar</span>
+            </button>
+        </div>
+        <p id="local-anuncio" class="so-leitor" aria-live="polite"></p>
+    </section>
+
     <!-- A localização, no canto de baixo à direita enquanto há um percurso
          à vista, como nos mapas: liga a localização e leva a câmara até
          onde a pessoa está, a segui-la. Uma mira quadrada, como os outros
@@ -4734,9 +4973,11 @@
             poste.setAttribute('visibility', 'visible');
         };
 
-        // Uma janela por cima de tudo (um vídeo, uma paragem), ou a
-        // navegação até uma casa: as instruções esperam escondidas.
+        // Uma janela por cima de tudo (um vídeo, uma paragem), a navegação
+        // até uma casa, ou o painel de um local marcado: as instruções
+        // esperam escondidas.
         const janelaAFrente = () => document.body.classList.contains('a-navegar') ||
+            document.body.classList.contains('com-local') ||
             ['video-modal', 'modal-360'].some((id) => {
                 const el = document.getElementById(id);
                 return !!el && el.style.display !== 'none' && getComputedStyle(el).display !== 'none';
@@ -4827,8 +5068,11 @@
             history.replaceState(history.state, '', location.pathname + limpo + location.hash);
         }
         // Quem chega pelo endereço de uma casa (malhaviva.pt/d31) vem pelo
-        // percurso até ela: as instruções ficam para a próxima visita.
-        const porUmaCasa = /^\/[A-Za-z]?\d/.test(location.pathname) || /[?&]casa=/.test(location.search);
+        // percurso até ela, e quem chega pelo de um local marcado
+        // (malhaviva.pt/@38.67…,-9.18…) vem vê-lo: as instruções ficam para
+        // a próxima visita.
+        const porUmaCasa = /^\/[A-Za-z]?\d/.test(location.pathname) || /[?&]casa=/.test(location.search) ||
+            /^\/(@|%40)/i.test(location.pathname);
         if ((!vistas && !porUmaCasa) || pedidas) {
             let marcado = false;
             const quandoPronto = () => {
@@ -5071,7 +5315,7 @@
 
         <!-- Assets -->
         <pc-asset id="splat-scene" src="splat/lod-meta.json" type="gsplat"></pc-asset>
-        <pc-asset id="camera-controls-script" src="./camera-controls.mjs?v=58" type="script"></pc-asset>
+        <pc-asset id="camera-controls-script" src="./camera-controls.mjs?v=59" type="script"></pc-asset>
         <pc-asset id="camera-coords-script" src="./coords.mjs?v=7" type="script"></pc-asset>
         <pc-asset id="annotations-script" src="./annotations.mjs?v=123" type="script"></pc-asset>
         <pc-asset id="measure-script" src="./measure.mjs?v=1" type="script"></pc-asset>
@@ -6998,6 +7242,16 @@ void modifySplatColor(vec3 center, inout vec4 color) {
         const indicacoesEl = document.getElementById('percurso-indicacoes');
         const passosEl = document.getElementById('percurso-passos');
         const creditosEl = document.getElementById('percurso-creditos');
+        // O painel do local marcado (ver "O local marcado", mais abaixo).
+        const localPainel = document.getElementById('local-painel');
+        const localTituloEl = document.getElementById('local-titulo');
+        const localPertoEl = document.getElementById('local-perto');
+        const localCoordenadasEl = document.getElementById('local-coordenadas');
+        const localDirecoesEl = document.getElementById('local-direcoes');
+        const localPartilharEl = document.getElementById('local-partilhar');
+        const localPartilharTextoEl = document.getElementById('local-partilhar-texto');
+        const localAnuncioEl = document.getElementById('local-anuncio');
+        const localFecharEl = document.getElementById('local-fechar');
         const noTelemovel = window.matchMedia('(max-width: 640px)');
         const cabecalho = document.getElementById('header');
         const campoEl = document.getElementById('pesquisa-campo');
@@ -7032,7 +7286,7 @@ void modifySplatColor(vec3 center, inout vec4 color) {
         let pedidoDaRede = null;
         const lerRede = () => {
             if (!pedidoDaRede) {
-                pedidoDaRede = import('./navegacao.mjs?v=9').then(async (m) => {
+                pedidoDaRede = import('./navegacao.mjs?v=10').then(async (m) => {
                     contas = m;
                     rede = await m.carregarRede();
                     return rede;
@@ -7063,6 +7317,12 @@ void modifySplatColor(vec3 center, inout vec4 color) {
                     if (painel.classList.contains('a-guiar')) f.cima = Math.max(f.cima, manobraEl.getBoundingClientRect().bottom + 12);
                 } else f.esquerda = p.right;
             }
+            // O painel do local marcado tapa o mesmo sítio.
+            if (!localPainel.hidden) {
+                const p = localPainel.getBoundingClientRect();
+                if (noTelemovel.matches) f.baixo = Math.max(f.baixo, window.innerHeight - p.top);
+                else f.esquerda = Math.max(f.esquerda, p.right);
+            }
             return f;
         };
 
@@ -7071,13 +7331,14 @@ void modifySplatColor(vec3 center, inout vec4 color) {
         let pedidoDo3D = null;
         const prepararO3D = () => {
             if (!pedidoDo3D) {
-                pedidoDo3D = Promise.all([lerRede(), whenReady('pc-app'), import('./navegacao-3d.mjs?v=10')])
+                pedidoDo3D = Promise.all([lerRede(), whenReady('pc-app'), import('./navegacao-3d.mjs?v=11')])
                     .then(([r, { app }, m]) => m.prepararNavegacao3D(app, {
                         rede: r,
                         camara: app.root.findByName('camera'),
                         diz,
                         folgas,
-                        quandoSeguir: escreverSeguir
+                        quandoSeguir: escreverSeguir,
+                        quandoCarregarNoLocal: () => focarOLocal()
                     }))
                     .then((n) => (nav = n));
                 pedidoDo3D.catch(() => { pedidoDo3D = null; });
@@ -7240,10 +7501,13 @@ void modifySplatColor(vec3 center, inout vec4 color) {
             aqui: '<polygon points="12 3.5, 19 20.5, 12 16.5, 5 20.5"/>',
             // A casa: um só contorno (telhado e paredes de uma vez, para os
             // cantos do traço não espetarem para fora do telhado) e a porta.
-            chegada: '<polygon points="12 3, 22 11, 22 21, 2 21, 2 11"/><polyline points="9.5 21, 9.5 15, 14.5 15, 14.5 21"/>'
+            chegada: '<polygon points="12 3, 22 11, 22 21, 2 21, 2 11"/><polyline points="9.5 21, 9.5 15, 14.5 15, 14.5 21"/>',
+            // O local marcado: o alfinete, só com o traço.
+            local: '<polygon points="4 2.5, 20 2.5, 20 17, 14.5 17, 12 22, 9.5 17, 4 17"/><rect x="9.5" y="7.5" width="5" height="5"/>'
         };
         const sinalDoPasso = (p) => {
-            const qual = p.acao === 'inicio' ? (p.origem === 'aqui' ? 'aqui' : 'entrada') : p.acao;
+            const qual = p.acao === 'inicio' ? (p.origem === 'aqui' ? 'aqui' : 'entrada')
+                : p.acao === 'chegada' && p.local ? 'local' : p.acao;
             return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true">' +
                 (SINAIS[qual] || SINAIS.siga) + '</svg>';
         };
@@ -7253,10 +7517,12 @@ void modifySplatColor(vec3 center, inout vec4 color) {
         const escreverPartilhar = () => {
             partilharEl.hidden = !podePartilhar;
         };
-        // O painel a ver o percurso, ou a guiar.
+        // O painel a ver o percurso, ou a guiar. (A guiar, carregar sem
+        // largar no bairro não marca um local: ver "O local marcado".)
         const escreverModo = () => {
             painel.classList.toggle('a-guiar', aGuiar);
             document.body.classList.toggle('a-guiar', aGuiar);
+            ligarOPremir();
         };
         // O botão de seguir a seta: só com ela no bairro, e aceso enquanto a
         // câmara a segue.
@@ -7269,7 +7535,11 @@ void modifySplatColor(vec3 center, inout vec4 color) {
             let nota = '';
             if (vigia !== null && !aqui) nota = diz('nav.aProcurar', 'A procurar onde está…');
             else if (semLocalizacao) nota = diz('nav.semGps', 'Não foi possível saber onde está. O percurso começa na entrada do bairro.');
-            else if (percurso && percurso.longe) nota = diz('nav.longe', 'Está longe do bairro: o percurso começa na entrada mais perto da casa.');
+            else if (percurso && percurso.longe) {
+                nota = eLocal(escolhida)
+                    ? diz('nav.longeLocal', 'Está longe do bairro: o percurso começa na entrada mais perto do local marcado.')
+                    : diz('nav.longe', 'Está longe do bairro: o percurso começa na entrada mais perto da casa.');
+            }
             notaEl.textContent = nota;
         };
         // O painel já não diz de onde vêm as ruas (o voo de drone e o
@@ -7281,9 +7551,15 @@ void modifySplatColor(vec3 center, inout vec4 color) {
                 ? preencher(diz('nav.creditosLoteF', 'Lote F: fotografia de satélite {fonte}'), { fonte: 'Esri · Vantor' })
                 : '';
         };
+        // Para onde vai o percurso: uma casa, ou o local marcado (ver "O
+        // local marcado", mais abaixo), e o nome que se lhe dá.
+        const eLocal = (destino) => !!destino && destino.tipo === 'local';
+        const nomeDoDestino = (destino) => (eLocal(destino)
+            ? diz('loc.titulo', 'Local marcado')
+            : preencher(diz('nav.casa', 'Casa {numero}'), { numero: destino.n }));
         // O título do separador: a casa, enquanto o percurso está à vista.
         const escreverTitulo = () => {
-            if (escolhida) document.title = preencher(diz('nav.casa', 'Casa {numero}'), { numero: escolhida.n }) + ' — ' + diz('site.nome', 'Malha Viva');
+            if (escolhida) document.title = nomeDoDestino(escolhida) + ' — ' + diz('site.nome', 'Malha Viva');
         };
         // A hora a que se chega, daqui a tantos minutos (14:32).
         const horaDeChegada = (minutos) => {
@@ -7382,7 +7658,7 @@ void modifySplatColor(vec3 center, inout vec4 color) {
             escreverNota();
             if (!escolhida || !percurso) return;
             const n = escolhida.n;
-            casaEl.textContent = preencher(diz('nav.casa', 'Casa {numero}'), { numero: n });
+            casaEl.textContent = nomeDoDestino(escolhida);
             // De onde se parte: de onde a pessoa está, ou da entrada do
             // bairro (com o nome da rua, se a tiver).
             const inicio = percurso.passos[0] || {};
@@ -7391,7 +7667,9 @@ void modifySplatColor(vec3 center, inout vec4 color) {
             escreverResumo();
             const { metros, minutos } = percurso;
             const unidade = diz('nav.unidade', 'minuto|minutos').split('|')[minutos === 1 ? 0 : 1];
-            resumoLeitorEl.textContent = preencher(diz('nav.resumoLeitor', 'Percurso até à casa {numero}: {metros} metros, cerca de {minutos} {unidade} a pé.'), { numero: n, metros, minutos, unidade });
+            resumoLeitorEl.textContent = eLocal(escolhida)
+                ? preencher(diz('nav.resumoLeitorLocal', 'Percurso até ao local marcado: {metros} metros, cerca de {minutos} {unidade} a pé.'), { metros, minutos, unidade })
+                : preencher(diz('nav.resumoLeitor', 'Percurso até à casa {numero}: {metros} metros, cerca de {minutos} {unidade} a pé.'), { numero: n, metros, minutos, unidade });
             // Para quem vem de fora: como chegar de carro ou de transportes
             // à entrada por onde o percurso começa.
             const ent = percurso.entrada;
@@ -7443,17 +7721,25 @@ void modifySplatColor(vec3 center, inout vec4 color) {
         // casa, volta a ser só malhaviva.pt.
         const mudarEndereco = (casa) => {
             if (!window.history || !history.replaceState) return;
+            history.replaceState(history.state, '', caminhoPara(casa));
+        };
+        // O endereço da página para uma casa (/d31), para o local marcado
+        // (/@38.670908,-9.181921) ou para nenhum (/), com o resto do que lá
+        // estava (a língua, por exemplo).
+        function caminhoPara(destino) {
             const p = new URLSearchParams(location.search);
             p.delete('casa');
             p.delete('sitio');
             let caminho = '/';
-            if (casa && rede && contas) {
-                const sitios = rede.casas.get(casa.n);
-                caminho = contas.enderecoDaCasa(casa.n, sitios.indexOf(casa) + 1, sitios.length);
+            if (eLocal(destino) && contas) {
+                caminho = contas.enderecoDoLocal(destino.lat, destino.lon);
+            } else if (destino && rede && contas) {
+                const sitios = rede.casas.get(destino.n);
+                caminho = contas.enderecoDaCasa(destino.n, sitios.indexOf(destino) + 1, sitios.length);
             }
             const q = p.toString();
-            history.replaceState(history.state, '', caminho + (q ? '?' + q : '') + location.hash);
-        };
+            return caminho + (q ? '?' + q : '') + location.hash;
+        }
 
         /**
          * Escolhe uma casa: o painel abre com o percurso, os marcadores do
@@ -7466,8 +7752,13 @@ void modifySplatColor(vec3 center, inout vec4 color) {
             // Uma casa nova abre a ver o percurso, mesmo que se estivesse a
             // guiar até outra.
             if (aGuiar) sairDoGuia(false);
+            // Uma casa escolhida na pesquisa tira o local marcado; as
+            // direções até ele (o próprio local, aqui) escondem o painel
+            // dele, que volta quando o percurso sair.
+            if (eLocal(casa)) esconderOLocal();
+            else if (localAtual) fecharOLocal({ comHistorico: false });
             escolhida = casa;
-            campo.value = casa.n;
+            campo.value = eLocal(casa) ? '' : casa.n;
             fecharLista();
             if (emLupa()) {
                 fecharPesquisa();
@@ -7481,7 +7772,7 @@ void modifySplatColor(vec3 center, inout vec4 color) {
             // O painel abre já (no telemóvel com as indicações dobradas,
             // para o bairro se ver); o percurso chega quando o bairro
             // estiver pronto para o desenhar.
-            casaEl.textContent = preencher(diz('nav.casa', 'Casa {numero}'), { numero: casa.n });
+            casaEl.textContent = nomeDoDestino(casa);
             // Linhas guardadas para a origem e o resumo: o painel fica já da
             // altura com que vai ficar, e a câmara enquadra o percurso no
             // que ele deixa livre.
@@ -7730,9 +8021,20 @@ void modifySplatColor(vec3 center, inout vec4 color) {
         const PASSO_DO_PERCURSO = 'malhaviva-percurso';
         let noHistorico = false;
         let aRecuarSozinho = false;
+        // O que fazer quando o voltar atrás pedido aqui chegar (ver "O local
+        // marcado": um local marcado com um percurso à vista entra no lugar
+        // do passo dele).
+        let depoisDeRecuar = null;
         const entrarNoHistorico = () => {
             if (noHistorico || !window.history || !history.pushState) return;
-            history.pushState({ [PASSO_DO_PERCURSO]: true }, '', location.href);
+            // O passo de um local marcado que acabou de se fechar para dar
+            // lugar a esta casa passa a ser o do percurso: voltar atrás vai
+            // ao bairro, e não ao local que já não está.
+            if (history.state && history.state[PASSO_DO_LOCAL] && !localAtual) {
+                history.replaceState({ [PASSO_DO_PERCURSO]: true }, '', location.href);
+            } else {
+                history.pushState({ [PASSO_DO_PERCURSO]: true }, '', location.href);
+            }
             noHistorico = true;
         };
         const sairDoHistorico = () => {
@@ -7746,20 +8048,43 @@ void modifySplatColor(vec3 center, inout vec4 color) {
         window.addEventListener('popstate', () => {
             if (aRecuarSozinho) {
                 // O passo de antes ainda podia ter a casa no endereço (quem
-                // chegou por malhaviva.pt/d31): tira-se.
+                // chegou por malhaviva.pt/d31): tira-se — a não ser que se
+                // tenha voltado ao local marcado, que tem o seu.
                 aRecuarSozinho = false;
-                if (!escolhida) mudarEndereco(null);
+                if (depoisDeRecuar) {
+                    const fazer = depoisDeRecuar;
+                    depoisDeRecuar = null;
+                    fazer();
+                    return;
+                }
+                if (!escolhida && !localAtual) mudarEndereco(null);
                 return;
             }
-            if (!noHistorico) return;
-            noHistorico = false;
-            voltarAoBairro();
-            mudarEndereco(null);
+            if (noHistorico) {
+                // Com um percurso à vista: sai o percurso. Se ia até ao
+                // local marcado, volta o painel dele, com o endereço dele.
+                noHistorico = false;
+                const paraOLocal = eLocal(escolhida);
+                voltarAoBairro();
+                if (!paraOLocal) {
+                    // (Por baixo do percurso pode ter ficado o passo de um
+                    // local marcado que entretanto se fechou: já não serve.)
+                    if (history.state && history.state[PASSO_DO_LOCAL] && !localAtual) history.replaceState(null, '', caminhoPara(null));
+                    else mudarEndereco(null);
+                }
+                return;
+            }
+            // Sem percurso: o local marcado segue o histórico — sai quando
+            // se volta para trás dele, e volta quando se avança para ele.
+            seguirOHistoricoDoLocal();
         });
 
         // Tira o percurso; com `voltar`, a câmara volta também a onde
-        // estava antes da pesquisa.
-        const tirarPercurso = (voltar) => {
+        // estava antes da pesquisa. Um percurso até ao local marcado deixa
+        // o alfinete, e o painel do local volta (a não ser que se diga
+        // `aoLocal: false`: é outro local que vem para o lugar dele).
+        const tirarPercurso = (voltar, { aoLocal = true } = {}) => {
+            const paraOLocal = eLocal(escolhida);
             sairDoHistorico();
             aGuiar = false;
             passoVisto = null;
@@ -7772,7 +8097,7 @@ void modifySplatColor(vec3 center, inout vec4 color) {
             localizarEl.hidden = true;
             campo.value = '';
             document.body.classList.remove('a-navegar');
-            mudarEndereco(null);
+            if (!paraOLocal) mudarEndereco(null);
             if (tituloDeAntes !== null) {
                 document.title = tituloDeAntes;
                 tituloDeAntes = null;
@@ -7781,16 +8106,20 @@ void modifySplatColor(vec3 center, inout vec4 color) {
                 if (voltar) nav.voltar();
                 else nav.limpar();
             }
+            if (paraOLocal && aoLocal && localAtual) mostrarOPainelDoLocal();
         };
         // Voltar ao bairro: sem o percurso, e com a câmara onde estava
         // antes da pesquisa.
         const voltarAoBairro = () => tirarPercurso(true);
         document.getElementById('percurso-voltar').addEventListener('click', (e) => {
+            const paraOLocal = eLocal(escolhida);
             voltarAoBairro();
             // Quem carregou de tecla não fica com o foco perdido: volta à
-            // pesquisa.
+            // pesquisa — ou, vindo das direções até ao local marcado, ao
+            // painel dele.
             if (e.detail === 0) {
-                if (emLupa()) focarLupa();
+                if (paraOLocal && localAtual) localDirecoesEl.focus({ preventScroll: true });
+                else if (emLupa()) focarLupa();
                 else campo.focus();
             }
         });
@@ -7804,12 +8133,15 @@ void modifySplatColor(vec3 center, inout vec4 color) {
         // os moradores mandam a quem os vem visitar. É sempre o endereço
         // público, esteja a página aberta onde estiver — o do computador de
         // quem está a afinar o site não serve a mais ninguém.
+        function origemPublica() {
+            const aqui = location.hostname || '';
+            return (aqui === 'malhaviva.pt' || aqui.endsWith('.malhaviva.pt')) ? location.origin : 'https://malhaviva.pt';
+        }
         function enderecoParaMandar() {
             if (!escolhida || !rede || !contas) return '';
+            if (eLocal(escolhida)) return origemPublica() + contas.enderecoDoLocal(escolhida.lat, escolhida.lon);
             const sitios = rede.casas.get(escolhida.n);
-            const aqui = location.hostname || '';
-            const origem = (aqui === 'malhaviva.pt' || aqui.endsWith('.malhaviva.pt')) ? location.origin : 'https://malhaviva.pt';
-            return origem + contas.enderecoDaCasa(escolhida.n, sitios.indexOf(escolhida) + 1, sitios.length);
+            return origemPublica() + contas.enderecoDaCasa(escolhida.n, sitios.indexOf(escolhida) + 1, sitios.length);
         }
         // O botão diz, quando o rato pára em cima, o endereço que copia.
         let copiado = 0;
@@ -7817,12 +8149,16 @@ void modifySplatColor(vec3 center, inout vec4 color) {
             const url = enderecoParaMandar();
             if (url) copiarEl.title = url.replace(/^https?:\/\//, '');
             else copiarEl.removeAttribute('title');
-            if (!copiado) copiarTextoEl.textContent = diz('nav.copiarLink', 'Copiar link casa');
+            if (!copiado) {
+                copiarTextoEl.textContent = eLocal(escolhida)
+                    ? diz('nav.copiarLinkLocal', 'Copiar link local')
+                    : diz('nav.copiarLink', 'Copiar link casa');
+            }
         }
         // A maneira antiga de copiar, para os navegadores que não deixam a
         // página usar a área de transferência: um campo escondido com o
         // endereço, escolhido e copiado.
-        const copiarAModaAntiga = (texto) => {
+        const copiarAModaAntiga = (texto, botao = copiarEl) => {
             const campoEscondido = document.createElement('textarea');
             campoEscondido.value = texto;
             campoEscondido.setAttribute('readonly', '');
@@ -7832,7 +8168,7 @@ void modifySplatColor(vec3 center, inout vec4 color) {
             let deu = false;
             try { deu = document.execCommand('copy'); } catch (e) { deu = false; }
             campoEscondido.remove();
-            copiarEl.focus({ preventScroll: true });
+            botao.focus({ preventScroll: true });
             return deu;
         };
         copiarEl.addEventListener('click', async () => {
@@ -7866,8 +8202,10 @@ void modifySplatColor(vec3 center, inout vec4 color) {
         partilharEl.addEventListener('click', async () => {
             const url = enderecoParaMandar();
             if (!url || !podePartilhar) return;
-            const titulo = preencher(diz('nav.casa', 'Casa {numero}'), { numero: escolhida.n }) + ' — ' + diz('cab.bairro', 'Bairro de Penajóia');
-            const texto = preencher(diz('nav.textoPartilha', 'Como chegar à casa {numero}, no Bairro de Penajóia:'), { numero: escolhida.n });
+            const titulo = nomeDoDestino(escolhida) + ' — ' + diz('cab.bairro', 'Bairro de Penajóia');
+            const texto = eLocal(escolhida)
+                ? diz('nav.textoPartilhaLocal', 'Um local no Bairro de Penajóia:')
+                : preencher(diz('nav.textoPartilha', 'Como chegar à casa {numero}, no Bairro de Penajóia:'), { numero: escolhida.n });
             try { await navigator.share({ title: titulo, text: texto, url }); } catch (e) { /* desistiu */ }
         });
 
@@ -7904,6 +8242,303 @@ void modifySplatColor(vec3 center, inout vec4 color) {
                     });
                     observador.observe(ecraDeEspera, { attributes: true, attributeFilter: ['class'] });
                 }
+            }).catch(() => {});
+        }
+
+        // ---- O local marcado ----
+        //
+        // Carregar sem largar num sítio do bairro — o rato ou o dedo parados
+        // meio segundo, como no Google Maps — ou, no computador, carregar
+        // nele com o botão direito, marca-o: um alfinete no sítio (ver
+        // navegacao-3d.mjs) e o painel do local, com as direções até lá (o
+        // painel do percurso, como para uma casa) e a partilha da ligação,
+        // malhaviva.pt/@38.670908,-9.181921. Quem abre essa ligação vê o
+        // bairro já com o local marcado. O sítio marcado não vai para lado
+        // nenhum: só sai daqui na ligação que alguém escolher partilhar.
+        //
+        // No histórico, o local marcado é um passo: voltar atrás fecha-o; e
+        // as direções até ele são outro, por cima — voltar atrás delas volta
+        // ao painel do local.
+        const PASSO_DO_LOCAL = 'malhaviva-local';
+        // O local marcado agora — {lat, lon, y} (y, a altura no bairro, se se
+        // souber) —, com o painel à vista ou escondido atrás do do percurso
+        // até ele; ou nada.
+        let localAtual = null;
+        // Cada pedido de marcar um local tem o seu número: um que chegue
+        // tarde (o bairro em 3D ainda a carregar) não passa à frente de um
+        // mais novo.
+        let pedidosDoLocal = 0;
+        let tituloAntesDoLocal = null;
+        let partilhado = 0;
+
+        const estadoDoLocal = (l) => ({ [PASSO_DO_LOCAL]: true, lat: l.lat, lon: l.lon, y: l.y });
+        const mesmoSitio = (a, b) => Math.abs(a.lat - b.lat) < 1e-7 && Math.abs(a.lon - b.lon) < 1e-7;
+
+        // Os comandos da câmara: é neles que se liga o carregar sem largar.
+        // Ligado sempre, menos a guiar até a algum lado (aí o bairro é
+        // para seguir o caminho).
+        const comandosDaCamara = () => {
+            const motor = document.querySelector('pc-app');
+            const camara = motor && motor.app && motor.app.root && motor.app.root.findByName('camera');
+            return camara && camara.script && camara.script.cameraControls;
+        };
+        function ligarOPremir() {
+            const c = comandosDaCamara();
+            if (c) c.marcarAoPremir = !aGuiar;
+            return !!c;
+        }
+        (function esperarPelaCamara() {
+            if (!ligarOPremir()) setTimeout(esperarPelaCamara, 500);
+        })();
+
+        // O que o painel diz: ao pé de que casa fica o sítio (se ficar a
+        // menos de 25 metros de uma) e as coordenadas, como as do Google
+        // Maps — dá para as colar lá.
+        function escreverOLocal() {
+            if (!localAtual) return;
+            const perto = rede ? rede.casaPerto(localAtual.lat, localAtual.lon, 25) : null;
+            localPertoEl.textContent = perto ? preencher(diz('loc.perto', 'Perto da casa {numero}'), { numero: perto.casa.n }) : '';
+            localCoordenadasEl.textContent = localAtual.lat.toFixed(6) + ', ' + localAtual.lon.toFixed(6);
+            if (!partilhado) localPartilharTextoEl.textContent = diz('par.botao', 'Partilhar');
+            if (!escolhida) document.title = diz('loc.titulo', 'Local marcado') + ' — ' + diz('site.nome', 'Malha Viva');
+        }
+        function mostrarOPainelDoLocal() {
+            escreverOLocal();
+            localPainel.hidden = false;
+            document.body.classList.add('com-local');
+        }
+        // O painel sai, e o alfinete fica (o percurso até ele está à vista).
+        function esconderOLocal() {
+            localPainel.hidden = true;
+            document.body.classList.remove('com-local');
+        }
+
+        // O passo do local no histórico: novo, por cima do bairro; ou, se
+        // já se estava num local, o mesmo passo, com o sítio novo.
+        const gravarOLocal = () => {
+            if (!window.history || !history.pushState || !localAtual) return;
+            const endereco = caminhoPara({ tipo: 'local', lat: localAtual.lat, lon: localAtual.lon });
+            if (history.state && history.state[PASSO_DO_LOCAL]) history.replaceState(estadoDoLocal(localAtual), '', endereco);
+            else history.pushState(estadoDoLocal(localAtual), '', endereco);
+        };
+
+        /**
+         * Marca um sítio: o alfinete e o painel.
+         *
+         * @param {object} onde - O sítio do bairro onde se carregou
+         *     (`ponto`: [x, y, z]), ou o de uma ligação ou do histórico
+         *     (`lat`, `lon` e, do histórico, `y`).
+         * @param {object} [como] - `ligacao`: chegou por uma ligação (a
+         *     câmara vai vê-lo, e o alfinete cai no fim); `historico`: se
+         *     se grava um passo no histórico (sim, a não ser que se venha
+         *     dele).
+         */
+        async function abrirOLocal(onde, { ligacao = false, historico = true } = {}) {
+            const pedido = ++pedidosDoLocal;
+            try {
+                await prepararO3D();
+            } catch (e) {
+                return;
+            }
+            if (pedido !== pedidosDoLocal || aGuiar || !nav) return;
+            // Um percurso à vista dá lugar ao local marcado — também no
+            // histórico: primeiro sai o passo do percurso, e o local entra
+            // depois, no lugar dele.
+            if (escolhida) {
+                const vaiRecuar = noHistorico && history.state && history.state[PASSO_DO_PERCURSO];
+                if (vaiRecuar) depoisDeRecuar = () => abrirOLocal(onde, { ligacao, historico });
+                tirarPercurso(false, { aoLocal: false });
+                if (vaiRecuar) return;
+            }
+            const sitio = ligacao
+                ? { lat: onde.lat, lon: onde.lon, y: null }
+                : onde.ponto ? nav.marcarLocal({ ponto: onde.ponto }) : nav.marcarLocal({ lat: onde.lat, lon: onde.lon, y: onde.y });
+            const novo = { lat: sitio.lat, lon: sitio.lon, y: onde.ponto ? onde.ponto[1] : (onde.y != null ? onde.y : null) };
+            const outro = !localAtual || !mesmoSitio(localAtual, novo);
+            localAtual = novo;
+            clearTimeout(partilhado);
+            partilhado = 0;
+            if (tituloAntesDoLocal === null) tituloAntesDoLocal = document.title;
+            localAnuncioEl.textContent = '';
+            mostrarOPainelDoLocal();
+            if (historico) gravarOLocal();
+            if (ligacao) {
+                // A câmara vai até ele com o painel já à vista (para o pôr
+                // ao meio do que sobra do ecrã), e o alfinete cai lá — à
+                // altura do que lá se vê, que fica guardada no passo do
+                // histórico.
+                const marcado = nav.abrirLocal(novo.lat, novo.lon, (ponto) => {
+                    if (localAtual !== novo) return;
+                    novo.y = ponto[1];
+                    if (history.state && history.state[PASSO_DO_LOCAL]) history.replaceState(estadoDoLocal(novo), '', location.href);
+                });
+                novo.y = marcado.ponto[1];
+            } else {
+                // Carregou-se ao fundo do ecrã, no telemóvel, e o painel tapa
+                // o sítio? A câmara chega-se, até ele se ver.
+                requestAnimationFrame(() => {
+                    if (nav && localAtual === novo) nav.mostrarLocalSeTapado();
+                });
+                if (onde.ponto && outro && navigator.vibrate) {
+                    try { navigator.vibrate(15); } catch (e) { /* sem vibrar */ }
+                }
+            }
+            // O foco vai para o painel: quem ouve a página ouve o nome dele,
+            // e o Tab segue para as direções e a partilha.
+            localTituloEl.focus({ preventScroll: true });
+        }
+
+        /**
+         * Fecha o local marcado: sai o alfinete e o painel. Com
+         * `comHistorico`, sai também o passo dele no histórico (e o
+         * endereço volta a ser o do bairro).
+         */
+        function fecharOLocal({ comHistorico = true } = {}) {
+            if (!localAtual) return;
+            localAtual = null;
+            pedidosDoLocal++;
+            esconderOLocal();
+            if (nav) nav.tirarLocal();
+            clearTimeout(partilhado);
+            partilhado = 0;
+            if (tituloAntesDoLocal !== null) {
+                document.title = tituloAntesDoLocal;
+                tituloAntesDoLocal = null;
+            }
+            if (!comHistorico) return;
+            if (history.state && history.state[PASSO_DO_LOCAL]) {
+                aRecuarSozinho = true;
+                history.back();
+            } else if (contas && contas.localPedido(location)) {
+                mudarEndereco(null);
+            }
+        }
+
+        // Voltar atrás (ou avançar) para um passo do histórico: o local
+        // marcado vem com ele, ou sai.
+        function seguirOHistoricoDoLocal() {
+            const estado = history.state;
+            if (estado && estado[PASSO_DO_PERCURSO]) return;
+            if (estado && estado[PASSO_DO_LOCAL]) {
+                if (!localAtual || !mesmoSitio(localAtual, estado)) {
+                    abrirOLocal({ lat: estado.lat, lon: estado.lon, y: estado.y }, { historico: false });
+                }
+                return;
+            }
+            if (localAtual) fecharOLocal({ comHistorico: false });
+            // O passo do bairro aberto por uma ligação ainda tem o local no
+            // endereço: tira-se.
+            if (contas && contas.localPedido(location)) mudarEndereco(null);
+        }
+
+        // Carregar no alfinete, sem percurso: o painel do local (se estava
+        // escondido) e o foco nas direções.
+        function focarOLocal() {
+            if (!localAtual || escolhida) return;
+            if (localPainel.hidden) mostrarOPainelDoLocal();
+            localDirecoesEl.focus({ preventScroll: true });
+        }
+
+        // Os avisos dos comandos da câmara (ver `marcarAoPremir` em
+        // camera-controls.mjs). O primeiro chega com o dedo ainda em baixo:
+        // é o momento de ir buscando o bairro em 3D, se ainda não veio.
+        window.addEventListener('aPremirNoBairro', () => {
+            prepararO3D().catch(() => {});
+        });
+        window.addEventListener('premirNoBairro', (e) => {
+            const s = e.detail && e.detail.sitio;
+            if (!s || aGuiar || document.body.classList.contains('em-cartao')) return;
+            abrirOLocal({ ponto: [s.x, s.y, s.z] });
+        });
+
+        // As direções: o percurso a pé até ao local, no painel do percurso.
+        localDirecoesEl.addEventListener('click', (e) => {
+            if (!localAtual || !rede) return;
+            const destino = rede.destinoNoSitio(localAtual.lat, localAtual.lon);
+            if (!destino) return;
+            destino.lat = localAtual.lat;
+            destino.lon = localAtual.lon;
+            const deTecla = e.detail === 0;
+            escolher(destino).then(() => {
+                // Quem carregou de tecla segue para o Iniciar.
+                if (deTecla && escolhida === destino) iniciarEl.focus({ preventScroll: true });
+            });
+        });
+
+        // A partilha: no telemóvel, a folha de partilhar do próprio
+        // telemóvel; no computador, a ligação vai para a área de
+        // transferência, e o botão diz que foi.
+        localPartilharEl.addEventListener('click', async () => {
+            if (!localAtual || !contas) return;
+            const url = origemPublica() + contas.enderecoDoLocal(localAtual.lat, localAtual.lon);
+            if (podePartilhar) {
+                const titulo = diz('loc.titulo', 'Local marcado') + ' — ' + diz('cab.bairro', 'Bairro de Penajóia');
+                try { await navigator.share({ title: titulo, text: diz('nav.textoPartilhaLocal', 'Um local no Bairro de Penajóia:'), url }); } catch (e) { /* desistiu */ }
+                return;
+            }
+            let deu = false;
+            try {
+                await navigator.clipboard.writeText(url);
+                deu = true;
+            } catch (e) {
+                deu = copiarAModaAntiga(url, localPartilharEl);
+            }
+            clearTimeout(partilhado);
+            if (deu) {
+                localPartilharTextoEl.textContent = diz('nav.linkCopiado', 'Link copiado');
+                localAnuncioEl.textContent = diz('loc.copiado', 'Link do local copiado');
+            } else {
+                // Nem assim: o endereço fica escrito no painel, por baixo
+                // das coordenadas, para se copiar à mão.
+                localCoordenadasEl.textContent = url.replace(/^https?:\/\//, '');
+                localAnuncioEl.textContent = url;
+            }
+            partilhado = setTimeout(() => {
+                partilhado = 0;
+                escreverOLocal();
+            }, deu ? 2000 : 8000);
+        });
+
+        localFecharEl.addEventListener('click', () => fecharOLocal());
+        localPainel.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                e.preventDefault();
+                fecharOLocal();
+            }
+        });
+
+        // ---- O endereço de um local marcado ----
+        //
+        // malhaviva.pt/@38.670908,-9.181921 é o bairro (ver src/index.ts):
+        // a página abre com o local marcado, logo que o bairro aparecer —
+        // se o sítio for no bairro; senão, fica só o bairro.
+        if (/^\/(@|%40)/i.test(location.pathname)) {
+            lerRede().then(() => {
+                const pedido = contas.localPedido(location);
+                if (!pedido) {
+                    mudarEndereco(null);
+                    return;
+                }
+                prepararO3D().then(() => {
+                    if (!nav.dentroDoBairro(pedido.lat, pedido.lon)) {
+                        mudarEndereco(null);
+                        return;
+                    }
+                    const ecraDeEspera = document.getElementById('loading-overlay');
+                    const quandoAparecer = () => {
+                        if (ecraDeEspera && !ecraDeEspera.classList.contains('hidden')) return false;
+                        setTimeout(() => {
+                            if (!localAtual && !escolhida) abrirOLocal(pedido, { ligacao: true });
+                        }, 600);
+                        return true;
+                    };
+                    if (!quandoAparecer()) {
+                        const observador = new MutationObserver(() => {
+                            if (quandoAparecer()) observador.disconnect();
+                        });
+                        observador.observe(ecraDeEspera, { attributes: true, attributeFilter: ['class'] });
+                    }
+                }).catch(() => {});
             }).catch(() => {});
         }
 
@@ -7965,6 +8600,12 @@ void modifySplatColor(vec3 center, inout vec4 color) {
             escreverCopiar();
             escreverCreditos();
             escreverPercurso();
+            // O local marcado: o mesmo, com o título da página que a
+            // tradução acabou de pôr guardado para quando ele sair.
+            if (localAtual) {
+                tituloAntesDoLocal = document.title;
+                escreverOLocal();
+            }
             // A tradução da página pôs o título de sempre, já na língua
             // nova: é esse que volta quando o percurso sair.
             if (escolhida) {
