@@ -3,6 +3,7 @@ import {
     PRIMITIVE_TRIANGLES, DITHER_BAYER8, BLEND_NORMAL, FUNC_LESSEQUAL,
     SHADERLANGUAGE_GLSL, SHADERLANGUAGE_WGSL
 } from 'playcanvas';
+import { ROTACAO } from './endireitar.mjs?v=1';
 
 /**
  * Os prédios à volta do bairro, em blocos simples.
@@ -223,6 +224,10 @@ fn getOpacity() {
             castShadows: false,
             receiveShadows: false
         });
+        // Os vértices vêm medidos no modelo do drone torto (era assim que
+        // assentavam nele); roda-se com ele, para ficarem direitos também
+        // (ver endireitar.mjs).
+        entidade.setLocalRotation(...ROTACAO);
         entidade.enabled = mostrar;
         app.root.addChild(entidade);
     }

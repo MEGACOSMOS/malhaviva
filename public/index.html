@@ -5073,7 +5073,7 @@
         <pc-asset id="splat-scene" src="splat/lod-meta.json" type="gsplat"></pc-asset>
         <pc-asset id="camera-controls-script" src="./camera-controls.mjs?v=58" type="script"></pc-asset>
         <pc-asset id="camera-coords-script" src="./coords.mjs?v=7" type="script"></pc-asset>
-        <pc-asset id="annotations-script" src="./annotations.mjs?v=122" type="script"></pc-asset>
+        <pc-asset id="annotations-script" src="./annotations.mjs?v=123" type="script"></pc-asset>
         <pc-asset id="measure-script" src="./measure.mjs?v=1" type="script"></pc-asset>
         <pc-asset id="escala-script" src="./escala.mjs?v=2" type="script"></pc-asset>
         <pc-asset id="compass-script" src="./compass.mjs?v=3" type="script"></pc-asset>
@@ -5099,8 +5099,11 @@
                 </pc-scripts>
             </pc-entity>
 
-            <!-- Gaussian Splat Entity (Rotated to fix Y-axis) -->
-            <pc-entity name="gsplat-scene" rotation="180 0 0">
+            <!-- O bairro em manchas. Os 180° em X põem o modelo de pé; o resto
+                 (0,53°) endireita-o: o modelo saiu do drone um nada torto.
+                 É a ROTACAO de endireitar.mjs vezes os 180° em X, escrita
+                 em ângulos — mudando uma, muda-se a outra. -->
+            <pc-entity name="gsplat-scene" rotation="179.72074 0.00110 0.44954">
                 <pc-gsplat asset="splat-scene"></pc-gsplat>
             </pc-entity>
 
@@ -5184,7 +5187,7 @@
         import { criarAfinadorDeFluidez, construirEscada } from './fluidez.mjs?v=1';
         import { criarModoVR } from './vr.mjs?v=16';
         import { ligarCeu } from './ceu.mjs?v=16';
-        import { ligarEdificios } from './edificios.mjs?v=5';
+        import { ligarEdificios } from './edificios.mjs?v=6';
         import { ligarComando } from './comando.mjs?v=13';
 
         // O código do site chegou e está a correr: o primeiro sinal de vida
@@ -7068,7 +7071,7 @@ void modifySplatColor(vec3 center, inout vec4 color) {
         let pedidoDo3D = null;
         const prepararO3D = () => {
             if (!pedidoDo3D) {
-                pedidoDo3D = Promise.all([lerRede(), whenReady('pc-app'), import('./navegacao-3d.mjs?v=9')])
+                pedidoDo3D = Promise.all([lerRede(), whenReady('pc-app'), import('./navegacao-3d.mjs?v=10')])
                     .then(([r, { app }, m]) => m.prepararNavegacao3D(app, {
                         rede: r,
                         camara: app.root.findByName('camera'),

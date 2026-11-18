@@ -3,6 +3,21 @@ import { fontesDeVideo, previaDe, olharInicialDe, ABERTURA_INICIAL } from './vid
 import { criarGestorDeQualidade } from './qualidade-video.mjs?v=9';
 import { carregarPrevia360 } from './previa-360.mjs?v=2';
 import { FOTOGRAFIAS, enderecoDa, LARGURA_LEVE } from './timelapse.mjs?v=3';
+import { endireitar } from './endireitar.mjs?v=1';
+
+/**
+ * Um sítio medido no modelo do drone ainda torto, passado para o bairro
+ * direito (ver endireitar.mjs). As anotações pousadas no bairro foram todas
+ * medidas antes de ele ser endireitado, e ficam escritas como estavam, para
+ * se reconhecerem; uma anotação nova, medida com o cursor do modo de
+ * programador, já vem direita e escreve-se com `new pc.Vec3` simples.
+ *
+ * @param {number} x - O x no modelo torto.
+ * @param {number} y - O y no modelo torto.
+ * @param {number} z - O z no modelo torto.
+ * @returns {pc.Vec3} O sítio no bairro direito.
+ */
+const doModeloTorto = (x, y, z) => new pc.Vec3(...endireitar(x, y, z));
 
 export const AnnotationController = pc.createScript('annotationController');
 
@@ -288,70 +303,70 @@ AnnotationController.prototype.initialize = function() {
             element: null
         },
         {
-            position: new pc.Vec3(-102.35, -14.56, 57.67),
+            position: doModeloTorto(-102.35, -14.56, 57.67),
             label: "Esvarena",
             is360: true,
             trailIndex: 0,
             element: null
         },
         {
-            position: new pc.Vec3(-45.06, -7.05, 23.97),
+            position: doModeloTorto(-45.06, -7.05, 23.97),
             label: "Esvarena",
             is360: true,
             trailIndex: 1,
             element: null
         },
         {
-            position: new pc.Vec3(123.70, -1.62, 92.95),
+            position: doModeloTorto(123.70, -1.62, 92.95),
             label: "Esvarena",
             is360: true,
             trailIndex: 2,
             element: null
         },
         {
-            position: new pc.Vec3(36.16, 2.49, 50.48),
+            position: doModeloTorto(36.16, 2.49, 50.48),
             label: "Dulce",
             video: "Dulce",
             element: null
         },
         {
-            position: new pc.Vec3(-67.03, -1.70, -64.40),
+            position: doModeloTorto(-67.03, -1.70, -64.40),
             label: "Luna",
             video: "Luna",
             element: null
         },
         {
-            position: new pc.Vec3(-85.42, -7.76, -26.34),
+            position: doModeloTorto(-85.42, -7.76, -26.34),
             label: "Sofia",
             video: "Sofia",
             element: null
         },
         {
-            position: new pc.Vec3(-38.38, 1.47, -64.20),
+            position: doModeloTorto(-38.38, 1.47, -64.20),
             label: "Frei",
             video: "Frei",
             element: null
         },
         {
-            position: new pc.Vec3(94.09, 1.82, 31.41),
+            position: doModeloTorto(94.09, 1.82, 31.41),
             label: "Edson",
             video: "Edson",
             element: null
         },
         {
-            position: new pc.Vec3(-91.98, -5.48, -53.98),
+            position: doModeloTorto(-91.98, -5.48, -53.98),
             label: "Edmilson",
             video: "Edmilson",
             element: null
         },
         {
-            position: new pc.Vec3(31.12, 4.32, -92.28),
+            position: doModeloTorto(31.12, 4.32, -92.28),
             label: "Carlos",
             video: "Carlos",
             element: null
         },
         {
-            position: new pc.Vec3(-57.35, -5.68, 50.14),
+            position: doModeloTorto(-57.35, -5.68, 50.14),
             label: "Helena",
             video: "Helena",
             element: null

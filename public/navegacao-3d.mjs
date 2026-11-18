@@ -30,6 +30,7 @@ import {
     BLEND_NORMAL, CULLFACE_NONE, ADDRESS_CLAMP_TO_EDGE, FILTER_LINEAR, FILTER_LINEAR_MIPMAP_LINEAR
 } from 'playcanvas';
 import { alisar, arredondar, preencher, METROS_POR_MINUTO } from './navegacao.mjs?v=9';
+import { endireitar } from './endireitar.mjs?v=1';
 
 // Quanto se alisa a linha, em metros (as contas são as do traçado de
 // origem).
@@ -184,8 +185,12 @@ export async function prepararNavegacao3D(app, opcoes) {
         const fi = i - i0;
         const fj = j - j0;
         const h = (jj, ii) => alturas[jj * chao.colunas + ii] * chao.escala + chao.base;
-        return (h(j0, i0) * (1 - fi) + h(j0, i0 + 1) * fi) * (1 - fj) +
+        const torto = (h(j0, i0) * (1 - fi) + h(j0, i0 + 1) * fi) * (1 - fj) +
             (h(j0 + 1, i0) * (1 - fi) + h(j0 + 1, i0 + 1) * fi) * fj;
+        // O chão foi medido no modelo do drone ainda torto; o bairro que se
+        // vê está direito (ver endireitar.mjs). No chão, a rotação mexe o
+        // ponto um palmo de lado, no máximo — conta só a altura.
+        return endireitar(x, torto, z)[1];
     };
     // ---- O lote F ----
     //

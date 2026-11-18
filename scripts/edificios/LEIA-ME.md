@@ -21,6 +21,10 @@ plano, dos prédios à volta do bairro, que o site desenha com
   abaixo das altitudes reais e inclinado 0,53° (resíduo mediano ~12 cm);
   na horizontal, 0,5 m de acerto. Cena ↔ geo vem do `registo.json` do
   ortofotomapa (ver `osm_cena.py`).
+- **Bairro direito** — desde novembro de 2026 o site endireita o modelo
+  do drone com esta mesma inclinação (`public/endireitar.mjs`), e roda os
+  prédios com ele. Por isso os blocos continuam a ser gerados no "cima"
+  torto do modelo, como até aqui: é o site que os põe direitos.
 
 O 3D do Google Earth / Google Maps não foi usado: as regras do Google
 proíbem fazer modelos ou tirar medidas a partir dele.
