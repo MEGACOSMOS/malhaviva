@@ -21,7 +21,9 @@
 #      daí se é rua ou beco.
 #   2. As estradas. As do OpenStreetMap entram inteiras, com o nome. Uma rua
 #      desenhada que atravessa uma estrada cruza-se com ela; uma que acaba ao
-#      pé de uma (até 12 m) liga-se a ela.
+#      pé de uma (até 12 m) liga-se a ela; e um cruzamento desenhado à beira
+#      de uma (até 6 m: uma rua que vai dar ao caminho desenhado no passeio
+#      dela) também — é por aí que se entra no bairro.
 #   3. O chão e os telhados, para as casas. Num bairro de casas baixas e
 #      coladas, o chão quase não se vê: os becos são valas estreitas entre
 #      telhados. Primeiro acham-se essas valas, depois os sítios abertos e
@@ -97,9 +99,12 @@ BECO_M2 = 10.0
 BURACO_M2 = 25.0
 MANCHA_M2 = 60.0
 # As ruas desenhadas que acabam a menos disto de outra acabam nela; e as que
-# acabam a menos de ESTRADA_M de uma estrada ligam-se a ela.
+# acabam a menos de ESTRADA_M de uma estrada ligam-se a ela. Um cruzamento
+# desenhado a menos de BEIRA_DA_ESTRADA_M de uma estrada (uma rua que vai dar
+# ao caminho desenhado ao longo dela, no passeio) liga-se também.
 COLAR_M = 2.0
 ESTRADA_M = 12.0
+BEIRA_DA_ESTRADA_M = 6.0
 # Um bocadinho de rua que passa um cruzamento por menos disto (o traço
 # desenhado à mão que vai um nada além da outra rua) sai.
 ESPIGAO_M = 1.5
@@ -523,14 +528,21 @@ def juntar_estradas(G, estradas, nos, usos, cell, proximo):
             if mudou:
                 break
 
-    # As pontas das ruas desenhadas que ficam perto de uma estrada.
+    # As pontas das ruas desenhadas que ficam perto de uma estrada (até
+    # ESTRADA_M); e os cruzamentos desenhados mesmo à beira de uma (até
+    # BEIRA_DA_ESTRADA_M) — onde uma rua do bairro vai dar a um caminho
+    # desenhado ao longo da estrada, como o passeio da Rua de São Lourenço
+    # Nascente: entra-se ali, à porta da rua, e não lá ao fundo, onde o
+    # caminho acaba.
     ligadas = 0
-    pontas = [n for n in G.nodes if G.degree(n) == 1 and not any(d.get("osm") for _, _, d in G.edges(n, data=True))]
-    for n in pontas:
+    sem_estrada = lambda n: not any(d.get("osm") or d.get("tipo") == "ligacao" for _, _, d in G.edges(n, data=True))
+    pontas = [(n, ESTRADA_M) for n in G.nodes if G.degree(n) == 1 and sem_estrada(n)]
+    pontas += [(n, BEIRA_DA_ESTRADA_M) for n in G.nodes if G.degree(n) >= 3 and sem_estrada(n)]
+    for n, ate in pontas:
         estrada = [(u, v, k) for u, v, k, d in G.edges(keys=True, data=True) if d.get("osm")]
         pts, quem = densos(G.edge_subgraph(estrada), 0.5 / cell)
         o = np.asarray(G.nodes[n]["o"], float)
-        dist, j = cKDTree(pts).query(o, distance_upper_bound=ESTRADA_M / cell)
+        dist, j = cKDTree(pts).query(o, distance_upper_bound=ate / cell)
         if not np.isfinite(dist):
             continue
         u, v, k, i = quem[j]
