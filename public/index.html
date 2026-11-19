@@ -358,13 +358,13 @@
             pointer-events: auto;
         }
 
-        /* O logótipo do projecto e, ao lado, depois de um fio a prumo, o
-           nome do bairro. Quando falta largura para os ícones da direita, o
-           nome do bairro passa a duas linhas em vez de os empurrar. */
+        /* O logótipo do projecto e, por baixo, alinhado à esquerda, o nome
+           do bairro. */
         .brand {
             display: flex;
-            align-items: center;
-            gap: 12px;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 5px;
             min-width: 0;
             margin-right: 24px;
         }
@@ -380,10 +380,7 @@
         }
 
         .brand-barra {
-            align-self: stretch;
-            width: 1px;
-            background: rgba(255, 255, 255, 0.55);
-            flex-shrink: 0;
+            display: none;
         }
 
         .brand-bairro {
@@ -391,14 +388,14 @@
             font-weight: 400;
             line-height: 1.15;
             letter-spacing: 0.01em;
-            text-wrap: balance;
+            white-space: nowrap;
         }
 
         /* No telemóvel, entre o hambúrguer e o ecrã inteiro, tudo um pouco
            mais pequeno. */
         @media (max-width: 640px) {
             .brand {
-                gap: 9px;
+                gap: 4px;
                 margin-right: 16px;
             }
             .brand-name .logotipo {
@@ -408,26 +405,6 @@
                 font-size: 0.7rem;
             }
         }
-
-        /* Nos telemóveis estreitos (até 380 pontos: muitos Samsung, o
-           iPhone SE) o nome do bairro ficava por cima da lupa. Sai de vista
-           e fica só o logótipo; quem usa leitor de ecrã continua a ouvi-lo. */
-        @media (max-width: 380px) {
-            .brand-barra {
-                display: none;
-            }
-            .brand-bairro {
-                position: absolute;
-                width: 1px;
-                height: 1px;
-                overflow: hidden;
-                clip: rect(0 0 0 0);
-                clip-path: inset(50%);
-                white-space: nowrap;
-            }
-        }
-
-
 
         /* ─── Coordinates Info ─── */
         #coordinates-info {
@@ -2793,18 +2770,19 @@
             opacity: 0;
         }
 
-        /* Mover: carrega-se, arrasta-se, larga-se — e fica o rasto. */
+        /* Mover: carrega-se, puxa-se para baixo (anda-se para a frente),
+           larga-se — e fica o rasto. */
         #instrucoes .ins-mover-mao {
-            transform: translate(96px, 118px);
+            transform: translate(150px, 44px);
             animation: ins-mover-mao 2.8s ease-in-out infinite;
         }
         @keyframes ins-mover-mao {
-            0% { transform: translate(96px, 118px); opacity: 0; }
-            10% { transform: translate(96px, 118px); opacity: 1; }
-            20% { transform: translate(96px, 118px) scale(0.86); }
-            68% { transform: translate(204px, 66px) scale(0.86); }
-            76% { transform: translate(204px, 66px) scale(1); opacity: 1; }
-            92%, 100% { transform: translate(204px, 66px); opacity: 0; }
+            0% { transform: translate(150px, 44px); opacity: 0; }
+            10% { transform: translate(150px, 44px); opacity: 1; }
+            20% { transform: translate(150px, 44px) scale(0.86); }
+            68% { transform: translate(150px, 140px) scale(0.86); }
+            76% { transform: translate(150px, 140px) scale(1); opacity: 1; }
+            92%, 100% { transform: translate(150px, 140px); opacity: 0; }
         }
         #instrucoes .ins-mover-anel {
             animation: ins-mover-anel 2.8s ease-out infinite;
@@ -4507,11 +4485,12 @@
             <line class="ins-poste" x1="0" y1="0" x2="0" y2="0" visibility="hidden"></line>
         </svg>
 
-        <!-- 1 · Mover o mapa: carrega-se, arrasta-se e larga-se. -->
+        <!-- 1 · Mover o mapa: carrega-se e puxa-se o chão para baixo, para
+             andar para a frente. -->
         <div class="ins-gesto" data-gesto="mover" aria-hidden="true">
             <svg viewBox="0 0 300 180">
-                <path class="ins-traco ins-mover-rasto" d="M96 118L204 66"></path>
-                <rect class="ins-anel ins-mover-anel" x="84" y="106" width="24" height="24"></rect>
+                <path class="ins-traco ins-mover-rasto" d="M150 44L150 140"></path>
+                <rect class="ins-anel ins-mover-anel" x="138" y="32" width="24" height="24"></rect>
                 <g class="ins-mover-mao">
                     <path class="so-rato" fill="#ffffff" stroke="#05050a" stroke-width="1.2" stroke-linejoin="round" d="M0 0L0 22L6 16.6L10.4 26L14.3 24.2L10 15.1L17 15.1Z"></path>
                     <circle class="so-toque ins-dedo" cx="0" cy="0" r="13"></circle>
