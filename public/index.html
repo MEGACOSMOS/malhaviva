@@ -1721,8 +1721,10 @@
 
         /* O alfinete do local marcado (carregar sem largar num sítio do
            bairro): um quadrado branco com um bico a apontar para o sítio e
-           um quadrado escuro dentro (desenhado em navegacao-3d.mjs), de pé
-           sobre uma sombra pequena no chão. Cai no sítio ao aparecer. */
+           um quadrado escuro dentro (desenhado em navegacao-3d.mjs). Só o
+           desenho, sem sombras (nem a do chão, nem a esbatida à volta): o
+           contorno escuro chega para o separar do bairro. Cai no sítio ao
+           aparecer. */
         .local-3d {
             position: absolute;
             left: 0;
@@ -1737,16 +1739,6 @@
             opacity: 0;
             pointer-events: none;
         }
-        .local-3d::before {
-            content: "";
-            position: absolute;
-            left: -7px;
-            top: -3px;
-            width: 14px;
-            height: 6px;
-            border-radius: 50%;
-            background: rgba(0, 0, 0, 0.45);
-        }
         .local-3d > span {
             position: absolute;
             left: -14px;
@@ -1758,21 +1750,13 @@
             display: block;
             width: 28px;
             height: 40px;
-            filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.6));
         }
         .local-3d.a-cair > span {
             animation: alfinete-cai 0.42s cubic-bezier(0.3, 1.35, 0.55, 1) both;
         }
-        .local-3d.a-cair::before {
-            animation: sombra-do-alfinete 0.42s ease-out both;
-        }
         @keyframes alfinete-cai {
             from { transform: translateY(-34px); opacity: 0; }
             35% { opacity: 1; }
-            to { transform: none; opacity: 1; }
-        }
-        @keyframes sombra-do-alfinete {
-            from { transform: scale(0.3); opacity: 0; }
             to { transform: none; opacity: 1; }
         }
         .local-3d:focus-visible > span {
@@ -1780,8 +1764,7 @@
             outline-offset: 3px;
         }
         @media (prefers-reduced-motion: reduce) {
-            .local-3d.a-cair > span,
-            .local-3d.a-cair::before {
+            .local-3d.a-cair > span {
                 animation: none;
             }
         }
