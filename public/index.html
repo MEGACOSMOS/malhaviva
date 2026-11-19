@@ -8710,19 +8710,5 @@ void modifySplatColor(vec3 center, inout vec4 color) {
     })();
     </script>
 
-    <!-- Contagem de pontos (malhaviva.pt/?pontos): quantas elipsoides tem o
-         modelo e quantas estão a ser desenhadas. Sem `?pontos` no endereço,
-         nada disto é pedido. Ver contagem-de-pontos.mjs. -->
-    <script type="module">
-        if (new URLSearchParams(location.search).has('pontos')) {
-            const [{ whenReady }, contagem] = await Promise.all([
-                import('@playcanvas/web-components'),
-                import('./contagem-de-pontos.mjs?v=1')
-            ]);
-            const { app } = await whenReady('pc-app');
-            contagem.ligarContagemDePontos(app);
-        }
-    </script>
-
 </body>
 </html>
