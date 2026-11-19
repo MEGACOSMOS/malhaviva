@@ -1,0 +1,1179 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" href="/favicon.ico" sizes="32x32">
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+    <script src="/icone.js?v=1" defer></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title data-i18n-titulo="est.titulo">Estatísticas — Malha Viva</title>
+    <meta name="description" content="Quantas visitas o Malha Viva teve, quantas ligações de casas e de locais se partilharam, e quantos percursos se fizeram no modo navegação.">
+    <!-- É uma página para quem faz o site: não entra nos motores de busca. -->
+    <meta name="robots" content="noindex">
+    <script src="/idiomas.js?v=60"></script>
+    <!-- Abrir esta página não conta como uma visita (ver contar.js). -->
+    <script src="/contar.js?v=1" data-sem-visita></script>
+    <script src="/logotipo.js?v=1"></script>
+    <script src="/comando-paginas.js?v=7" defer></script>
+
+    <style>
+        /* A letra do site, como nas páginas dos controlos e dos créditos. */
+        @font-face {
+            font-family: 'Liberation Mono';
+            src: url('/fonts/LiberationMono-Regular.ttf') format('truetype');
+            font-weight: 100 500;
+            font-style: normal;
+            font-display: swap;
+        }
+        @font-face {
+            font-family: 'Liberation Mono';
+            src: url('/fonts/LiberationMono-Bold.ttf') format('truetype');
+            font-weight: 600 900;
+            font-style: normal;
+            font-display: swap;
+        }
+
+        *, *::before, *::after {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --color-bg: #05050a;
+            --color-text: #ffffff;
+            --color-text-muted: rgba(255, 255, 255, 0.7);
+            --color-text-faint: rgba(255, 255, 255, 0.55);
+            --color-border: rgba(255, 255, 255, 0.15);
+            /* O fio dos menus e dos quadros do site: o branco a 30% sobre o
+               fundo escuro, num tom só. */
+            --color-fio: #505054;
+            --color-accent: #ffffff;
+            --color-surface-hover: rgba(255, 255, 255, 0.05);
+            /* O gráfico: as barras num cinzento claro, e branco a que se
+               está a ver; a grelha e a linha de base, um passo acima do
+               fundo. */
+            --barra: #c4c4ca;
+            --barra-vista: #ffffff;
+            --grelha: #18181f;
+            --base: #34343c;
+            --font-main: 'Liberation Mono', 'Courier New', monospace;
+        }
+
+        body {
+            min-height: 100vh;
+            background: var(--color-bg);
+            font-family: var(--font-main);
+            color: var(--color-text);
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            line-height: 1.6;
+        }
+
+        /* ─── Cabeçalho, igual ao dos créditos ─── */
+        .page-header {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px 24px;
+            background: var(--color-bg);
+            border-bottom: 1px solid var(--color-border);
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            text-decoration: none;
+        }
+
+        .brand-name {
+            font-size: 1.2rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            color: var(--color-accent);
+        }
+
+        .brand-name .logotipo {
+            height: 22px;
+        }
+
+        .back-link {
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 40px;
+            height: 40px;
+            color: #ffffff;
+            text-decoration: none;
+            transition: background 0.15s ease;
+        }
+
+        .back-link::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            border: 2.5px solid var(--color-fio);
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.15s ease;
+        }
+
+        @media (hover: hover) {
+            .back-link:hover {
+                background: #05050a;
+            }
+
+            .back-link:hover::after {
+                opacity: 1;
+            }
+        }
+
+        .idioma {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        .idioma-botao {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: transparent;
+            color: var(--color-text-muted);
+            font-family: inherit;
+            font-size: 0.85rem;
+            font-weight: 500;
+            padding: 8px 16px;
+            border: 2.5px solid var(--color-border);
+            cursor: pointer;
+            transition: background 0.15s ease;
+        }
+
+        .idioma-botao:hover {
+            background: var(--color-surface-hover);
+        }
+
+        .back-link:focus-visible,
+        .idioma-botao:focus-visible,
+        .mostrar button:focus-visible,
+        .tabela summary:focus-visible,
+        .nao-contar input:focus-visible {
+            outline: 2.5px solid #ffffff;
+            outline-offset: 2px;
+        }
+
+        #idioma-menu {
+            position: absolute;
+            top: calc(100% + 10px);
+            left: 50%;
+            background: linear-gradient(to bottom, rgba(255,255,255,0.05), transparent), #05050a;
+            border: 0;
+            border-radius: 0;
+            padding: 16px;
+            width: max-content;
+            min-width: 150px;
+            max-width: 260px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+            transition: opacity 0.2s, transform 0.2s, visibility 0.2s;
+            transform-origin: top center;
+            pointer-events: none;
+            opacity: 0;
+            transform: translateX(-50%) scale(0.95);
+            visibility: hidden;
+            z-index: 20;
+        }
+
+        #idioma-menu::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            border: 2.5px solid var(--color-fio);
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        #idioma-menu.open {
+            pointer-events: auto;
+            opacity: 1;
+            transform: translateX(-50%) scale(1);
+            visibility: visible;
+        }
+
+        .menu-fechar {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: 28px;
+            height: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: transparent;
+            border: none;
+            color: #8e8e91;
+            cursor: pointer;
+            padding: 0;
+            transition: color 0.15s ease;
+            z-index: 11;
+        }
+        .menu-fechar:hover {
+            color: #ffffff;
+        }
+
+        #idioma-menu > .settings-title:first-child {
+            padding-right: 28px;
+        }
+
+        .settings-title {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--color-text-muted);
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .settings-options {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .settings-radio {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.85rem;
+            cursor: pointer;
+        }
+
+        .settings-radio input {
+            accent-color: #05050a;
+            width: 16px;
+            height: 16px;
+            cursor: pointer;
+        }
+
+        /* ─── A página ─── */
+        .pagina {
+            max-width: 980px;
+            margin: 0 auto;
+            padding: 48px 24px 96px;
+        }
+
+        .pagina h1 {
+            font-size: 1.6rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            line-height: 1.2;
+        }
+
+        .desde {
+            margin-top: 8px;
+            color: var(--color-text-muted);
+            font-size: 0.9rem;
+        }
+
+        .desde.erro {
+            color: #ffffff;
+        }
+
+        /* Um título pequeno, em maiúsculas, como os dos créditos. */
+        .rotulo {
+            font-size: 0.78rem;
+            font-weight: 500;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        /* Os três números: lado a lado; num ecrã estreito, um por baixo do
+           outro. */
+        .numeros {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 16px;
+            margin-top: 32px;
+            list-style: none;
+        }
+
+        .numero {
+            border: 2.5px solid var(--color-fio);
+            padding: 20px 22px 22px;
+            min-width: 0;
+        }
+
+        .numero .valor {
+            display: block;
+            margin: 10px 0 8px;
+            font-size: clamp(2.4rem, 5.5vw, 3.2rem);
+            font-weight: 700;
+            line-height: 1.05;
+            letter-spacing: -0.03em;
+            overflow-wrap: anywhere;
+        }
+
+        .numero .contexto {
+            font-size: 0.85rem;
+            color: var(--color-text-muted);
+            line-height: 1.5;
+        }
+
+        .numero .contexto + .contexto {
+            margin-top: 2px;
+            color: var(--color-text-faint);
+        }
+
+        /* À espera das contas, os números ficam apagados (e, numa
+           actualização, ficam os de antes, sem piscar). */
+        .a-carregar .numero .valor,
+        .a-carregar .grafico {
+            opacity: 0.35;
+        }
+
+        /* ─── Dia a dia ─── */
+        .por-dia {
+            margin-top: 16px;
+            border: 2.5px solid var(--color-fio);
+            padding: 20px 22px 18px;
+        }
+
+        .por-dia-cabeca {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px 16px;
+        }
+
+        .mostrar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .mostrar button {
+            background: transparent;
+            color: var(--color-text-muted);
+            font-family: inherit;
+            font-size: 0.8rem;
+            font-weight: 500;
+            padding: 6px 12px;
+            border: 2.5px solid var(--color-fio);
+            cursor: pointer;
+            transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+        }
+
+        .mostrar button:hover {
+            background: var(--color-surface-hover);
+            color: #ffffff;
+        }
+
+        .mostrar button[aria-pressed="true"] {
+            border-color: #ffffff;
+            color: #ffffff;
+        }
+
+        .grafico {
+            position: relative;
+            margin-top: 18px;
+            outline: none;
+            transition: opacity 0.2s ease;
+            /* A caixa do número nunca sai do gráfico para os lados: num
+               telemóvel que se vira ao alto com ela aberta à direita, o
+               navegador alargava a página toda para lhe dar lugar (para
+               cima, por cima das barras, pode sair). */
+            overflow-x: clip;
+        }
+
+        .grafico:focus-visible {
+            outline: 2.5px solid #ffffff;
+            outline-offset: 4px;
+        }
+
+        .grafico svg {
+            display: block;
+            width: 100%;
+            overflow: visible;
+            touch-action: pan-y;
+        }
+
+        .grafico text {
+            font-family: var(--font-main);
+            font-size: 11px;
+            fill: var(--color-text-faint);
+            font-variant-numeric: tabular-nums;
+        }
+
+        /* A caixa que diz o número do dia em que o rato (ou a tecla) está. */
+        .dica {
+            position: absolute;
+            top: 0;
+            left: 0;
+            pointer-events: none;
+            background: #05050a;
+            padding: 6px 10px 7px;
+            white-space: nowrap;
+            opacity: 0;
+            transition: opacity 0.12s ease;
+            z-index: 2;
+        }
+
+        .dica::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            border: 2.5px solid var(--color-fio);
+            pointer-events: none;
+        }
+
+        .dica.visivel {
+            opacity: 1;
+        }
+
+        .dica strong {
+            display: block;
+            font-size: 1rem;
+            font-weight: 700;
+            line-height: 1.3;
+        }
+
+        .dica span {
+            display: block;
+            font-size: 0.75rem;
+            color: var(--color-text-muted);
+        }
+
+        /* A tabela, dobrada por baixo do gráfico: os mesmos números, para
+           quem não vê o gráfico ou os quer todos. */
+        .tabela {
+            margin-top: 14px;
+        }
+
+        .tabela summary {
+            cursor: pointer;
+            font-size: 0.85rem;
+            color: var(--color-text-muted);
+            width: max-content;
+            max-width: 100%;
+        }
+
+        .tabela summary:hover {
+            color: #ffffff;
+        }
+
+        .tabela-rolo {
+            margin-top: 12px;
+            max-height: 420px;
+            overflow: auto;
+        }
+
+        .tabela table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .tabela th,
+        .tabela td {
+            padding: 6px 10px;
+            border-bottom: 1px solid var(--grelha);
+            text-align: right;
+            white-space: nowrap;
+        }
+
+        .tabela th:first-child,
+        .tabela td:first-child {
+            text-align: left;
+        }
+
+        .tabela thead th {
+            position: sticky;
+            top: 0;
+            background: #05050a;
+            font-weight: 500;
+            color: var(--color-text-muted);
+            border-bottom-color: var(--base);
+            vertical-align: bottom;
+        }
+
+        /* Num ecrã estreito, os nomes das colunas e os dias partem-se em
+           duas linhas, para a tabela caber sem andar para o lado. */
+        .tabela thead th,
+        .tabela tbody th {
+            white-space: normal;
+        }
+
+        .tabela .vazia {
+            margin-top: 10px;
+            font-size: 0.85rem;
+            color: var(--color-text-faint);
+        }
+
+        /* ─── Como se conta ─── */
+        .como {
+            margin-top: 48px;
+            max-width: 720px;
+        }
+
+        .como ul {
+            margin-top: 14px;
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            font-size: 0.88rem;
+            color: var(--color-text-muted);
+        }
+
+        .como li {
+            padding-left: 18px;
+            position: relative;
+        }
+
+        .como li::before {
+            content: "";
+            position: absolute;
+            left: 0;
+            top: 0.62em;
+            width: 6px;
+            height: 6px;
+            background: var(--color-fio);
+        }
+
+        .nao-contar {
+            margin-top: 36px;
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            max-width: 720px;
+            cursor: pointer;
+        }
+
+        .nao-contar input {
+            flex: none;
+            width: 18px;
+            height: 18px;
+            margin-top: 2px;
+            accent-color: #ffffff;
+            cursor: pointer;
+        }
+
+        .nao-contar strong {
+            display: block;
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+
+        .nao-contar span {
+            display: block;
+            font-size: 0.82rem;
+            color: var(--color-text-faint);
+        }
+
+        .so-leitor {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            margin: -1px;
+            padding: 0;
+            overflow: hidden;
+            clip: rect(0 0 0 0);
+            white-space: nowrap;
+            border: 0;
+        }
+
+        @media (max-width: 760px) {
+            .numeros {
+                grid-template-columns: minmax(0, 1fr);
+                gap: 12px;
+            }
+        }
+
+        @media (max-width: 640px) {
+            .page-header { padding: 12px 16px; }
+            .brand-name { font-size: 1.05rem; }
+            .brand-name .logotipo { height: 19px; }
+            .idioma-botao { padding: 8px 10px; }
+            #idioma-nome { display: none; }
+            .pagina { padding: 32px 16px 72px; }
+            .numero { padding: 16px 18px 18px; }
+            .por-dia { padding: 16px 14px 14px; }
+            .tabela table { font-size: 0.78rem; }
+            .tabela th, .tabela td { padding: 6px 6px; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .grafico, .dica { transition: none; }
+        }
+    </style>
+</head>
+<body>
+    <header class="page-header">
+        <a href="/" class="brand" aria-label="Malha Viva" data-i18n-aria="site.nome">
+            <span class="brand-name" id="nome-do-site">Malha Viva</span>
+        </a>
+        <!-- O nome é o logótipo do projecto (ver logotipo.js). -->
+        <script>window.Logotipo && window.Logotipo.desenhar(document.getElementById('nome-do-site'));</script>
+        <!-- A língua, ao meio; a cruz que fecha a página e volta ao mapa,
+             à direita. -->
+        <div class="idioma">
+            <button type="button" class="idioma-botao" id="idioma-botao" data-i18n-title="cab.idioma" title="Idioma">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="none" aria-hidden="true">
+                    <path d="M12.87 15.07l-2.54-2.51.03-.03c1.74-1.94 2.98-4.17 3.71-6.53H17V4h-7V2H8v2H1v1.99h11.17C11.5 7.92 10.44 9.75 9 11.35 8.07 10.32 7.3 9.19 6.69 8h-2c.73 1.63 1.73 3.17 2.98 4.56l-5.09 5.02L4 19l5-5 3.11 3.11.76-2.04zM18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2l-4.5-12zm-2.62 7l1.62-4.33L19.12 17h-3.24z"></path>
+                </svg>
+                <span id="idioma-nome">Português</span>
+            </button>
+            <div id="idioma-menu">
+                <button type="button" class="menu-fechar" aria-label="Fechar" title="Fechar">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true">
+                        <line x1="5" y1="5" x2="19" y2="19"></line>
+                        <line x1="19" y1="5" x2="5" y2="19"></line>
+                    </svg>
+                </button>
+                <div class="settings-title" data-i18n="idm.titulo">Idioma</div>
+                <div class="settings-options">
+                    <label class="settings-radio">
+                        <input type="radio" name="idioma" value="kea" id="idioma-kea">
+                        <span>Kriolu</span>
+                    </label>
+                    <label class="settings-radio">
+                        <input type="radio" name="idioma" value="pt" id="idioma-pt">
+                        <span>Português</span>
+                    </label>
+                    <label class="settings-radio">
+                        <input type="radio" name="idioma" value="en" id="idioma-en">
+                        <span>English</span>
+                    </label>
+                    <label class="settings-radio">
+                        <input type="radio" name="idioma" value="es" id="idioma-es">
+                        <span>Español</span>
+                    </label>
+                </div>
+            </div>
+        </div>
+        <a href="/" class="back-link" aria-label="Voltar ao Mapa" title="Voltar ao Mapa" data-i18n-aria="ctl.voltar" data-i18n-title="ctl.voltar">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true">
+                <line x1="5" y1="5" x2="19" y2="19"></line>
+                <line x1="19" y1="5" x2="5" y2="19"></line>
+            </svg>
+        </a>
+    </header>
+
+    <main class="pagina a-carregar" id="pagina">
+        <h1 data-i18n="est.titulo">Estatísticas</h1>
+        <!-- Sem data-i18n: quem escreve aqui é o código, mais abaixo (a
+             tradução da página escrevia por cima o "A carregar…"). -->
+        <p class="desde" id="desde" role="status">A carregar…</p>
+
+        <ul class="numeros">
+            <li class="numero">
+                <h2 class="rotulo" data-i18n="est.percursos">Percursos feitos</h2>
+                <span class="valor" id="valor-percursos">—</span>
+                <p class="contexto" id="contexto-percursos"></p>
+            </li>
+            <li class="numero">
+                <h2 class="rotulo" data-i18n="est.partilhas">Ligações partilhadas</h2>
+                <span class="valor" id="valor-partilhas">—</span>
+                <p class="contexto" id="contexto-partilhas"></p>
+                <p class="contexto" id="contexto-site"></p>
+            </li>
+            <li class="numero">
+                <h2 class="rotulo" data-i18n="est.visitas">Visitas</h2>
+                <span class="valor" id="valor-visitas">—</span>
+                <p class="contexto" id="contexto-visitas"></p>
+            </li>
+        </ul>
+
+        <section class="por-dia" aria-labelledby="titulo-por-dia">
+            <div class="por-dia-cabeca">
+                <h2 class="rotulo" id="titulo-por-dia" data-i18n="est.porDia">Por dia, nos últimos 30 dias</h2>
+                <div class="mostrar" role="group" aria-label="O que mostrar" data-i18n-aria="est.escolha">
+                    <button type="button" data-mostrar="visitas" aria-pressed="true" data-i18n="est.visitas">Visitas</button>
+                    <button type="button" data-mostrar="partilhas" aria-pressed="false" data-i18n="est.partilhas">Ligações partilhadas</button>
+                    <button type="button" data-mostrar="percursos" aria-pressed="false" data-i18n="est.percursos">Percursos feitos</button>
+                </div>
+            </div>
+            <div class="grafico" id="grafico" tabindex="0" role="group">
+                <div class="dica" id="dica" aria-hidden="true"><strong id="dica-valor"></strong><span id="dica-dia"></span></div>
+            </div>
+            <p class="so-leitor" id="anuncio" aria-live="polite"></p>
+            <details class="tabela" id="tabela">
+                <summary data-i18n="est.tabela">Ver os números dia a dia</summary>
+                <div class="tabela-rolo" id="tabela-rolo"></div>
+            </details>
+        </section>
+
+        <section class="como" aria-labelledby="titulo-como">
+            <h2 class="rotulo" id="titulo-como" data-i18n="est.como">Como se conta</h2>
+            <ul>
+                <li data-i18n="est.comoPercurso">Um percurso conta como feito quando quem o segue no modo navegação, com a localização ligada, anda pelo menos 85% do caminho até à casa ou ao local marcado. Cada casa conta uma vez por visita.</li>
+                <li data-i18n="est.comoPartilha">Uma partilha conta quando a ligação de uma casa ou de um local marcado é copiada, ou mandada pela partilha do telemóvel. Quem desiste a meio não conta.</li>
+                <li data-i18n="est.comoVisita">Uma visita é abrir o site. Andar de página em página, recarregar, ou voltar antes de passar meia hora é a mesma visita.</li>
+                <li data-i18n="est.comoPrivado">Não se guarda nada sobre quem visita — nem quem é, nem onde está, nem que casa procurou: só quantas vezes cada coisa aconteceu, em cada dia.</li>
+            </ul>
+        </section>
+
+        <label class="nao-contar">
+            <input type="checkbox" id="nao-contar">
+            <span>
+                <strong data-i18n="est.naoContar">Não contar este navegador</strong>
+                <span data-i18n="est.naoContarAjuda">Para quem faz o site: o que se fizer neste navegador deixa de entrar nas contas.</span>
+            </span>
+        </label>
+    </main>
+
+    <script>
+    /**
+     * As estatísticas do site: as contas que o servidor guarda (ver
+     * src/contas.ts e /api/estatisticas), postas em números e num gráfico
+     * dia a dia, na língua de quem lê. Actualizam-se sozinhas, de minuto a
+     * minuto, enquanto a página está à vista.
+     */
+    (function () {
+        'use strict';
+
+        var I = window.Idiomas;
+        function t(chave, senao) { return (I && I.t(chave)) || senao || ''; }
+        function preencher(texto, valores) {
+            return texto.replace(/\{(\w+)\}/g, function (_, k) { return valores[k] != null ? valores[k] : ''; });
+        }
+        var LOCALE = { pt: 'pt-PT', en: 'en-GB', es: 'es-ES', kea: 'pt-PT' };
+        function numero(n) {
+            try { return new Intl.NumberFormat(LOCALE[I ? I.atual() : 'pt'] || 'pt-PT').format(n); }
+            catch (e) { return String(n); }
+        }
+
+        // ---- Os dias ----
+        //
+        // O servidor conta os dias à hora de Lisboa e diz qual é hoje; os
+        // dias para trás fazem-se a partir desse, sem passar pelo relógio
+        // de quem lê (que pode estar noutro fuso).
+        var DIA = 86400000;
+        var DIAS_NO_GRAFICO = 30;
+        function paraMs(dia) {
+            var p = dia.split('-').map(Number);
+            return Date.UTC(p[0], p[1] - 1, p[2]);
+        }
+        function paraDia(ms) { return new Date(ms).toISOString().slice(0, 10); }
+        function partes(dia) {
+            var d = new Date(paraMs(dia));
+            return { dia: d.getUTCDate(), mes: d.getUTCMonth(), ano: d.getUTCFullYear() };
+        }
+        function dataLonga(dia) {
+            var p = partes(dia);
+            var meses = t('est.meses').split('|');
+            return preencher(t('est.dataLonga', '{dia} de {mes} de {ano}'), { dia: p.dia, mes: meses[p.mes] || '', ano: p.ano });
+        }
+        function dataCurta(dia) {
+            var p = partes(dia);
+            var meses = t('est.mesesCurtos').split('|');
+            return preencher(t('est.dataCurta', '{dia} {mes}'), { dia: p.dia, mes: meses[p.mes] || '' });
+        }
+
+        // ---- O que se conta ----
+        function de(c, nome) { return (c && c[nome]) || 0; }
+        var METRICAS = {
+            visitas: { rotulo: 'est.visitas', valor: function (c) { return de(c, 'visita'); } },
+            partilhas: { rotulo: 'est.partilhas', valor: function (c) { return de(c, 'partilha.casa') + de(c, 'partilha.local'); } },
+            percursos: { rotulo: 'est.percursos', valor: function (c) { return de(c, 'percurso.feito'); } }
+        };
+        var ORDEM = ['visitas', 'partilhas', 'percursos'];
+
+        var pagina = document.getElementById('pagina');
+        var desdeEl = document.getElementById('desde');
+        var graficoEl = document.getElementById('grafico');
+        var dicaEl = document.getElementById('dica');
+        var dicaValorEl = document.getElementById('dica-valor');
+        var dicaDiaEl = document.getElementById('dica-dia');
+        var anuncioEl = document.getElementById('anuncio');
+        var tabelaEl = document.getElementById('tabela-rolo');
+        var botoes = Array.prototype.slice.call(document.querySelectorAll('[data-mostrar]'));
+
+        var contas = null;
+        var falhou = false;
+        var mostrada = 'visitas';
+        // O dia que se está a ver no gráfico (o índice nos 30), e se foi o
+        // teclado a escolhê-lo (então fica à vista até o foco sair).
+        var vista = null;
+        var deTecla = false;
+
+        function ultimosDias() {
+            var fim = paraMs(contas.hoje);
+            var dias = [];
+            for (var i = DIAS_NO_GRAFICO - 1; i >= 0; i--) dias.push(paraDia(fim - i * DIA));
+            return dias;
+        }
+        function somaDesde(nome, quantos) {
+            var fim = paraMs(contas.hoje);
+            var soma = 0;
+            for (var i = 0; i < quantos; i++) soma += de(contas.dias[paraDia(fim - i * DIA)], nome);
+            return soma;
+        }
+
+        // ---- Os três números ----
+        function escreverNumeros() {
+            var tt = contas.totais;
+            var feitos = de(tt, 'percurso.feito');
+            document.getElementById('valor-percursos').textContent = numero(feitos);
+            document.getElementById('contexto-percursos').textContent =
+                preencher(t('est.percursosDe'), { n: numero(de(tt, 'percurso.iniciado')) });
+
+            var casas = de(tt, 'partilha.casa');
+            var locais = de(tt, 'partilha.local');
+            document.getElementById('valor-partilhas').textContent = numero(casas + locais);
+            document.getElementById('contexto-partilhas').textContent =
+                preencher(t('est.partilhasDe'), { casas: numero(casas), locais: numero(locais) });
+            document.getElementById('contexto-site').textContent =
+                preencher(t('est.partilhasSite'), { n: numero(de(tt, 'partilha.site')) });
+
+            document.getElementById('valor-visitas').textContent = numero(de(tt, 'visita'));
+            document.getElementById('contexto-visitas').textContent =
+                preencher(t('est.visitasDe'), { hoje: numero(somaDesde('visita', 1)), semana: numero(somaDesde('visita', 7)) });
+
+            desdeEl.classList.remove('erro');
+            desdeEl.textContent = contas.desde
+                ? preencher(t('est.desde'), { data: dataLonga(contas.desde) })
+                : t('est.nada');
+        }
+
+        // ---- O gráfico ----
+        //
+        // Uma barra por dia, os últimos 30, com hoje à direita. As barras
+        // são finas (no máximo 24 pontos), arredondadas só em cima, com um
+        // intervalo entre elas; a grelha é um fio quase da cor do fundo.
+        // O rato (ou o dedo, ou as setas do teclado) escolhe um dia, e a
+        // caixa por cima diz quantas houve nesse dia.
+        var NS = 'http://www.w3.org/2000/svg';
+        var ALTURA = 200;
+        var EIXO = 26;
+        var TOPO = 10;
+        var medidas = null;
+
+        function escala(maximo) {
+            if (maximo <= 4) return { topo: 4, passo: 1 };
+            var bruto = maximo / 4;
+            var potencia = Math.pow(10, Math.floor(Math.log10(bruto)));
+            var r = bruto / potencia;
+            var passo = (r <= 1 ? 1 : r <= 2 ? 2 : r <= 5 ? 5 : 10) * potencia;
+            return { topo: Math.ceil(maximo / passo) * passo, passo: passo };
+        }
+        function el(nome, atributos, pai) {
+            var e = document.createElementNS(NS, nome);
+            for (var k in atributos) e.setAttribute(k, atributos[k]);
+            if (pai) pai.appendChild(e);
+            return e;
+        }
+        function texto(conteudo, atributos, pai) {
+            var e = el('text', atributos, pai);
+            e.textContent = conteudo;
+            return e;
+        }
+        // Uma barra com os cantos de cima redondos e os de baixo direitos,
+        // presa à linha de base.
+        function caminhoDaBarra(x, base, largura, altura) {
+            var r = Math.min(4, largura / 2, altura);
+            var cima = base - altura;
+            return 'M' + x + ',' + base +
+                'V' + (cima + r) +
+                'Q' + x + ',' + cima + ' ' + (x + r) + ',' + cima +
+                'H' + (x + largura - r) +
+                'Q' + (x + largura) + ',' + cima + ' ' + (x + largura) + ',' + (cima + r) +
+                'V' + base + 'Z';
+        }
+
+        function desenharGrafico() {
+            if (!contas) return;
+            var largura = graficoEl.clientWidth;
+            if (!largura) return;
+            var metrica = METRICAS[mostrada];
+            var dias = ultimosDias();
+            var valores = dias.map(function (d) { return metrica.valor(contas.dias[d]); });
+            var maximo = Math.max.apply(null, valores);
+            var e = escala(maximo);
+            var marcas = [];
+            for (var v = 0; v <= e.topo + 1e-9; v += e.passo) marcas.push(Math.round(v));
+            var esquerda = 10 + 7 * Math.max.apply(null, marcas.map(function (m) { return numero(m).length; }));
+            var direita = 4;
+            var plano = largura - esquerda - direita;
+            var vao = plano / DIAS_NO_GRAFICO;
+            var barra = Math.max(2, Math.min(24, vao - 2));
+            var base = TOPO + ALTURA;
+
+            var antigo = graficoEl.querySelector('svg');
+            var svg = el('svg', { width: largura, height: base + EIXO, viewBox: '0 0 ' + largura + ' ' + (base + EIXO), 'aria-hidden': 'true' });
+
+            // A grelha e os números do lado.
+            marcas.forEach(function (m) {
+                var y = base - (m / e.topo) * ALTURA;
+                if (m > 0) el('line', { x1: esquerda, x2: largura - direita, y1: y, y2: y, stroke: 'var(--grelha)', 'stroke-width': 1, 'shape-rendering': 'crispEdges' }, svg);
+                texto(numero(m), { x: esquerda - 8, y: y + 4, 'text-anchor': 'end' }, svg);
+            });
+
+            // As barras.
+            var barras = [];
+            valores.forEach(function (valor, i) {
+                var x = esquerda + i * vao + (vao - barra) / 2;
+                var altura = (valor / e.topo) * ALTURA;
+                var b = null;
+                if (valor > 0) {
+                    b = el('path', { d: caminhoDaBarra(x, base, barra, altura), fill: 'var(--barra)' }, svg);
+                }
+                barras.push({ x: x, altura: altura, el: b });
+            });
+
+            // A linha de base, por cima das barras.
+            el('line', { x1: esquerda, x2: largura - direita, y1: base + 0.5, y2: base + 0.5, stroke: 'var(--base)', 'stroke-width': 1 }, svg);
+
+            // Os dias por baixo: hoje, e de semana a semana para trás (num
+            // ecrã estreito, de duas em duas).
+            var cada = largura < 460 ? 14 : 7;
+            for (var i = DIAS_NO_GRAFICO - 1; i >= 0; i -= cada) {
+                var ehHoje = i === DIAS_NO_GRAFICO - 1;
+                var centro = esquerda + i * vao + vao / 2;
+                texto(ehHoje ? t('est.hoje', 'hoje') : dataCurta(dias[i]), {
+                    x: ehHoje ? esquerda + i * vao + (vao + barra) / 2 : centro,
+                    y: base + 18,
+                    'text-anchor': ehHoje ? 'end' : 'middle'
+                }, svg);
+            }
+
+            if (antigo) graficoEl.replaceChild(svg, antigo);
+            else graficoEl.insertBefore(svg, dicaEl);
+
+            medidas = { esquerda: esquerda, vao: vao, barra: barra, base: base, dias: dias, valores: valores, barras: barras };
+            graficoEl.setAttribute('aria-label', preencher(t('est.grafico'), { coisa: t(metrica.rotulo).toLowerCase() }));
+            if (vista !== null) mostrarDia(vista, false);
+        }
+
+        // A caixa de um dia, por cima da barra dele.
+        function mostrarDia(i, anunciar) {
+            if (!medidas) return;
+            i = Math.max(0, Math.min(DIAS_NO_GRAFICO - 1, i));
+            vista = i;
+            medidas.barras.forEach(function (b, j) {
+                if (b.el) b.el.setAttribute('fill', j === i ? 'var(--barra-vista)' : 'var(--barra)');
+            });
+            var valor = medidas.valores[i];
+            var dia = medidas.dias[i];
+            var nomeDoDia = i === DIAS_NO_GRAFICO - 1 ? t('est.hoje', 'hoje') + ', ' + dataCurta(dia) : dataLonga(dia);
+            dicaValorEl.textContent = numero(valor);
+            dicaDiaEl.textContent = t(METRICAS[mostrada].rotulo) + ' · ' + nomeDoDia;
+            dicaEl.classList.add('visivel');
+            var b = medidas.barras[i];
+            var centro = b.x + medidas.barra / 2;
+            var w = dicaEl.offsetWidth;
+            var h = dicaEl.offsetHeight;
+            var esquerda = Math.max(0, Math.min(graficoEl.clientWidth - w, centro - w / 2));
+            var cima = Math.max(-h - 4, medidas.base - b.altura - h - 10);
+            dicaEl.style.transform = 'translate(' + Math.round(esquerda) + 'px,' + Math.round(cima) + 'px)';
+            if (anunciar) anuncioEl.textContent = numero(valor) + ' — ' + nomeDoDia;
+        }
+        function esconderDia() {
+            vista = null;
+            dicaEl.classList.remove('visivel');
+            if (medidas) medidas.barras.forEach(function (b) { if (b.el) b.el.setAttribute('fill', 'var(--barra)'); });
+        }
+        function diaNoPonto(evento) {
+            var caixa = graficoEl.getBoundingClientRect();
+            return Math.floor((evento.clientX - caixa.left - medidas.esquerda) / medidas.vao);
+        }
+
+        graficoEl.addEventListener('pointermove', function (e) {
+            if (!medidas) return;
+            deTecla = false;
+            mostrarDia(diaNoPonto(e), false);
+        });
+        graficoEl.addEventListener('pointerdown', function (e) {
+            if (!medidas) return;
+            mostrarDia(diaNoPonto(e), false);
+        });
+        graficoEl.addEventListener('pointerleave', function (e) {
+            if (e.pointerType === 'mouse' && !deTecla) esconderDia();
+        });
+        graficoEl.addEventListener('focus', function () {
+            if (!medidas) return;
+            deTecla = true;
+            mostrarDia(vista === null ? DIAS_NO_GRAFICO - 1 : vista, true);
+        });
+        graficoEl.addEventListener('blur', function () {
+            deTecla = false;
+            esconderDia();
+        });
+        graficoEl.addEventListener('keydown', function (e) {
+            if (!medidas) return;
+            var i = vista === null ? DIAS_NO_GRAFICO - 1 : vista;
+            if (e.key === 'ArrowLeft') i -= 1;
+            else if (e.key === 'ArrowRight') i += 1;
+            else if (e.key === 'Home') i = 0;
+            else if (e.key === 'End') i = DIAS_NO_GRAFICO - 1;
+            else return;
+            e.preventDefault();
+            deTecla = true;
+            mostrarDia(i, true);
+        });
+        // Num ecrã de tocar, um toque fora do gráfico esconde a caixa.
+        document.addEventListener('pointerdown', function (e) {
+            if (!graficoEl.contains(e.target) && document.activeElement !== graficoEl) esconderDia();
+        });
+
+        botoes.forEach(function (b) {
+            b.addEventListener('click', function () {
+                mostrada = b.getAttribute('data-mostrar');
+                botoes.forEach(function (o) { o.setAttribute('aria-pressed', o === b ? 'true' : 'false'); });
+                desenharGrafico();
+            });
+        });
+
+        // ---- A tabela ----
+        //
+        // Todos os dias com alguma conta, do mais recente para o mais antigo.
+        function escreverTabela() {
+            tabelaEl.textContent = '';
+            var dias = Object.keys(contas.dias).sort().reverse();
+            if (!dias.length) {
+                var vazia = document.createElement('p');
+                vazia.className = 'vazia';
+                vazia.textContent = t('est.semDias');
+                tabelaEl.appendChild(vazia);
+                return;
+            }
+            var tabela = document.createElement('table');
+            var cabeca = tabela.createTHead().insertRow();
+            [t('est.dia', 'Dia')].concat(ORDEM.map(function (m) { return t(METRICAS[m].rotulo); })).forEach(function (nome) {
+                var th = document.createElement('th');
+                th.scope = 'col';
+                th.textContent = nome;
+                cabeca.appendChild(th);
+            });
+            var corpo = tabela.createTBody();
+            dias.forEach(function (dia) {
+                var linha = corpo.insertRow();
+                var th = document.createElement('th');
+                th.scope = 'row';
+                th.style.fontWeight = '400';
+                th.textContent = dataLonga(dia);
+                linha.appendChild(th);
+                ORDEM.forEach(function (m) {
+                    linha.insertCell().textContent = numero(METRICAS[m].valor(contas.dias[dia]));
+                });
+            });
+            tabelaEl.appendChild(tabela);
+        }
+
+        function escrever() {
+            if (!contas) {
+                desdeEl.textContent = falhou ? t('est.erro') : t('est.aCarregar', 'A carregar…');
+                desdeEl.classList.toggle('erro', falhou);
+                return;
+            }
+            escreverNumeros();
+            desenharGrafico();
+            escreverTabela();
+        }
+
+        // ---- Ir buscar as contas ----
+        var aPedir = false;
+        escrever();
+        function carregar() {
+            if (aPedir) return;
+            aPedir = true;
+            fetch('/api/estatisticas', { cache: 'no-store' })
+                .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
+                .then(function (c) {
+                    contas = c;
+                    falhou = false;
+                    pagina.classList.remove('a-carregar');
+                    escrever();
+                })
+                .catch(function () {
+                    // Ficam os números de antes, se havia; senão, diz-se.
+                    falhou = true;
+                    if (!contas) {
+                        pagina.classList.remove('a-carregar');
+                        escrever();
+                    }
+                })
+                .then(function () { aPedir = false; });
+        }
+        carregar();
+        setInterval(function () { if (!document.hidden) carregar(); }, 60 * 1000);
+        document.addEventListener('visibilitychange', function () { if (!document.hidden) carregar(); });
+
+        // O gráfico refaz-se à largura nova (e a caixa do número, se
+        // estava aberta, volta ao sítio dela).
+        var redesenho = 0;
+        window.addEventListener('resize', function () {
+            cancelAnimationFrame(redesenho);
+            redesenho = requestAnimationFrame(desenharGrafico);
+        });
+        window.addEventListener('idiomamudou', escrever);
+
+        // ---- Não contar este navegador ----
+        var naoContar = document.getElementById('nao-contar');
+        if (window.Contador) {
+            naoContar.checked = !window.Contador.aContar();
+            naoContar.addEventListener('change', function () {
+                window.Contador.naoContar(naoContar.checked);
+            });
+        } else {
+            naoContar.closest('label').hidden = true;
+        }
+    })();
+
+    /* O mesmo botão de língua das outras páginas: quem chega aqui por um
+       endereço directo também consegue trocar. */
+    (function () {
+        if (!window.Idiomas) return;
+
+        var botao = document.getElementById('idioma-botao');
+        var menu = document.getElementById('idioma-menu');
+        var fechar = menu.querySelector('.menu-fechar');
+        var nome = document.getElementById('idioma-nome');
+
+        function mostrarNome() {
+            var actual = window.Idiomas.atual();
+            window.Idiomas.IDIOMAS.forEach(function (idioma) {
+                if (idioma.codigo === actual) nome.textContent = idioma.nome;
+            });
+            var escolhida = document.getElementById('idioma-' + actual);
+            if (escolhida) escolhida.checked = true;
+        }
+
+        document.querySelectorAll('input[name="idioma"]').forEach(function (entrada) {
+            entrada.addEventListener('change', function (e) {
+                window.Idiomas.definir(e.target.value);
+                menu.classList.remove('open');
+                mostrarNome();
+            });
+        });
+
+        botao.addEventListener('click', function (e) {
+            e.stopPropagation();
+            menu.classList.toggle('open');
+        });
+
+        fechar.addEventListener('click', function (e) {
+            e.stopPropagation();
+            menu.classList.remove('open');
+        });
+
+        document.addEventListener('click', function (e) {
+            if (!botao.contains(e.target) && !menu.contains(e.target)) {
+                menu.classList.remove('open');
+            }
+        });
+
+        mostrarNome();
+    })();
+    </script>
+</body>
+</html>

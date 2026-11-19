@@ -152,6 +152,7 @@
     <!-- As línguas do site. Fica antes de tudo o resto para o texto
          nascer já na língua certa, sem piscar em português primeiro. -->
     <script src="/idiomas.js?v=59"></script>
+    <script src="/contar.js?v=1"></script>
     <script src="/legendas.js?v=3"></script>
 
     <!-- O quadrado de espera, o mesmo em todo o site. Fica antes de o
@@ -5119,6 +5120,12 @@
                 : ENDERECO_PUBLICO;
         };
         const texto = () => t('par.texto', 'Explora o Bairro de Penajóia em 3D — Malha Viva');
+        // Mais uma partilha, para a página das estatísticas (ver
+        // contar.js): da ligação de uma casa ou de um local marcado, se a
+        // página estiver aberta numa, ou da do site.
+        const contarAPartilha = () => {
+            if (window.Contador) window.Contador.partilha(window.Contador.ligacaoDe(endereco()));
+        };
 
         // As ligações de cada rede, com o endereço e o texto já dentro.
         const encherLigacoes = () => {
@@ -5199,9 +5206,10 @@
                 try { document.execCommand('copy'); } catch (e) { /* sem sorte */ }
                 caixa.remove();
                 avisarQueCopiou();
+                contarAPartilha();
             };
             if (navigator.clipboard && navigator.clipboard.writeText) {
-                navigator.clipboard.writeText(u).then(avisarQueCopiou, aMao);
+                navigator.clipboard.writeText(u).then(() => { avisarQueCopiou(); contarAPartilha(); }, aMao);
             } else {
                 aMao();
             }
@@ -5214,10 +5222,11 @@
                 if (rede === 'nativa') {
                     e.preventDefault();
                     navigator.share({ title: document.title, text: texto(), url: endereco() })
-                        .then(() => fechar(false), () => { /* desistiu: fica aberto */ });
+                        .then(() => { contarAPartilha(); fechar(false); }, () => { /* desistiu: fica aberto */ });
                     return;
                 }
                 // As redes abrem noutra janela; o menu fecha-se atrás.
+                contarAPartilha();
                 setTimeout(() => fechar(false), 150);
             });
         });
@@ -7448,6 +7457,36 @@ void modifySplatColor(vec3 center, inout vec4 color) {
         let aGuiar = false;
         let passoVisto = null;
 
+        // ---- As contas dos percursos ----
+        //
+        // Para a página das estatísticas (ver contar.js). Um percurso conta
+        // como começado quando passa a sair de onde a pessoa está, com a
+        // localização ligada — é então que a seta dela aparece no caminho —,
+        // e como feito quando ela já andou pelo menos 85% do que tinha pela
+        // frente nesse momento. Se sair do caminho, o percurso refaz-se dali
+        // (ver ligarLocalizacao), mas conta-se sempre contra o caminho do
+        // princípio: o que falta, no percurso novo, para o que havia a
+        // fazer. Cada casa (ou local) conta uma vez por visita, mesmo que
+        // se termine e se volte a iniciar.
+        const FEITO_A_PARTIR_DE = 0.85;
+        let caminhoAFazer = 0;
+        const contados = { iniciado: new Set(), feito: new Set() };
+        const contarUmaVez = (qual) => {
+            const chave = eLocal(escolhida) ? escolhida.lat.toFixed(5) + ',' + escolhida.lon.toFixed(5) : escolhida;
+            if (contados[qual].has(chave)) return;
+            contados[qual].add(chave);
+            if (window.Contador) window.Contador.percurso(qual);
+        };
+        function contarOPercurso() {
+            if (!escolhida || !percurso || !percurso.daqui || !(percurso.total > 0)) return;
+            if (!caminhoAFazer) {
+                caminhoAFazer = percurso.total;
+                contarUmaVez('iniciado');
+            }
+            const falta = Math.max(0, percurso.total - progresso);
+            if (1 - falta / caminhoAFazer >= FEITO_A_PARTIR_DE) contarUmaVez('feito');
+        }
+
         // ---- Os sinais das manobras ----
         //
         // Como nos mapas: uma seta para cada maneira de virar, desenhada
@@ -7668,6 +7707,7 @@ void modifySplatColor(vec3 center, inout vec4 color) {
             if (!escolhida || !nav) return;
             percurso = nav.mostrar(escolhida, { aqui, enquadrar: false });
             progresso = aqui ? nav.mostrarVoce(aqui.lat, aqui.lon).feito : 0;
+            contarOPercurso();
             escreverPercurso();
             // A câmara vai até onde se vê o percurso todo só agora, com o
             // painel já com o tamanho com que fica: no telemóvel é ele que
@@ -7720,6 +7760,7 @@ void modifySplatColor(vec3 center, inout vec4 color) {
             if (eLocal(casa)) esconderOLocal();
             else if (localAtual) fecharOLocal({ comHistorico: false });
             escolhida = casa;
+            caminhoAFazer = 0;
             campo.value = eLocal(casa) ? '' : casa.n;
             fecharLista();
             if (emLupa()) {
@@ -7795,6 +7836,7 @@ void modifySplatColor(vec3 center, inout vec4 color) {
                     tracar(false);
                 } else {
                     progresso = ali.feito;
+                    contarOPercurso();
                     escreverProgresso();
                     escreverNota();
                 }
@@ -7822,6 +7864,7 @@ void modifySplatColor(vec3 center, inout vec4 color) {
             aqui = null;
             comSeta = false;
             progresso = 0;
+            caminhoAFazer = 0;
             passoAgora = -1;
             if (nav) nav.tirarVoce();
             escreverSeguir();
@@ -8105,6 +8148,11 @@ void modifySplatColor(vec3 center, inout vec4 color) {
             const sitios = rede.casas.get(escolhida.n);
             return origemPublica() + contas.enderecoDaCasa(escolhida.n, sitios.indexOf(escolhida) + 1, sitios.length);
         }
+        // Mais uma partilha da ligação de uma casa (ou do local marcado),
+        // para a página das estatísticas (ver contar.js).
+        function contarAPartilha(destino) {
+            if (window.Contador && destino) window.Contador.partilha(eLocal(destino) ? 'local' : 'casa');
+        }
         // O botão diz, quando o rato pára em cima, o endereço que copia.
         let copiado = 0;
         function escreverCopiar() {
@@ -8145,6 +8193,7 @@ void modifySplatColor(vec3 center, inout vec4 color) {
             }
             clearTimeout(copiado);
             if (deu) {
+                contarAPartilha(escolhida);
                 // Diz que copiou, no próprio botão (e a quem ouve a página),
                 // e volta ao que era ao fim de dois segundos.
                 copiarTextoEl.textContent = diz('nav.linkCopiado', 'Link copiado');
@@ -8168,7 +8217,11 @@ void modifySplatColor(vec3 center, inout vec4 color) {
             const texto = eLocal(escolhida)
                 ? diz('nav.textoPartilhaLocal', 'Um local no Bairro de Penajóia:')
                 : preencher(diz('nav.textoPartilha', 'Como chegar à casa {numero}, no Bairro de Penajóia:'), { numero: escolhida.n });
-            try { await navigator.share({ title: titulo, text: texto, url }); } catch (e) { /* desistiu */ }
+            const destino = escolhida;
+            try {
+                await navigator.share({ title: titulo, text: texto, url });
+                contarAPartilha(destino);
+            } catch (e) { /* desistiu */ }
         });
 
         // ---- O endereço de uma casa ----
@@ -8435,7 +8488,10 @@ void modifySplatColor(vec3 center, inout vec4 color) {
             const url = origemPublica() + contas.enderecoDoLocal(localAtual.lat, localAtual.lon);
             if (podePartilhar) {
                 const titulo = diz('loc.titulo', 'Local marcado') + ' — ' + diz('cab.bairro', 'Bairro de Penajóia');
-                try { await navigator.share({ title: titulo, text: diz('nav.textoPartilhaLocal', 'Um local no Bairro de Penajóia:'), url }); } catch (e) { /* desistiu */ }
+                try {
+                    await navigator.share({ title: titulo, text: diz('nav.textoPartilhaLocal', 'Um local no Bairro de Penajóia:'), url });
+                    if (window.Contador) window.Contador.partilha('local');
+                } catch (e) { /* desistiu */ }
                 return;
             }
             let deu = false;
@@ -8447,6 +8503,7 @@ void modifySplatColor(vec3 center, inout vec4 color) {
             }
             clearTimeout(partilhado);
             if (deu) {
+                if (window.Contador) window.Contador.partilha('local');
                 localPartilharTextoEl.textContent = diz('nav.linkCopiado', 'Link copiado');
                 localAnuncioEl.textContent = diz('loc.copiado', 'Link do local copiado');
             } else {

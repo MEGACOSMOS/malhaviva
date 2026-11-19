@@ -24,6 +24,16 @@
 	"observability": {
 		"enabled": true
 	},
+	// As contas do site (visitas, partilhas, percursos feitos), para a
+	// página das estatísticas: um livro só, com a sua própria base de dados
+	// (ver `src/contas.ts`). A "migração" diz à Cloudflare que o livro é
+	// novo; não se apaga nem se muda de nome, ou as contas perdem-se.
+	"durable_objects": {
+		"bindings": [{ "name": "CONTAS", "class_name": "Contas" }]
+	},
+	"migrations": [
+		{ "tag": "contas-1", "new_sqlite_classes": ["Contas"] }
+	],
 	"workers_dev": false,
 	"dev": {
 		"port": 8000

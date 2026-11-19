@@ -137,4 +137,72 @@ describe("servidor do Malha Viva", () => {
 			expect(response.status).toBe(200);
 		});
 	});
+
+	// As contas da página das estatísticas: ver src/contas.ts.
+	describe("as contas do site", () => {
+		const daPagina = { "Sec-Fetch-Site": "same-origin", "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/142.0 Safari/537.36" };
+		const contar = (corpo: unknown, cabecalhos: Record<string, string> = daPagina) =>
+			SELF.fetch("http://example.com/api/contar", { method: "POST", headers: cabecalhos, body: typeof corpo === "string" ? corpo : JSON.stringify(corpo) });
+		const ler = async () => {
+			const response = await SELF.fetch("http://example.com/api/estatisticas");
+			expect(response.status).toBe(200);
+			expect(response.headers.get("Cache-Control")).toBe("no-store");
+			return response.json() as Promise<{ hoje: string; desde: string | null; totais: Record<string, number>; dias: Record<string, Record<string, number>> }>;
+		};
+
+		it("começa com tudo a zero", async () => {
+			const contas = await ler();
+			expect(contas.desde).toBeNull();
+			expect(contas.hoje).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+			expect(contas.totais).toEqual({
+				visita: 0,
+				"partilha.casa": 0, "partilha.local": 0, "partilha.site": 0,
+				"percurso.iniciado": 0, "percurso.feito": 0,
+			});
+			expect(contas.dias).toEqual({});
+		});
+
+		it("soma as visitas, as partilhas e os percursos, no dia de hoje", async () => {
+			for (const corpo of [
+				{ tipo: "visita" }, { tipo: "visita", qual: "" }, { tipo: "visita" },
+				{ tipo: "partilha", qual: "casa" }, { tipo: "partilha", qual: "casa" }, { tipo: "partilha", qual: "local" },
+				{ tipo: "percurso", qual: "iniciado" }, { tipo: "percurso", qual: "feito" },
+			]) {
+				expect((await contar(corpo)).status, JSON.stringify(corpo)).toBe(204);
+			}
+			const contas = await ler();
+			expect(contas.desde).toBe(contas.hoje);
+			expect(contas.totais).toMatchObject({ visita: 3, "partilha.casa": 2, "partilha.local": 1, "partilha.site": 0, "percurso.iniciado": 1, "percurso.feito": 1 });
+			expect(contas.dias[contas.hoje]).toEqual({ visita: 3, "partilha.casa": 2, "partilha.local": 1, "percurso.iniciado": 1, "percurso.feito": 1 });
+		});
+
+		it("não conta o que não é uma conta", async () => {
+			for (const corpo of [{ tipo: "visitas" }, { tipo: "partilha" }, { tipo: "partilha", qual: "outra" }, { tipo: "visita", qual: "casa" }, { tipo: "constructor" }, "não é json", "x".repeat(300)]) {
+				expect((await contar(corpo)).status, JSON.stringify(corpo).slice(0, 40)).toBe(400);
+			}
+			expect((await ler()).desde).toBeNull();
+		});
+
+		it("só conta o que vem do próprio site, e não conta os robôs", async () => {
+			expect((await contar({ tipo: "visita" }, { "Sec-Fetch-Site": "cross-site" })).status).toBe(403);
+			expect((await contar({ tipo: "visita" }, {})).status).toBe(403);
+			expect((await contar({ tipo: "visita" }, { Origin: "https://outro.pt" })).status).toBe(403);
+			expect((await contar({ tipo: "visita" }, { Origin: "http://example.com" })).status).toBe(204);
+			for (const robo of [
+				"Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)",
+				"facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)",
+				"Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/142.0 Safari/537.36",
+			]) {
+				expect((await contar({ tipo: "visita" }, { "Sec-Fetch-Site": "same-origin", "User-Agent": robo })).status).toBe(204);
+			}
+			// Um telemóvel com "bot" no nome da marca conta.
+			expect((await contar({ tipo: "visita" }, { "Sec-Fetch-Site": "same-origin", "User-Agent": "Mozilla/5.0 (Linux; Android 10; CUBOT X30) Chrome/142.0 Mobile Safari/537.36" })).status).toBe(204);
+			expect((await ler()).totais.visita).toBe(2);
+		});
+
+		it("só aceita mandar contas, e só deixa lê-las", async () => {
+			expect((await SELF.fetch("http://example.com/api/contar")).status).toBe(405);
+			expect((await SELF.fetch("http://example.com/api/estatisticas", { method: "POST", headers: daPagina })).status).toBe(405);
+		});
+	});
 });

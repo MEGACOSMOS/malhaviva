@@ -12,7 +12,10 @@
  *    com o percurso até ela; o de um local marcado
  *    (malhaviva.pt/@38.670908,-9.181921, ver `localDoEndereco`) é o
  *    bairro, aberto já com o local; os outros têm sempre a resposta de que
- *    não existem.
+ *    não existem;
+ *  - as contas do site (/api/contar e /api/estatisticas, ver
+ *    `src/contas.ts`): quantas visitas, partilhas e percursos houve, para
+ *    a página das estatísticas (malhaviva.pt/estatisticas).
  *
  * Porquê recusar o pré-carregamento. Quando alguém começa a escrever
  * "malhaviva.pt" na barra do Chrome, o Chrome adivinha para onde a pessoa
@@ -27,6 +30,8 @@
  * ganha-se um site que abre. (Verificado a reproduzir o bloqueio num Chrome
  * limpo e a desaparecer com esta recusa: ver `scripts/testar-prerender.mjs`.)
  */
+
+import { Contas, mostrarContas, receberConta } from './contas';
 
 /** Quem pede o pré-carregamento de uma página diz-o neste cabeçalho. */
 export function eUmPreCarregamento(pedido: Request): boolean {
@@ -188,8 +193,14 @@ function paginaComPrevisualizacao(pagina: Response, { titulo, descricao, enderec
 	return resposta;
 }
 
+// O livro das contas tem de sair daqui, do ficheiro principal, para a
+// Cloudflare o encontrar (ver `durable_objects` em `wrangler.jsonc`).
+export { Contas };
+
+type Ambiente = { ASSETS: Fetcher; CONTAS: DurableObjectNamespace<Contas> };
+
 export default {
-	async fetch(pedido: Request, env: { ASSETS: Fetcher }): Promise<Response> {
+	async fetch(pedido: Request, env: Ambiente): Promise<Response> {
 		if (eUmPreCarregamento(pedido)) {
 			return new Response('O pré-carregamento desta página não é aceite.', {
 				status: 503,
@@ -198,6 +209,10 @@ export default {
 		}
 		const endereco = new URL(pedido.url);
 		const caminho = endereco.pathname;
+
+		// As contas do site: mais uma, ou todas, para as estatísticas.
+		if (caminho === '/api/contar') return receberConta(pedido, env.CONTAS);
+		if (caminho === '/api/estatisticas') return mostrarContas(pedido, env.CONTAS);
 
 		// O endereço curto de uma casa: o bairro, com a casa.
 		const curta = casaDoEnderecoCurto(caminho);
@@ -247,4 +262,4 @@ export default {
 			headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' },
 		});
 	},
-} satisfies ExportedHandler<{ ASSETS: Fetcher }>;
+} satisfies ExportedHandler<Ambiente>;
