@@ -9,7 +9,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title data-i18n-titulo="cmp.titulo">Drone e LiDAR da DGT — Malha Viva</title>
     <meta name="description" content="O modelo 3D do Bairro de Penajóia feito com drone, comparado à vista, ponto a ponto e em números com o LiDAR oficial da Direção-Geral do Território, e como se chegou a cada resultado.">
-    <script src="/idiomas.js?v=63"></script>
+    <script src="/idiomas.js?v=64"></script>
     <script src="/contar.js?v=1"></script>
     <script src="/logotipo.js?v=1"></script>
     <script src="/comando-paginas.js?v=7" defer></script>
@@ -327,6 +327,7 @@
         .colunas p { color: var(--color-text-muted); font-size: 0.85rem; margin-top: 10px; }
         .colunas code { font-family: inherit; color: #fff; }
         svg.histograma text { fill: rgba(255,255,255,.55); font: 10px 'Liberation Mono', monospace; }
+        .intro a.codigo { color: #fff; overflow-wrap: anywhere; }
         .metodos { margin-top: 16px; display: grid; gap: 4px; }
         .metodos dt { font-size: 0.8rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; margin-top: 14px; }
         .metodos dd { margin: 0; color: var(--color-text-muted); font-size: 0.85rem; line-height: 1.6; }
@@ -480,6 +481,7 @@
         <section aria-labelledby="t-como" class="ler">
             <h2 id="t-como" data-i18n="cmp.comoTitulo">Como se chegou aos resultados</h2>
             <p class="intro" data-i18n="cmp.comoIntro"></p>
+            <p class="intro"><span data-i18n="cmp.codigo">Os programas estão publicados, com um guia de leitura, para quem os quiser analisar ou correr outra vez:</span> <a class="codigo" href="https://github.com/MEGACOSMOS/malhaviva/tree/master/scripts/comparacao" target="_blank" rel="noopener">github.com/MEGACOSMOS/malhaviva/scripts/comparacao</a></p>
             <dl class="metodos">
                 <dt data-i18n="cmp.ladoALado">Lado a lado</dt><dd data-i18n="cmp.mMapa"></dd>
                 <dt data-i18n="cmp.pontosTitulo">Qualidade dos pontos</dt><dd data-i18n="cmp.mPontos"></dd>

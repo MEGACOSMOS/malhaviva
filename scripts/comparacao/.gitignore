@@ -1,0 +1,5 @@
+# Os dados (LiDAR da DGT, modelo do drone) não entram no repositório.
+dados/
+__pycache__/
+*.npz
+*.npy

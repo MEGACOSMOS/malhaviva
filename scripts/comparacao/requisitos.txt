@@ -1,0 +1,9 @@
+# Bibliotecas usadas. Entre parênteses, as versões com que os programas foram
+# corridos (Python 3.11). Instalar com: pip install -r requisitos.txt
+numpy          # 2.4.6
+scipy          # 1.17.1
+rasterio       # 1.4.4
+laspy[lazrs]   # 2.7.0, com lazrs para ler os ficheiros .laz
+matplotlib     # 3.11.2
+opencv-python  # cv2 5.0.0
+Pillow         # 12.3.0
