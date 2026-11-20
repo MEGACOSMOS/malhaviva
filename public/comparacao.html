@@ -1,0 +1,857 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" href="/favicon.ico" sizes="32x32">
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+    <script src="/icone.js?v=1" defer></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title data-i18n-titulo="cmp.titulo">Drone e LiDAR da DGT — Malha Viva</title>
+    <meta name="description" content="O modelo 3D do Bairro de Penajóia feito com drone, comparado à vista e em números com o LiDAR oficial da Direção-Geral do Território.">
+    <script src="/idiomas.js?v=61"></script>
+    <script src="/contar.js?v=1"></script>
+    <script src="/logotipo.js?v=1"></script>
+    <script src="/comando-paginas.js?v=7" defer></script>
+
+    <style>
+        /* A letra do site, como nas páginas dos controlos e dos créditos. */
+        @font-face {
+            font-family: 'Liberation Mono';
+            src: url('/fonts/LiberationMono-Regular.ttf') format('truetype');
+            font-weight: 100 500;
+            font-style: normal;
+            font-display: swap;
+        }
+        @font-face {
+            font-family: 'Liberation Mono';
+            src: url('/fonts/LiberationMono-Bold.ttf') format('truetype');
+            font-weight: 600 900;
+            font-style: normal;
+            font-display: swap;
+        }
+
+        *, *::before, *::after {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --color-bg: #05050a;
+            --color-text: #ffffff;
+            --color-text-muted: rgba(255, 255, 255, 0.7);
+            --color-text-faint: rgba(255, 255, 255, 0.55);
+            --color-border: rgba(255, 255, 255, 0.15);
+            /* O fio dos menus e dos quadros do site: o branco a 30% sobre o
+               fundo escuro, num tom só. */
+            --color-fio: #505054;
+            --color-accent: #ffffff;
+            --color-surface-hover: rgba(255, 255, 255, 0.05);
+            /* O gráfico: as barras num cinzento claro, e branco a que se
+               está a ver; a grelha e a linha de base, um passo acima do
+               fundo. */
+            --barra: #c4c4ca;
+            --barra-vista: #ffffff;
+            --grelha: #18181f;
+            --base: #34343c;
+            --font-main: 'Liberation Mono', 'Courier New', monospace;
+        }
+
+        body {
+            min-height: 100vh;
+            background: var(--color-bg);
+            font-family: var(--font-main);
+            color: var(--color-text);
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            line-height: 1.6;
+        }
+
+        /* ─── Cabeçalho, igual ao dos créditos ─── */
+        .page-header {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px 24px;
+            background: var(--color-bg);
+            border-bottom: 1px solid var(--color-border);
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            text-decoration: none;
+        }
+
+        .brand-name {
+            font-size: 1.2rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            color: var(--color-accent);
+        }
+
+        .brand-name .logotipo {
+            height: 22px;
+        }
+
+        .back-link {
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 40px;
+            height: 40px;
+            color: #ffffff;
+            text-decoration: none;
+            transition: background 0.15s ease;
+        }
+
+        .back-link::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            border: 2.5px solid var(--color-fio);
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.15s ease;
+        }
+
+        @media (hover: hover) {
+            .back-link:hover {
+                background: #05050a;
+            }
+
+            .back-link:hover::after {
+                opacity: 1;
+            }
+        }
+
+        .idioma {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        .idioma-botao {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: transparent;
+            color: var(--color-text-muted);
+            font-family: inherit;
+            font-size: 0.85rem;
+            font-weight: 500;
+            padding: 8px 16px;
+            border: 2.5px solid var(--color-border);
+            cursor: pointer;
+            transition: background 0.15s ease;
+        }
+
+        .idioma-botao:hover {
+            background: var(--color-surface-hover);
+        }
+
+        .back-link:focus-visible,
+        .idioma-botao:focus-visible,
+        .mostrar button:focus-visible,
+        .tabela summary:focus-visible,
+        .nao-contar input:focus-visible {
+            outline: 2.5px solid #ffffff;
+            outline-offset: 2px;
+        }
+
+        #idioma-menu {
+            position: absolute;
+            top: calc(100% + 10px);
+            left: 50%;
+            background: linear-gradient(to bottom, rgba(255,255,255,0.05), transparent), #05050a;
+            border: 0;
+            border-radius: 0;
+            padding: 16px;
+            width: max-content;
+            min-width: 150px;
+            max-width: 260px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+            transition: opacity 0.2s, transform 0.2s, visibility 0.2s;
+            transform-origin: top center;
+            pointer-events: none;
+            opacity: 0;
+            transform: translateX(-50%) scale(0.95);
+            visibility: hidden;
+            z-index: 20;
+        }
+
+        #idioma-menu::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            border: 2.5px solid var(--color-fio);
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        #idioma-menu.open {
+            pointer-events: auto;
+            opacity: 1;
+            transform: translateX(-50%) scale(1);
+            visibility: visible;
+        }
+
+        .menu-fechar {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: 28px;
+            height: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: transparent;
+            border: none;
+            color: #8e8e91;
+            cursor: pointer;
+            padding: 0;
+            transition: color 0.15s ease;
+            z-index: 11;
+        }
+        .menu-fechar:hover {
+            color: #ffffff;
+        }
+
+        #idioma-menu > .settings-title:first-child {
+            padding-right: 28px;
+        }
+
+        .settings-title {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--color-text-muted);
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .settings-options {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .settings-radio {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.85rem;
+            cursor: pointer;
+        }
+
+        .settings-radio input {
+            accent-color: #05050a;
+            width: 16px;
+            height: 16px;
+            cursor: pointer;
+        }
+
+        /* ─── A página ─── */
+        :root {
+            /* As duas medições têm cor própria, só nos dados: o drone quente,
+               a DGT fria. Tudo o resto é o branco e o cinzento do site. */
+            --drone: #ff7a5c;
+            --dgt: #5cc4ff;
+            --ok: #45c486;
+            --meio: #e0a84a;
+        }
+        .pagina { max-width: 1100px; margin: 0 auto; padding: 48px 24px 96px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 44px; }
+        .pagina > * { min-width: 0; }
+        .ler { max-width: 70ch; }
+        .pagina h1 { font-size: 1.6rem; font-weight: 700; letter-spacing: -0.02em; line-height: 1.2; text-wrap: balance; }
+        .pagina h2 { font-size: 1rem; font-weight: 700; letter-spacing: 0.02em; text-transform: uppercase; }
+        .intro { margin-top: 12px; color: var(--color-text-muted); font-size: 0.92rem; }
+        .barra-topo { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+        .grupo { display: inline-flex; flex-wrap: wrap; border: 2.5px solid var(--color-fio); }
+        .grupo button { font: inherit; font-size: 0.8rem; background: transparent; color: var(--color-text-muted); border: 0; border-right: 1px solid var(--color-fio); padding: 8px 12px; cursor: pointer; }
+        .grupo button:last-child { border-right: 0; }
+        .grupo button:hover { background: var(--color-surface-hover); color: #fff; }
+        .grupo button[aria-pressed="true"] { background: #fff; color: #05050a; }
+        .perto { margin-bottom: 12px; }
+        .pagina button:focus-visible, .pagina a:focus-visible, .pagina canvas:focus-visible { outline: 2.5px solid #ffffff; outline-offset: 2px; }
+        .mapa { position: relative; height: min(70vh, 640px); min-height: 360px; border: 2.5px solid var(--color-fio); background: #0c0c14; touch-action: none; overflow: hidden; }
+        .mapa canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
+        .etiqueta { position: absolute; top: 10px; font-size: 0.72rem; padding: 4px 8px; background: rgba(5,5,10,.78); pointer-events: none; }
+        .etiqueta.e { left: 10px; } .etiqueta.d { right: 10px; }
+        .escala { position: absolute; left: 10px; bottom: 10px; font-size: 0.7rem; background: rgba(5,5,10,.78); padding: 4px 8px; pointer-events: none; }
+        .escala i { display: block; height: 2px; background: rgba(255,255,255,.7); margin-top: 3px; }
+        .legenda { position: absolute; right: 10px; bottom: 10px; font-size: 0.7rem; background: rgba(5,5,10,.78); padding: 6px 8px; pointer-events: none; }
+        .legenda .cores { width: 180px; height: 8px; margin: 4px 0 2px; background: linear-gradient(90deg, #2c7bd6, #8a8f9c 40%, #8a8f9c 60%, #e0442a); }
+        .legenda .pontas { display: flex; justify-content: space-between; }
+        .a-carregar-mapa { position: absolute; inset: 0; display: grid; place-items: center; color: var(--color-text-muted); font-size: 0.85rem; text-align: center; padding: 16px; }
+        .nota { margin-top: 10px; color: var(--color-text-faint); font-size: 0.8rem; line-height: 1.55; }
+        .quadro { overflow-x: auto; border: 2.5px solid var(--color-fio); }
+        .quadro table { border-collapse: collapse; width: 100%; font-size: 0.8rem; font-variant-numeric: tabular-nums; }
+        .quadro th, .quadro td { padding: 9px 12px; text-align: left; border-bottom: 1px solid var(--color-fio); vertical-align: top; }
+        .quadro th { font-weight: 500; font-size: 0.7rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--color-text-faint); }
+        .quadro tr:last-child td { border-bottom: 0; }
+        .quadro.numeros td { white-space: nowrap; }
+        .quadro.numeros td.n, .quadro.numeros th.n { text-align: right; }
+        .quadro.tecnica td { min-width: 110px; }
+        .pilula { display: inline-block; padding: 1px 7px; font-size: 0.72rem; margin-right: 6px; border: 1px solid currentColor; }
+        .pilula.drone { color: var(--drone); } .pilula.dgt { color: var(--dgt); }
+        .dif { display: inline-block; min-width: 64px; text-align: center; padding: 1px 6px; font-size: 0.75rem; }
+        .dif.ok { color: var(--ok); background: rgba(69,196,134,.14); }
+        .dif.meio { color: var(--meio); background: rgba(224,168,74,.14); }
+        .dif.longe { color: var(--drone); background: rgba(255,122,92,.14); }
+        .principal { font: inherit; font-weight: 700; font-size: 0.85rem; background: #fff; color: #05050a; border: 0; padding: 11px 16px; cursor: pointer; }
+        .principal:disabled { opacity: .5; cursor: default; }
+        .passos { padding-left: 22px; display: grid; gap: 4px; color: var(--color-text-muted); font-size: 0.85rem; margin-bottom: 14px; }
+        .veredito { font-size: 1.1rem; font-weight: 700; margin-bottom: 10px; }
+        .info { color: var(--color-text-faint); font-size: 0.8rem; margin-top: 4px; }
+        .sonda { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); border: 2.5px solid var(--color-fio); }
+        .sonda > div { padding: 12px 14px; border-right: 1px solid var(--color-fio); min-width: 0; }
+        .sonda > div:last-child { border-right: 0; }
+        .sonda .t { font-size: 0.68rem; letter-spacing: .1em; text-transform: uppercase; color: var(--color-text-faint); }
+        .sonda .v { font-size: 1.2rem; font-weight: 700; font-variant-numeric: tabular-nums; margin-top: 2px; overflow-wrap: anywhere; }
+        .sonda .v.pequeno { font-size: 0.85rem; }
+        .sonda .s { font-size: 0.75rem; color: var(--color-text-faint); }
+        .sonda a { color: #fff; }
+        .colunas { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 40px; }
+        .totais { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin: 14px 0; list-style: none; }
+        .totais li { border-top: 2.5px solid #fff; padding-top: 6px; }
+        .totais b { display: block; font-size: 1.3rem; font-variant-numeric: tabular-nums; }
+        .totais span { font-size: 0.72rem; color: var(--color-text-faint); }
+        .colunas p { color: var(--color-text-muted); font-size: 0.85rem; margin-top: 10px; }
+        .colunas code { font-family: inherit; color: #fff; }
+        svg.histograma text { fill: rgba(255,255,255,.55); font: 10px 'Liberation Mono', monospace; }
+        @media (max-width: 760px) {
+            .colunas { grid-template-columns: minmax(0, 1fr); }
+            .totais { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+            .pagina { padding: 32px 16px 72px; }
+        }
+        /* O cabeçalho num ecrã estreito, como nas estatísticas: só o
+           símbolo da língua, para não tapar o logótipo. */
+        @media (max-width: 640px) {
+            .page-header { padding: 12px 16px; }
+            .brand-name { font-size: 1.05rem; }
+            .brand-name .logotipo { height: 19px; }
+            .idioma-botao { padding: 8px 10px; }
+            #idioma-nome { display: none; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            * { transition: none !important; }
+        }
+    </style>
+</head>
+<body>
+    <header class="page-header">
+        <a href="/" class="brand" aria-label="Malha Viva" data-i18n-aria="site.nome">
+            <span class="brand-name" id="nome-do-site">Malha Viva</span>
+        </a>
+        <!-- O nome é o logótipo do projecto (ver logotipo.js). -->
+        <script>window.Logotipo && window.Logotipo.desenhar(document.getElementById('nome-do-site'));</script>
+        <!-- A língua, ao meio; a cruz que fecha a página e volta ao mapa,
+             à direita. -->
+        <div class="idioma">
+            <button type="button" class="idioma-botao" id="idioma-botao" data-i18n-title="cab.idioma" title="Idioma">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="none" aria-hidden="true">
+                    <path d="M12.87 15.07l-2.54-2.51.03-.03c1.74-1.94 2.98-4.17 3.71-6.53H17V4h-7V2H8v2H1v1.99h11.17C11.5 7.92 10.44 9.75 9 11.35 8.07 10.32 7.3 9.19 6.69 8h-2c.73 1.63 1.73 3.17 2.98 4.56l-5.09 5.02L4 19l5-5 3.11 3.11.76-2.04zM18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2l-4.5-12zm-2.62 7l1.62-4.33L19.12 17h-3.24z"></path>
+                </svg>
+                <span id="idioma-nome">Português</span>
+            </button>
+            <div id="idioma-menu">
+                <button type="button" class="menu-fechar" aria-label="Fechar" title="Fechar">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true">
+                        <line x1="5" y1="5" x2="19" y2="19"></line>
+                        <line x1="19" y1="5" x2="5" y2="19"></line>
+                    </svg>
+                </button>
+                <div class="settings-title" data-i18n="idm.titulo">Idioma</div>
+                <div class="settings-options">
+                    <label class="settings-radio">
+                        <input type="radio" name="idioma" value="kea" id="idioma-kea">
+                        <span>Kriolu</span>
+                    </label>
+                    <label class="settings-radio">
+                        <input type="radio" name="idioma" value="pt" id="idioma-pt">
+                        <span>Português</span>
+                    </label>
+                    <label class="settings-radio">
+                        <input type="radio" name="idioma" value="en" id="idioma-en">
+                        <span>English</span>
+                    </label>
+                    <label class="settings-radio">
+                        <input type="radio" name="idioma" value="es" id="idioma-es">
+                        <span>Español</span>
+                    </label>
+                </div>
+            </div>
+        </div>
+        <a href="/" class="back-link" aria-label="Voltar ao Mapa" title="Voltar ao Mapa" data-i18n-aria="ctl.voltar" data-i18n-title="ctl.voltar">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true">
+                <line x1="5" y1="5" x2="19" y2="19"></line>
+                <line x1="19" y1="5" x2="5" y2="19"></line>
+            </svg>
+        </a>
+    </header>
+
+    <main class="pagina" id="pagina">
+        <header class="ler">
+            <h1 data-i18n="cmp.h1">O modelo do drone ao lado do LiDAR da DGT</h1>
+            <p class="intro" data-i18n="cmp.intro">O modelo 3D feito com o drone (486 fotografias, 15 de fevereiro de 2026) comparado com o levantamento LiDAR oficial da Direção-Geral do Território (julho de 2024), no mesmo sítio e na mesma grelha de 50 cm: primeiro à vista, depois em números.</p>
+        </header>
+
+        <section aria-labelledby="t-lado">
+            <div class="barra-topo">
+                <h2 id="t-lado" data-i18n="cmp.ladoALado">Lado a lado</h2>
+                <div class="grupo" role="group" data-i18n-aria="cmp.verMapa" aria-label="O que mostrar no mapa">
+                    <button type="button" data-modo="cortina" aria-pressed="true" data-i18n="cmp.cortina">Cortina</button>
+                    <button type="button" data-modo="drone" aria-pressed="false" data-i18n="cmp.drone">Drone 2026</button>
+                    <button type="button" data-modo="dgt" aria-pressed="false" data-i18n="cmp.dgt">DGT 2024</button>
+                    <button type="button" data-modo="dif" aria-pressed="false" data-i18n="cmp.dif">Diferença</button>
+                </div>
+            </div>
+            <div class="grupo perto" role="group" data-i18n-aria="cmp.verPerto" aria-label="Ver de perto">
+                <button type="button" data-ir="todo" data-i18n="cmp.bairro">Bairro inteiro</button>
+                <button type="button" data-ir="-91423.3,-110115.9,70" data-i18n="cmp.novas1">Casas novas 1</button>
+                <button type="button" data-ir="-91403.3,-110158.9,70" data-i18n="cmp.novas2">Casas novas 2</button>
+                <button type="button" data-ir="-91363.8,-110318.9,70" data-i18n="cmp.novas3">Casas novas 3</button>
+                <button type="button" data-ir="-91300,-110250,160" data-i18n="cmp.centro">Centro do bairro</button>
+            </div>
+            <div class="mapa" id="caixa-mapa">
+                <canvas id="mapa" role="img" data-i18n-aria="cmp.mapaAria" aria-label="Mapa do bairro: carregue num sítio para ver as duas alturas"></canvas>
+                <div class="etiqueta e" id="etq-e"></div>
+                <div class="etiqueta d" id="etq-d"></div>
+                <div class="escala" id="escala"></div>
+                <div class="legenda" id="legenda" hidden><span data-i18n="cmp.legenda">Drone menos DGT</span><div class="cores"></div><div class="pontas"><span>−3 m</span><span>0</span><span>+3 m</span></div></div>
+                <div class="a-carregar-mapa" id="a-carregar" data-i18n="cmp.aCarregar">A carregar as duas medições (cerca de 7 MB)…</div>
+            </div>
+            <p class="nota" data-i18n="cmp.ajudaMapa">À esquerda da linha branca, a fotografia do drone; à direita, o relevo do LiDAR.</p>
+        </section>
+
+        <section aria-labelledby="t-numeros">
+            <h2 id="t-numeros" data-i18n="cmp.emNumeros" style="margin-bottom:12px">Em números</h2>
+            <div class="quadro tecnica">
+                <table>
+                    <thead><tr><th data-i18n="cmp.criterio">Critério</th><th data-i18n="cmp.colDrone">Drone (Malha Viva)</th><th data-i18n="cmp.colDgt">LiDAR DGT</th><th data-i18n="cmp.melhor">Melhor</th></tr></thead>
+                    <tbody id="tecnica"></tbody>
+                </table>
+            </div>
+            <p class="nota ler" data-i18n="cmp.notaTec">O drone ganha em atualidade, fachadas, cor e densidade.</p>
+        </section>
+
+        <section aria-labelledby="t-sorteio">
+            <div class="barra-topo">
+                <div>
+                    <h2 id="t-sorteio" data-i18n="cmp.sorteioTitulo">Teste das alturas: sorteio</h2>
+                    <div class="info" id="info-sorteio" data-i18n="cmp.semSorteio">Ainda não sorteou nenhum ponto.</div>
+                </div>
+                <button type="button" class="principal" id="sortear" disabled data-i18n="cmp.sortear">Sortear 10 pontos</button>
+            </div>
+            <ol class="passos ler">
+                <li data-i18n="cmp.passo1"></li>
+                <li data-i18n="cmp.passo2"></li>
+                <li data-i18n="cmp.passo3"></li>
+            </ol>
+            <p class="veredito" id="veredito" hidden></p>
+            <div class="quadro numeros">
+                <table aria-describedby="info-sorteio">
+                    <thead><tr><th data-i18n="cmp.thN">Nº</th><th class="n">E (m)</th><th class="n">N (m)</th><th class="n" data-i18n="cmp.thDgt">DGT (m)</th><th class="n" data-i18n="cmp.thDrone">Drone (m)</th><th class="n" data-i18n="cmp.dif">Diferença</th><th class="n" data-i18n="cmp.thVer">Ver</th></tr></thead>
+                    <tbody id="tabela"><tr><td colspan="7" data-i18n="cmp.vazio">Os pontos sorteados aparecem aqui e no mapa, numerados.</td></tr></tbody>
+                </table>
+            </div>
+            <p class="nota" data-i18n="cmp.notaCoord">E e N em metros no sistema oficial português (PT-TM06/ETRS89, EPSG:3763).</p>
+        </section>
+
+        <section aria-labelledby="t-sitio">
+            <h2 id="t-sitio" data-i18n="cmp.sitioTitulo" style="margin-bottom:12px">O sítio onde carregou</h2>
+            <div class="sonda">
+                <div><div class="t" data-i18n="cmp.pDgt">DGT 2024 (MDS)</div><div class="v" id="s-dgt">—</div><div class="s" data-i18n="cmp.pDgtS">superfície oficial</div></div>
+                <div><div class="t" data-i18n="cmp.drone">Drone 2026</div><div class="v" id="s-drone">—</div><div class="s" data-i18n="cmp.pDroneS">superfície do modelo</div></div>
+                <div><div class="t" data-i18n="cmp.dif">Diferença</div><div class="v" id="s-dif">—</div><div class="s" id="s-dif-s">drone menos DGT</div></div>
+                <div><div class="t" data-i18n="cmp.pCoord">Coordenadas</div><div class="v pequeno" id="s-coord">—</div><div class="s" id="s-ligacoes">carregue no mapa</div></div>
+            </div>
+            <p class="nota ler" data-i18n="cmp.notaSitio">Aqui compara-se a superfície.</p>
+        </section>
+
+        <section class="colunas">
+            <div>
+                <h2 data-i18n="cmp.todosTitulo">Todos os pontos de uma vez</h2>
+                <p data-i18n="cmp.todosIntro">Os mesmos números, calculados aqui mesmo a partir dos 4 965 pontos de chão aberto.</p>
+                <ul class="totais" id="totais"></ul>
+                <div style="overflow-x:auto"><svg class="histograma" id="histograma" viewBox="0 0 460 170" width="100%" role="img" data-i18n-aria="cmp.histAria" aria-label="Distribuição das diferenças de altura"></svg></div>
+                <p class="nota" id="fora"></p>
+            </div>
+            <div>
+                <h2 data-i18n="cmp.confTitulo">Como confirmar sem esta página</h2>
+                <p data-i18n="cmp.conf1"></p>
+                <p data-i18n="cmp.conf2"></p>
+                <p data-i18n="cmp.conf3"></p>
+                <p class="nota" data-i18n="cmp.fontes"></p>
+            </div>
+        </section>
+    </main>
+
+    <script>
+    /* A comparação. Os dados estão em /comparacao-dados/:
+         meta.json         a grelha (50 cm, EPSG:3763), os 4 965 pontos de
+                           controlo e o contorno da zona do drone;
+         dgt_mds.png       a superfície oficial da DGT (MDS 50 cm);
+         drone.png         a superfície do modelo do drone, na mesma grelha;
+                           as duas em centímetros, sem perdas, numa imagem
+                           (vermelho = byte alto, verde = byte baixo);
+         drone_foto.jpg    a fotografia do drone a 25 cm, a bairro inteiro;
+         detalhe_N.jpg     a mesma a 5 cm, só nas vistas de perto;
+         dgt_relevo.jpg    o relevo sombreado do MDS.
+       Como foram feitos: Imagens\Comparação 3D\Medições\comparador_dados.py. */
+    (function () {
+        var DADOS = '/comparacao-dados/';
+        var $ = function (id) { return document.getElementById(id); };
+        var t = function (k) { return window.Idiomas ? window.Idiomas.t(k) : k; };
+        var preencher = function (k, v) { return t(k).replace(/\{(\w+)\}/g, function (_, n) { return v[n] != null ? v[n] : ''; }); };
+        var FORMATO = { pt: 'pt-PT', kea: 'pt-PT', en: 'en-GB', es: 'es-ES' };
+        var loc = function () { return FORMATO[window.Idiomas ? window.Idiomas.atual() : 'pt'] || 'pt-PT'; };
+        var fmt = function (v, d) { d = d == null ? 2 : d; return v.toLocaleString(loc(), { minimumFractionDigits: d, maximumFractionDigits: d }); };
+        var inteiro = function (v) { return Math.round(v).toLocaleString(loc()); };
+        var cm = function (v) { return (v >= 0 ? '+' : '−') + Math.abs(Math.round(v * 100)) + ' cm'; };
+        var marca = function (v) { var a = Math.abs(v); var c = a < 0.10 ? 'ok' : a < 0.30 ? 'meio' : 'longe'; return '<span class="dif ' + c + '">' + cm(v) + '</span>'; };
+
+        var cv = $('mapa'), ctx = cv.getContext('2d'), caixa = $('caixa-mapa');
+        var M, MDS, DRN, fotoDrone, relevoDgt, telaDif, detalhes = [];
+        var modo = 'cortina', corte = 0.5;
+        var vista = { s: 1, ox: 0, oy: 0 };   // ecrã = grelha × s + o (grelha em células de 50 cm)
+        var sorteio = [], sonda = null, nSorteios = 0, estat = null;
+
+        var latlon = function (E, N) { return [M.alat[0] * E + M.alat[1] * N + M.alat[2], M.alon[0] * E + M.alon[1] * N + M.alon[2]]; };
+        var ligacoes = function (E, N) {
+            var ll = latlon(E, N), a = ll[0].toFixed(6), o = ll[1].toFixed(6);
+            return '<a href="/@' + a + ',' + o + '">' + t('cmp.noSite') + '</a> · ' +
+                '<a href="https://earth.google.com/web/@' + a + ',' + o + ',90a,120d,35y,0h,0t,0r" target="_blank" rel="noopener">Google Earth</a>';
+        };
+        var altura = function (arr, c, r) {
+            if (c < 0 || r < 0 || c >= M.W || r >= M.H) return null;
+            var v = arr[r * M.W + c]; return v === 65535 ? null : v / 100;
+        };
+
+        function tamanho() {
+            var r = caixa.getBoundingClientRect(), d = window.devicePixelRatio || 1;
+            cv.width = Math.round(r.width * d); cv.height = Math.round(r.height * d); ctx.setTransform(d, 0, 0, d, 0, 0);
+        }
+        function enquadrar() {
+            var r = caixa.getBoundingClientRect();
+            vista.s = Math.min(r.width / M.W, r.height / M.H) * 0.98;
+            vista.ox = (r.width - M.W * vista.s) / 2; vista.oy = (r.height - M.H * vista.s) / 2;
+        }
+        var ecra = function (c, r) { return [c * vista.s + vista.ox, r * vista.s + vista.oy]; };
+        var grelha = function (x, y) { return [(x - vista.ox) / vista.s, (y - vista.oy) / vista.s]; };
+
+        function desenhar() {
+            if (!M) return;
+            var r = caixa.getBoundingClientRect(), w = r.width, h = r.height;
+            ctx.clearRect(0, 0, w, h);
+            ctx.imageSmoothingEnabled = vista.s < 2;
+            var camada = function (q) {
+                if (q === 'drone') {
+                    ctx.drawImage(fotoDrone, vista.ox, vista.oy, M.W * vista.s, M.H * vista.s);
+                    if (vista.s > 2) detalhes.forEach(function (d) {
+                        if (!d.img) return;
+                        var p = ecra((d.x0 - M.x0) / M.cs, (M.y1 - d.y1) / M.cs), l = d.L / M.cs * vista.s;
+                        ctx.drawImage(d.img, p[0], p[1], l, l);
+                    });
+                } else if (q === 'dgt') {
+                    ctx.drawImage(relevoDgt, vista.ox, vista.oy, M.W * vista.s, M.H * vista.s);
+                } else {
+                    ctx.globalAlpha = 0.45; ctx.drawImage(relevoDgt, vista.ox, vista.oy, M.W * vista.s, M.H * vista.s); ctx.globalAlpha = 1;
+                    ctx.drawImage(telaDif, vista.ox, vista.oy, M.W * vista.s, M.H * vista.s);
+                }
+            };
+            if (modo === 'cortina') {
+                var sx = corte * w;
+                ctx.save(); ctx.beginPath(); ctx.rect(0, 0, sx, h); ctx.clip(); camada('drone'); ctx.restore();
+                ctx.save(); ctx.beginPath(); ctx.rect(sx, 0, w - sx, h); ctx.clip(); camada('dgt'); ctx.restore();
+                ctx.fillStyle = '#fff'; ctx.fillRect(sx - 1, 0, 2, h);
+                ctx.fillRect(sx - 12, h / 2 - 12, 24, 24);
+                ctx.fillStyle = '#05050a'; ctx.font = "12px 'Liberation Mono', monospace"; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('↔', sx, h / 2 + 1);
+            } else camada(modo);
+            // o contorno da zona do drone
+            ctx.strokeStyle = 'rgba(255,255,255,.55)'; ctx.lineWidth = 1; ctx.setLineDash([4, 4]); ctx.beginPath();
+            M.masc.forEach(function (p, i) { var q = ecra((p[0] - M.x0) / M.cs, (M.y1 - p[1]) / M.cs); if (i) ctx.lineTo(q[0], q[1]); else ctx.moveTo(q[0], q[1]); });
+            ctx.closePath(); ctx.stroke(); ctx.setLineDash([]);
+            // os pontos sorteados, numerados
+            sorteio.forEach(function (p, i) {
+                var q = ecra((p[0] - M.x0) / M.cs, (M.y1 - p[1]) / M.cs);
+                ctx.fillStyle = '#ffffff'; ctx.strokeStyle = '#05050a'; ctx.lineWidth = 2;
+                ctx.beginPath(); ctx.arc(q[0], q[1], 10, 0, 7); ctx.fill(); ctx.stroke();
+                ctx.fillStyle = '#05050a'; ctx.font = "bold 11px 'Liberation Mono', monospace"; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(String(i + 1), q[0], q[1] + 1);
+            });
+            if (sonda) {
+                var q = ecra(sonda.c + 0.5, sonda.r + 0.5);
+                ctx.strokeStyle = '#fff'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(q[0] - 12, q[1]); ctx.lineTo(q[0] + 12, q[1]); ctx.moveTo(q[0], q[1] - 12); ctx.lineTo(q[0], q[1] + 12); ctx.stroke();
+                ctx.strokeStyle = '#05050a'; ctx.lineWidth = 1.2; ctx.stroke();
+            }
+            var m = [5, 10, 20, 50, 100, 200].find(function (v) { return v / M.cs * vista.s >= 50; }) || 200;
+            $('escala').innerHTML = '<span>' + m + ' m</span><i style="width:' + Math.round(m / M.cs * vista.s) + 'px"></i>';
+            var nomes = { cortina: ['cmp.lblDrone', 'cmp.lblDgt'], drone: ['cmp.lblDrone', ''], dgt: ['', 'cmp.lblDgt'], dif: ['cmp.lblDif', ''] }[modo];
+            $('etq-e').textContent = nomes[0] ? t(nomes[0]) : ''; $('etq-e').hidden = !nomes[0];
+            $('etq-d').textContent = nomes[1] ? t(nomes[1]) : ''; $('etq-d').hidden = !nomes[1];
+            $('legenda').hidden = modo !== 'dif';
+        }
+
+        function medir(c, r) {
+            c = Math.floor(c); r = Math.floor(r);
+            sonda = { c: c, r: r };
+            escreverSonda(); desenhar();
+        }
+        function escreverSonda() {
+            if (!sonda || !M) return;
+            var a = altura(MDS, sonda.c, sonda.r), b = altura(DRN, sonda.c, sonda.r);
+            var E = M.x0 + (sonda.c + 0.5) * M.cs, N = M.y1 - (sonda.r + 0.5) * M.cs;
+            $('s-dgt').textContent = a == null ? t('cmp.semDados') : fmt(a) + ' m';
+            $('s-drone').textContent = b == null ? t('cmp.foraDrone') : fmt(b) + ' m';
+            if (a != null && b != null) { $('s-dif').innerHTML = marca(b - a); $('s-dif-s').textContent = Math.abs(b - a) > 2 ? t('cmp.pMudou') : t('cmp.pDifS'); }
+            else { $('s-dif').textContent = '—'; $('s-dif-s').textContent = t('cmp.pDifS'); }
+            $('s-coord').textContent = 'E ' + fmt(E, 1) + ' · N ' + fmt(N, 1);
+            $('s-ligacoes').innerHTML = ligacoes(E, N);
+        }
+
+        function sortear() {
+            var n = M.pontos.length, esc = new Set(), u = new Uint32Array(1);
+            while (esc.size < 10) { crypto.getRandomValues(u); esc.add(u[0] % n); }
+            sorteio = Array.from(esc).map(function (i) { return M.pontos[i]; });
+            nSorteios++;
+            escreverSorteio(); desenhar();
+        }
+        function escreverSorteio() {
+            var b = $('sortear');
+            b.textContent = t(nSorteios ? 'cmp.sortearOutros' : 'cmp.sortear');
+            b.setAttribute('data-i18n', nSorteios ? 'cmp.sortearOutros' : 'cmp.sortear');
+            if (!nSorteios || !M) return;
+            var dif = sorteio.map(function (p) { return p[5] - p[4]; });
+            var a10 = dif.filter(function (d) { return Math.abs(d) < 0.10; }).length;
+            var a20 = dif.filter(function (d) { return Math.abs(d) < 0.20; }).length;
+            $('tabela').innerHTML = sorteio.map(function (p, i) {
+                return '<tr><td>' + (i + 1) + '</td><td class="n">' + fmt(p[0], 1) + '</td><td class="n">' + fmt(p[1], 1) + '</td><td class="n">' + fmt(p[4]) +
+                    '</td><td class="n">' + fmt(p[5]) + '</td><td class="n">' + marca(p[5] - p[4]) + '</td><td class="n">' + ligacoes(p[0], p[1]) + '</td></tr>';
+            }).join('');
+            var ord = dif.map(Math.abs).sort(function (x, y) { return x - y; });
+            $('veredito').hidden = false;
+            $('veredito').textContent = preencher('cmp.veredito', { a: a20, b: a10 });
+            var info = $('info-sorteio');
+            info.removeAttribute('data-i18n');
+            info.textContent = preencher('cmp.infoSorteio', { n: nSorteios, total: inteiro(M.pontos.length), m: Math.round((ord[4] + ord[5]) * 50) });
+        }
+
+        function calcularEstatisticas() {
+            var e = M.pontos.map(function (p) { return p[5] - p[4]; }), n = e.length;
+            var ord = function (a) { return a.slice().sort(function (x, y) { return x - y; }); };
+            var q = function (a, f) { return a[Math.min(a.length - 1, Math.floor(f * a.length))]; };
+            var med = q(ord(e), 0.5);
+            estat = {
+                e: e, n: n,
+                nmad: 1.4826 * q(ord(e.map(function (v) { return Math.abs(v - med); })), 0.5),
+                rmse: Math.sqrt(e.reduce(function (s, v) { return s + v * v; }, 0) / n),
+                p95: q(ord(e.map(Math.abs)), 0.95),
+                f10: e.filter(function (v) { return Math.abs(v) < 0.1; }).length / n,
+                f20: e.filter(function (v) { return Math.abs(v) < 0.2; }).length / n
+            };
+        }
+        function escreverEstatisticas() {
+            if (!estat) return;
+            var pc = function (v) { return Math.round(v * 100) + ' %'; };
+            $('totais').innerHTML = [
+                [inteiro(estat.n), 'cmp.sPontos'], [pc(estat.f10), 'cmp.s10'], [pc(estat.f20), 'cmp.s20'],
+                [Math.round(estat.nmad * 100) + ' cm', 'cmp.sNmad'], [Math.round(estat.rmse * 100) + ' cm', 'cmp.sRmse'], [Math.round(estat.p95 * 100) + ' cm', 'cmp.sP95']
+            ].map(function (x) { return '<li><b>' + x[0] + '</b><span>' + t(x[1]) + '</span></li>'; }).join('');
+            var W = 460, H = 170, L = 30, B = 22, cls = 32, bins = new Array(cls).fill(0), fora = 0;
+            estat.e.forEach(function (v) { var k = Math.floor((v * 100 + 80) / 5); if (k >= 0 && k < cls) bins[k]++; else fora++; });
+            var mx = Math.max.apply(null, bins), bw = (W - L - 6) / cls, yh = function (v) { return (H - B - 8) * v / mx; };
+            var s = '';
+            [0, 0.5, 1].forEach(function (f) { var y = H - B - yh(mx * f); s += '<line x1="' + L + '" x2="' + (W - 6) + '" y1="' + y + '" y2="' + y + '" stroke="#ffffff" opacity=".1"/>'; });
+            bins.forEach(function (v, i) {
+                var x = L + i * bw, h = yh(v), centro = Math.abs(i * 5 - 80 + 2.5);
+                var c = centro < 10 ? '#45c486' : centro < 30 ? '#e0a84a' : '#ff7a5c';
+                s += '<rect x="' + (x + 0.5) + '" y="' + (H - B - h) + '" width="' + (bw - 1) + '" height="' + h + '" fill="' + c + '" opacity=".85"><title>' + (i * 5 - 80) + '…' + (i * 5 - 75) + ' cm: ' + v + '</title></rect>';
+            });
+            [-80, -40, 0, 40, 80].forEach(function (v) { var x = L + (v + 80) / 5 * bw; s += '<text x="' + x + '" y="' + (H - 6) + '" text-anchor="middle">' + (v > 0 ? '+' : '') + v + '</text>'; });
+            s += '<text x="' + (W - 6) + '" y="12" text-anchor="end">' + t('cmp.histEixo') + '</text><text x="' + L + '" y="12">' + preencher('cmp.histPontos', { n: mx }) + '</text>';
+            $('histograma').innerHTML = s;
+            $('fora').textContent = preencher('cmp.fora', { n: fora });
+        }
+        function escreverTecnica() {
+            var nmad = estat ? preencher('cmp.r7v', { nmad: Math.round(estat.nmad * 100), n: inteiro(estat.n), p: Math.round(estat.f20 * 100) + ' %' }) : '—';
+            var D = '<span class="pilula drone">Drone</span>', G = '<span class="pilula dgt">DGT</span>';
+            var linhas = [
+                [t('cmp.r1'), t('cmp.r1d'), t('cmp.r1l'), D + t('cmp.r1n')],
+                [t('cmp.r2'), t('cmp.r2d'), t('cmp.r2l'), '—'],
+                [t('cmp.r3'), t('cmp.r3d'), t('cmp.r3l'), D],
+                [t('cmp.r4'), fmt(6, 1), fmt(0.5, 1), D + '12×'],
+                [t('cmp.r5'), '75 / 24', fmt(22.8, 1), D],
+                [t('cmp.r6'), t('cmp.r6d'), t('cmp.r6l'), D + '~8×'],
+                [t('cmp.r7'), null, nmad, G + t('cmp.r7n')],
+                [t('cmp.r8'), t('cmp.r8d'), t('cmp.ref'), G],
+                [t('cmp.r9'), fmt(92.5, 1) + ' %', fmt(99.99, 2) + ' %', G],
+                [t('cmp.r10'), t('cmp.r10d'), t('cmp.r10l'), G]
+            ];
+            $('tecnica').innerHTML = linhas.map(function (l) {
+                var meio = l[1] === null ? '<td colspan="2">' + l[2] + '</td>' : '<td>' + l[1] + '</td><td>' + l[2] + '</td>';
+                return '<tr><td>' + l[0] + '</td>' + meio + '<td>' + l[3] + '</td></tr>';
+            }).join('');
+        }
+
+        function fazerDiferenca() {
+            telaDif = document.createElement('canvas'); telaDif.width = M.W; telaDif.height = M.H;
+            var c = telaDif.getContext('2d'), im = c.createImageData(M.W, M.H), d = im.data;
+            for (var i = 0; i < M.W * M.H; i++) {
+                var a = MDS[i], b = DRN[i]; if (a === 65535 || b === 65535) continue;
+                var v = Math.max(-3, Math.min(3, (b - a) / 100)), j = i * 4;
+                if (Math.abs(v) < 0.25) { d[j] = 138; d[j + 1] = 143; d[j + 2] = 156; d[j + 3] = 150; continue; }
+                var k = Math.min(1, (Math.abs(v) - 0.25) / 2.75);
+                if (v > 0) { d[j] = 138 + 86 * k; d[j + 1] = 143 - 75 * k; d[j + 2] = 156 - 114 * k; }
+                else { d[j] = 138 - 94 * k; d[j + 1] = 143 - 20 * k; d[j + 2] = 156 + 58 * k; }
+                d[j + 3] = 150 + 90 * k;
+            }
+            c.putImageData(im, 0, 0);
+        }
+
+        // Gestos: arrastar, roda, dois dedos, a linha da cortina, carregar para medir.
+        var dedos = new Map(), arrasto = null, pinca = null;
+        var naLinha = function (x) { return modo === 'cortina' && Math.abs(x - corte * caixa.getBoundingClientRect().width) < 16; };
+        cv.addEventListener('pointerdown', function (ev) {
+            if (!M) return; try { cv.setPointerCapture(ev.pointerId); } catch (e) {}
+            var r = cv.getBoundingClientRect(), x = ev.clientX - r.left, y = ev.clientY - r.top;
+            dedos.set(ev.pointerId, { x: x, y: y });
+            if (dedos.size === 2) {
+                var ps = Array.from(dedos.values());
+                pinca = { d: Math.hypot(ps[0].x - ps[1].x, ps[0].y - ps[1].y), s: vista.s, ox: vista.ox, oy: vista.oy, cx: (ps[0].x + ps[1].x) / 2, cy: (ps[0].y + ps[1].y) / 2 };
+                arrasto = null; return;
+            }
+            arrasto = { x: x, y: y, ox: vista.ox, oy: vista.oy, mexeu: false, linha: naLinha(x) };
+        });
+        cv.addEventListener('pointermove', function (ev) {
+            var r = cv.getBoundingClientRect(), x = ev.clientX - r.left, y = ev.clientY - r.top;
+            if (!dedos.has(ev.pointerId)) { cv.style.cursor = naLinha(x) ? 'ew-resize' : 'crosshair'; return; }
+            dedos.set(ev.pointerId, { x: x, y: y });
+            if (pinca && dedos.size === 2) {
+                var ps = Array.from(dedos.values()), f = Math.hypot(ps[0].x - ps[1].x, ps[0].y - ps[1].y) / pinca.d;
+                var ns = Math.max(0.2, Math.min(24, pinca.s * f)), gx = (pinca.cx - pinca.ox) / pinca.s, gy = (pinca.cy - pinca.oy) / pinca.s;
+                vista.s = ns; vista.ox = (ps[0].x + ps[1].x) / 2 - gx * ns; vista.oy = (ps[0].y + ps[1].y) / 2 - gy * ns; desenhar(); return;
+            }
+            if (!arrasto) return;
+            if (Math.hypot(x - arrasto.x, y - arrasto.y) > 4) arrasto.mexeu = true;
+            if (arrasto.linha) { corte = Math.max(0.02, Math.min(0.98, x / r.width)); desenhar(); return; }
+            if (arrasto.mexeu) { vista.ox = arrasto.ox + x - arrasto.x; vista.oy = arrasto.oy + y - arrasto.y; desenhar(); }
+        });
+        cv.addEventListener('pointerup', function (ev) {
+            var r = cv.getBoundingClientRect(), x = ev.clientX - r.left, y = ev.clientY - r.top;
+            if (arrasto && !arrasto.mexeu && !arrasto.linha && dedos.size === 1) { var g = grelha(x, y); medir(g[0], g[1]); }
+            dedos.delete(ev.pointerId); if (dedos.size < 2) pinca = null; if (!dedos.size) arrasto = null;
+        });
+        cv.addEventListener('pointercancel', function (ev) { dedos.delete(ev.pointerId); arrasto = null; pinca = null; });
+        cv.addEventListener('wheel', function (ev) {
+            if (!M) return; ev.preventDefault();
+            var r = cv.getBoundingClientRect(), x = ev.clientX - r.left, y = ev.clientY - r.top;
+            var f = Math.exp(-ev.deltaY * (ev.deltaMode === 1 ? 0.05 : 0.0015)), ns = Math.max(0.2, Math.min(24, vista.s * f));
+            var gx = (x - vista.ox) / vista.s, gy = (y - vista.oy) / vista.s;
+            vista.s = ns; vista.ox = x - gx * ns; vista.oy = y - gy * ns; desenhar();
+        }, { passive: false });
+        document.querySelectorAll('[data-modo]').forEach(function (b) {
+            b.addEventListener('click', function () {
+                modo = b.dataset.modo;
+                document.querySelectorAll('[data-modo]').forEach(function (o) { o.setAttribute('aria-pressed', String(o === b)); });
+                desenhar();
+            });
+        });
+        document.querySelectorAll('[data-ir]').forEach(function (b) {
+            b.addEventListener('click', function () {
+                if (!M) return;
+                if (b.dataset.ir === 'todo') { enquadrar(); desenhar(); return; }
+                var v = b.dataset.ir.split(',').map(Number), r = caixa.getBoundingClientRect();
+                vista.s = r.width / (v[2] / M.cs);
+                vista.ox = r.width / 2 - (v[0] - M.x0) / M.cs * vista.s; vista.oy = r.height / 2 - (M.y1 - v[1]) / M.cs * vista.s;
+                desenhar();
+            });
+        });
+        $('sortear').addEventListener('click', sortear);
+        new ResizeObserver(function () { if (!M) return; tamanho(); desenhar(); }).observe(caixa);
+
+        // Ao trocar de língua: o que é escrito à mão volta a ser escrito.
+        window.addEventListener('idiomamudou', function () { escreverTecnica(); escreverEstatisticas(); escreverSorteio(); escreverSonda(); desenhar(); });
+        escreverTecnica();
+
+        var imagem = function (src) { return new Promise(function (ok, falha) { var i = new Image(); i.onload = function () { ok(i); }; i.onerror = function () { falha(new Error(src)); }; i.src = src; }); };
+        var alturas = function (i) {
+            var c = document.createElement('canvas'); c.width = i.naturalWidth; c.height = i.naturalHeight;
+            var g = c.getContext('2d', { willReadFrequently: true }); g.drawImage(i, 0, 0);
+            var d = g.getImageData(0, 0, c.width, c.height).data, out = new Uint16Array(c.width * c.height);
+            for (var k = 0; k < out.length; k++) out[k] = (d[k * 4] << 8) | d[k * 4 + 1];
+            return out;
+        };
+        var confere = function (arr, amostra) { return amostra.every(function (x) { return arr[x[0]] === x[1]; }); };
+        Promise.all([fetch(DADOS + 'meta.json').then(function (r) { return r.json(); }), imagem(DADOS + 'dgt_mds.png'), imagem(DADOS + 'drone.png'), imagem(DADOS + 'drone_foto.jpg'), imagem(DADOS + 'dgt_relevo.jpg')])
+            .then(function (v) {
+                var a = alturas(v[1]), b = alturas(v[2]);
+                // Se o navegador mexer nas cores das imagens, as alturas deixam de ser as medidas: melhor não mostrar nada.
+                if (!confere(a, v[0].amostra.dgt_mds) || !confere(b, v[0].amostra.drone)) throw new Error('alturas alteradas');
+                M = v[0]; MDS = a; DRN = b; fotoDrone = v[3]; relevoDgt = v[4];
+                fazerDiferenca(); calcularEstatisticas(); escreverEstatisticas(); escreverTecnica();
+                $('a-carregar').remove(); $('sortear').disabled = false;
+                tamanho(); enquadrar(); desenhar();
+                detalhes = (M.detalhe || []).map(function (d) { return Object.assign({}, d); });
+                detalhes.forEach(function (d) { imagem(DADOS + d.f).then(function (i) { d.img = i; desenhar(); }).catch(function () {}); });
+            })
+            .catch(function () {
+                var el = $('a-carregar'); el.removeAttribute('data-i18n'); el.textContent = t('cmp.erro');
+            });
+    })();
+
+    /* O mesmo botão de língua das outras páginas: quem chega aqui por um
+       endereço directo também consegue trocar. */
+    (function () {
+        if (!window.Idiomas) return;
+
+        var botao = document.getElementById('idioma-botao');
+        var menu = document.getElementById('idioma-menu');
+        var fechar = menu.querySelector('.menu-fechar');
+        var nome = document.getElementById('idioma-nome');
+
+        function mostrarNome() {
+            var actual = window.Idiomas.atual();
+            window.Idiomas.IDIOMAS.forEach(function (idioma) {
+                if (idioma.codigo === actual) nome.textContent = idioma.nome;
+            });
+            var escolhida = document.getElementById('idioma-' + actual);
+            if (escolhida) escolhida.checked = true;
+        }
+
+        document.querySelectorAll('input[name="idioma"]').forEach(function (entrada) {
+            entrada.addEventListener('change', function (e) {
+                window.Idiomas.definir(e.target.value);
+                menu.classList.remove('open');
+                mostrarNome();
+            });
+        });
+
+        botao.addEventListener('click', function (e) {
+            e.stopPropagation();
+            menu.classList.toggle('open');
+        });
+
+        fechar.addEventListener('click', function (e) {
+            e.stopPropagation();
+            menu.classList.remove('open');
+        });
+
+        document.addEventListener('click', function (e) {
+            if (!botao.contains(e.target) && !menu.contains(e.target)) {
+                menu.classList.remove('open');
+            }
+        });
+
+        mostrarNome();
+    })();
+    </script>
+</body>
+</html>
