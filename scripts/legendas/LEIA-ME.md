@@ -1,7 +1,7 @@
 # Legendas dos vídeos
 
 As legendas que o site mostra vivem em `public/legendas/<vídeo>/<língua>.vtt`
-(português, inglês e espanhol; em Kriolu mostra-se a portuguesa). São texto
+(português, inglês, espanhol e Kriolu). São texto
 simples: **para corrigir uma palavra, edita-se o `.vtt` diretamente** e
 sobe-se o número `VERSAO` em `public/legendas.js`, para os navegadores não
 ficarem com a antiga.
@@ -27,7 +27,11 @@ remontado.
    de 42 caracteres, até ~17 caracteres por segundo, cortes nos fins de
    frase e nunca depois de "a", "de", "para"…
 4. **Tradução** legenda a legenda (`dados/tr/`, `i|inglês|espanhol`), com os
-   mesmos tempos; `ajustar.py` guarda os acertos finais.
+   mesmos tempos; `ajustar.py` guarda os acertos finais. O **Kriolu** (novembro
+   de 2026) está à parte, em `dados/kea/` (`i|kriolu`): Kriolu de Santiago,
+   escrito em ALUPEC, traduzido das legendas portuguesas. Onde o Carlos fala
+   Kriolu, volta a ficar em Kriolu ("es ben, es rumba", "pista"). Ainda não
+   foi revisto por quem fale Kriolu; vale a pena pedir essa revisão.
 5. **Ficheiros finais** (`gerar_vtt.py <pasta public/legendas>`): parte cada
    legenda em linhas e avisa do que passar das regras.
 

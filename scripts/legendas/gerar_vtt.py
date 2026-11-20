@@ -1,5 +1,6 @@
-"""Write the WebVTT files: dados/cues/<nome>.json (pt timing + text) and
-dados/tr/<nome>.txt ("i|en|es") -> <site>/public/legendas/<nome>/{pt,en,es}.vtt
+"""Write the WebVTT files: dados/cues/<nome>.json (pt timing + text),
+dados/tr/<nome>.txt ("i|en|es") and, when present, dados/kea/<nome>.txt
+("i|kea") -> <site>/public/legendas/<nome>/{pt,en,es,kea}.vtt
 
 Each cue is broken into at most two lines of at most 42 characters, at the
 best place: after punctuation, never after an article/preposition, with the
@@ -14,6 +15,7 @@ import sys
 AQUI = os.path.dirname(os.path.abspath(__file__))
 CUES = os.path.join(AQUI, 'dados', 'cues')
 TR = os.path.join(AQUI, 'dados', 'tr')
+KEA = os.path.join(AQUI, 'dados', 'kea')
 SITE = sys.argv[1]  # .../public/legendas
 
 MAX_LINHA = 42
@@ -25,6 +27,8 @@ este esta esse essa aquele aquela muito muita mais tão até sobre entre é são
 this these those is are was were be very more so not no'''.split()),
     'es': set('''el la los las un una unos unas de del al a en con por para y o pero que si como su sus mi mis tu tus
 nuestro nuestra nuestros nuestras este esta ese esa lo le les se me te nos os muy más es son'''.split()),
+    'kea': set('''un di na pa ku sen i o ma ki si sima nha bu si nos ses kel kes es ta sta ka é nu N e
+txeu más ti riba entri'''.split()),
 }
 
 
@@ -33,6 +37,7 @@ INICIOS = {
     'pt': set('para e que porque mas ou se quando como com sem de do da em no na por pelo pela onde nem até'.split()),
     'en': set('and but or because so that to for with without when if where who which of in on at by from'.split()),
     'es': set('y pero o porque que para con sin cuando como si de del en por donde ni hasta'.split()),
+    'kea': set('i ma o pamodi ki pa ku sen ora si sima di na undi nen ti'.split()),
 }
 
 
@@ -85,14 +90,26 @@ def main():
             i, en, es = linha.split('|')
             textos['en'][int(i)] = en.strip()
             textos['es'][int(i)] = es.strip()
-        faltam = [i for i in range(len(cues)) if textos['en'][i] is None or textos['es'][i] is None]
+        linguas = ['pt', 'en', 'es']
+        # Kriolu, quando houver: dados/kea/<nome>.txt, uma legenda por linha, "i|texto".
+        kea = os.path.join(KEA, nome + '.txt')
+        if os.path.exists(kea):
+            textos['kea'] = [None] * len(cues)
+            for linha in open(kea, encoding='utf-8'):
+                linha = linha.rstrip('\n')
+                if not linha.strip():
+                    continue
+                i, texto = linha.split('|', 1)
+                textos['kea'][int(i)] = texto.strip()
+            linguas.append('kea')
+        faltam = [(l, i) for l in linguas[1:] for i in range(len(cues)) if textos[l][i] is None]
         if faltam:
             print('FALTA TRADUÇÃO', nome, faltam)
             problemas += 1
             continue
         pasta = os.path.join(SITE, nome)
         os.makedirs(pasta, exist_ok=True)
-        for lingua in ('pt', 'en', 'es'):
+        for lingua in linguas:
             saida = ['WEBVTT', '']
             for i, c in enumerate(cues):
                 t = textos[lingua][i]

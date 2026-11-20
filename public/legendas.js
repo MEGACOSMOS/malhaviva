@@ -27,11 +27,11 @@
     var VERSAO = 1;
 
     var CHAVE = 'legendas';
-    // As línguas em que há legendas. Em Kriolu vê-se a portuguesa: quem
-    // fala Kriolu cá lê português, e uma tradução para Kriolu fica para
-    // quando houver quem a reveja. Uma língua nova é só juntá-la aqui,
-    // com os ficheiros ao pé dos outros.
-    var LINGUAS = ['pt', 'en', 'es'];
+    // As línguas em que há legendas. O Kriolu (kea) é o de Santiago, em
+    // ALUPEC, traduzido das legendas portuguesas (ver
+    // scripts/legendas/dados/kea) e ainda por rever por quem o fale. Uma
+    // língua nova é só juntá-la aqui, com os ficheiros ao pé dos outros.
+    var LINGUAS = ['pt', 'en', 'es', 'kea'];
 
     // O desenho do botão: um ecrã com duas letras C, de traço quadrado como
     // os outros ícones. Desligadas, leva um risco por cima.
