@@ -8,8 +8,8 @@
     <script src="/icone.js?v=1" defer></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title data-i18n-titulo="cmp.titulo">Drone e LiDAR da DGT — Malha Viva</title>
-    <meta name="description" content="O modelo 3D do Bairro de Penajóia feito com drone, comparado à vista, ponto a ponto e em números com o LiDAR oficial da Direção-Geral do Território.">
-    <script src="/idiomas.js?v=62"></script>
+    <meta name="description" content="O modelo 3D do Bairro de Penajóia feito com drone, comparado à vista, ponto a ponto e em números com o LiDAR oficial da Direção-Geral do Território, e como se chegou a cada resultado.">
+    <script src="/idiomas.js?v=63"></script>
     <script src="/contar.js?v=1"></script>
     <script src="/logotipo.js?v=1"></script>
     <script src="/comando-paginas.js?v=7" defer></script>
@@ -327,6 +327,9 @@
         .colunas p { color: var(--color-text-muted); font-size: 0.85rem; margin-top: 10px; }
         .colunas code { font-family: inherit; color: #fff; }
         svg.histograma text { fill: rgba(255,255,255,.55); font: 10px 'Liberation Mono', monospace; }
+        .metodos { margin-top: 16px; display: grid; gap: 4px; }
+        .metodos dt { font-size: 0.8rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; margin-top: 14px; }
+        .metodos dd { margin: 0; color: var(--color-text-muted); font-size: 0.85rem; line-height: 1.6; }
         .nuvens { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; }
         .nuvem { margin: 0; min-width: 0; }
         .nuvem canvas { display: block; width: 100%; aspect-ratio: 1 / 1; max-height: 70vh; border: 2.5px solid var(--color-fio); background: #000; cursor: grab; touch-action: none; }
@@ -422,10 +425,6 @@
             </div>
             <div class="grupo perto" role="group" data-i18n-aria="cmp.verPerto" aria-label="Ver de perto">
                 <button type="button" data-ir="todo" data-i18n="cmp.bairro">Bairro inteiro</button>
-                <button type="button" data-ir="-91423.3,-110115.9,70" data-i18n="cmp.novas1">Casas novas 1</button>
-                <button type="button" data-ir="-91403.3,-110158.9,70" data-i18n="cmp.novas2">Casas novas 2</button>
-                <button type="button" data-ir="-91363.8,-110318.9,70" data-i18n="cmp.novas3">Casas novas 3</button>
-                <button type="button" data-ir="-91300,-110250,160" data-i18n="cmp.centro">Centro do bairro</button>
             </div>
             <div class="mapa" id="caixa-mapa">
                 <canvas id="mapa" role="img" data-i18n-aria="cmp.mapaAria" aria-label="Mapa do bairro com a fotografia do drone e o relevo do LiDAR"></canvas>
@@ -444,6 +443,7 @@
                     <button type="button" data-vista="cima" aria-pressed="false" data-i18n="cmp.vCima">De cima</button>
                     <button type="button" data-vista="perspetiva" aria-pressed="true" data-i18n="cmp.vPerspetiva">Em perspetiva</button>
                     <button type="button" data-vista="lado" aria-pressed="false" data-i18n="cmp.vLado">De lado</button>
+                    <button type="button" id="girar" aria-pressed="true">Parar</button>
                 </div>
             </div>
             <p class="intro ler" style="margin:0 0 12px" data-i18n="cmp.pontosIntro">O mesmo quadrado de 24 × 24 m nas duas medições, ponto a ponto.</p>
@@ -471,12 +471,25 @@
             <h2 id="t-numeros" data-i18n="cmp.emNumeros" style="margin-bottom:12px">Em números</h2>
             <div class="quadro tecnica">
                 <table>
-                    <thead><tr><th data-i18n="cmp.criterio">Critério</th><th data-i18n="cmp.colDrone">Drone (Malha Viva)</th><th data-i18n="cmp.colDgt">LiDAR DGT</th><th data-i18n="cmp.melhor">Melhor</th></tr></thead>
+                    <thead><tr><th data-i18n="cmp.criterio">Critério</th><th data-i18n="cmp.colDrone">Drone (Malha Viva)</th><th data-i18n="cmp.colDgt">LiDAR DGT</th></tr></thead>
                     <tbody id="tecnica"></tbody>
                 </table>
             </div>
-            <p class="nota ler" data-i18n="cmp.notaTec">O drone ganha em atualidade, fachadas, cor e densidade de pontos.</p>
-            <p class="nota ler" data-i18n="cmp.fontes"></p>
+        </section>
+
+        <section aria-labelledby="t-como" class="ler">
+            <h2 id="t-como" data-i18n="cmp.comoTitulo">Como se chegou aos resultados</h2>
+            <p class="intro" data-i18n="cmp.comoIntro"></p>
+            <dl class="metodos">
+                <dt data-i18n="cmp.ladoALado">Lado a lado</dt><dd data-i18n="cmp.mMapa"></dd>
+                <dt data-i18n="cmp.pontosTitulo">Qualidade dos pontos</dt><dd data-i18n="cmp.mPontos"></dd>
+                <dt data-i18n="cmp.r1">Data</dt><dd data-i18n="cmp.mData"></dd>
+                <dt data-i18n="cmp.r3">Construção nova</dt><dd data-i18n="cmp.mNovas"></dd>
+                <dt data-i18n="cmp.r4">Pontos nas fachadas</dt><dd data-i18n="cmp.mFachadas"></dd>
+                <dt data-i18n="cmp.r5">Pontos por m²</dt><dd data-i18n="cmp.mDensidade"></dd>
+                <dt data-i18n="cmp.r6">Resolução da cor</dt><dd data-i18n="cmp.mCor"></dd>
+            </dl>
+            <p class="nota" data-i18n="cmp.fontes"></p>
         </section>
     </main>
 
@@ -642,10 +655,15 @@
         }
 
         function pintarNuvem(tela, nuvem) {
-            var c = tela.cv, d = window.devicePixelRatio || 1, r = c.getBoundingClientRect();
+            var c = tela.cv, d = Math.min(2, window.devicePixelRatio || 1), r = c.getBoundingClientRect();
             var W = Math.max(1, Math.round(r.width * d)), H = Math.max(1, Math.round(r.height * d));
-            if (c.width !== W || c.height !== H) { c.width = W; c.height = H; }
-            var g = c.getContext('2d'), im = g.createImageData(W, H), px = im.data, prof = new Float32Array(W * H).fill(1e9);
+            if (c.width !== W || c.height !== H || !tela.im) {
+                c.width = W; c.height = H;
+                tela.g = c.getContext('2d'); tela.im = tela.g.createImageData(W, H); tela.prof = new Float32Array(W * H);
+            }
+            // As mesmas folhas de imagem a cada volta, para a rotação não engasgar.
+            var g = tela.g, im = tela.im, px = im.data, prof = tela.prof;
+            px.fill(0); prof.fill(1e9);
             for (var k = 3; k < px.length; k += 4) px[k] = 255;
             if (nuvem) {
                 var ca = Math.cos(olhar.az), sa = Math.sin(olhar.az), ce = Math.cos(olhar.el), se = Math.sin(olhar.el);
@@ -702,11 +720,34 @@
         });
         var semVista = function () { document.querySelectorAll('[data-vista]').forEach(function (o) { o.setAttribute('aria-pressed', 'false'); }); };
 
+        // A rotação sozinha: uma volta em cerca de 25 segundos. Pára enquanto
+        // alguém roda à mão, quando a secção sai do ecrã e com o botão; quem
+        // pediu ao sistema menos movimento começa com ela parada.
+        var girar = !(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+        var aRodarAMao = 0, aVista = true, antes = 0;
+        var botaoGirar = $('girar');
+        function escreverGirar() {
+            botaoGirar.setAttribute('aria-pressed', String(girar));
+            botaoGirar.textContent = t(girar ? 'cmp.parar' : 'cmp.girar');
+        }
+        botaoGirar.addEventListener('click', function () { girar = !girar; escreverGirar(); if (girar) semVista(); });
+        escreverGirar();
+        new IntersectionObserver(function (e) { aVista = e[0].isIntersecting; }).observe($('nuvem-drone'));
+        (function volta(agora) {
+            var dt = antes ? Math.min(0.1, (agora - antes) / 1000) : 0; antes = agora;
+            if (girar && aVista && !aRodarAMao && !document.hidden && nuvens[sitio]) {
+                olhar.az += dt * (2 * Math.PI / 25);
+                pintar();
+            }
+            requestAnimationFrame(volta);
+        })(0);
+
         // Rodar as duas nuvens juntas: arrastar roda, a roda e dois dedos aproximam.
         telas.forEach(function (tl) {
             var dd = new Map(), ultimo = null, pz = null;
             tl.cv.addEventListener('pointerdown', function (ev) {
                 try { tl.cv.setPointerCapture(ev.pointerId); } catch (e) {}
+                if (!dd.size) aRodarAMao++;
                 dd.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
                 if (dd.size === 2) { var ps = Array.from(dd.values()); pz = { d: Math.hypot(ps[0].x - ps[1].x, ps[0].y - ps[1].y), z: olhar.zoom }; ultimo = null; }
                 else ultimo = { x: ev.clientX, y: ev.clientY };
@@ -720,7 +761,11 @@
                 olhar.el = Math.max(0.02, Math.min(Math.PI / 2 - 0.001, olhar.el + (ev.clientY - ultimo.y) * 0.008));
                 ultimo = { x: ev.clientX, y: ev.clientY }; semVista(); pintar();
             });
-            var fim = function (ev) { dd.delete(ev.pointerId); if (dd.size < 2) pz = null; ultimo = null; };
+            var fim = function (ev) {
+                if (!dd.has(ev.pointerId)) return;
+                dd.delete(ev.pointerId); if (dd.size < 2) pz = null; ultimo = null;
+                if (!dd.size) aRodarAMao = Math.max(0, aRodarAMao - 1);
+            };
             tl.cv.addEventListener('pointerup', fim); tl.cv.addEventListener('pointercancel', fim);
             tl.cv.addEventListener('wheel', function (ev) {
                 ev.preventDefault();
@@ -731,20 +776,19 @@
 
         /* ─── Em números ─── */
         function escreverTecnica() {
-            var D = '<span class="pilula drone">Drone</span>';
             var linhas = [
-                [t('cmp.r1'), t('cmp.r1d'), t('cmp.r1l'), D + t('cmp.r1n')],
-                [t('cmp.r2'), t('cmp.r2d'), t('cmp.r2l'), '—'],
-                [t('cmp.r3'), t('cmp.r3d'), t('cmp.r3l'), D],
-                [t('cmp.r4'), fmt(6, 1), fmt(0.5, 1), D + '12×'],
-                [t('cmp.r5'), '75 / 24', fmt(22.8, 1), D],
-                [t('cmp.r6'), t('cmp.r6d'), t('cmp.r6l'), D + '~8×']
+                [t('cmp.r1'), t('cmp.r1d'), t('cmp.r1l')],
+                [t('cmp.r2'), t('cmp.r2d'), t('cmp.r2l')],
+                [t('cmp.r3'), t('cmp.r3d'), t('cmp.r3l')],
+                [t('cmp.r4'), fmt(6, 1), fmt(0.5, 1)],
+                [t('cmp.r5'), '75 / 24', fmt(22.8, 1)],
+                [t('cmp.r6'), t('cmp.r6d'), t('cmp.r6l')]
             ];
-            $('tecnica').innerHTML = linhas.map(function (l) { return '<tr><td>' + l[0] + '</td><td>' + l[1] + '</td><td>' + l[2] + '</td><td>' + l[3] + '</td></tr>'; }).join('');
+            $('tecnica').innerHTML = linhas.map(function (l) { return '<tr><td>' + l[0] + '</td><td>' + l[1] + '</td><td>' + l[2] + '</td></tr>'; }).join('');
         }
 
         // Ao trocar de língua: o que é escrito à mão volta a ser escrito.
-        window.addEventListener('idiomamudou', function () { escreverTecnica(); escreverPontos(); desenhar(); });
+        window.addEventListener('idiomamudou', function () { escreverTecnica(); escreverPontos(); escreverGirar(); desenhar(); });
         escreverTecnica();
 
         fetch(DADOS + 'pontos/pontos.json').then(function (r) { return r.json(); }).then(function (p) { PONTOS = p; mudarSitio(sitio); }).catch(function () { $('resumo-pontos').textContent = t('cmp.erro'); });
