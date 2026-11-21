@@ -38,6 +38,16 @@
 /splat_perf/*
   Cache-Control: public, max-age=86400, stale-while-revalidate=604800
 
+# O bairro em malha (ver bairro-malha.mjs). As peças vivem numa pasta com a
+# versão no nome e nunca mudam; o índice, que diz qual é a versão, confirma-se
+# sempre, para nunca se misturarem peças de duas versões.
+/malha/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/malha/malha.json
+  ! Cache-Control
+  Cache-Control: no-cache
+
 /videos/*
   Cache-Control: public, max-age=86400, stale-while-revalidate=604800
 

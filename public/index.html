@@ -5339,6 +5339,11 @@
                 var toque = (navigator.maxTouchPoints > 0) || (navigator.msMaxTouchPoints > 0);
                 if (telemovel || (ecraPequeno && toque)) return 'low';
                 var nucleos = navigator.hardwareConcurrency || 4;
+                // Um computador muito fraco — dois núcleos, ou dois gigas
+                // de memória ou menos — fica com o bairro em malha, como
+                // os telemóveis.
+                var memoriaDoAparelho = navigator.deviceMemory || 8;
+                if (nucleos <= 2 || memoriaDoAparelho <= 2) return 'low';
                 return nucleos <= 6 ? 'med' : 'high';
             }
 
@@ -5368,7 +5373,34 @@
                 if (motorVR) motorVR.setAttribute('backend', 'webgl2');
             }
 
-            if (nivel !== 'high' && nivel !== 'max') {
+            // No nível Baixo — telemóveis, computadores muito fracos, quem
+            // o escolhe, e o modo de poupança — o bairro deixa de ser de
+            // manchas e passa a ser a malha poligonal (ver bairro-malha.mjs):
+            // o mesmo voo, no mesmo sítio e com o mesmo contorno, mas cada
+            // ponto do ecrã é pintado uma vez só. As manchas nem chegam a
+            // ser pedidas. O índice delas continua a servir para medir o
+            // contorno do mapa, onde a câmara pode andar.
+            if (nivel === 'low') {
+                window.bairroEmMalha = true;
+                window.indiceDoMapa = 'splat_perf/lod-meta.json';
+                var manchas = document.querySelector('pc-entity[name="gsplat-scene"] pc-gsplat');
+                if (manchas) manchas.remove();
+                var ficheiroDasManchas = document.getElementById('splat-scene');
+                if (ficheiroDasManchas) ficheiroDasManchas.remove();
+                var motorDaMalha = document.getElementById('main-app');
+                if (motorDaMalha) {
+                    // Arestas de casas e de telhados serrilham numa malha
+                    // (as manchas são macias de natureza): aqui vale a pena
+                    // o anti-serrilhado, que nos telemóveis sai barato.
+                    // Em poupança, não.
+                    if (!poupanca) motorDaMalha.setAttribute('antialias', 'true');
+                    var pontos = Math.max(1, window.innerWidth * window.innerHeight);
+                    var dpr = window.devicePixelRatio || 1;
+                    var densidadeDaMalha = Math.min(poupanca ? 1 : 1.5, dpr,
+                        Math.sqrt((poupanca ? 500000 : 1600000) / pontos));
+                    motorDaMalha.setAttribute('max-pixel-ratio', densidadeDaMalha.toFixed(3));
+                }
+            } else if (nivel !== 'high' && nivel !== 'max') {
                 var motor = document.getElementById('main-app');
                 if (motor) {
                     // Um ponto do modelo por cada ponto do ecrã. Num
@@ -5403,6 +5435,7 @@
         import { criarModoVR } from './vr.mjs?v=16';
         import { ligarCeu } from './ceu.mjs?v=16';
         import { ligarEdificios } from './edificios.mjs?v=6';
+        import { ligarBairroEmMalha } from './bairro-malha.mjs?v=1';
         import { ligarComando } from './comando.mjs?v=13';
 
         // O código do site chegou e está a correr: o primeiro sinal de vida
@@ -5429,7 +5462,8 @@
          */
         async function aplicarLimitesDoMapa(app) {
             try {
-                const src = document.getElementById('splat-scene').getAttribute('src');
+                const ficheiroDasManchas = document.getElementById('splat-scene');
+                const src = ficheiroDasManchas ? ficheiroDasManchas.getAttribute('src') : window.indiceDoMapa;
                 const meta = await (await fetch(src)).json();
                 if (!meta || !meta.tree) return;
 
@@ -5682,8 +5716,11 @@ void modifySplatColor(vec3 center, inout vec4 color) {
             
             const isMobile = isMobileUA || (isSmallScreen && isTouch);
             if (isMobile) return 'low';
-            
+
             const cores = navigator.hardwareConcurrency || 4;
+            // Igual ao `detetarNivel` de antes do motor: computadores muito
+            // fracos ficam com o bairro em malha.
+            if (cores <= 2 || (navigator.deviceMemory || 8) <= 2) return 'low';
             if (cores <= 6) return 'med';
             
             return 'high';
@@ -5830,6 +5867,11 @@ void modifySplatColor(vec3 center, inout vec4 color) {
                         g.foveationCenter = 0.4;
                         g.foveationStrength = 10;
                     }
+                } else if (window.bairroEmMalha && savedQuality === 'auto' && !window.modoDePoupanca) {
+                    // Com o bairro em malha não há detalhe de manchas para
+                    // afinar, mas a densidade da imagem afina-se na mesma.
+                    window.distanciaDoDetalhe = 70;
+                    afinarPelaFluidez(app, window.distanciaDoDetalhe);
                 }
             } catch(e) {
                 console.warn("Performance setup error:", e);
@@ -6460,6 +6502,24 @@ void modifySplatColor(vec3 center, inout vec4 color) {
             const SOSSEGO = 400;
             const IMAGENS_DE_SOSSEGO = 10;
 
+            // O bairro em malha chega de uma vez, em peças contadas: está
+            // lá quando chegaram todas e já passaram pelo ecrã umas
+            // quantas imagens (as texturas sobem para a placa gráfica na
+            // primeira vez que se desenham).
+            if (window.bairroMalha) {
+                return window.bairroMalha.pronto.catch((erro) => {
+                    console.warn('O bairro em malha não chegou:', erro);
+                }).then(() => new Promise((resolve) => {
+                    let imagens = 0;
+                    const contar = () => {
+                        if (++imagens < IMAGENS_DE_SOSSEGO) return;
+                        app.off('frameend', contar);
+                        resolve();
+                    };
+                    app.on('frameend', contar);
+                }));
+            }
+
             // O índice não conta: ele é o mapa dos bocados, não é bairro.
             const eBocadoDoBairro = (asset) => !!asset &&
                 asset.type === 'gsplat' &&
@@ -6527,7 +6587,20 @@ void modifySplatColor(vec3 center, inout vec4 color) {
             // ecrã de espera acende-se pelo que deles já chegou, medido a
             // cada imagem desenhada enquanto está à vista — também quando
             // volta, ao fechar um vídeo 360º, e aí começa a conta de novo.
-            const cargaDoBairro = medirACargaDoBairro(app);
+            // No nível Baixo o bairro é a malha (ver o script antes do
+            // motor): começa a chegar já, e é pelos bytes dela que o
+            // logótipo do ecrã de espera se acende.
+            if (window.bairroEmMalha) {
+                window.bairroMalha = ligarBairroEmMalha(app, {
+                    anisotropia: window.modoDePoupanca ? 1 : 4
+                });
+                window.bairroMalha.primeira.then(() => {
+                    if (window.arranque) window.arranque.marcar('bairro');
+                });
+            }
+            const cargaDoBairro = window.bairroMalha
+                ? { medir: window.bairroMalha.medir, recomecar() {} }
+                : medirACargaDoBairro(app);
             const ecraDeEspera = document.getElementById('loading-overlay');
             let ecraDeEsperaAVista = true;
             app.on('frameend', () => {
@@ -6596,6 +6669,14 @@ void modifySplatColor(vec3 center, inout vec4 color) {
                 if (isHigh) {
                     const menorLado = Math.min(screen.width, screen.height) || 1080;
                     densidade = Math.min(2160 / menorLado, window.devicePixelRatio || 1, 2);
+                } else if (isLow && window.bairroEmMalha) {
+                    // A malha pinta cada ponto uma vez só: aguenta mais
+                    // pontos do que as manchas (a mesma conta que o script
+                    // de antes do motor).
+                    const pontosDoEcra = Math.max(1, window.innerWidth * window.innerHeight);
+                    const poupar = !!window.modoDePoupanca;
+                    densidade = Math.min(poupar ? 1 : 1.5, window.devicePixelRatio || 1,
+                        Math.sqrt((poupar ? 500000 : 1600000) / pontosDoEcra));
                 } else if (isLow) {
                     const pontosDoEcra = Math.max(1, window.innerWidth * window.innerHeight);
                     const TECTO_DE_PONTOS = window.modoDePoupanca ? 500000 : 900000;
