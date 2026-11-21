@@ -34,13 +34,36 @@ Khronos, a partir da raiz do site:
 python scripts/malha/1_contorno.py          # contorno do splat do site
 python scripts/malha/2_recortar.py 2.5      # peças do MipMap, recortadas
 python scripts/malha/3_atlas.py 2.5         # atlas de texturas + cena + Draco
-python scripts/malha/4_empacotar.py v3      # public/malha/v3/*.glb + malha.json
+python scripts/malha/4_arvores.py v4        # árvores em manchas: public/malha/v4/arvores
+python scripts/malha/5_empacotar.py v4      # malha sem copas: public/malha/v4/*.glb + malha.json
 ```
 
 Os intermédios (pesados) ficam em `E:/Malha Viva - trabalho/malha`
 (`MALHA_TRABALHO` muda-o; `MIPMAP_RESULTADO` muda onde está o MipMap).
-Ao refazer, dê-se uma versão nova no passo 4 (v2, v3…) e apague-se a pasta
+Ao refazer, dê-se uma versão nova nos passos 4 e 5 (a mesma nos dois) e apague-se a pasta
 da antiga: as peças são guardadas pelos navegadores um ano, o índice não.
+
+## As árvores
+
+Uma copa de árvore não tem pele: numa malha vira uma bolha verde. Por isso
+as árvores saem da malha e passam a ser **manchas**, tiradas do splat do
+próprio site (passo 4), desenhadas por cima da malha. O resto continua malha.
+
+- **Onde há árvores** (grelha de meio metro): mais de 1,5 m acima do chão e
+  verde. O cimo é o da malha; o chão é o cimo "aberto" com um disco de 30 m
+  (tira casas e árvores) e esbatido; o verde é o índice 2G−R−B das manchas
+  do cimo. Limpa-se (nada abaixo de 4 m²) e alarga-se 1,5 m para apanhar a
+  orla da copa. Fica uma imagem para ver em `<trabalho>/arvores/arvores.png`.
+- **A malha** perde os triângulos dessa zona que estão mais de 0,8 m acima
+  do chão (passo 5); o chão por baixo fica.
+- **As manchas** são as dessa zona, do chão (−0,5 m) até 1,5 m acima do
+  cimo, sem as soltas maiores do que 1,5 m, do **nível 1** do splat (um
+  décimo do mais fino). O nível 0 fica quase igual ao bairro no computador,
+  mas são dez vezes mais manchas: de mais para um telemóvel. Ensaio de
+  2026-11-21 no centro do bairro: nível 1 = 36 mil manchas, 0,5 MB; nível 0
+  = 325 mil, 4,2 MB.
+- Ficam de fora: arbustos baixos e as encostas de mato (abaixo de 1,5 m), e
+  alguma árvore pequena que escape.
 
 ## Escolhas (mudáveis)
 

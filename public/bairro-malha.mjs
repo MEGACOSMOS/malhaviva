@@ -15,6 +15,11 @@
  * entidade que as manchas ("gsplat-scene"), tudo o que esconde ou mostra o
  * bairro — ao abrir um vídeo 360º, por exemplo — esconde e mostra a malha.
  *
+ * As árvores não vêm na malha: uma copa não tem pele, e numa malha vira uma
+ * bolha. Foram-lhe tiradas as copas, e as árvores vêm em manchas — tiradas
+ * do splat do site, só elas, num nível de pormenor leve — desenhadas por
+ * cima da malha.
+ *
  * Como foi feita: scripts/malha/LEIA-ME.md.
  */
 import { Asset, Entity, Layer, WasmModule } from 'playcanvas';
@@ -125,11 +130,42 @@ export function ligarBairroEmMalha(app, opcoes = {}) {
     }
 
     const pronto = lerIndice().then((indice) => {
-        total = indice.pecas.reduce((s, p) => s + p.bytes, 0);
-        indice.pecas.forEach((p) => chegou.set(p.ficheiro, 0));
+        const todas = indice.arvores ? indice.pecas.concat([indice.arvores]) : indice.pecas;
+        total = todas.reduce((s, p) => s + p.bytes, 0);
+        todas.forEach((p) => chegou.set(p.ficheiro, 0));
         indiceLido = true;
-        return Promise.all(indice.pecas.map((p) => trazer(p)));
+        const pedidos = indice.pecas.map((p) => trazer(p));
+        if (indice.arvores) pedidos.push(trazerArvores(indice.arvores));
+        return Promise.all(pedidos);
     });
+
+    // As árvores, em manchas, por cima da malha sem copas. As manchas estão
+    // nas coordenadas do splat do bairro, por isso ficam penduradas da
+    // entidade dele tal como ela está (virada).
+    function trazerArvores(peca, tentativa = 0) {
+        return new Promise((resolve) => {
+            const asset = new Asset('bairro-malha-arvores', 'gsplat', { url: PASTA + peca.ficheiro });
+            asset.once('load', () => {
+                chegou.set(peca.ficheiro, peca.bytes);
+                const arvores = new Entity('bairro-malha-arvores');
+                arvores.addComponent('gsplat', { asset });
+                (bairro || app.root).addChild(arvores);
+                resolve();
+            });
+            asset.once('error', (erro) => {
+                app.assets.remove(asset);
+                if (tentativa + 1 < TENTATIVAS) {
+                    pausa(tentativa).then(() => trazerArvores(peca, tentativa + 1)).then(resolve);
+                    return;
+                }
+                console.warn('As árvores do bairro em malha não chegaram:', erro);
+                chegou.set(peca.ficheiro, peca.bytes);
+                resolve();
+            });
+            app.assets.add(asset);
+            app.assets.load(asset);
+        });
+    }
 
     function trazer(peca, tentativa = 0) {
         return new Promise((resolve) => {

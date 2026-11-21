@@ -4,8 +4,8 @@
  "formato": "ktx2",
  "pecas": [
   {
-   "ficheiro": "v2/bairro_00.glb",
-   "bytes": 910076,
+   "ficheiro": "v3/bairro_00.glb",
+   "bytes": 873780,
    "min": [
     -221.09176635742188,
     -24.549766540527344,
@@ -16,11 +16,11 @@
     1.2874374389648438,
     279.9952087402344
    ],
-   "triangulos": 43784
+   "triangulos": 36132
   },
   {
-   "ficheiro": "v2/bairro_01.glb",
-   "bytes": 1035560,
+   "ficheiro": "v3/bairro_01.glb",
+   "bytes": 988804,
    "min": [
     -221.09176635742188,
     -24.8291015625,
@@ -31,11 +31,11 @@
     8.162307739257812,
     130.32803344726562
    ],
-   "triangulos": 58688
+   "triangulos": 49376
   },
   {
-   "ficheiro": "v2/bairro_02.glb",
-   "bytes": 991336,
+   "ficheiro": "v3/bairro_02.glb",
+   "bytes": 945792,
    "min": [
     -118.47836303710938,
     -15.646728515625,
@@ -46,11 +46,11 @@
     10.633804321289062,
     254.3551788330078
    ],
-   "triangulos": 60686
+   "triangulos": 53987
   },
   {
-   "ficheiro": "v2/bairro_03.glb",
-   "bytes": 935408,
+   "ficheiro": "v3/bairro_03.glb",
+   "bytes": 871532,
    "min": [
     6.210333347320557,
     -8.644638061523438,
@@ -61,11 +61,11 @@
     4.160621643066406,
     235.67324829101562
    ],
-   "triangulos": 41083
+   "triangulos": 27967
   },
   {
-   "ficheiro": "v2/bairro_04.glb",
-   "bytes": 1171852,
+   "ficheiro": "v3/bairro_04.glb",
+   "bytes": 1095272,
    "min": [
     -18.84149169921875,
     -4.879253387451172,
@@ -76,11 +76,11 @@
     9.939682006835938,
     151.5
    ],
-   "triangulos": 72855
+   "triangulos": 60970
   },
   {
-   "ficheiro": "v2/bairro_05.glb",
-   "bytes": 1052712,
+   "ficheiro": "v3/bairro_05.glb",
+   "bytes": 1009592,
    "min": [
     6.210333347320557,
     -9.26272201538086,
@@ -91,11 +91,11 @@
     8.441291809082031,
     128.22952270507812
    ],
-   "triangulos": 51302
+   "triangulos": 44455
   },
   {
-   "ficheiro": "v2/bairro_06.glb",
-   "bytes": 988044,
+   "ficheiro": "v3/bairro_06.glb",
+   "bytes": 948396,
    "min": [
     131.0065155029297,
     -9.104129791259766,
@@ -106,11 +106,11 @@
     5.259498596191406,
     127.29191589355469
    ],
-   "triangulos": 44522
+   "triangulos": 40064
   },
   {
-   "ficheiro": "v2/bairro_07.glb",
-   "bytes": 746124,
+   "ficheiro": "v3/bairro_07.glb",
+   "bytes": 734444,
    "min": [
     -273.0,
     -27.22210693359375,
@@ -121,11 +121,11 @@
     -2.777935028076172,
     77.4673843383789
    ],
-   "triangulos": 22607
+   "triangulos": 20615
   },
   {
-   "ficheiro": "v2/bairro_08.glb",
-   "bytes": 956704,
+   "ficheiro": "v3/bairro_08.glb",
+   "bytes": 920556,
    "min": [
     -268.9988098144531,
     -31.95716094970703,
@@ -136,11 +136,11 @@
     -4.475345611572266,
     -30.37087631225586
    ],
-   "triangulos": 44997
+   "triangulos": 36494
   },
   {
-   "ficheiro": "v2/bairro_09.glb",
-   "bytes": 1103868,
+   "ficheiro": "v3/bairro_09.glb",
+   "bytes": 1059124,
    "min": [
     -216.6111297607422,
     -30.775665283203125,
@@ -151,11 +151,11 @@
     11.749359130859375,
     -50.95170211791992
    ],
-   "triangulos": 66292
+   "triangulos": 58328
   },
   {
-   "ficheiro": "v2/bairro_10.glb",
-   "bytes": 947924,
+   "ficheiro": "v3/bairro_10.glb",
+   "bytes": 892328,
    "min": [
     -251.0059356689453,
     -33.18952178955078,
@@ -166,11 +166,11 @@
     12.68157958984375,
     -88.42062377929688
    ],
-   "triangulos": 53208
+   "triangulos": 41306
   },
   {
-   "ficheiro": "v2/bairro_11.glb",
-   "bytes": 936208,
+   "ficheiro": "v3/bairro_11.glb",
+   "bytes": 900908,
    "min": [
     -249.99400329589844,
     -40.52619171142578,
@@ -181,11 +181,11 @@
     4.422508239746094,
     -216.4769744873047
    ],
-   "triangulos": 39617
+   "triangulos": 32006
   },
   {
-   "ficheiro": "v2/bairro_12.glb",
-   "bytes": 1038012,
+   "ficheiro": "v3/bairro_12.glb",
+   "bytes": 988604,
    "min": [
     -173.32041931152344,
     -17.54985809326172,
@@ -196,11 +196,11 @@
     14.068973541259766,
     -50.95170211791992
    ],
-   "triangulos": 60351
+   "triangulos": 50488
   },
   {
-   "ficheiro": "v2/bairro_13.glb",
-   "bytes": 720664,
+   "ficheiro": "v3/bairro_13.glb",
+   "bytes": 706928,
    "min": [
     6.210333347320557,
     -9.295913696289062,
@@ -211,7 +211,12 @@
     13.629302978515625,
     -51.786643981933594
    ],
-   "triangulos": 21585
+   "triangulos": 19778
   }
- ]
+ ],
+ "arvores": {
+  "ficheiro": "v3/arvores/meta.json",
+  "bytes": 3007708,
+  "manchas": 233385
+ }
 }
