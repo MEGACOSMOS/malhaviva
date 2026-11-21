@@ -11,9 +11,8 @@ estiver no sítio de origem). Com `webp` no lugar do formato vai em WebP,
 como na primeira versão (v1).
 
 Se o passo 4 já fez as árvores desta versão (public/malha/<versão>/arvores),
-tiram-se à malha as copas — os triângulos dentro da zona das árvores e mais
-de 0,8 m acima do chão; o chão por baixo fica — e o índice passa a apontar
-também para as manchas das árvores.
+as copas da malha são baixadas até ao chão (ver `sem_copas`) e o índice
+passa a apontar também para as manchas das árvores.
 
 Uso: python 5_empacotar.py <versão> [lado da textura] [G] [ktx2|webp]
 As peças ficam em public/malha/<versão>/ e o índice aponta para lá: uma
@@ -36,27 +35,48 @@ COM_ARVORES = os.path.exists(os.path.join(PASTA_ARVORES, "meta.json"))
 if COM_ARVORES:
     A = np.load(os.path.join(TRABALHO, "arvores", "arvores.npz"))
     A_R, A_X0, A_Z0 = float(A["R"]), float(A["X0"]), float(A["Z0"])
-    A_LARGO, A_DTM = A["largo"], A["dtm"]
+    A_LARGO, A_DTM, A_ARV = A["largo"], A["dtm"], A["arv"]
 
 
-def sem_copas(draco, ids):
-    """A geometria de um atlas sem os triângulos das copas. Devolve
-    (draco novo, ids dos atributos, triângulos, vértices, tirados)."""
+def sem_copas(draco, atlas):
+    """A geometria de um atlas com as copas das árvores baixadas até ao chão.
+
+    As copas não se apagam: a malha não tem chão debaixo delas (o drone não
+    o vê), e apagá-las deixava buracos para o vazio, que as manchas das
+    árvores, espaçadas, não chegam a tapar. Em vez disso, os vértices que só
+    pertencem a copas descem até um pouco abaixo do chão: a superfície fica
+    inteira, e debaixo das árvores fica a fotografia da copa vista de cima.
+
+    É copa um triângulo dentro da zona das árvores, com o centro mais de
+    0,8 m acima do chão e, na orla (fora do miolo), verde na fotografia — as
+    paredes e os telhados encostados às árvores ficam como estão.
+    Devolve (draco novo, ids dos atributos, triângulos, vértices, baixados)."""
     d = DracoPy.decode(draco)
     P = np.asarray(d.points, np.float64); F = np.asarray(d.faces, np.int64).reshape(-1, 3)
     UV = np.asarray(d.tex_coord, np.float64)
     c = P[F].mean(1)
     i = ((c[:, 0] - A_X0) / A_R).astype(int); j = ((c[:, 2] - A_Z0) / A_R).astype(int)
     ok = (i >= 0) & (i < A_LARGO.shape[1]) & (j >= 0) & (j < A_LARGO.shape[0])
-    fora = np.zeros(len(F), bool)
-    fora[ok] = A_LARGO[j[ok], i[ok]] & (c[ok, 1] > A_DTM[j[ok], i[ok]] + 0.8)
-    F = F[~fora]
-    usados, inv = np.unique(F, return_inverse=True)
-    F = inv.reshape(-1, 3); P = P[usados]; UV = UV[usados]
+    # Cor de cada triângulo na fotografia: a média dos três cantos e do meio.
+    lado = atlas.shape[0]
+    def cor(uv):
+        x = np.clip((uv[:, 0] * lado).astype(int), 0, lado - 1); y = np.clip((uv[:, 1] * lado).astype(int), 0, lado - 1)
+        return atlas[y, x].astype(np.float64)
+    rgb = (cor(UV[F[:, 0]]) + cor(UV[F[:, 1]]) + cor(UV[F[:, 2]]) + cor(UV[F].mean(1))) / 4
+    verde = (2 * rgb[:, 1] - rgb[:, 0] - rgb[:, 2]) / (rgb.sum(1) + 1e-6) > 0.03
+    copa = np.zeros(len(F), bool)
+    io, jo = i[ok], j[ok]
+    copa[ok] = A_LARGO[jo, io] & (c[ok, 1] > A_DTM[jo, io] + 0.8) & (A_ARV[jo, io] | verde[ok])
+    # Vértices só de copas (nenhum triângulo que fica os usa) descem ao chão.
+    fica = np.zeros(len(P), bool); fica[F[~copa].ravel()] = True
+    desce = np.zeros(len(P), bool); desce[F[copa].ravel()] = True; desce &= ~fica
+    vi = np.clip(((P[:, 0] - A_X0) / A_R).astype(int), 0, A_LARGO.shape[1] - 1)
+    vj = np.clip(((P[:, 2] - A_Z0) / A_R).astype(int), 0, A_LARGO.shape[0] - 1)
+    P[desce, 1] = np.minimum(P[desce, 1], A_DTM[vj[desce], vi[desce]] - 0.15)
     e = DracoPy.encode(P, F, quantization_bits=16, compression_level=7, tex_coord=UV, tex_coord_quantization_bits=14)
     dd = DracoPy.decode(e)
     novos = {x["attribute_type"]: x["unique_id"] for x in dd.attributes}
-    return e, {"POSITION": novos[0], "TEXCOORD_0": novos[3]}, len(np.asarray(dd.faces).reshape(-1, 3)), len(np.asarray(dd.points)), int(fora.sum())
+    return e, {"POSITION": novos[0], "TEXCOORD_0": novos[3]}, len(np.asarray(dd.faces).reshape(-1, 3)), len(np.asarray(dd.points)), int(copa.sum())
 
 
 def textura(im):
@@ -96,11 +116,11 @@ for i, mesh in enumerate(g["meshes"]):
     atributos = ext["attributes"]
     acc = [dict(g["accessors"][pr["indices"]]), dict(g["accessors"][pr["attributes"]["POSITION"]]),
            dict(g["accessors"][pr["attributes"]["TEXCOORD_0"]])]
-    if COM_ARVORES:
-        draco, atributos, nt, nv, tirados = sem_copas(draco, atributos)
-        acc[0]["count"] = nt * 3; acc[1]["count"] = nv; acc[2]["count"] = nv
-        print("  copas tiradas:", tirados)
     im = Image.open(os.path.join(TRAB, "atlas_%02d.png" % i))
+    if COM_ARVORES:
+        draco, atributos, nt, nv, baixados = sem_copas(draco, np.asarray(im.convert("RGB")))
+        acc[0]["count"] = nt * 3; acc[1]["count"] = nv; acc[2]["count"] = nv
+        print("  triângulos de copa baixados ao chão:", baixados)
     if im.size[0] != LADO:
         im = im.resize((LADO, LADO), Image.LANCZOS)
     imagem, tipo, extensao = textura(im)

@@ -54,10 +54,15 @@ próprio site (passo 4), desenhadas por cima da malha. O resto continua malha.
   (tira casas e árvores) e esbatido; o verde é o índice 2G−R−B das manchas
   do cimo. Limpa-se (nada abaixo de 4 m²) e alarga-se 1,5 m para apanhar a
   orla da copa. Fica uma imagem para ver em `<trabalho>/arvores/arvores.png`.
-- **A malha** perde os triângulos dessa zona que estão mais de 0,8 m acima
-  do chão (passo 5); o chão por baixo fica.
+- **A malha** não perde nada: as copas (triângulos dessa zona mais de 0,8 m
+  acima do chão e, na orla, verdes na fotografia) são **baixadas até ao
+  chão** (passo 5). Apagá-las deixava buracos — o drone não vê o chão
+  debaixo das árvores, por isso a malha não o tem — que as manchas, espaçadas,
+  não tapavam (primeira versão, v3, 2026-11-21). Assim, debaixo das árvores
+  fica a fotografia da copa vista de cima, e as paredes e telhados encostados
+  às árvores ficam como estão.
 - **As manchas** são as dessa zona, do chão (−0,5 m) até 1,5 m acima do
-  cimo, sem as soltas maiores do que 1,5 m, do **nível 1** do splat (um
+  cimo, sem as soltas maiores do que 1,5 m e, na orla, só as verdes, do **nível 1** do splat (um
   décimo do mais fino). O nível 0 fica quase igual ao bairro no computador,
   mas são dez vezes mais manchas: de mais para um telemóvel. Ensaio de
   2026-11-21 no centro do bairro: nível 1 = 36 mil manchas, 0,5 MB; nível 0

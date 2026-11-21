@@ -14,7 +14,7 @@ alarga-se 1,5 m, para apanhar a orla da copa.
 
 As manchas vêm do nível 1 do splat do site (public/splat/1_*, cerca de um
 décimo do nível mais fino): as de dentro da zona, do chão (−0,5 m) até 1,5 m
-acima do cimo, sem as soltas maiores do que 1,5 m. Com o nível 0 (argumento
+acima do cimo, sem as soltas maiores do que 1,5 m e, na orla, só as verdes. Com o nível 0 (argumento
 0) as árvores ficam quase iguais ao bairro no computador, mas são dez vezes
 mais manchas — de mais para um telemóvel.
 
@@ -117,7 +117,11 @@ sel = np.zeros(len(s["pos"]), bool)
 a, b = si[sok], sj[sok]
 cimo = np.where(np.isfinite(dsm[b, a]), dsm[b, a], dtm[b, a] + 30)
 sy = -s["pos"][sok, 1]
-sel[sok] = largo[b, a] & (sy > dtm[b, a] - 0.5) & (sy < cimo + 1.5) & (np.exp(s["esc"][sok].max(1)) < 1.5)
+# Na orla (fora do miolo) só as manchas verdes: as de um telhado ou de
+# uma parede encostada a uma árvore ficam na malha.
+cs = np.clip(0.5 + 0.2820948 * s["sh0"][sok], 0, 1)
+verde = (2 * cs[:, 1] - cs[:, 0] - cs[:, 2]) / (cs.sum(1) + 1e-6) > 0.0
+sel[sok] = largo[b, a] & (arv[b, a] | verde) & (sy > dtm[b, a] - 0.5) & (sy < cimo + 1.5) & (np.exp(s["esc"][sok].max(1)) < 1.5)
 k = np.where(sel)[0]
 bytes_ = escrever_sog(os.path.join(PUBLICO, "malha", VERSAO, "arvores"),
                       s["pos"][k], s["esc"][k], s["sh0"][k], s["alfa"][k], s["quat"][k])
