@@ -27,14 +27,14 @@ os que o atravessam são cortados à medida. A malha acaba onde o splat acaba.
 
 ## Os passos
 
-Com Python 3.12 (numpy, opencv, pillow, shapely, DracoPy), a partir da raiz
-do site:
+Com Python 3.12 (numpy, opencv, pillow, shapely, DracoPy) e o `ktx` da
+Khronos, a partir da raiz do site:
 
 ```
 python scripts/malha/1_contorno.py          # contorno do splat do site
 python scripts/malha/2_recortar.py 2.5      # peças do MipMap, recortadas
 python scripts/malha/3_atlas.py 2.5         # atlas de texturas + cena + Draco
-python scripts/malha/4_empacotar.py v2 1024 # public/malha/v2/*.glb + malha.json
+python scripts/malha/4_empacotar.py v3      # public/malha/v3/*.glb + malha.json
 ```
 
 Os intermédios (pesados) ficam em `E:/Malha Viva - trabalho/malha`
@@ -47,22 +47,22 @@ da antiga: as peças são guardadas pelos navegadores um ano, o índice não.
 - **Nível de detalhe:** peças com erro geométrico até 2,5 m (o nível logo
   acima do mais fino): ~680 mil triângulos dentro do contorno. O mais fino
   tem 1,1 milhões e o dobro das texturas.
-- **Texturas:** 14 atlas, arrumados para 16 de 2048 px, cada um uma zona do
-  bairro (um desenho por atlas). No site vão a **1024 px em WebP** — cerca
-  de 80 MB de memória gráfica, 5,5 MB a descarregar. Com texturas
-  comprimidas para a placa gráfica (KTX2/Basis, ver abaixo) iriam a 2048 px
-  com metade da memória.
+- **Texturas:** 14 atlas de 2048 px, arrumados para caberem em 16, cada um
+  uma zona do bairro (um desenho por atlas), em **KTX2 (Basis ETC1S,
+  qualidade 255)**: a placa gráfica guarda-os comprimidos — cerca de 40 MB
+  de memória gráfica, 13,5 MB a descarregar com a geometria. A v1 levava
+  WebP de 1024 px: 80 MB de memória gráfica e menos nítida.
 - **Sem luz:** a fotografia já traz a luz do dia do voo (material sem
   iluminação, `KHR_materials_unlit`).
 - **Anti-serrilhado** ligado e até 1,5 pontos por ponto do ecrã (máx. 1,6
   milhões de pontos), porque a malha é barata de pintar; em poupança, sem
   anti-serrilhado e 0,5 milhões.
 
-## Texturas comprimidas (por fazer)
+## Texturas comprimidas
 
-O melhor para telemóveis é KTX2 (Basis ETC1S): a placa gráfica guarda-as
-comprimidas, 4 a 8 vezes menos memória. Precisa do `toktx`/`libktx` da
-Khronos (KTX-Software) para as fazer, e do transcodificador Basis do
-PlayCanvas no site (`examples/assets/wasm/basis/` do repositório do motor,
-tag v2.21.4, para `public/motor/basis-2.21.4/`). O passo 4 teria de escrever `image/ktx2` com
-`KHR_texture_basisu`, e `bairro-malha.mjs` de configurar o módulo `BASIS`.
+Fazem-se com o `ktx` da Khronos (KTX-Software 4.4.2, instalado em
+`%LOCALAPPDATA%\Programs\KTX-Software`; `KTX=caminho` muda-o). No site, o
+transcodificador Basis do PlayCanvas (`public/motor/basis-2.21.4/`, de
+`examples/assets/wasm/basis/` do repositório do motor, tag v2.21.4) passa-as
+no aparelho ao formato que a placa gráfica dele entende (ETC, ASTC ou DXT).
+`4_empacotar.py <versão> 1024 2.5 webp` volta a fazer a versão WebP.

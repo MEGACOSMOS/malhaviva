@@ -79,6 +79,16 @@ export function ligarBairroEmMalha(app, opcoes = {}) {
         wasmUrl: '/motor/draco-2.21.4/draco.wasm.wasm',
         fallbackUrl: '/motor/draco-2.21.4/draco.js'
     });
+    // As texturas vêm em KTX2 (Basis): o transcodificador passa-as, já no
+    // aparelho, ao formato comprimido que a placa gráfica dele entende
+    // (ETC no Android, ASTC no iPhone, DXT nos computadores), e é assim
+    // comprimidas que ficam na memória gráfica.
+    WasmModule.setConfig('BASIS', {
+        glueUrl: '/motor/basis-2.21.4/basis.wasm.js',
+        wasmUrl: '/motor/basis-2.21.4/basis.wasm.wasm',
+        fallbackUrl: '/motor/basis-2.21.4/basis.js',
+        numWorkers: 2
+    });
 
     const bairro = app.root.findByName('gsplat-scene');
     const raiz = new Entity('bairro-malha');
