@@ -2711,18 +2711,6 @@
             stroke: #ffffff;
             stroke-width: 2.5;
         }
-        #instrucoes .ins-onda {
-            fill: none;
-            stroke: #ffffff;
-            stroke-width: 2;
-            transform-box: fill-box;
-            transform-origin: center;
-            animation: ins-onda 1.8s ease-out infinite;
-        }
-        @keyframes ins-onda {
-            0% { opacity: 0.9; transform: scale(1); }
-            75%, 100% { opacity: 0; transform: scale(1.3); }
-        }
         #instrucoes .ins-poste {
             stroke: #ffffff;
             stroke-width: 2;
@@ -5050,10 +5038,7 @@
                 const g = document.createElementNS(NS, 'g');
                 const moldura = document.createElementNS(NS, 'rect');
                 moldura.setAttribute('class', 'ins-moldura');
-                const onda = document.createElementNS(NS, 'rect');
-                onda.setAttribute('class', 'ins-onda');
                 g.appendChild(moldura);
-                g.appendChild(onda);
                 return g;
             });
             caixas.forEach((r, i) => {
@@ -5063,7 +5048,6 @@
                 const h = r.height + 2 * FOLGA;
                 porEm(buracos.children[i], x, y, w, h);
                 porEm(molduras.children[i].children[0], x, y, w, h);
-                porEm(molduras.children[i].children[1], x, y, w, h);
             });
         };
 
