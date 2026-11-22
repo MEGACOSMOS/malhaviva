@@ -2729,16 +2729,14 @@
         }
 
         /* ── Os gestos ──
-           Desenhados com as linhas brancas do site, no meio do bairro, com
-           uma sombra escura à volta para se lerem sobre os telhados claros.
-           Só se desenha o rato a quem tem rato, e o dedo a quem tem dedo. */
+           Desenhados com as linhas brancas do site, no meio do bairro, sem
+           sombra nenhuma à volta (pedido de quem fez o site). Só se desenha o rato a quem tem rato, e o dedo a quem tem dedo. */
         #instrucoes .ins-gesto {
             position: absolute;
             left: 50%;
             top: 44%;
             width: min(380px, 84vw);
             transform: translate(-50%, -50%);
-            filter: drop-shadow(0 0 2px rgba(5, 5, 10, 0.95)) drop-shadow(0 0 12px rgba(5, 5, 10, 0.55));
             opacity: 0;
             transition: opacity 0.35s ease;
         }

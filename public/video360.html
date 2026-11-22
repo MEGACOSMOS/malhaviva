@@ -382,15 +382,14 @@
         }
 
         /* ── Os gestos ──
-           Desenhados com as linhas brancas do site, no meio da imagem, com
-           uma sombra escura à volta para se lerem sobre o céu claro. */
+           Desenhados com as linhas brancas do site, no meio da imagem, sem
+           sombra nenhuma à volta (pedido de quem fez o site). */
         #instrucoes .ins-gesto {
             position: absolute;
             left: 50%;
             top: 42%;
             width: min(360px, 80vw);
             transform: translate(-50%, -50%);
-            filter: drop-shadow(0 0 2px rgba(5, 5, 10, 0.95)) drop-shadow(0 0 12px rgba(5, 5, 10, 0.55));
             opacity: 0;
             transition: opacity 0.35s ease;
         }
