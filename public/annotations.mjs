@@ -2095,9 +2095,10 @@ AnnotationController.prototype.enderecoDaParagem360 = function(ann) {
 };
 
 /**
- * Uma rota que chega ao fim conta como vista, e fica parada no fim, à
- * espera: passar à seguinte é com as setas. É o mesmo que os testemunhos
- * fazem.
+ * Uma rota que chega ao fim conta como vista, e passa logo à seguinte,
+ * para o lado para onde se vem andando (à direita, se ainda não se andou)
+ * — como se se carregasse na seta. No fim do percurso, onde a seta já é a
+ * cruz, fica parada no fim. É o mesmo que os testemunhos fazem.
  */
 AnnotationController.prototype.acabouARota360 = function() {
     const palco = this.palco360;
@@ -2106,6 +2107,8 @@ AnnotationController.prototype.acabouARota360 = function() {
         return;
     }
     this.marcarComoVisto(this.idDaAnotacao(ann));
+    const sentido = (this.percurso360 && this.percurso360.sentido) || 1;
+    this.saltarParagem360(sentido);
 };
 
 /**
@@ -3420,11 +3423,17 @@ AnnotationController.prototype.setupModal = function() {
     // O fecho do modal fica à mão para as setas do palco o poderem usar.
     this.fecharModal = closeModal;
 
-    // Um testemunho que chega ao fim conta como visto, e fica parado no
-    // fim, à espera: passar ao seguinte é com as setas.
+    // Um testemunho que chega ao fim conta como visto, e o seguinte começa
+    // logo, para o lado para onde se vem andando (à direita, se ainda não
+    // se andou) — como se se carregasse na seta. No fim do percurso, onde
+    // a seta já é a cruz, fica parado no fim.
     this.videoPlayer.addEventListener('ended', () => {
         if (!this.videoNome) return;
         this.marcarComoVisto('video-' + this.videoNome);
+        if (this.aTrocarDeTestemunho || this.modal.style.display === 'none') return;
+        const sentido = (this.percursoTestemunhos && this.percursoTestemunhos.sentido) || 1;
+        const ann = this.testemunhoAoLado(sentido);
+        if (ann) this.openVideoModal(ann.video, ann.label, sentido);
     });
 
     // Store references for the openVideoModal function
