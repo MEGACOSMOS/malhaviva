@@ -1185,7 +1185,7 @@ class CameraControls extends Script {
                 pararOPremir();
                 // Arrastar com o botão esquerdo roda a vista: é o "olhar à
                 // volta" das instruções.
-                if (!olhou && (e.buttons & 1)) {
+                if (!olhou && (e.buttons & 1) && !e.ctrlKey) {
                     olhou = true;
                     this._avisarGesto('olhar');
                 }
@@ -1964,8 +1964,8 @@ class CameraControls extends Script {
 
     /**
      * Diz às instruções que um gesto foi feito no bairro (ver "As
-     * instruções", no index.html). Aqui os nomes são 'ir', 'olhar' e
-     * 'aproximar'. O mesmo gesto, repetido seguido, só se diz de tempos a
+     * instruções", no index.html). Aqui os nomes são 'ir', 'olhar',
+     * 'aproximar', 'arrastar' (Ctrl e arrastar) e 'andar' (WASD ou setas). O mesmo gesto, repetido seguido, só se diz de tempos a
      * tempos.
      *
      * @param {string} nome - O gesto.
@@ -2220,6 +2220,9 @@ class CameraControls extends Script {
             keyMove.add(this._setas);
         }
         keyMove.normalize();
+        // Andar de tecla (WASD ou setas): é o "andar com o teclado" das
+        // instruções.
+        if (keyMove.x !== 0 || keyMove.z !== 0) this._avisarGesto('andar');
         
         const panMove = screenToWorld(this._camera, mouse[0], mouse[1], this._pose.distance);
         const v = tmpV1.set(0, 0, 0); // Reuse v for rotate below
@@ -2494,6 +2497,7 @@ class CameraControls extends Script {
                 const frente = mouse[1] * metrosPorPonto;
                 this._pose.position.x += flatRightX * lado + flatForwardX * frente;
                 this._pose.position.z += flatRightZ * lado + flatForwardZ * frente;
+                this._avisarGesto('arrastar');
             }
             // NO ATTACH HERE!
         }

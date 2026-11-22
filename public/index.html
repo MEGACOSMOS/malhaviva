@@ -2850,6 +2850,26 @@
             100% { opacity: 0; transform: translateY(0); }
         }
 
+        /* Andar com o teclado (a câmara clássica): as quatro teclas, e o W
+           e o D a serem carregados, um a seguir ao outro. */
+        #instrucoes .ins-tecla-fixa rect {
+            fill: transparent;
+            stroke: #ffffff;
+            stroke-width: 2.5;
+        }
+        #instrucoes .ins-tecla-fixa text {
+            fill: #ffffff;
+            font-family: var(--font-main);
+            font-size: 15px;
+            font-weight: 700;
+            text-anchor: middle;
+            dominant-baseline: central;
+        }
+        #instrucoes .ins-andar-w rect,
+        #instrucoes .ins-andar-w text { animation-duration: 3.2s; }
+        #instrucoes .ins-andar-d rect,
+        #instrucoes .ins-andar-d text { animation-duration: 3.2s; animation-delay: 1.6s; }
+
         /* Olhar à volta (a câmara clássica): carrega-se e arrasta-se para
            um lado e para o outro. */
         #instrucoes .ins-olhar-mao {
@@ -4633,6 +4653,30 @@
             </svg>
         </div>
 
+        <!-- Arrastar o bairro (a câmara clássica): o Ctrl carregado, e o rato
+             a puxar o chão. -->
+        <div class="ins-gesto" data-gesto="arrastar" aria-hidden="true">
+            <svg viewBox="0 0 300 180">
+                <g class="ins-tecla"><rect x="44" y="40" width="58" height="34"></rect><text x="73" y="57">Ctrl</text></g>
+                <path class="ins-traco ins-mover-rasto" d="M150 44L150 140"></path>
+                <rect class="ins-anel ins-mover-anel" x="138" y="32" width="24" height="24"></rect>
+                <g class="ins-mover-mao">
+                    <path fill="#ffffff" stroke="#05050a" stroke-width="1.2" stroke-linejoin="round" d="M0 0L0 22L6 16.6L10.4 26L14.3 24.2L10 15.1L17 15.1Z"></path>
+                </g>
+            </svg>
+        </div>
+
+        <!-- Andar com o teclado (a câmara clássica): o W A S D, com o W e
+             depois o D a serem carregados. -->
+        <div class="ins-gesto" data-gesto="andar" aria-hidden="true">
+            <svg viewBox="0 0 300 180">
+                <g class="ins-tecla ins-andar-w"><rect x="130" y="44" width="40" height="40"></rect><text x="150" y="64">W</text></g>
+                <g class="ins-tecla-fixa"><rect x="84" y="92" width="40" height="40"></rect><text x="104" y="112">A</text></g>
+                <g class="ins-tecla-fixa"><rect x="130" y="92" width="40" height="40"></rect><text x="150" y="112">S</text></g>
+                <g class="ins-tecla ins-andar-d"><rect x="176" y="92" width="40" height="40"></rect><text x="196" y="112">D</text></g>
+            </svg>
+        </div>
+
         <!-- O cartão do texto. -->
         <div class="instrucoes-cartao" role="dialog" aria-modal="false" aria-labelledby="instrucoes-titulo" aria-describedby="instrucoes-texto" tabindex="-1">
             <button type="button" class="menu-fechar" aria-label="Fechar as instruções" title="Fechar as instruções" data-i18n-aria="ins.fechar" data-i18n-title="ins.fechar">
@@ -4785,10 +4829,18 @@
         // Os três primeiros são os da câmara: os da navegação como no
         // Google Maps (telemóveis e tablets) ou os da câmara clássica
         // (computadores) — ver o script de antes do motor.
+        //
+        // Na clássica, cada gesto pratica-se, como nos dedos: o desenho
+        // mostra-o por cima do bairro, quem o faz vê o passo feito, e passa
+        // ao seguinte. O arrastar com o Ctrl e o teclado só a quem tem rato.
         const PASSOS_DA_CAMARA = window.cameraClassica ? [
             { titulo: 'ins.irTitulo', texto: porToque ? 'ins.irToque' : 'ins.irRato', gestos: ['ir'], desenho: 'ir' },
             { titulo: 'ins.olharTitulo', texto: porToque ? 'ins.olharToque' : 'ins.olharRato', gestos: ['olhar'], desenho: 'olhar' },
-            { titulo: 'ins.zoomTitulo', texto: porToque ? 'ins.zoomToqueClassico' : 'ins.zoomRatoClassico', gestos: ['aproximar'], desenho: 'zoom' }
+            { titulo: 'ins.zoomTitulo', texto: porToque ? 'ins.zoomToqueClassico' : 'ins.zoomRatoClassico', gestos: ['aproximar'], desenho: 'zoom' },
+            ...(porToque ? [] : [
+                { titulo: 'ins.arrastarTitulo', texto: 'ins.arrastarRato', gestos: ['arrastar'], desenho: 'arrastar' },
+                { titulo: 'ins.andarTitulo', texto: 'ins.andarRato', gestos: ['andar'], desenho: 'andar' }
+            ])
         ] : [
             { titulo: 'ins.moverTitulo', texto: porToque ? 'ins.moverToque' : 'ins.moverRato', gestos: ['mover'], desenho: 'mover' },
             { titulo: 'ins.zoomTitulo', texto: porToque ? 'ins.zoomToque' : 'ins.zoomRato', gestos: ['aproximar'], desenho: 'zoom' },
@@ -5454,7 +5506,7 @@
             // (A escolha é feita no princípio da página: ver `cameraClassica`.)
             if (window.cameraClassica) {
                 var guiaoDaCamara = document.getElementById('camera-controls-script');
-                if (guiaoDaCamara) guiaoDaCamara.setAttribute('src', './camera-controls-classico.mjs?v=2');
+                if (guiaoDaCamara) guiaoDaCamara.setAttribute('src', './camera-controls-classico.mjs?v=3');
             }
 
             var guardada = null;
