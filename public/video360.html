@@ -384,11 +384,14 @@
         /* ── Os gestos ──
            Desenhados com as linhas brancas do site, no meio da imagem, sem
            sombra nenhuma à volta (pedido de quem fez o site). */
+        /* O desenho fica ao meio do espaço que o cartão deixa livre por
+           cima dele (--livre, medido pelo código das instruções), e encolhe
+           para lá caber: o cartão nunca o tapa, seja qual for o ecrã. */
         #instrucoes .ins-gesto {
             position: absolute;
             left: 50%;
-            top: 42%;
-            width: min(360px, 80vw);
+            top: calc(var(--livre, 70vh) / 2);
+            width: min(360px, 80vw, calc(var(--livre, 70vh) * 0.86 * 300 / 180));
             transform: translate(-50%, -50%);
             opacity: 0;
             transition: opacity 0.35s ease;
@@ -752,9 +755,6 @@
                 padding: 12px 14px 4px;
                 bottom: calc(106px + env(safe-area-inset-bottom, 0px));
             }
-            #instrucoes .ins-gesto {
-                top: 36%;
-            }
         }
         /* Num leitor baixo — o telemóvel deitado — o cartão encolhe as
            folgas e a letra, e encosta-se à beira de baixo. */
@@ -791,10 +791,6 @@
             .instrucoes-seta svg {
                 width: 24px;
                 height: 24px;
-            }
-            #instrucoes .ins-gesto {
-                top: 32%;
-                width: min(260px, 50vw);
             }
         }
 
@@ -2919,7 +2915,18 @@
 
                 escrever();
                 anunciar();
+                arrumarDesenhos();
             };
+
+            // O espaço livre por cima do cartão, onde vai o desenho do gesto.
+            // Mede-se a cada passo (o texto muda a altura do cartão) e
+            // sempre que o ecrã muda de tamanho ou de posição.
+            function arrumarDesenhos() {
+                if (!aberta) return;
+                const topo = cartao.getBoundingClientRect().top;
+                caixa.style.setProperty('--livre', Math.max(60, topo - 12).toFixed(0) + 'px');
+            }
+            window.addEventListener('resize', arrumarDesenhos);
 
             // Troca de passo com o cartão a esbater-se e a voltar.
             const trocar = (fazer) => {
