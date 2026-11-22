@@ -409,7 +409,8 @@
             height: auto;
             overflow: visible;
         }
-        /* Só se desenha o rato a quem tem rato, e o dedo a quem tem dedo. */
+        /* Só se desenha o rato a quem tem rato, e o dedo a quem tem dedo —
+           um dedo desenhado, com a unha na ponta e a ponta onde toca. */
         #instrucoes .so-toque { display: none; }
         #instrucoes.por-toque .so-rato { display: none; }
         #instrucoes.por-toque .so-toque { display: inline; }
@@ -1233,7 +1234,7 @@
                 <g class="ins-olhar-mao">
                     <rect class="ins-olhar-anel" x="-14" y="-14" width="28" height="28"></rect>
                     <path class="so-rato" fill="#ffffff" stroke="#05050a" stroke-width="1.2" stroke-linejoin="round" d="M0 0L0 22L6 16.6L10.4 26L14.3 24.2L10 15.1L17 15.1Z"></path>
-                    <circle class="so-toque ins-dedo" cx="0" cy="0" r="11"></circle>
+                    <g class="so-toque" transform="rotate(-18)"><path fill="#ffffff" d="M-9 2A9 9 0 0 1 9 2L10 50H-10Z"></path><path fill="none" stroke="#05050a" stroke-width="1.2" stroke-linejoin="round" d="M-10 50L-9 2A9 9 0 0 1 9 2L10 50"></path><path fill="none" stroke="#05050a" stroke-width="1.2" stroke-linejoin="round" d="M-5.5 -1A5.5 5.5 0 0 1 5.5 -1V8H-5.5Z"></path><path fill="none" stroke="#05050a" stroke-width="1" d="M-7.5 27H8"></path></g>
                 </g>
             </svg>
         </div>
@@ -1267,8 +1268,8 @@
                 <rect class="ins-crescer" x="138" y="80" width="24" height="24"></rect>
                 <rect class="ins-crescer" x="138" y="80" width="24" height="24"></rect>
                 <rect class="ins-crescer" x="138" y="80" width="24" height="24"></rect>
-                <g class="ins-pinca-a"><circle class="ins-dedo" cx="0" cy="0" r="13"></circle></g>
-                <g class="ins-pinca-b"><circle class="ins-dedo" cx="0" cy="0" r="13"></circle></g>
+                <g class="ins-pinca-a"><g transform="rotate(45)"><path fill="#ffffff" d="M-9 2A9 9 0 0 1 9 2L10 50H-10Z"></path><path fill="none" stroke="#05050a" stroke-width="1.2" stroke-linejoin="round" d="M-10 50L-9 2A9 9 0 0 1 9 2L10 50"></path><path fill="none" stroke="#05050a" stroke-width="1.2" stroke-linejoin="round" d="M-5.5 -1A5.5 5.5 0 0 1 5.5 -1V8H-5.5Z"></path><path fill="none" stroke="#05050a" stroke-width="1" d="M-7.5 27H8"></path></g></g>
+                <g class="ins-pinca-b"><g transform="rotate(-135)"><path fill="#ffffff" d="M-9 2A9 9 0 0 1 9 2L10 50H-10Z"></path><path fill="none" stroke="#05050a" stroke-width="1.2" stroke-linejoin="round" d="M-10 50L-9 2A9 9 0 0 1 9 2L10 50"></path><path fill="none" stroke="#05050a" stroke-width="1.2" stroke-linejoin="round" d="M-5.5 -1A5.5 5.5 0 0 1 5.5 -1V8H-5.5Z"></path><path fill="none" stroke="#05050a" stroke-width="1" d="M-7.5 27H8"></path></g></g>
             </svg>
         </div>
 
@@ -2664,7 +2665,13 @@
             const SETA_DIREITA = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true"><polyline points="9 18 15 12 9 6"></polyline></svg>';
             const CRUZ = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true"><path d="M7 7L17 17M17 7L7 17"></path></svg>';
 
-            const porToque = !!(window.matchMedia && window.matchMedia('(hover: none) and (pointer: coarse)').matches);
+            // Dedo em vez de rato: os telemóveis e tablets (pela mesma regra
+            // que dá ao mapa a câmara deles) e qualquer ecrã cujo apontador
+            // principal seja um dedo. Só pelo "hover: none" não chegava: há
+            // telemóveis que dizem que podem pairar, e viam o rato desenhado.
+            const porToque = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+                (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1) ||
+                !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
             caixa.classList.toggle('por-toque', porToque);
             const menosMovimento = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
 

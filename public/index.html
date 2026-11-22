@@ -2730,7 +2730,10 @@
 
         /* ── Os gestos ──
            Desenhados com as linhas brancas do site, no meio do bairro, sem
-           sombra nenhuma à volta (pedido de quem fez o site). Só se desenha o rato a quem tem rato, e o dedo a quem tem dedo. */
+           sombra nenhuma à volta (pedido de quem fez o site). Só se
+           desenha o rato a quem tem rato, e o dedo a quem tem dedo —
+           um dedo desenhado, branco com o contorno escuro como a seta do
+           rato, com a unha na ponta e a ponta no sítio onde toca. */
         #instrucoes .ins-gesto {
             position: absolute;
             left: 50%;
@@ -4583,7 +4586,7 @@
                 <rect class="ins-anel ins-mover-anel" x="138" y="32" width="24" height="24"></rect>
                 <g class="ins-mover-mao">
                     <path class="so-rato" fill="#ffffff" stroke="#05050a" stroke-width="1.2" stroke-linejoin="round" d="M0 0L0 22L6 16.6L10.4 26L14.3 24.2L10 15.1L17 15.1Z"></path>
-                    <circle class="so-toque ins-dedo" cx="0" cy="0" r="13"></circle>
+                    <g class="so-toque" transform="rotate(-18)"><path fill="#ffffff" d="M-9 2A9 9 0 0 1 9 2L10 50H-10Z"></path><path fill="none" stroke="#05050a" stroke-width="1.2" stroke-linejoin="round" d="M-10 50L-9 2A9 9 0 0 1 9 2L10 50"></path><path fill="none" stroke="#05050a" stroke-width="1.2" stroke-linejoin="round" d="M-5.5 -1A5.5 5.5 0 0 1 5.5 -1V8H-5.5Z"></path><path fill="none" stroke="#05050a" stroke-width="1" d="M-7.5 27H8"></path></g>
                 </g>
             </svg>
         </div>
@@ -4604,8 +4607,8 @@
                     </g>
                 </g>
                 <g class="so-toque">
-                    <g class="ins-pinca-a"><circle class="ins-dedo" cx="0" cy="0" r="13"></circle></g>
-                    <g class="ins-pinca-b"><circle class="ins-dedo" cx="0" cy="0" r="13"></circle></g>
+                    <g class="ins-pinca-a"><g transform="rotate(45)"><path fill="#ffffff" d="M-9 2A9 9 0 0 1 9 2L10 50H-10Z"></path><path fill="none" stroke="#05050a" stroke-width="1.2" stroke-linejoin="round" d="M-10 50L-9 2A9 9 0 0 1 9 2L10 50"></path><path fill="none" stroke="#05050a" stroke-width="1.2" stroke-linejoin="round" d="M-5.5 -1A5.5 5.5 0 0 1 5.5 -1V8H-5.5Z"></path><path fill="none" stroke="#05050a" stroke-width="1" d="M-7.5 27H8"></path></g></g>
+                    <g class="ins-pinca-b"><g transform="rotate(-135)"><path fill="#ffffff" d="M-9 2A9 9 0 0 1 9 2L10 50H-10Z"></path><path fill="none" stroke="#05050a" stroke-width="1.2" stroke-linejoin="round" d="M-10 50L-9 2A9 9 0 0 1 9 2L10 50"></path><path fill="none" stroke="#05050a" stroke-width="1.2" stroke-linejoin="round" d="M-5.5 -1A5.5 5.5 0 0 1 5.5 -1V8H-5.5Z"></path><path fill="none" stroke="#05050a" stroke-width="1" d="M-7.5 27H8"></path></g></g>
                 </g>
             </svg>
         </div>
@@ -4626,8 +4629,8 @@
                 </g>
                 <g class="so-toque">
                     <g class="ins-rodar-dedos">
-                        <circle class="ins-dedo" cx="108" cy="92" r="13"></circle>
-                        <circle class="ins-dedo" cx="192" cy="92" r="13"></circle>
+                        <g transform="translate(108 92) rotate(90)"><path fill="#ffffff" d="M-9 2A9 9 0 0 1 9 2L10 50H-10Z"></path><path fill="none" stroke="#05050a" stroke-width="1.2" stroke-linejoin="round" d="M-10 50L-9 2A9 9 0 0 1 9 2L10 50"></path><path fill="none" stroke="#05050a" stroke-width="1.2" stroke-linejoin="round" d="M-5.5 -1A5.5 5.5 0 0 1 5.5 -1V8H-5.5Z"></path><path fill="none" stroke="#05050a" stroke-width="1" d="M-7.5 27H8"></path></g>
+                        <g transform="translate(192 92) rotate(-90)"><path fill="#ffffff" d="M-9 2A9 9 0 0 1 9 2L10 50H-10Z"></path><path fill="none" stroke="#05050a" stroke-width="1.2" stroke-linejoin="round" d="M-10 50L-9 2A9 9 0 0 1 9 2L10 50"></path><path fill="none" stroke="#05050a" stroke-width="1.2" stroke-linejoin="round" d="M-5.5 -1A5.5 5.5 0 0 1 5.5 -1V8H-5.5Z"></path><path fill="none" stroke="#05050a" stroke-width="1" d="M-7.5 27H8"></path></g>
                     </g>
                 </g>
             </svg>
@@ -4641,7 +4644,7 @@
                 <rect class="ins-anel ins-ir-anel" x="138" y="98" width="24" height="24"></rect>
                 <g class="ins-ir-mao">
                     <path class="so-rato" fill="#ffffff" stroke="#05050a" stroke-width="1.2" stroke-linejoin="round" d="M0 0L0 22L6 16.6L10.4 26L14.3 24.2L10 15.1L17 15.1Z"></path>
-                    <circle class="so-toque ins-dedo" cx="0" cy="0" r="13"></circle>
+                    <g class="so-toque" transform="rotate(-18)"><path fill="#ffffff" d="M-9 2A9 9 0 0 1 9 2L10 50H-10Z"></path><path fill="none" stroke="#05050a" stroke-width="1.2" stroke-linejoin="round" d="M-10 50L-9 2A9 9 0 0 1 9 2L10 50"></path><path fill="none" stroke="#05050a" stroke-width="1.2" stroke-linejoin="round" d="M-5.5 -1A5.5 5.5 0 0 1 5.5 -1V8H-5.5Z"></path><path fill="none" stroke="#05050a" stroke-width="1" d="M-7.5 27H8"></path></g>
                 </g>
             </svg>
         </div>
@@ -4658,7 +4661,7 @@
                 <g class="ins-olhar-mao">
                     <rect class="ins-olhar-anel" x="-14" y="-14" width="28" height="28"></rect>
                     <path class="so-rato" fill="#ffffff" stroke="#05050a" stroke-width="1.2" stroke-linejoin="round" d="M0 0L0 22L6 16.6L10.4 26L14.3 24.2L10 15.1L17 15.1Z"></path>
-                    <circle class="so-toque ins-dedo" cx="0" cy="0" r="13"></circle>
+                    <g class="so-toque" transform="rotate(-18)"><path fill="#ffffff" d="M-9 2A9 9 0 0 1 9 2L10 50H-10Z"></path><path fill="none" stroke="#05050a" stroke-width="1.2" stroke-linejoin="round" d="M-10 50L-9 2A9 9 0 0 1 9 2L10 50"></path><path fill="none" stroke="#05050a" stroke-width="1.2" stroke-linejoin="round" d="M-5.5 -1A5.5 5.5 0 0 1 5.5 -1V8H-5.5Z"></path><path fill="none" stroke="#05050a" stroke-width="1" d="M-7.5 27H8"></path></g>
                 </g>
             </svg>
         </div>
@@ -4774,7 +4777,13 @@
         const AFASTAMENTO = 26;
         const MARGEM = 16;
 
-        const porToque = !!(window.matchMedia && window.matchMedia('(hover: none) and (pointer: coarse)').matches);
+        // Dedo em vez de rato: os telemóveis e tablets (os mesmos a quem
+        // calha a câmara do Google Maps, ver window.cameraClassica), e
+        // qualquer ecrã cujo apontador principal seja um dedo. Só pelo
+        // "hover: none" não chegava: há telemóveis que dizem que podem
+        // pairar, e viam o rato desenhado.
+        const porToque = !window.cameraClassica ||
+            !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
         caixa.classList.toggle('por-toque', porToque);
 
         const cartao = caixa.querySelector('.instrucoes-cartao');
