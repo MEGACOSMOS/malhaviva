@@ -2850,6 +2850,14 @@
             100% { opacity: 0; transform: translateY(0); }
         }
 
+        /* Aproximar (a câmara clássica): a seta da roda a subir, e o −
+           carregado depois do +. */
+        #instrucoes .ins-roda-seta {
+            opacity: 0.85;
+        }
+        #instrucoes .ins-tecla-depois rect,
+        #instrucoes .ins-tecla-depois text { animation-delay: 1.4s; }
+
         /* Andar com o teclado (a câmara clássica): as quatro teclas, e o W
            e o D a serem carregados, um a seguir ao outro. */
         #instrucoes .ins-tecla-fixa rect {
@@ -4653,6 +4661,24 @@
             </svg>
         </div>
 
+        <!-- Aproximar e afastar (a câmara clássica): a roda do rato a rodar,
+             e o + e o − do teclado. Sem quadrados a abrir no sítio do rato:
+             na câmara clássica não há duplo clique. -->
+        <div class="ins-gesto" data-gesto="zoom-roda" aria-hidden="true">
+            <svg viewBox="0 0 300 180">
+                <g transform="translate(126 46)">
+                    <rect x="0" y="0" width="48" height="76" fill="#05050a" stroke="#ffffff" stroke-width="3"></rect>
+                    <line x1="0" y1="30" x2="48" y2="30" stroke="#ffffff" stroke-width="2.5"></line>
+                    <line x1="24" y1="0" x2="24" y2="30" stroke="#ffffff" stroke-width="2.5"></line>
+                    <line class="ins-roda" x1="24" y1="7" x2="24" y2="18" stroke="#ffffff" stroke-width="5"></line>
+                </g>
+                <path class="ins-traco ins-roda-seta" d="M150 36V14"></path>
+                <polyline class="ins-traco ins-roda-seta" points="141 23 150 14 159 23"></polyline>
+                <g class="ins-tecla"><rect x="62" y="64" width="36" height="36"></rect><text x="80" y="82">+</text></g>
+                <g class="ins-tecla ins-tecla-depois"><rect x="202" y="64" width="36" height="36"></rect><text x="220" y="82">−</text></g>
+            </svg>
+        </div>
+
         <!-- Arrastar o bairro (a câmara clássica): o Ctrl carregado, e o rato
              a puxar o chão. -->
         <div class="ins-gesto" data-gesto="arrastar" aria-hidden="true">
@@ -4832,15 +4858,12 @@
         //
         // Na clássica, cada gesto pratica-se, como nos dedos: o desenho
         // mostra-o por cima do bairro, quem o faz vê o passo feito, e passa
-        // ao seguinte. O arrastar com o Ctrl e o teclado só a quem tem rato.
+        // ao seguinte. (O Ctrl e arrastar e o teclado ficam na página dos
+        // Controlos.)
         const PASSOS_DA_CAMARA = window.cameraClassica ? [
             { titulo: 'ins.irTitulo', texto: porToque ? 'ins.irToque' : 'ins.irRato', gestos: ['ir'], desenho: 'ir' },
             { titulo: 'ins.olharTitulo', texto: porToque ? 'ins.olharToque' : 'ins.olharRato', gestos: ['olhar'], desenho: 'olhar' },
-            { titulo: 'ins.zoomTitulo', texto: porToque ? 'ins.zoomToqueClassico' : 'ins.zoomRatoClassico', gestos: ['aproximar'], desenho: 'zoom' },
-            ...(porToque ? [] : [
-                { titulo: 'ins.arrastarTitulo', texto: 'ins.arrastarRato', gestos: ['arrastar'], desenho: 'arrastar' },
-                { titulo: 'ins.andarTitulo', texto: 'ins.andarRato', gestos: ['andar'], desenho: 'andar' }
-            ])
+            { titulo: 'ins.zoomTitulo', texto: porToque ? 'ins.zoomToqueClassico' : 'ins.zoomRatoClassico', gestos: ['aproximar'], desenho: porToque ? 'zoom' : 'zoom-roda' }
         ] : [
             { titulo: 'ins.moverTitulo', texto: porToque ? 'ins.moverToque' : 'ins.moverRato', gestos: ['mover'], desenho: 'mover' },
             { titulo: 'ins.zoomTitulo', texto: porToque ? 'ins.zoomToque' : 'ins.zoomRato', gestos: ['aproximar'], desenho: 'zoom' },
@@ -4850,8 +4873,18 @@
             ...PASSOS_DA_CAMARA,
             { titulo: 'ins.historiasTitulo', texto: porToque ? 'ins.historiasToque' : 'ins.historias', alvos: alvosDasHistorias },
             { titulo: 'ins.ceuTitulo', texto: 'ins.ceu', alvos: alvosDoCeu },
-            { titulo: 'ins.pesquisaTitulo', texto: () => (pesquisaNoMenu() ? 'ins.pesquisaMenu' : 'ins.pesquisa'), alvos: alvoDaPesquisa },
-            { titulo: 'ins.restoTitulo', texto: () => (controlosNoMenu() ? 'ins.restoMenu' : 'ins.resto'), alvos: alvosDoResto }
+            ...(window.cameraClassica ? [
+                // Na câmara clássica, a pesquisa das casas e o resto numa
+                // janela só, com as peças todas em foco.
+                {
+                    titulo: 'ins.pesquisaRestoTitulo',
+                    texto: () => [pesquisaNoMenu() ? 'ins.pesquisaMenu' : 'ins.pesquisa', controlosNoMenu() ? 'ins.restoMenu' : 'ins.resto'],
+                    alvos: () => alvoDaPesquisa().concat(alvosDoResto())
+                }
+            ] : [
+                { titulo: 'ins.pesquisaTitulo', texto: () => (pesquisaNoMenu() ? 'ins.pesquisaMenu' : 'ins.pesquisa'), alvos: alvoDaPesquisa },
+                { titulo: 'ins.restoTitulo', texto: () => (controlosNoMenu() ? 'ins.restoMenu' : 'ins.resto'), alvos: alvosDoResto }
+            ])
         ];
 
         // Um quadradinho por passo; carregar num leva a esse passo.
@@ -4883,7 +4916,9 @@
         const escrever = () => {
             const passo = PASSOS[atual];
             nomeEl.textContent = t(passo.titulo);
-            textoEl.textContent = t(textoDe(passo));
+            // O texto de um passo é uma chave, ou várias seguidas.
+            const chaves = textoDe(passo);
+            textoEl.textContent = Array.isArray(chaves) ? chaves.map(k => t(k)).join(' ') : t(chaves);
             numeroEl.textContent = (atual + 1) + ' / ' + PASSOS.length;
         };
 
