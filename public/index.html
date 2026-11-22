@@ -5250,17 +5250,22 @@
             }
 
             const tela = motor.graphicsDevice.canvas.getBoundingClientRect();
+            // As contas do ecrã fazem-se aqui, a partir da rotação que a
+            // câmara tem agora mesmo, e não com as da própria câmara: essas
+            // guardam a vista da imagem anterior até a próxima ser
+            // desenhada, e o cursor ficava uma imagem atrás do bairro — a
+            // escorregar uns pontos sempre que andava.
+            const meiaAbertura = (camara.fov || 60) * Math.PI / 360;
+            const medida = (camara.horizontalFov ? tela.width : tela.height) || 1;
+            const focal = medida / 2 / Math.tan(meiaAbertura);
             if (!olhar.direcao) {
                 // O botão desce: agarra-se o sítio que está debaixo da ponta
-                // do cursor, e mede-se quanto se roda para ele andar o
-                // alcance do desenho.
+                // do cursor (a direção dele, a partir da câmara), e mede-se
+                // quanto se roda para ele andar o alcance do desenho.
                 const px = caixa.left + OLHAR_MEIO.x * escala - tela.left;
                 const py = caixa.top + OLHAR_MEIO.y * escala - tela.top;
-                const longe = camara.screenToWorld(px, py, 10);
-                olhar.direcao = longe.sub(entidade.getPosition());
-                const meiaAbertura = (camara.fov || 60) * Math.PI / 360;
-                const medida = (camara.horizontalFov ? tela.width : tela.height) || 1;
-                const focal = medida / 2 / Math.tan(meiaAbertura);
+                const naCamara = entidade.getPosition().clone().set((px - tela.width / 2) / focal, -(py - tela.height / 2) / focal, -1);
+                olhar.direcao = entidade.getRotation().transformVector(naCamara, naCamara);
                 olhar.amplitude = Math.atan((OLHAR_ALCANCE * escala) / focal) * 180 / Math.PI;
                 olhar.rodado = 0;
             }
@@ -5272,11 +5277,13 @@
                 olhar.rodado = quer;
             }
 
-            // E o cursor vai para onde o sítio agarrado está agora.
-            const sitio = entidade.getPosition().clone().add(olhar.direcao);
-            const noEcra = camara.worldToScreen(sitio);
-            const x = (noEcra.x + tela.left - caixa.left) / escala;
-            const y = (noEcra.y + tela.top - caixa.top) / escala;
+            // E o cursor vai para onde o sítio agarrado está agora: a
+            // direção dele vista pela câmara rodada, posta no ecrã.
+            const aoContrario = entidade.getRotation().clone().invert();
+            const naCamara = aoContrario.transformVector(olhar.direcao, entidade.getPosition().clone());
+            const fundo = Math.max(1e-6, -naCamara.z);
+            const x = (tela.width / 2 + focal * naCamara.x / fundo + tela.left - caixa.left) / escala;
+            const y = (tela.height / 2 - focal * naCamara.y / fundo + tela.top - caixa.top) / escala;
             porOCursor(Number.isFinite(x) ? x : OLHAR_MEIO.x, Number.isFinite(y) ? y : OLHAR_MEIO.y, encolhe, cursor, quadrado);
         };
 
