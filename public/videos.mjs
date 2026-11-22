@@ -141,10 +141,15 @@ export function enderecoDe(nome, resolucao) {
 // janela do lado e sempre que se carrega em endireitar, é para ela que se
 // olha. Quem mexer nestes números volte a medi-los na mesma fotografia —
 // a cara ao meio da vista — e refaça as miniaturas (ver AGENTS.md).
+//
+// A inclinação é zero nas três: a vista abre direita, no horizonte, com a
+// cara dela ao meio na horizontal. O seguimento da cara no player também
+// só vira para os lados (ver "Duas mãos na câmara", em video360.html), e
+// a abertura, a miniatura e a janela do lado têm de bater com ele.
 const OLHAR_INICIAL = {
-    'Esvarena - 360 - A': { yaw: 76.3, pitch: 9.1 },
-    'Esvarena - 360 - B': { yaw: 66.7, pitch: -11.8 },
-    'Esvarena - 360 - C': { yaw: 77.7, pitch: -12.4 }
+    'Esvarena - 360 - A': { yaw: 76.3, pitch: 0 },
+    'Esvarena - 360 - B': { yaw: 66.7, pitch: 0 },
+    'Esvarena - 360 - C': { yaw: 77.7, pitch: 0 }
 };
 
 // A abertura da câmara com que uma rota se começa a ver, em graus.

@@ -1348,8 +1348,8 @@
     </div>
 
     <script type="module">
-        import { fontesDeVideo, previaDe, olharInicialDe, ABERTURA_INICIAL, eOriginal, e360 } from './videos.mjs?v=8';
-        import { criarGestorDeQualidade, limiteDeTexturaDoAparelho } from './qualidade-video.mjs?v=9';
+        import { fontesDeVideo, previaDe, olharInicialDe, ABERTURA_INICIAL, eOriginal, e360 } from './videos.mjs?v=9';
+        import { criarGestorDeQualidade, limiteDeTexturaDoAparelho } from './qualidade-video.mjs?v=10';
         import { temCaminhoDaCara, olharDaCara } from './olhar-das-rotas.mjs?v=1';
 
         const urlParams = new URLSearchParams(window.location.search);
@@ -2450,10 +2450,15 @@
         // uma dentro da outra, para o horizonte nunca tombar quando se
         // olha para o lado. Dentro dos óculos é a cabeça de quem lá está
         // que manda, e aí a mão de baixo não entra.
+        //
+        // A mão de baixo só vira para os lados: para cima e para baixo fica
+        // sempre direita, no horizonte, mesmo quando a cara dela sobe ou
+        // desce (quem filma é mais alto ou mais baixo, ela baixa-se, sobe
+        // umas escadas). Olhar para cima ou para baixo é só da mão de
+        // cima, de quem está a ver.
         const SUAVIDADE_DO_SEGUIR = 0.35;   // segundos a chegar ao sítio
         const INCLINACAO_MAXIMA = Math.PI / 2;
         let baseVolta = olharInicial.yaw * RAD;          // a mão de baixo
-        let baseInclinacao = olharInicial.pitch * RAD;
 
         // Quanto falta virar, pelo caminho mais curto: meia volta para um
         // lado vale menos do que a volta toda para o outro.
@@ -2485,12 +2490,10 @@
             imagemAnterior = agora;
             if (saltou || !dt) {
                 baseVolta = alvo.yaw * RAD;
-                baseInclinacao = alvo.pitch * RAD;
                 return;
             }
             const parte = 1 - Math.exp(-dt / SUAVIDADE_DO_SEGUIR);
             baseVolta += faltaParaOAlvo(alvo.yaw * RAD, baseVolta) * parte;
-            baseInclinacao += (alvo.pitch * RAD - baseInclinacao) * parte;
         };
 
         // A cena vira a câmara a cada imagem a partir das duas peças do
@@ -2512,7 +2515,7 @@
                 const camara = this.el.object3D;
                 camara.rotation.y += baseVolta;
                 camara.rotation.x = Math.max(-INCLINACAO_MAXIMA,
-                    Math.min(INCLINACAO_MAXIMA, camara.rotation.x + baseInclinacao));
+                    Math.min(INCLINACAO_MAXIMA, camara.rotation.x));
             };
         };
         if (!ecraPlano) {
