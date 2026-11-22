@@ -5168,11 +5168,13 @@
         // o outro e de volta ao meio. O cursor vai agarrado ao sítio do
         // bairro que estava debaixo dele quando carregou: a cada imagem é
         // posto onde esse sítio aparece no ecrã, e por isso nunca escorrega
-        // em relação ao bairro. Tudo isto corre no próprio motor, logo a
-        // seguir à câmara e antes de a imagem ser desenhada (ver
-        // `rodarAgora` em camera-controls-classico.mjs), para a vista e o
-        // cursor serem sempre da mesma imagem. Recomeça do princípio sempre
-        // que o passo aparece, e pára mal o gesto é feito.
+        // em relação ao bairro. A volta entra na própria atualização da
+        // câmara, antes de os marcadores das anotações se porem no ecrã
+        // (ver `voltaDasInstrucoes` em camera-controls-classico.mjs), e o
+        // cursor põe-se depois de tudo, antes de a imagem ser desenhada:
+        // bairro, marcadores e cursor são sempre da mesma imagem. Recomeça
+        // do princípio sempre que o passo aparece, e pára mal o gesto é
+        // feito.
         const OLHAR_CICLO = 4400;
         // Quanto o sítio agarrado anda para cada lado, em unidades do
         // desenho (as setas vão de 86 a 214).
@@ -5247,7 +5249,10 @@
             const comandos = entidade && entidade.script && entidade.script.cameraControls;
             const caixa = olharSvg.getBoundingClientRect();
             const escala = caixa.width / 300;
-            if (f < OLHAR_CARREGA || !camara || !comandos || !comandos.rodarAgora || !escala) {
+            // A câmara pergunta a cada imagem quanto rodar (ver
+            // `voltaDasInstrucoes`); daqui em diante o cursor só vai atrás.
+            if (comandos && !comandos.voltaDasInstrucoes) comandos.voltaDasInstrucoes = voltaDoOlhar;
+            if (f < OLHAR_CARREGA || !camara || !comandos || !escala) {
                 // Ainda parado: o cursor no meio do desenho, e um ciclo novo
                 // por começar.
                 olhar.direcao = null;
@@ -5277,13 +5282,6 @@
                 olhar.rodado = 0;
             }
 
-            // A vista roda pela curva; quem estiver a carregar de verdade
-            // fica com ela.
-            const quer = olhar.amplitude * ladoEm(f);
-            if (quer !== olhar.rodado && comandos.rodarAgora(quer - olhar.rodado)) {
-                olhar.rodado = quer;
-            }
-
             // E o cursor vai para onde o sítio agarrado está agora: a
             // direção dele vista pela câmara rodada, posta no ecrã.
             const aoContrario = entidade.getRotation().clone().invert();
@@ -5292,6 +5290,28 @@
             const x = (tela.width / 2 + focal * naCamara.x / fundo + tela.left - caixa.left) / escala;
             const y = (tela.height / 2 - focal * naCamara.y / fundo + tela.top - caixa.top) / escala;
             porOCursor(Number.isFinite(x) ? x : OLHAR_MEIO.x, Number.isFinite(y) ? y : OLHAR_MEIO.y, encolhe, cursor, quadrado);
+        };
+
+        /**
+         * Quantos graus a câmara roda nesta imagem, pela curva do "olhar à
+         * volta" (a câmara chama-a na sua atualização). Nada fora do passo,
+         * antes de o botão descer, ou se quem está a ver estiver a carregar
+         * de verdade — aí a vista é dele.
+         *
+         * @param {boolean} podeRodar - Se a câmara pode rodar agora.
+         * @returns {number} Graus, para a esquerda.
+         */
+        const voltaDoOlhar = (podeRodar) => {
+            const passo = PASSOS[atual];
+            if (!podeRodar || menosMovimento || !aberta || passo.desenho !== 'olhar' || feitos.has(atual) ||
+                janelaAFrente() || !olhar.direcao || olhar.desde !== comecouEm) {
+                return 0;
+            }
+            const f = ((performance.now() - comecouEm) % OLHAR_CICLO) / OLHAR_CICLO;
+            const quer = f < OLHAR_CARREGA ? 0 : olhar.amplitude * ladoEm(f);
+            const graus = quer - olhar.rodado;
+            olhar.rodado = quer;
+            return graus;
         };
 
         // Liga-se ao motor mal ele exista.
@@ -5631,7 +5651,7 @@
 
         <!-- Assets -->
         <pc-asset id="splat-scene" src="splat/lod-meta.json" type="gsplat"></pc-asset>
-        <pc-asset id="camera-controls-script" src="./camera-controls.mjs?v=59" type="script"></pc-asset>
+        <pc-asset id="camera-controls-script" src="./camera-controls.mjs?v=60" type="script"></pc-asset>
         <pc-asset id="camera-coords-script" src="./coords.mjs?v=7" type="script"></pc-asset>
         <pc-asset id="annotations-script" src="./annotations.mjs?v=124" type="script"></pc-asset>
         <pc-asset id="measure-script" src="./measure.mjs?v=1" type="script"></pc-asset>
@@ -5700,7 +5720,7 @@
             // (A escolha é feita no princípio da página: ver `cameraClassica`.)
             if (window.cameraClassica) {
                 var guiaoDaCamara = document.getElementById('camera-controls-script');
-                if (guiaoDaCamara) guiaoDaCamara.setAttribute('src', './camera-controls-classico.mjs?v=3');
+                if (guiaoDaCamara) guiaoDaCamara.setAttribute('src', './camera-controls-classico.mjs?v=4');
             }
 
             var guardada = null;

@@ -454,12 +454,27 @@ class CameraControls extends Script {
 
     /**
      * Se havia um botão do rato em baixo na última imagem (ver
-     * `rodarAgora`).
+     * `voltaDasInstrucoes`).
      *
      * @type {boolean}
      * @private
      */
     _botaoEmBaixo = false;
+
+    /**
+     * Quem mostra o "olhar à volta" nas instruções (ver "As instruções", no
+     * index.html) põe aqui uma função, e a câmara pergunta-lhe a cada
+     * imagem quantos graus rodar — para a esquerda, o rumo a crescer. A
+     * volta entra na própria atualização da câmara, sem amortecer e sem
+     * sair do sítio, antes de os marcadores das anotações se porem no
+     * ecrã: assim o bairro, os marcadores e o cursor desenhado andam
+     * juntos. Recebe se pode rodar: não pode se alguém estiver de facto a
+     * carregar ou se a câmara for a meio de uma viagem — e aí não conta a
+     * volta como dada. Não conta como gesto feito.
+     *
+     * @type {((podeRodar: boolean) => number)|null}
+     */
+    voltaDasInstrucoes = null;
 
     /**
      * O leitor de profundidade que diz em que sítio do bairro se carregou.
@@ -1972,32 +1987,6 @@ class CameraControls extends Script {
     }
 
     /**
-     * Roda a vista à volta da vertical, já, sem amortecer e sem sair do
-     * sítio — é o que as instruções fazem para mostrar o "olhar à volta"
-     * (ver "As instruções", no index.html), a seguir à atualização da
-     * câmara e antes de a imagem ser desenhada, para o cursor desenhado
-     * ficar agarrado ao bairro. Não conta como gesto feito, e não roda se
-     * alguém estiver de facto a carregar ou se a câmara for a meio de uma
-     * viagem.
-     *
-     * @param {number} graus - Para a esquerda (o rumo a crescer).
-     * @returns {boolean} Se rodou.
-     */
-    rodarAgora(graus) {
-        if (!Number.isFinite(graus) || this._botaoEmBaixo || this._viagem) {
-            return false;
-        }
-        this._setMode('fly');
-        this._pose.angles.y += graus;
-        this._controller.attach(this._pose, false);
-        this._camera.entity.setEulerAngles(this._pose.angles);
-        if (this._lastValidAngles) {
-            this._lastValidAngles.copy(this._pose.angles);
-        }
-        return true;
-    }
-
-    /**
      * Diz às instruções que um gesto foi feito no bairro (ver "As
      * instruções", no index.html). Aqui os nomes são 'ir', 'olhar',
      * 'aproximar', 'arrastar' (Ctrl e arrastar) e 'andar' (WASD ou setas). O mesmo gesto, repetido seguido, só se diz de tempos a
@@ -2562,6 +2551,16 @@ class CameraControls extends Script {
             }
         }
 
+        // --- A volta das instruções (ver `voltaDasInstrucoes`) ---
+        if (this.voltaDasInstrucoes) {
+            const podeRodar = this._mode === 'fly' && !this._botaoEmBaixo && !this._viagem;
+            const graus = this.voltaDasInstrucoes(podeRodar);
+            if (podeRodar && Number.isFinite(graus) && graus !== 0) {
+                this._pose.angles.y += graus;
+                this._controller.attach(this._pose, false);
+            }
+        }
+
         // --- HARD CLAMP PITCH TO PREVENT FLIPPING ---
         let currentPitch = this._pose.angles.x;
         while (currentPitch > 180) currentPitch -= 360;
@@ -2772,6 +2771,18 @@ class CameraControls extends Script {
         
         this._lastValidPos.copy(this._pose.position);
         this._lastValidAngles.copy(this._pose.angles);
+
+        // A câmara mudou de sítio: as contas do ecrã (worldToScreen) têm de
+        // ser já as desta imagem. O motor só as dá por velhas mesmo antes
+        // de desenhar, e quem as usasse a seguir a esta atualização — os
+        // marcadores das anotações, o cursor das instruções — punha-se
+        // onde o bairro estava na imagem anterior, e escorregava sempre
+        // que a vista andava.
+        const lente = this._camera.camera;
+        if (lente) {
+            lente._viewMatDirty = true;
+            lente._viewProjMatDirty = true;
+        }
 
         this._atualizarPiramide(dt);
     }

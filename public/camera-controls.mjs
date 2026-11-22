@@ -3248,6 +3248,18 @@ class CameraControls extends Script {
 
         this._camera.entity.setPosition(this._pose.position);
         this._camera.entity.setEulerAngles(this._pose.angles);
+
+        // A câmara mudou de sítio: as contas do ecrã (worldToScreen) têm de
+        // ser já as desta imagem. O motor só as dá por velhas mesmo antes
+        // de desenhar, e quem as usasse a seguir a esta atualização — os
+        // marcadores das anotações, o cursor das instruções — punha-se
+        // onde o bairro estava na imagem anterior, e escorregava sempre
+        // que a vista andava.
+        const lente = this._camera.camera;
+        if (lente) {
+            lente._viewMatDirty = true;
+            lente._viewProjMatDirty = true;
+        }
     }
 }
 
