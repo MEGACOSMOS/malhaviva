@@ -4651,7 +4651,7 @@
         <!-- Olhar à volta: o cursor parado, depois carrega-se e arrasta-se
              para o lado, e a vista roda ao mesmo tempo. O quadrado à volta
              do cursor é o botão em baixo, do princípio ao fim do arrasto.
-             Mexe-lhes o código das instruções (ver `olharMostrado`). -->
+             Mexe-lhes o código das instruções (ver `olharNoMotor`). -->
         <div class="ins-gesto" data-gesto="olhar" aria-hidden="true">
             <svg viewBox="0 0 300 180">
                 <path class="ins-traco ins-olhar-seta" d="M86 132H214"></path>
@@ -5157,87 +5157,137 @@
 
         // ── O "olhar à volta" mostrado ──
         // O cursor aparece e fica parado um instante; depois carrega (o
-        // quadrado à volta dele) e arrasta para a esquerda, para a direita
-        // e de volta ao meio, e a vista do bairro roda com ele, como se
-        // fosse a mão de quem lá está (ver `olharComoORato` em
-        // camera-controls-classico.mjs). Recomeça do princípio sempre que o
-        // passo aparece, e pára mal o gesto é feito.
+        // quadrado à volta dele) e a vista do bairro roda para um lado, para
+        // o outro e de volta ao meio. O cursor vai agarrado ao sítio do
+        // bairro que estava debaixo dele quando carregou: a cada imagem é
+        // posto onde esse sítio aparece no ecrã, e por isso nunca escorrega
+        // em relação ao bairro. Tudo isto corre no próprio motor, logo a
+        // seguir à câmara e antes de a imagem ser desenhada (ver
+        // `rodarAgora` em camera-controls-classico.mjs), para a vista e o
+        // cursor serem sempre da mesma imagem. Recomeça do princípio sempre
+        // que o passo aparece, e pára mal o gesto é feito.
         const OLHAR_CICLO = 4400;
-        // Quanto a vista roda por cada ponto que o cursor desenhado anda: o
-        // desenho é pequeno, e a vista tem de rodar o bastante para se ver.
-        const OLHAR_GANHO = 2.5;
-        const OLHAR_MEIO = 150;
+        // Quanto o sítio agarrado anda para cada lado, em unidades do
+        // desenho (as setas vão de 86 a 214).
+        const OLHAR_ALCANCE = 60;
+        const OLHAR_MEIO = { x: 150, y: 96 };
+        // Quando o botão desce (o quadrado aparece).
+        const OLHAR_CARREGA = 0.23;
         const olharDesenho = desenhos.olhar;
+        const olharSvg = olharDesenho && olharDesenho.querySelector('svg');
         const olharMao = olharDesenho && olharDesenho.querySelector('.ins-olhar-mao');
         const olharAnel = olharDesenho && olharDesenho.querySelector('.ins-olhar-anel');
         const menosMovimento = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
-        let olharAntes = null;
-        let olharDesde = 0;
+        // O que vai a meio: desde quando, a direção do sítio agarrado (a
+        // partir da câmara), quanto se roda para cada lado e quanto já se
+        // rodou.
+        const olhar = { desde: -1, direcao: null, amplitude: 0, rodado: 0 };
 
         const suave = (a) => (a <= 0 ? 0 : a >= 1 ? 1 : a * a * (3 - 2 * a));
         const entre = (f, de, ate) => suave((f - de) / (ate - de));
 
         /**
-         * Onde está o cursor desenhado a uma altura do ciclo.
+         * Para que lado vai a vista a uma altura do ciclo: 0 no meio, −1 todo
+         * para a esquerda, 1 todo para a direita.
          *
          * @param {number} f - De 0 a 1.
-         * @returns {{x: number, cursor: number, quadrado: number}} O x no
-         * desenho, e quanto se vêem o cursor e o quadrado (de 0 a 1).
+         * @returns {number} O lado.
          */
-        const olharEm = (f) => {
-            let x = OLHAR_MEIO;
-            if (f >= 0.27 && f < 0.45) x = OLHAR_MEIO - 60 * entre(f, 0.27, 0.45);
-            else if (f >= 0.45 && f < 0.71) x = OLHAR_MEIO - 60 + 120 * entre(f, 0.45, 0.71);
-            else if (f >= 0.71) x = OLHAR_MEIO + 60 - 60 * entre(f, 0.71, 0.86);
-            const cursor = Math.min(entre(f, 0, 0.06), 1 - entre(f, 0.92, 1));
-            const quadrado = Math.min(entre(f, 0.23, 0.26), 1 - entre(f, 0.86, 0.89));
-            return { x, cursor, quadrado };
+        const ladoEm = (f) => {
+            if (f < 0.27) return 0;
+            if (f < 0.45) return -entre(f, 0.27, 0.45);
+            if (f < 0.71) return -1 + 2 * entre(f, 0.45, 0.71);
+            return 1 - entre(f, 0.71, 0.86);
         };
 
-        const comandosDaCamara = () => {
+        const motorDoBairro = () => {
             const pcApp = document.querySelector('pc-app');
-            const camara = pcApp && pcApp.app && pcApp.app.root.findByName('camera');
-            return camara && camara.script && camara.script.cameraControls;
+            return pcApp && pcApp.app;
         };
 
-        const olharMostrado = () => {
+        const porOCursor = (x, y, encolhe, cursor, quadrado) => {
+            olharMao.style.transform = 'translate(' + x.toFixed(2) + 'px, ' + y.toFixed(2) + 'px) scale(' + encolhe.toFixed(3) + ')';
+            olharMao.style.opacity = cursor.toFixed(3);
+            olharAnel.style.opacity = quadrado.toFixed(3);
+        };
+
+        const olharNoMotor = () => {
             if (!olharMao) return;
             const passo = PASSOS[atual];
             const aMostrar = aberta && passo.desenho === 'olhar' && !feitos.has(atual) && !janelaAFrente();
             if (!aMostrar) {
-                olharAntes = null;
+                olhar.desde = -1;
                 return;
             }
             if (menosMovimento) {
-                olharMao.style.transform = 'translate(' + OLHAR_MEIO + 'px, 96px) scale(0.86)';
-                olharMao.style.opacity = '1';
-                olharAnel.style.opacity = '1';
+                porOCursor(OLHAR_MEIO.x, OLHAR_MEIO.y, 0.86, 1, 1);
                 return;
             }
-            // Passo mostrado de novo: o ciclo volta ao princípio, e o salto
-            // do cursor para o meio não roda a vista.
-            if (olharDesde !== comecouEm) {
-                olharDesde = comecouEm;
-                olharAntes = null;
+            // Passo mostrado de novo: o ciclo volta ao princípio.
+            if (olhar.desde !== comecouEm) {
+                olhar.desde = comecouEm;
+                olhar.direcao = null;
+                olhar.rodado = 0;
             }
             const f = ((performance.now() - comecouEm) % OLHAR_CICLO) / OLHAR_CICLO;
-            const agora = olharEm(f);
-            const encolhe = 1 - 0.14 * agora.quadrado;
-            olharMao.style.transform = 'translate(' + agora.x.toFixed(2) + 'px, 96px) scale(' + encolhe.toFixed(3) + ')';
-            olharMao.style.opacity = agora.cursor.toFixed(3);
-            olharAnel.style.opacity = agora.quadrado.toFixed(3);
+            const cursor = Math.min(entre(f, 0, 0.06), 1 - entre(f, 0.92, 1));
+            const quadrado = Math.min(entre(f, OLHAR_CARREGA, OLHAR_CARREGA + 0.03), 1 - entre(f, 0.86, 0.89));
+            const encolhe = 1 - 0.14 * quadrado;
 
-            // A vista roda com o que o cursor andou desde a imagem anterior,
-            // em pontos de ecrã.
-            if (olharAntes !== null) {
-                const pontosPorUnidade = olharDesenho.getBoundingClientRect().width / 300;
-                const comandos = comandosDaCamara();
-                const andou = agora.x - olharAntes;
-                if (andou && comandos && comandos.olharComoORato) {
-                    comandos.olharComoORato(andou * pontosPorUnidade * OLHAR_GANHO);
-                }
+            const motor = motorDoBairro();
+            const entidade = motor && motor.root.findByName('camera');
+            const camara = entidade && entidade.camera;
+            const comandos = entidade && entidade.script && entidade.script.cameraControls;
+            const caixa = olharSvg.getBoundingClientRect();
+            const escala = caixa.width / 300;
+            if (f < OLHAR_CARREGA || !camara || !comandos || !comandos.rodarAgora || !escala) {
+                // Ainda parado: o cursor no meio do desenho, e um ciclo novo
+                // por começar.
+                olhar.direcao = null;
+                olhar.rodado = 0;
+                porOCursor(OLHAR_MEIO.x, OLHAR_MEIO.y, encolhe, cursor, quadrado);
+                return;
             }
-            olharAntes = agora.x;
+
+            const tela = motor.graphicsDevice.canvas.getBoundingClientRect();
+            if (!olhar.direcao) {
+                // O botão desce: agarra-se o sítio que está debaixo da ponta
+                // do cursor, e mede-se quanto se roda para ele andar o
+                // alcance do desenho.
+                const px = caixa.left + OLHAR_MEIO.x * escala - tela.left;
+                const py = caixa.top + OLHAR_MEIO.y * escala - tela.top;
+                const longe = camara.screenToWorld(px, py, 10);
+                olhar.direcao = longe.sub(entidade.getPosition());
+                const meiaAbertura = (camara.fov || 60) * Math.PI / 360;
+                const medida = (camara.horizontalFov ? tela.width : tela.height) || 1;
+                const focal = medida / 2 / Math.tan(meiaAbertura);
+                olhar.amplitude = Math.atan((OLHAR_ALCANCE * escala) / focal) * 180 / Math.PI;
+                olhar.rodado = 0;
+            }
+
+            // A vista roda pela curva; quem estiver a carregar de verdade
+            // fica com ela.
+            const quer = olhar.amplitude * ladoEm(f);
+            if (quer !== olhar.rodado && comandos.rodarAgora(quer - olhar.rodado)) {
+                olhar.rodado = quer;
+            }
+
+            // E o cursor vai para onde o sítio agarrado está agora.
+            const sitio = entidade.getPosition().clone().add(olhar.direcao);
+            const noEcra = camara.worldToScreen(sitio);
+            const x = (noEcra.x + tela.left - caixa.left) / escala;
+            const y = (noEcra.y + tela.top - caixa.top) / escala;
+            porOCursor(Number.isFinite(x) ? x : OLHAR_MEIO.x, Number.isFinite(y) ? y : OLHAR_MEIO.y, encolhe, cursor, quadrado);
+        };
+
+        // Liga-se ao motor mal ele exista.
+        let olharLigado = false;
+        const ligarOOlhar = () => {
+            if (olharLigado) return;
+            const motor = motorDoBairro();
+            if (!motor || typeof motor.on !== 'function') return;
+            motor.on('update', olharNoMotor);
+            olharLigado = true;
         };
 
         // As peças mexem-se com o bairro: o foco vai atrás delas a cada
@@ -5245,7 +5295,7 @@
         const ciclo = () => {
             if (!aberta) return;
             arrumar();
-            olharMostrado();
+            ligarOOlhar();
             requestAnimationFrame(ciclo);
         };
 

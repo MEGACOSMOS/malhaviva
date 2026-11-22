@@ -453,13 +453,13 @@ class CameraControls extends Script {
     _viagem = null;
 
     /**
-     * Os pontos de ecrã que as instruções arrastaram desde a última imagem,
-     * a fingir o rato (ver `olharComoORato`).
+     * Se havia um botão do rato em baixo na última imagem (ver
+     * `rodarAgora`).
      *
-     * @type {number}
+     * @type {boolean}
      * @private
      */
-    _olharDeMentira = 0;
+    _botaoEmBaixo = false;
 
     /**
      * O leitor de profundidade que diz em que sítio do bairro se carregou.
@@ -1972,16 +1972,29 @@ class CameraControls extends Script {
     }
 
     /**
-     * Roda a vista como se se arrastasse o rato com o botão em baixo — é o
-     * que as instruções fazem para mostrar o "olhar à volta" (ver "As
-     * instruções", no index.html). Não conta como gesto feito, e perde-se
-     * se alguém estiver de facto a carregar ou se a câmara for a meio de
-     * uma viagem.
+     * Roda a vista à volta da vertical, já, sem amortecer e sem sair do
+     * sítio — é o que as instruções fazem para mostrar o "olhar à volta"
+     * (ver "As instruções", no index.html), a seguir à atualização da
+     * câmara e antes de a imagem ser desenhada, para o cursor desenhado
+     * ficar agarrado ao bairro. Não conta como gesto feito, e não roda se
+     * alguém estiver de facto a carregar ou se a câmara for a meio de uma
+     * viagem.
      *
-     * @param {number} pontos - Pontos de ecrã, para a direita.
+     * @param {number} graus - Para a esquerda (o rumo a crescer).
+     * @returns {boolean} Se rodou.
      */
-    olharComoORato(pontos) {
-        if (Number.isFinite(pontos)) this._olharDeMentira += pontos;
+    rodarAgora(graus) {
+        if (!Number.isFinite(graus) || this._botaoEmBaixo || this._viagem) {
+            return false;
+        }
+        this._setMode('fly');
+        this._pose.angles.y += graus;
+        this._controller.attach(this._pose, false);
+        this._camera.entity.setEulerAngles(this._pose.angles);
+        if (this._lastValidAngles) {
+            this._lastValidAngles.copy(this._pose.angles);
+        }
+        return true;
     }
 
     /**
@@ -2199,6 +2212,7 @@ class CameraControls extends Script {
         // levar a câmara (a navegação, quando ela segue a seta de quem anda:
         // ver navegacao-3d.mjs), para a largar.
         const botaoEmBaixo = this._state.mouse.some(b => b > 0);
+        this._botaoEmBaixo = botaoEmBaixo || this._state.touches > 0;
         const pegou = this._state.axis.lengthSq() > 0 ||
             this._setas.lengthSq() > 0 ||
             wheel[0] !== 0 ||
@@ -2386,11 +2400,7 @@ class CameraControls extends Script {
         v.set(0, 0, 0);
         
         // Target rotation based on mouse input (reduced multiplier to 0.4 for better tracking and slower speed)
-        // O arrasto fingido das instruções soma-se ao do rato, a não ser
-        // que haja um botão em baixo ou uma viagem: aí é de quem manda.
-        const fingido = (botaoEmBaixo || this._viagem) ? 0 : this._olharDeMentira;
-        this._olharDeMentira = 0;
-        const targetRotate = tmpV2.set(-(mouse[0] + fingido) * 0.4, -mouse[1] * 0.4, 0).mulScalar(ctrlArrasto ? 0 : rotateDeltaMult);
+        const targetRotate = tmpV2.set(-mouse[0] * 0.4, -mouse[1] * 0.4, 0).mulScalar(ctrlArrasto ? 0 : rotateDeltaMult);
         
         v.add(targetRotate);
         deltas.rotate.append([v.x, v.y, v.z]);
