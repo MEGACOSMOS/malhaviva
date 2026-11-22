@@ -640,18 +640,33 @@
         <p class="page-subtitle" data-i18n="ctl.sub">Guia completo para navegar pela reconstrução 3D do Bairro de Penajóia.</p>
         <a href="/?instrucoes" class="rever-instrucoes" data-i18n="ins.rever">Rever as instruções</a>
 
-        <!-- ─── Rato ───
-             Como no Google Maps (ver "Navegar como no Google Maps", em
-             camera-controls.mjs). -->
+        <!-- O rato, nos computadores: a câmara clássica (ver
+             camera-controls-classico.mjs) — um clique num sítio do bairro
+             e a câmara vai até lá. Nos telemóveis e nos tablets a câmara é
+             a outra, a dos dedos (ver "Toque", mais abaixo). -->
         <section class="section" id="rato">
             <div class="section-header">
                 <h2 class="section-title" data-i18n="ctl.rato">Rato</h2>
             </div>
             <div class="controls-table">
                 <div class="control-row">
-                    <span class="control-action" data-i18n="ctl.moverMapa">Mover o mapa</span>
+                    <span class="control-action" data-i18n="ctl.irAte">Ir até um sítio</span>
+                    <div class="control-keys">
+                        <span class="kbd accent" data-i18n="ctl.clicar">Clicar</span>
+                        <span class="key-separator" data-i18n="ctl.noSitio">num sítio do bairro</span>
+                    </div>
+                </div>
+                <div class="control-row">
+                    <span class="control-action" data-i18n="ctl.olhar">Olhar à volta</span>
                     <div class="control-keys">
                         <span class="kbd accent"><svg width="11" height="14" viewBox="0 0 12 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true" style="margin-right: 6px"><rect x="1" y="1" width="10" height="14"></rect><line x1="6" y1="4" x2="6" y2="7"></line></svg><span data-i18n="ctl.esquerdo">Esquerdo</span></span>
+                        <span class="key-separator" data-i18n="ctl.maisArrastar">+ arrastar</span>
+                    </div>
+                </div>
+                <div class="control-row">
+                    <span class="control-action" data-i18n="ctl.arrastarBairro">Arrastar o bairro</span>
+                    <div class="control-keys">
+                        <span class="kbd accent">Ctrl</span>
                         <span class="key-separator" data-i18n="ctl.maisArrastar">+ arrastar</span>
                     </div>
                 </div>
@@ -659,23 +674,6 @@
                     <span class="control-action" data-i18n="ctl.zoom">Aproximar / afastar</span>
                     <div class="control-keys">
                         <span class="kbd accent" data-i18n="ctl.rodaDoRato">Roda do rato</span>
-                    </div>
-                </div>
-                <div class="control-row">
-                    <span class="control-action" data-i18n="ctl.rodar">Rodar e inclinar</span>
-                    <div class="control-keys">
-                        <span class="kbd accent">Ctrl</span>
-                        <span class="key-separator" data-i18n="ctl.maisArrastar">+ arrastar</span>
-                        <span class="key-separator" data-i18n="ctl.ou">ou</span>
-                        <span class="kbd"><svg width="11" height="14" viewBox="0 0 12 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true" style="margin-right: 6px"><rect x="1" y="1" width="10" height="14"></rect><line x1="6" y1="4" x2="6" y2="7"></line></svg><span data-i18n="ctl.direito">Direito</span></span>
-                        <span class="key-separator" data-i18n="ctl.maisArrastar">+ arrastar</span>
-                    </div>
-                </div>
-                <div class="control-row">
-                    <span class="control-action" data-i18n="ctl.aproximarSitio">Aproximar e trazer ao meio</span>
-                    <div class="control-keys">
-                        <span class="kbd accent" data-i18n="ctl.duploClique">Duplo clique</span>
-                        <span class="key-separator" data-i18n="ctl.noSitio">num sítio do bairro</span>
                     </div>
                 </div>
                 <!-- O local marcado: as direções até lá e a partilha (ver

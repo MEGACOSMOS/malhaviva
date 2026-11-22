@@ -183,6 +183,16 @@
          no nome do ficheiro é a versão; para mudar de versão muda-se o
          nome, e nunca o conteúdo, porque o navegador guarda estes ficheiros
          durante um ano sem voltar a perguntar. -->
+    <!-- Que câmara: nos telemóveis e nos tablets, a navegação como no Google
+         Maps (camera-controls.mjs); nos computadores, a clássica
+         (camera-controls-classico.mjs) — um clique num sítio do bairro e a
+         câmara vai até lá. Decide-se aqui, no princípio, porque as
+         instruções e o script de antes do motor precisam de o saber. -->
+    <script>
+        window.cameraClassica = !(/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+            (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1) ||
+            (window.matchMedia('(max-width: 768px)').matches && navigator.maxTouchPoints > 0));
+    </script>
     <script type="importmap">
         {
             "imports": {
@@ -2808,6 +2818,55 @@
             opacity: 0.85;
         }
 
+        /* Ir até um sítio (a câmara clássica): o rato vem, clica, o
+           quadrado abre-se no chão e a pirâmide aparece por cima. */
+        #instrucoes .ins-ir-mao {
+            transform: translate(70px, 150px);
+            animation: ins-ir-mao 2.8s ease-in-out infinite;
+        }
+        @keyframes ins-ir-mao {
+            0% { transform: translate(70px, 150px); opacity: 0; }
+            10% { transform: translate(70px, 150px); opacity: 1; }
+            40% { transform: translate(150px, 110px); }
+            46% { transform: translate(150px, 110px) scale(0.86); }
+            52% { transform: translate(150px, 110px) scale(1); opacity: 1; }
+            86%, 100% { transform: translate(150px, 110px); opacity: 0; }
+        }
+        #instrucoes .ins-ir-anel {
+            animation: ins-ir-anel 2.8s ease-out infinite;
+        }
+        @keyframes ins-ir-anel {
+            0%, 45% { opacity: 0; transform: scale(0.5); }
+            47% { opacity: 1; transform: scale(0.5); }
+            68%, 100% { opacity: 0; transform: scale(1.6); }
+        }
+        #instrucoes .ins-ir-piramide {
+            opacity: 0;
+            animation: ins-ir-piramide 2.8s ease-out infinite;
+        }
+        @keyframes ins-ir-piramide {
+            0%, 46% { opacity: 0; transform: translateY(-8px); }
+            58%, 84% { opacity: 1; transform: translateY(0); }
+            100% { opacity: 0; transform: translateY(0); }
+        }
+
+        /* Olhar à volta (a câmara clássica): carrega-se e arrasta-se para
+           um lado e para o outro. */
+        #instrucoes .ins-olhar-mao {
+            transform: translate(150px, 96px);
+            animation: ins-olhar-mao 3s ease-in-out infinite;
+        }
+        @keyframes ins-olhar-mao {
+            0% { transform: translate(150px, 96px); opacity: 0; }
+            10% { transform: translate(150px, 96px) scale(0.86); opacity: 1; }
+            40% { transform: translate(90px, 96px) scale(0.86); }
+            75% { transform: translate(210px, 96px) scale(0.86); opacity: 1; }
+            90%, 100% { transform: translate(210px, 96px); opacity: 0; }
+        }
+        #instrucoes .ins-olhar-seta {
+            opacity: 0.85;
+        }
+
         /* Aproximar: quadrados a crescer a partir do sítio para onde se
            vai, e a roda do rato a rodar (ou dois dedos a afastar). */
         #instrucoes .ins-crescer {
@@ -4544,6 +4603,36 @@
             </svg>
         </div>
 
+        <!-- Os gestos da câmara clássica (a dos computadores, ver
+             camera-controls-classico.mjs). Ir até um sítio: o rato vai até
+             um sítio, clica, e a pirâmide aparece por cima dele. -->
+        <div class="ins-gesto" data-gesto="ir" aria-hidden="true">
+            <svg viewBox="0 0 300 180">
+                <rect class="ins-anel ins-ir-anel" x="138" y="98" width="24" height="24"></rect>
+                <g class="ins-ir-piramide">
+                    <path class="ins-traco" d="M136 56H164L150 92Z"></path>
+                    <path class="ins-traco" d="M150 56V92" style="stroke-width: 2"></path>
+                </g>
+                <g class="ins-ir-mao">
+                    <path class="so-rato" fill="#ffffff" stroke="#05050a" stroke-width="1.2" stroke-linejoin="round" d="M0 0L0 22L6 16.6L10.4 26L14.3 24.2L10 15.1L17 15.1Z"></path>
+                    <circle class="so-toque ins-dedo" cx="0" cy="0" r="13"></circle>
+                </g>
+            </svg>
+        </div>
+
+        <!-- Olhar à volta: carrega-se e arrasta-se para o lado. -->
+        <div class="ins-gesto" data-gesto="olhar" aria-hidden="true">
+            <svg viewBox="0 0 300 180">
+                <path class="ins-traco ins-olhar-seta" d="M86 132H214"></path>
+                <polyline class="ins-traco ins-olhar-seta" points="98 120 86 132 98 144"></polyline>
+                <polyline class="ins-traco ins-olhar-seta" points="202 120 214 132 202 144"></polyline>
+                <g class="ins-olhar-mao">
+                    <path class="so-rato" fill="#ffffff" stroke="#05050a" stroke-width="1.2" stroke-linejoin="round" d="M0 0L0 22L6 16.6L10.4 26L14.3 24.2L10 15.1L17 15.1Z"></path>
+                    <circle class="so-toque ins-dedo" cx="0" cy="0" r="13"></circle>
+                </g>
+            </svg>
+        </div>
+
         <!-- O cartão do texto. -->
         <div class="instrucoes-cartao" role="dialog" aria-modal="false" aria-labelledby="instrucoes-titulo" aria-describedby="instrucoes-texto" tabindex="-1">
             <button type="button" class="menu-fechar" aria-label="Fechar as instruções" title="Fechar as instruções" data-i18n-aria="ins.fechar" data-i18n-title="ins.fechar">
@@ -4693,10 +4782,20 @@
         ].filter(Boolean);
 
         // ── Os passos ──
-        const PASSOS = [
+        // Os três primeiros são os da câmara: os da navegação como no
+        // Google Maps (telemóveis e tablets) ou os da câmara clássica
+        // (computadores) — ver o script de antes do motor.
+        const PASSOS_DA_CAMARA = window.cameraClassica ? [
+            { titulo: 'ins.irTitulo', texto: porToque ? 'ins.irToque' : 'ins.irRato', gestos: ['ir'], desenho: 'ir' },
+            { titulo: 'ins.olharTitulo', texto: porToque ? 'ins.olharToque' : 'ins.olharRato', gestos: ['olhar'], desenho: 'olhar' },
+            { titulo: 'ins.zoomTitulo', texto: porToque ? 'ins.zoomToqueClassico' : 'ins.zoomRatoClassico', gestos: ['aproximar'], desenho: 'zoom' }
+        ] : [
             { titulo: 'ins.moverTitulo', texto: porToque ? 'ins.moverToque' : 'ins.moverRato', gestos: ['mover'], desenho: 'mover' },
             { titulo: 'ins.zoomTitulo', texto: porToque ? 'ins.zoomToque' : 'ins.zoomRato', gestos: ['aproximar'], desenho: 'zoom' },
-            { titulo: 'ins.rodarTitulo', texto: porToque ? 'ins.rodarToque' : 'ins.rodarRato', gestos: ['rodar', 'inclinar'], desenho: 'rodar' },
+            { titulo: 'ins.rodarTitulo', texto: porToque ? 'ins.rodarToque' : 'ins.rodarRato', gestos: ['rodar', 'inclinar'], desenho: 'rodar' }
+        ];
+        const PASSOS = [
+            ...PASSOS_DA_CAMARA,
             { titulo: 'ins.historiasTitulo', texto: porToque ? 'ins.historiasToque' : 'ins.historias', alvos: alvosDasHistorias },
             { titulo: 'ins.ceuTitulo', texto: 'ins.ceu', alvos: alvosDoCeu },
             { titulo: 'ins.pesquisaTitulo', texto: () => (pesquisaNoMenu() ? 'ins.pesquisaMenu' : 'ins.pesquisa'), alvos: alvoDaPesquisa },
@@ -5345,6 +5444,17 @@
                 var memoriaDoAparelho = navigator.deviceMemory || 8;
                 if (nucleos <= 2 || memoriaDoAparelho <= 2) return 'low';
                 return nucleos <= 6 ? 'med' : 'high';
+            }
+
+            // A câmara. Nos telemóveis e nos tablets, a navegação como no
+            // Google Maps (camera-controls.mjs): arrastar puxa o chão, dois
+            // dedos aproximam. Nos computadores, a clássica
+            // (camera-controls-classico.mjs): um clique num sítio do bairro
+            // e a câmara vai até lá, arrastar roda a vista, a roda aproxima.
+            // (A escolha é feita no princípio da página: ver `cameraClassica`.)
+            if (window.cameraClassica) {
+                var guiaoDaCamara = document.getElementById('camera-controls-script');
+                if (guiaoDaCamara) guiaoDaCamara.setAttribute('src', './camera-controls-classico.mjs?v=2');
             }
 
             var guardada = null;
