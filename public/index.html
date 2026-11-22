@@ -2818,8 +2818,8 @@
             opacity: 0.85;
         }
 
-        /* Ir até um sítio (a câmara clássica): o rato vem, clica, o
-           quadrado abre-se no chão e a pirâmide aparece por cima. */
+        /* Ir até um sítio (a câmara clássica): o rato vem, clica, e o
+           quadrado abre-se onde clicou. */
         #instrucoes .ins-ir-mao {
             transform: translate(70px, 150px);
             animation: ins-ir-mao 2.8s ease-in-out infinite;
@@ -2840,23 +2840,26 @@
             47% { opacity: 1; transform: scale(0.5); }
             68%, 100% { opacity: 0; transform: scale(1.6); }
         }
-        #instrucoes .ins-ir-piramide {
-            opacity: 0;
-            animation: ins-ir-piramide 2.8s ease-out infinite;
-        }
-        @keyframes ins-ir-piramide {
-            0%, 46% { opacity: 0; transform: translateY(-8px); }
-            58%, 84% { opacity: 1; transform: translateY(0); }
-            100% { opacity: 0; transform: translateY(0); }
-        }
 
-        /* Aproximar (a câmara clássica): a seta da roda a subir, e o −
-           carregado depois do +. */
+        /* Aproximar (a câmara clássica): a roda do rato a rodar e dois
+           dedos a subir num trackpad, cada um com a seta para cima. */
         #instrucoes .ins-roda-seta {
             opacity: 0.85;
         }
-        #instrucoes .ins-tecla-depois rect,
-        #instrucoes .ins-tecla-depois text { animation-delay: 1.4s; }
+        #instrucoes .ins-trackpad {
+            fill: #05050a;
+            stroke: #ffffff;
+            stroke-width: 3;
+        }
+        #instrucoes .ins-trackpad-dedos {
+            animation: ins-trackpad-dedos 1.8s ease-in-out infinite;
+        }
+        @keyframes ins-trackpad-dedos {
+            0% { transform: translateY(18px); opacity: 0; }
+            15% { opacity: 1; }
+            70% { transform: translateY(-18px); opacity: 1; }
+            85%, 100% { transform: translateY(-18px); opacity: 0; }
+        }
 
         /* Andar com o teclado (a câmara clássica): as quatro teclas, e o W
            e o D a serem carregados, um a seguir ao outro. */
@@ -2893,6 +2896,18 @@
         }
         #instrucoes .ins-olhar-seta {
             opacity: 0.85;
+        }
+        #instrucoes .ins-olhar-anel {
+            fill: none;
+            stroke: #ffffff;
+            stroke-width: 2.5;
+            opacity: 0;
+            animation: ins-olhar-anel 3s ease-in-out infinite;
+        }
+        @keyframes ins-olhar-anel {
+            0%, 8% { opacity: 0; }
+            12%, 74% { opacity: 1; }
+            80%, 100% { opacity: 0; }
         }
 
         /* Aproximar: quadrados a crescer a partir do sítio para onde se
@@ -4633,14 +4648,10 @@
 
         <!-- Os gestos da câmara clássica (a dos computadores, ver
              camera-controls-classico.mjs). Ir até um sítio: o rato vai até
-             um sítio, clica, e a pirâmide aparece por cima dele. -->
+             um sítio e clica. -->
         <div class="ins-gesto" data-gesto="ir" aria-hidden="true">
             <svg viewBox="0 0 300 180">
                 <rect class="ins-anel ins-ir-anel" x="138" y="98" width="24" height="24"></rect>
-                <g class="ins-ir-piramide">
-                    <path class="ins-traco" d="M136 56H164L150 92Z"></path>
-                    <path class="ins-traco" d="M150 56V92" style="stroke-width: 2"></path>
-                </g>
                 <g class="ins-ir-mao">
                     <path class="so-rato" fill="#ffffff" stroke="#05050a" stroke-width="1.2" stroke-linejoin="round" d="M0 0L0 22L6 16.6L10.4 26L14.3 24.2L10 15.1L17 15.1Z"></path>
                     <circle class="so-toque ins-dedo" cx="0" cy="0" r="13"></circle>
@@ -4648,34 +4659,41 @@
             </svg>
         </div>
 
-        <!-- Olhar à volta: carrega-se e arrasta-se para o lado. -->
+        <!-- Olhar à volta: carrega-se e arrasta-se para o lado. O quadrado à
+             volta do cursor é o botão em baixo, do princípio ao fim. -->
         <div class="ins-gesto" data-gesto="olhar" aria-hidden="true">
             <svg viewBox="0 0 300 180">
                 <path class="ins-traco ins-olhar-seta" d="M86 132H214"></path>
                 <polyline class="ins-traco ins-olhar-seta" points="98 120 86 132 98 144"></polyline>
                 <polyline class="ins-traco ins-olhar-seta" points="202 120 214 132 202 144"></polyline>
                 <g class="ins-olhar-mao">
+                    <rect class="ins-olhar-anel" x="-14" y="-14" width="28" height="28"></rect>
                     <path class="so-rato" fill="#ffffff" stroke="#05050a" stroke-width="1.2" stroke-linejoin="round" d="M0 0L0 22L6 16.6L10.4 26L14.3 24.2L10 15.1L17 15.1Z"></path>
                     <circle class="so-toque ins-dedo" cx="0" cy="0" r="13"></circle>
                 </g>
             </svg>
         </div>
 
-        <!-- Aproximar e afastar (a câmara clássica): a roda do rato a rodar,
-             e o + e o − do teclado. Sem quadrados a abrir no sítio do rato:
-             na câmara clássica não há duplo clique. -->
+        <!-- Aproximar e afastar (a câmara clássica): a roda do rato a rodar
+             e, ao lado, dois dedos a deslizar num trackpad. Sem quadrados a
+             abrir no sítio do rato: na câmara clássica não há duplo clique. -->
         <div class="ins-gesto" data-gesto="zoom-roda" aria-hidden="true">
             <svg viewBox="0 0 300 180">
-                <g transform="translate(126 46)">
+                <g transform="translate(66 52)">
                     <rect x="0" y="0" width="48" height="76" fill="#05050a" stroke="#ffffff" stroke-width="3"></rect>
                     <line x1="0" y1="30" x2="48" y2="30" stroke="#ffffff" stroke-width="2.5"></line>
                     <line x1="24" y1="0" x2="24" y2="30" stroke="#ffffff" stroke-width="2.5"></line>
                     <line class="ins-roda" x1="24" y1="7" x2="24" y2="18" stroke="#ffffff" stroke-width="5"></line>
                 </g>
-                <path class="ins-traco ins-roda-seta" d="M150 36V14"></path>
-                <polyline class="ins-traco ins-roda-seta" points="141 23 150 14 159 23"></polyline>
-                <g class="ins-tecla"><rect x="62" y="64" width="36" height="36"></rect><text x="80" y="82">+</text></g>
-                <g class="ins-tecla ins-tecla-depois"><rect x="202" y="64" width="36" height="36"></rect><text x="220" y="82">−</text></g>
+                <path class="ins-traco ins-roda-seta" d="M90 42V20"></path>
+                <polyline class="ins-traco ins-roda-seta" points="81 29 90 20 99 29"></polyline>
+                <rect class="ins-trackpad" x="164" y="52" width="100" height="76"></rect>
+                <g class="ins-trackpad-dedos">
+                    <circle class="ins-dedo" cx="202" cy="90" r="9"></circle>
+                    <circle class="ins-dedo" cx="226" cy="90" r="9"></circle>
+                </g>
+                <path class="ins-traco ins-roda-seta" d="M214 42V20"></path>
+                <polyline class="ins-traco ins-roda-seta" points="205 29 214 20 223 29"></polyline>
             </svg>
         </div>
 
