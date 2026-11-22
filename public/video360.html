@@ -2659,7 +2659,9 @@
         // Esvarena. Fechadas, fica escrito no navegador e não voltam.
         const instrucoes = (() => {
             const caixa = document.getElementById('instrucoes');
-            const CHAVE = 'instrucoes360';
+            // Com nome novo desde que passaram a ser para praticar: quem viu
+            // as antigas, só de ler, vê estas uma vez.
+            const CHAVE = 'instrucoes360-praticar';
             const t = (chave) => (window.Idiomas && window.Idiomas.t(chave)) || '';
             const traduzir = (el) => { if (window.Idiomas) window.Idiomas.aplicar(el); };
             const RAD = Math.PI / 180;
