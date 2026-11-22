@@ -4627,7 +4627,7 @@
                     <rect x="0" y="0" width="48" height="76" fill="#05050a" stroke="#ffffff" stroke-width="3"></rect>
                     <line x1="0" y1="30" x2="48" y2="30" stroke="#ffffff" stroke-width="2.5"></line>
                     <line x1="24" y1="0" x2="24" y2="30" stroke="#ffffff" stroke-width="2.5"></line>
-                    <line class="ins-roda" x1="24" y1="10" x2="24" y2="20" stroke="#ffffff" stroke-width="5"></line>
+                    <clipPath id="ins-roda-recorte"><rect x="21.25" y="7.75" width="5.5" height="16.5"></rect></clipPath><rect x="20.5" y="7" width="7" height="18" fill="#05050a" stroke="#ffffff" stroke-width="1.5"></rect><g clip-path="url(#ins-roda-recorte)"><g class="ins-roda" stroke="#ffffff" stroke-width="1.2"><line x1="21" y1="1" x2="27" y2="1"></line><line x1="21" y1="5" x2="27" y2="5"></line><line x1="21" y1="9" x2="27" y2="9"></line><line x1="21" y1="13" x2="27" y2="13"></line><line x1="21" y1="17" x2="27" y2="17"></line><line x1="21" y1="21" x2="27" y2="21"></line><line x1="21" y1="25" x2="27" y2="25"></line><line x1="21" y1="29" x2="27" y2="29"></line><line x1="21" y1="33" x2="27" y2="33"></line></g></g>
                 </g>
                 <g class="ins-zoom-cima">
                     <path class="ins-traco ins-roda-seta" d="M90 42V20"></path>
@@ -5287,6 +5287,12 @@
         const zoomRoda = desenhos['zoom-roda'];
         const zoomDedos = desenhos.zoom;
         const rodaRisca = zoomRoda && zoomRoda.querySelector('.ins-roda');
+
+        // A roda não sai do sítio: gira. As estrias andam por dentro dela,
+        // para cima enquanto se aproxima e para baixo enquanto se afasta,
+        // e como se repetem de 4 em 4 parecem não acabar. Uma aproximação
+        // inteira são seis estrias.
+        const giroDaRoda = (k) => -((k * 24) % 4);
         const trackpadDedos = zoomRoda && zoomRoda.querySelector('.ins-trackpad-dedos');
         const setasCima = zoomRoda && zoomRoda.querySelector('.ins-zoom-cima');
         const setasBaixo = zoomRoda && zoomRoda.querySelector('.ins-zoom-baixo');
@@ -5343,7 +5349,7 @@
 
             // Os desenhos, pela mesma curva.
             const aAfastar = f >= 0.5;
-            if (rodaRisca) rodaRisca.style.transform = 'translateY(' + (-6 * k).toFixed(2) + 'px)';
+            if (rodaRisca) rodaRisca.style.transform = 'translateY(' + giroDaRoda(k).toFixed(2) + 'px)';
             if (trackpadDedos) {
                 trackpadDedos.style.transform = 'translateY(' + (14 - 28 * k).toFixed(2) + 'px)';
                 trackpadDedos.style.opacity = ver.toFixed(3);
