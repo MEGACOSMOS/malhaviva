@@ -444,75 +444,37 @@
             opacity: 0;
         }
 
-        /* Aproximar com o rato: a roda a rodar e dois dedos a subir num
-           trackpad, cada um com a seta para cima. */
-        #instrucoes .ins-roda {
-            animation: ins-roda 0.6s linear infinite;
-        }
-        @keyframes ins-roda {
-            from { transform: translateY(0); opacity: 1; }
-            to { transform: translateY(6px); opacity: 0; }
-        }
+        /* Aproximar e o teclado: nada pisca sozinho. A roda, os dedos do
+           trackpad, os dois dedos e as teclas mexem-se pelo código das
+           instruções, a par com a imagem (ver `mostrarOZoom` e
+           `mostrarAsTeclas`). As setas do aproximar viram-se: para cima
+           enquanto se aproxima, para baixo enquanto se afasta. */
         #instrucoes .ins-trackpad {
             fill: #05050a;
             stroke: #ffffff;
             stroke-width: 3;
         }
         #instrucoes .ins-trackpad-dedos {
-            animation: ins-trackpad-dedos 1.8s ease-in-out infinite;
+            transform: translateY(14px);
         }
-        @keyframes ins-trackpad-dedos {
-            0% { transform: translateY(18px); opacity: 0; }
-            15% { opacity: 1; }
-            70% { transform: translateY(-18px); opacity: 1; }
-            85%, 100% { transform: translateY(-18px); opacity: 0; }
+        #instrucoes .ins-zoom-cima,
+        #instrucoes .ins-zoom-baixo {
+            transition: opacity 0.25s ease;
         }
-
-        /* Aproximar com os dedos: dois dedos que se afastam, e quadrados a
-           crescer do meio. */
-        #instrucoes .ins-crescer {
-            fill: none;
-            stroke: #ffffff;
-            stroke-width: 2.5;
-            transform-box: fill-box;
-            transform-origin: center;
+        #instrucoes .ins-zoom-baixo {
             opacity: 0;
-            animation: ins-crescer 1.8s ease-out infinite;
-        }
-        #instrucoes .ins-crescer:nth-of-type(2) { animation-delay: 0.6s; }
-        #instrucoes .ins-crescer:nth-of-type(3) { animation-delay: 1.2s; }
-        @keyframes ins-crescer {
-            0% { opacity: 0; transform: scale(0.3); }
-            15% { opacity: 0.95; }
-            100% { opacity: 0; transform: scale(2.4); }
         }
         #instrucoes .ins-pinca-a {
             transform: translate(132px, 102px);
-            animation: ins-pinca-a 2.4s ease-in-out infinite;
-        }
-        @keyframes ins-pinca-a {
-            0%, 15% { transform: translate(132px, 102px); opacity: 0; }
-            20% { opacity: 1; }
-            70%, 82% { transform: translate(96px, 130px); opacity: 1; }
-            95%, 100% { transform: translate(96px, 130px); opacity: 0; }
         }
         #instrucoes .ins-pinca-b {
             transform: translate(168px, 78px);
-            animation: ins-pinca-b 2.4s ease-in-out infinite;
         }
-        @keyframes ins-pinca-b {
-            0%, 15% { transform: translate(168px, 78px); opacity: 0; }
-            20% { opacity: 1; }
-            70%, 82% { transform: translate(204px, 50px); opacity: 1; }
-            95%, 100% { transform: translate(204px, 50px); opacity: 0; }
-        }
-
-        /* O teclado: o W, o A, o S e o D acendem-se, um de cada vez. */
         #instrucoes .ins-tecla rect {
             fill: transparent;
             stroke: #ffffff;
             stroke-width: 2.5;
-            animation: ins-tecla 3.6s ease infinite;
+            transition: fill 0.15s ease;
         }
         #instrucoes .ins-tecla text {
             fill: #ffffff;
@@ -521,20 +483,13 @@
             font-weight: 700;
             text-anchor: middle;
             dominant-baseline: central;
-            animation: ins-letra 3.6s ease infinite;
+            transition: fill 0.15s ease;
         }
-        #instrucoes .ins-tecla:nth-of-type(2) > * { animation-delay: 0.9s; }
-        #instrucoes .ins-tecla:nth-of-type(3) > * { animation-delay: 1.8s; }
-        #instrucoes .ins-tecla:nth-of-type(4) > * { animation-delay: 2.7s; }
-        @keyframes ins-tecla {
-            0% { fill: transparent; }
-            4%, 20% { fill: #ffffff; }
-            25%, 100% { fill: transparent; }
+        #instrucoes .ins-tecla.acesa rect {
+            fill: #ffffff;
         }
-        @keyframes ins-letra {
-            0% { fill: #ffffff; }
-            4%, 20% { fill: #05050a; }
-            25%, 100% { fill: #ffffff; }
+        #instrucoes .ins-tecla.acesa text {
+            fill: #05050a;
         }
 
         /* Com óculos: os óculos a virar, como uma cabeça a olhar à volta. */
@@ -801,9 +756,6 @@
             #instrucoes *::after {
                 animation: none !important;
                 transition: none !important;
-            }
-            #instrucoes .ins-crescer {
-                opacity: 0.7;
             }
         }
 
@@ -1240,47 +1192,54 @@
         </div>
 
         <!-- Aproximar com o rato: a roda a rodar e, ao lado, dois dedos a
-             deslizar num trackpad. -->
+             deslizar num trackpad, com as setas para cima e depois para
+             baixo — e a imagem aproxima-se e afasta-se com eles. -->
         <div class="ins-gesto" data-gesto="zoom-roda" aria-hidden="true">
             <svg viewBox="0 0 300 180">
                 <g transform="translate(66 52)">
                     <rect x="0" y="0" width="48" height="76" fill="#05050a" stroke="#ffffff" stroke-width="3"></rect>
                     <line x1="0" y1="30" x2="48" y2="30" stroke="#ffffff" stroke-width="2.5"></line>
                     <line x1="24" y1="0" x2="24" y2="30" stroke="#ffffff" stroke-width="2.5"></line>
-                    <line class="ins-roda" x1="24" y1="7" x2="24" y2="18" stroke="#ffffff" stroke-width="5"></line>
+                    <line class="ins-roda" x1="24" y1="10" x2="24" y2="20" stroke="#ffffff" stroke-width="5"></line>
                 </g>
-                <path class="ins-traco ins-seta-fina" d="M90 42V20"></path>
-                <polyline class="ins-traco ins-seta-fina" points="81 29 90 20 99 29"></polyline>
+                <g class="ins-zoom-cima">
+                    <path class="ins-traco ins-seta-fina" d="M90 42V20"></path>
+                    <polyline class="ins-traco ins-seta-fina" points="81 29 90 20 99 29"></polyline>
+                    <path class="ins-traco ins-seta-fina" d="M214 42V20"></path>
+                    <polyline class="ins-traco ins-seta-fina" points="205 29 214 20 223 29"></polyline>
+                </g>
+                <g class="ins-zoom-baixo">
+                    <path class="ins-traco ins-seta-fina" d="M90 20V42"></path>
+                    <polyline class="ins-traco ins-seta-fina" points="81 33 90 42 99 33"></polyline>
+                    <path class="ins-traco ins-seta-fina" d="M214 20V42"></path>
+                    <polyline class="ins-traco ins-seta-fina" points="205 33 214 42 223 33"></polyline>
+                </g>
                 <rect class="ins-trackpad" x="164" y="52" width="100" height="76"></rect>
                 <g class="ins-trackpad-dedos">
                     <circle class="ins-dedo" cx="202" cy="90" r="9"></circle>
                     <circle class="ins-dedo" cx="226" cy="90" r="9"></circle>
                 </g>
-                <path class="ins-traco ins-seta-fina" d="M214 42V20"></path>
-                <polyline class="ins-traco ins-seta-fina" points="205 29 214 20 223 29"></polyline>
             </svg>
         </div>
 
-        <!-- Aproximar com os dedos: dois dedos que se afastam, e os
-             quadrados a crescer do meio. -->
+        <!-- Aproximar com os dedos: dois dedos que se afastam e voltam a
+             juntar-se, e a imagem aproxima-se e afasta-se com eles. -->
         <div class="ins-gesto" data-gesto="zoom-dedos" aria-hidden="true">
             <svg viewBox="0 0 300 180">
-                <rect class="ins-crescer" x="138" y="80" width="24" height="24"></rect>
-                <rect class="ins-crescer" x="138" y="80" width="24" height="24"></rect>
-                <rect class="ins-crescer" x="138" y="80" width="24" height="24"></rect>
                 <g class="ins-pinca-a"><g transform="rotate(45)"><path fill="#ffffff" d="M-9 2A9 9 0 0 1 9 2L10 50H-10Z"></path><path fill="none" stroke="#05050a" stroke-width="1.2" stroke-linejoin="round" d="M-10 50L-9 2A9 9 0 0 1 9 2L10 50"></path><path fill="none" stroke="#05050a" stroke-width="1.2" stroke-linejoin="round" d="M-5.5 -1A5.5 5.5 0 0 1 5.5 -1V8H-5.5Z"></path><path fill="none" stroke="#05050a" stroke-width="1" d="M-7.5 27H8"></path></g></g>
                 <g class="ins-pinca-b"><g transform="rotate(-135)"><path fill="#ffffff" d="M-9 2A9 9 0 0 1 9 2L10 50H-10Z"></path><path fill="none" stroke="#05050a" stroke-width="1.2" stroke-linejoin="round" d="M-10 50L-9 2A9 9 0 0 1 9 2L10 50"></path><path fill="none" stroke="#05050a" stroke-width="1.2" stroke-linejoin="round" d="M-5.5 -1A5.5 5.5 0 0 1 5.5 -1V8H-5.5Z"></path><path fill="none" stroke="#05050a" stroke-width="1" d="M-7.5 27H8"></path></g></g>
             </svg>
         </div>
 
-        <!-- O teclado: o W, o A, o S e o D, a acender um de cada vez. -->
+        <!-- O teclado: o W, o S, o A e o D, um de cada vez, e a imagem olha
+             para cima, para baixo, para a esquerda e para a direita com eles. -->
         <div class="ins-gesto" data-gesto="teclado" aria-hidden="true">
             <svg viewBox="0 0 300 180">
                 <g>
-                    <g class="ins-tecla"><rect x="130" y="44" width="40" height="40"></rect><text x="150" y="64">W</text></g>
-                    <g class="ins-tecla"><rect x="84" y="92" width="40" height="40"></rect><text x="104" y="112">A</text></g>
-                    <g class="ins-tecla"><rect x="130" y="92" width="40" height="40"></rect><text x="150" y="112">S</text></g>
-                    <g class="ins-tecla"><rect x="176" y="92" width="40" height="40"></rect><text x="196" y="112">D</text></g>
+                    <g class="ins-tecla" data-tecla="w"><rect x="130" y="44" width="40" height="40"></rect><text x="150" y="64">W</text></g>
+                    <g class="ins-tecla" data-tecla="a"><rect x="84" y="92" width="40" height="40"></rect><text x="104" y="112">A</text></g>
+                    <g class="ins-tecla" data-tecla="s"><rect x="130" y="92" width="40" height="40"></rect><text x="150" y="112">S</text></g>
+                    <g class="ins-tecla" data-tecla="d"><rect x="176" y="92" width="40" height="40"></rect><text x="196" y="112">D</text></g>
                 </g>
             </svg>
         </div>
@@ -2790,11 +2749,121 @@
              *
              * @param {THREE.Object3D} camara - A câmara da cena.
              */
+            // ── O "aproximar" mostrado ──
+            // Os dedos (ou a roda e o trackpad) ficam parados um instante;
+            // depois a roda roda para cima, os dedos do trackpad sobem (ou os
+            // dois dedos afastam-se) e a imagem aproxima-se; pára, e tudo
+            // volta para trás até onde estava. A abertura da câmara muda na
+            // própria cena, antes de a imagem ser desenhada, e os desenhos
+            // seguem a mesma curva. Não mexe no ângulo pedido, que é o de
+            // quem está a ver — é por ele que se sabe se aproximou.
+            const ZOOM_CICLO = 5200;
+            // Quanto a abertura fecha, no mais perto.
+            const ZOOM_APERTO = 0.45;
+            let zoomAMostrar = false;
+            const zoomRoda = desenhos['zoom-roda'];
+            const rodaRisca = zoomRoda.querySelector('.ins-roda');
+            const trackpadDedos = zoomRoda.querySelector('.ins-trackpad-dedos');
+            const setasCima = zoomRoda.querySelector('.ins-zoom-cima');
+            const setasBaixo = zoomRoda.querySelector('.ins-zoom-baixo');
+            const pincaA = desenhos['zoom-dedos'].querySelector('.ins-pinca-a');
+            const pincaB = desenhos['zoom-dedos'].querySelector('.ins-pinca-b');
+            // Quão perto se está a uma altura do ciclo: 0 onde se começou,
+            // 1 o mais perto.
+            const pertoEm = (f) => {
+                if (f < 0.2) return 0;
+                if (f < 0.45) return entre(f, 0.2, 0.45);
+                if (f < 0.55) return 1;
+                if (f < 0.8) return 1 - entre(f, 0.55, 0.8);
+                return 0;
+            };
+            // A abertura volta a ser a de quem está a ver.
+            const largarOZoom = () => {
+                if (!zoomAMostrar) return;
+                zoomAMostrar = false;
+                const lente = cameraEl.getObject3D('camera');
+                if (lente) {
+                    lente.fov = angulo;
+                    lente.updateProjectionMatrix();
+                }
+            };
+            const mostrarOZoom = () => {
+                const f = menosMovimento ? 0.5 : ((performance.now() - comecouEm) % ZOOM_CICLO) / ZOOM_CICLO;
+                const k = menosMovimento ? 0 : pertoEm(f);
+                const ver = menosMovimento ? 1 : Math.min(entre(f, 0, 0.06), 1 - entre(f, 0.92, 1));
+                const aAfastar = !menosMovimento && f >= 0.5;
+                rodaRisca.style.transform = 'translateY(' + (-6 * k).toFixed(2) + 'px)';
+                trackpadDedos.style.transform = 'translateY(' + (14 - 28 * k).toFixed(2) + 'px)';
+                trackpadDedos.style.opacity = ver.toFixed(3);
+                setasCima.style.opacity = aAfastar ? '0' : '1';
+                setasBaixo.style.opacity = aAfastar ? '1' : '0';
+                pincaA.style.transform = 'translate(' + (132 - 36 * k).toFixed(2) + 'px, ' + (102 + 28 * k).toFixed(2) + 'px)';
+                pincaA.style.opacity = ver.toFixed(3);
+                pincaB.style.transform = 'translate(' + (168 + 36 * k).toFixed(2) + 'px, ' + (78 - 28 * k).toFixed(2) + 'px)';
+                pincaB.style.opacity = ver.toFixed(3);
+                const lente = cameraEl.getObject3D('camera');
+                if (lente && !menosMovimento) {
+                    lente.fov = angulo * (1 - ZOOM_APERTO * k);
+                    lente.updateProjectionMatrix();
+                    zoomAMostrar = true;
+                }
+            };
+
+            // ── O teclado mostrado ──
+            // O W acende-se e a imagem olha para cima; o S, e volta; o A, e
+            // olha para a esquerda; o D, e volta. Cada tecla fica acesa só
+            // enquanto a imagem anda com ela. A volta é uma mão por cima das
+            // outras, como a do "olhar à volta".
+            const TECLAS_CICLO = 6400;
+            const TECLAS_SUBIR = 10 * RAD;
+            const TECLAS_VIRAR = 16 * RAD;
+            const ORDEM_DAS_TECLAS = ['w', 's', 'a', 'd'];
+            const teclasDesenhadas = {};
+            desenhos.teclado.querySelectorAll('.ins-tecla').forEach((t) => { teclasDesenhadas[t.dataset.tecla] = t; });
+            const teclasMostra = { subida: 0, volta: 0 };
+            // A volta das teclas passa para a mão de cima, sem a imagem
+            // mexer, e as teclas apagam-se.
+            const largarAsTeclas = () => {
+                const olhar = olharDaCena();
+                if (olhar) {
+                    olhar.yawObject.rotation.y += teclasMostra.volta;
+                    olhar.pitchObject.rotation.x += teclasMostra.subida;
+                }
+                teclasMostra.volta = 0;
+                teclasMostra.subida = 0;
+                Object.keys(teclasDesenhadas).forEach((k) => teclasDesenhadas[k].classList.remove('acesa'));
+            };
+            const mostrarAsTeclas = (camara) => {
+                if (menosMovimento) return;
+                const f = ((performance.now() - comecouEm) % TECLAS_CICLO) / TECLAS_CICLO;
+                // Quatro vezes, uma por tecla, entre 0,08 e 0,92 do ciclo.
+                const vez = Math.floor((f - 0.08) / 0.21);
+                const dentro = ((f - 0.08) - vez * 0.21) / 0.21;
+                const acesa = f >= 0.08 && f < 0.92 && dentro < 0.8 ? ORDEM_DAS_TECLAS[vez] : null;
+                Object.keys(teclasDesenhadas).forEach((k) => teclasDesenhadas[k].classList.toggle('acesa', k === acesa));
+                // Quanto se subiu e virou: o W sobe, o S desce de volta, o A
+                // vira para a esquerda, o D volta.
+                const andou = (i) => (f < 0.08 + i * 0.21 ? 0 : entre(Math.min(1, ((f - 0.08) - i * 0.21) / 0.21), 0, 0.8));
+                teclasMostra.subida = TECLAS_SUBIR * (andou(0) - andou(1));
+                teclasMostra.volta = TECLAS_VIRAR * (andou(2) - andou(3));
+                camara.rotation.x += teclasMostra.subida;
+                camara.rotation.y += teclasMostra.volta;
+            };
+
             const olharNaCamara = (camara) => {
                 if (!aberta) return;
                 vigiar();
                 const passo = passos[atual];
-                if (!passo || passo.desenho !== 'olhar' || feitos.has(atual)) return;
+                if (!passo || feitos.has(atual)) return;
+                if (passo.desenho === 'zoom-roda' || passo.desenho === 'zoom-dedos') {
+                    mostrarOZoom();
+                    return;
+                }
+                if (passo.desenho === 'teclado') {
+                    mostrarAsTeclas(camara);
+                    return;
+                }
+                if (passo.desenho !== 'olhar') return;
                 if (menosMovimento) {
                     porOCursor(OLHAR_MEIO.x, OLHAR_MEIO.y, 0.86, 1, 1);
                     return;
@@ -2887,6 +2956,8 @@
             const mostrar = (n) => {
                 clearTimeout(relogioDoFeito);
                 largarAMostra();
+                largarOZoom();
+                largarAsTeclas();
                 atual = Math.max(0, Math.min(passos.length - 1, n));
                 const passo = passos[atual];
                 comecouEm = performance.now();
@@ -2959,6 +3030,8 @@
                 if (!passo || passo.gesto !== nome || feitos.has(atual)) return;
                 if (performance.now() - comecouEm < 350) return;
                 largarAMostra();
+                largarOZoom();
+                largarAsTeclas();
                 feitos.add(atual);
                 cartao.classList.remove('a-espera');
                 cartao.classList.add('feito');
@@ -3006,6 +3079,8 @@
                 clearTimeout(relogioDaTroca);
                 cartao.classList.remove('a-trocar');
                 largarAMostra();
+                largarOZoom();
+                largarAsTeclas();
                 guardarVistas();
                 if (caixa.contains(document.activeElement)) document.activeElement.blur();
                 caixa.classList.remove('aberta');

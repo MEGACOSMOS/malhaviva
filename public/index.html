@@ -2841,13 +2841,7 @@
             stroke-width: 3;
         }
         #instrucoes .ins-trackpad-dedos {
-            animation: ins-trackpad-dedos 1.8s ease-in-out infinite;
-        }
-        @keyframes ins-trackpad-dedos {
-            0% { transform: translateY(18px); opacity: 0; }
-            15% { opacity: 1; }
-            70% { transform: translateY(-18px); opacity: 1; }
-            85%, 100% { transform: translateY(-18px); opacity: 0; }
+            transform: translateY(14px);
         }
 
         /* Andar com o teclado (a câmara clássica): as quatro teclas, e o W
@@ -2890,48 +2884,22 @@
 
         /* Aproximar: quadrados a crescer a partir do sítio para onde se
            vai, e a roda do rato a rodar (ou dois dedos a afastar). */
-        #instrucoes .ins-crescer {
-            fill: none;
-            stroke: #ffffff;
-            stroke-width: 2.5;
-            transform-box: fill-box;
-            transform-origin: center;
-            opacity: 0;
-            animation: ins-crescer 1.8s ease-out infinite;
-        }
-        #instrucoes .ins-crescer:nth-of-type(2) { animation-delay: 0.6s; }
-        #instrucoes .ins-crescer:nth-of-type(3) { animation-delay: 1.2s; }
-        @keyframes ins-crescer {
-            0% { opacity: 0; transform: scale(0.3); }
-            15% { opacity: 0.95; }
-            100% { opacity: 0; transform: scale(2.4); }
-        }
-        #instrucoes .ins-roda {
-            animation: ins-roda 0.6s linear infinite;
-        }
-        @keyframes ins-roda {
-            from { transform: translateY(0); opacity: 1; }
-            to { transform: translateY(6px); opacity: 0; }
-        }
+        /* O aproximar: a roda, os dedos do trackpad e os dois dedos mexem-se
+           pelo código das instruções, a par com a câmara (ver
+           `zoomNoMotor`). As setas viram-se: para cima enquanto se
+           aproxima, para baixo enquanto se afasta. */
         #instrucoes .ins-pinca-a {
             transform: translate(132px, 102px);
-            animation: ins-pinca-a 2.4s ease-in-out infinite;
-        }
-        @keyframes ins-pinca-a {
-            0%, 15% { transform: translate(132px, 102px); opacity: 0; }
-            20% { opacity: 1; }
-            70%, 82% { transform: translate(96px, 130px); opacity: 1; }
-            95%, 100% { transform: translate(96px, 130px); opacity: 0; }
         }
         #instrucoes .ins-pinca-b {
             transform: translate(168px, 78px);
-            animation: ins-pinca-b 2.4s ease-in-out infinite;
         }
-        @keyframes ins-pinca-b {
-            0%, 15% { transform: translate(168px, 78px); opacity: 0; }
-            20% { opacity: 1; }
-            70%, 82% { transform: translate(204px, 50px); opacity: 1; }
-            95%, 100% { transform: translate(204px, 50px); opacity: 0; }
+        #instrucoes .ins-zoom-cima,
+        #instrucoes .ins-zoom-baixo {
+            transition: opacity 0.25s ease;
+        }
+        #instrucoes .ins-zoom-baixo {
+            opacity: 0;
         }
 
         /* Rodar e inclinar: o Ctrl carregado e o rato a fazer o arco (ou
@@ -3184,9 +3152,6 @@
             }
             #instrucoes .ins-mover-rasto {
                 stroke-dashoffset: 0;
-            }
-            #instrucoes .ins-crescer {
-                opacity: 0.7;
             }
         }
 
@@ -4579,13 +4544,11 @@
             </svg>
         </div>
 
-        <!-- 2 · Aproximar e afastar: o bairro cresce a partir do sítio do
-             rato, com a roda a rodar (ou dois dedos a afastar). -->
+        <!-- 2 · Aproximar e afastar: dois dedos que se afastam e voltam a
+             juntar-se, e o bairro aproxima-se e afasta-se com eles (mexe-lhes
+             o código das instruções: ver `zoomNoMotor`). -->
         <div class="ins-gesto" data-gesto="zoom" aria-hidden="true">
             <svg viewBox="0 0 300 180">
-                <rect class="ins-crescer" x="138" y="80" width="24" height="24"></rect>
-                <rect class="ins-crescer" x="138" y="80" width="24" height="24"></rect>
-                <rect class="ins-crescer" x="138" y="80" width="24" height="24"></rect>
                 <g class="so-rato">
                     <path fill="#ffffff" stroke="#05050a" stroke-width="1.2" stroke-linejoin="round" transform="translate(150 92)" d="M0 0L0 22L6 16.6L10.4 26L14.3 24.2L10 15.1L17 15.1Z"></path>
                     <g transform="translate(222 48)">
@@ -4655,25 +4618,34 @@
         </div>
 
         <!-- Aproximar e afastar (a câmara clássica): a roda do rato a rodar
-             e, ao lado, dois dedos a deslizar num trackpad. Sem quadrados a
-             abrir no sítio do rato: na câmara clássica não há duplo clique. -->
+             e, ao lado, dois dedos a deslizar num trackpad, com as setas para
+             cima e depois para baixo — e o bairro aproxima-se e afasta-se com
+             eles (mexe-lhes o código das instruções: ver `zoomNoMotor`). -->
         <div class="ins-gesto" data-gesto="zoom-roda" aria-hidden="true">
             <svg viewBox="0 0 300 180">
                 <g transform="translate(66 52)">
                     <rect x="0" y="0" width="48" height="76" fill="#05050a" stroke="#ffffff" stroke-width="3"></rect>
                     <line x1="0" y1="30" x2="48" y2="30" stroke="#ffffff" stroke-width="2.5"></line>
                     <line x1="24" y1="0" x2="24" y2="30" stroke="#ffffff" stroke-width="2.5"></line>
-                    <line class="ins-roda" x1="24" y1="7" x2="24" y2="18" stroke="#ffffff" stroke-width="5"></line>
+                    <line class="ins-roda" x1="24" y1="10" x2="24" y2="20" stroke="#ffffff" stroke-width="5"></line>
                 </g>
-                <path class="ins-traco ins-roda-seta" d="M90 42V20"></path>
-                <polyline class="ins-traco ins-roda-seta" points="81 29 90 20 99 29"></polyline>
+                <g class="ins-zoom-cima">
+                    <path class="ins-traco ins-roda-seta" d="M90 42V20"></path>
+                    <polyline class="ins-traco ins-roda-seta" points="81 29 90 20 99 29"></polyline>
+                    <path class="ins-traco ins-roda-seta" d="M214 42V20"></path>
+                    <polyline class="ins-traco ins-roda-seta" points="205 29 214 20 223 29"></polyline>
+                </g>
+                <g class="ins-zoom-baixo">
+                    <path class="ins-traco ins-roda-seta" d="M90 20V42"></path>
+                    <polyline class="ins-traco ins-roda-seta" points="81 33 90 42 99 33"></polyline>
+                    <path class="ins-traco ins-roda-seta" d="M214 20V42"></path>
+                    <polyline class="ins-traco ins-roda-seta" points="205 33 214 42 223 33"></polyline>
+                </g>
                 <rect class="ins-trackpad" x="164" y="52" width="100" height="76"></rect>
                 <g class="ins-trackpad-dedos">
                     <circle class="ins-dedo" cx="202" cy="90" r="9"></circle>
                     <circle class="ins-dedo" cx="226" cy="90" r="9"></circle>
                 </g>
-                <path class="ins-traco ins-roda-seta" d="M214 42V20"></path>
-                <polyline class="ins-traco ins-roda-seta" points="205 29 214 20 223 29"></polyline>
             </svg>
         </div>
 
@@ -5298,6 +5270,116 @@
             return graus;
         };
 
+        // ── O "aproximar" mostrado ──
+        // Os dedos (ou o cursor, a roda e o trackpad) aparecem e ficam
+        // parados um instante; depois a roda roda para cima, os dedos do
+        // trackpad sobem (ou os dois dedos afastam-se) e o bairro aproxima-
+        // se; pára um instante, e tudo volta para trás: a roda para baixo,
+        // os dedos descem (ou juntam-se) e o bairro afasta-se até onde
+        // estava. A câmara anda para a frente e para trás na sua própria
+        // atualização (ver `avancoDasInstrucoes` nas câmaras), e os desenhos
+        // seguem a mesma curva. Recomeça sempre que o passo aparece, e pára
+        // mal o gesto é feito.
+        const ZOOM_CICLO = 5200;
+        // Quanto da distância até ao chão, ao longo da vista, se avança.
+        const ZOOM_PARTE = 0.35;
+        const zoomEstado = { desde: -1, metros: 0, dado: 0 };
+        const zoomRoda = desenhos['zoom-roda'];
+        const zoomDedos = desenhos.zoom;
+        const rodaRisca = zoomRoda && zoomRoda.querySelector('.ins-roda');
+        const trackpadDedos = zoomRoda && zoomRoda.querySelector('.ins-trackpad-dedos');
+        const setasCima = zoomRoda && zoomRoda.querySelector('.ins-zoom-cima');
+        const setasBaixo = zoomRoda && zoomRoda.querySelector('.ins-zoom-baixo');
+        const pincaA = zoomDedos && zoomDedos.querySelector('.ins-pinca-a');
+        const pincaB = zoomDedos && zoomDedos.querySelector('.ins-pinca-b');
+
+        // Quão perto se está a uma altura do ciclo: 0 onde se começou, 1 o
+        // mais perto.
+        const pertoEm = (f) => {
+            if (f < 0.2) return 0;
+            if (f < 0.45) return entre(f, 0.2, 0.45);
+            if (f < 0.55) return 1;
+            if (f < 0.8) return 1 - entre(f, 0.55, 0.8);
+            return 0;
+        };
+        const aMostrarOZoom = () => {
+            const passo = PASSOS[atual];
+            return aberta && (passo.desenho === 'zoom' || passo.desenho === 'zoom-roda') &&
+                !feitos.has(atual) && !janelaAFrente();
+        };
+
+        const zoomNoMotor = () => {
+            if (!aMostrarOZoom()) {
+                zoomEstado.desde = -1;
+                return;
+            }
+            const motor = motorDoBairro();
+            const entidade = motor && motor.root.findByName('camera');
+            const comandos = entidade && entidade.script && entidade.script.cameraControls;
+            if (comandos && !comandos.avancoDasInstrucoes) comandos.avancoDasInstrucoes = avancoDoZoom;
+            // Passo mostrado de novo: o ciclo volta ao princípio.
+            if (zoomEstado.desde !== comecouEm) {
+                zoomEstado.desde = comecouEm;
+                zoomEstado.metros = 0;
+                zoomEstado.dado = 0;
+            }
+            const f = menosMovimento ? 0.5 : ((performance.now() - comecouEm) % ZOOM_CICLO) / ZOOM_CICLO;
+            const k = pertoEm(f);
+            const ver = menosMovimento ? 1 : Math.min(entre(f, 0, 0.06), 1 - entre(f, 0.92, 1));
+
+            // Antes de começar a aproximar, mede-se quanto avançar: uma
+            // parte do caminho até ao chão, ao longo da vista, sem descer
+            // abaixo dos 25 metros (com a vista quase deitada, 30 metros).
+            if (f < 0.2 && entidade) {
+                const y = entidade.getPosition().y;
+                const desce = -entidade.forward.y;
+                if (desce > 0.08) {
+                    zoomEstado.metros = Math.max(0, Math.min(ZOOM_PARTE * y / desce, (y - 25) / desce));
+                } else {
+                    zoomEstado.metros = 30;
+                }
+                zoomEstado.dado = 0;
+            }
+
+            // Os desenhos, pela mesma curva.
+            const aAfastar = f >= 0.5;
+            if (rodaRisca) rodaRisca.style.transform = 'translateY(' + (-6 * k).toFixed(2) + 'px)';
+            if (trackpadDedos) {
+                trackpadDedos.style.transform = 'translateY(' + (14 - 28 * k).toFixed(2) + 'px)';
+                trackpadDedos.style.opacity = ver.toFixed(3);
+            }
+            if (setasCima) setasCima.style.opacity = aAfastar ? '0' : '1';
+            if (setasBaixo) setasBaixo.style.opacity = aAfastar ? '1' : '0';
+            if (pincaA) {
+                pincaA.style.transform = 'translate(' + (132 - 36 * k).toFixed(2) + 'px, ' + (102 + 28 * k).toFixed(2) + 'px)';
+                pincaA.style.opacity = ver.toFixed(3);
+            }
+            if (pincaB) {
+                pincaB.style.transform = 'translate(' + (168 + 36 * k).toFixed(2) + 'px, ' + (78 - 28 * k).toFixed(2) + 'px)';
+                pincaB.style.opacity = ver.toFixed(3);
+            }
+        };
+
+        /**
+         * Quantos metros a câmara anda para a frente nesta imagem, pela curva
+         * do "aproximar" (a câmara chama-a na sua atualização). Nada fora do
+         * passo, ou se quem está a ver estiver a mexer de verdade.
+         *
+         * @param {boolean} podeMexer - Se a câmara pode andar agora.
+         * @returns {number} Metros, para a frente.
+         */
+        const avancoDoZoom = (podeMexer) => {
+            if (!podeMexer || menosMovimento || !aMostrarOZoom() || zoomEstado.desde !== comecouEm || !zoomEstado.metros) {
+                return 0;
+            }
+            const f = ((performance.now() - comecouEm) % ZOOM_CICLO) / ZOOM_CICLO;
+            if (f < 0.2) return 0;
+            const quer = zoomEstado.metros * pertoEm(f);
+            const metros = quer - zoomEstado.dado;
+            zoomEstado.dado = quer;
+            return metros;
+        };
+
         // Liga-se ao motor mal ele exista.
         let olharLigado = false;
         const ligarOOlhar = () => {
@@ -5305,6 +5387,7 @@
             const motor = motorDoBairro();
             if (!motor || typeof motor.on !== 'function') return;
             motor.on('update', olharNoMotor);
+            motor.on('update', zoomNoMotor);
             olharLigado = true;
         };
 
@@ -5635,7 +5718,7 @@
 
         <!-- Assets -->
         <pc-asset id="splat-scene" src="splat/lod-meta.json" type="gsplat"></pc-asset>
-        <pc-asset id="camera-controls-script" src="./camera-controls.mjs?v=60" type="script"></pc-asset>
+        <pc-asset id="camera-controls-script" src="./camera-controls.mjs?v=61" type="script"></pc-asset>
         <pc-asset id="camera-coords-script" src="./coords.mjs?v=7" type="script"></pc-asset>
         <pc-asset id="annotations-script" src="./annotations.mjs?v=124" type="script"></pc-asset>
         <pc-asset id="measure-script" src="./measure.mjs?v=1" type="script"></pc-asset>
@@ -5704,7 +5787,7 @@
             // (A escolha é feita no princípio da página: ver `cameraClassica`.)
             if (window.cameraClassica) {
                 var guiaoDaCamara = document.getElementById('camera-controls-script');
-                if (guiaoDaCamara) guiaoDaCamara.setAttribute('src', './camera-controls-classico.mjs?v=4');
+                if (guiaoDaCamara) guiaoDaCamara.setAttribute('src', './camera-controls-classico.mjs?v=5');
             }
 
             var guardada = null;

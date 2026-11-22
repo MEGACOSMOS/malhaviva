@@ -477,6 +477,20 @@ class CameraControls extends Script {
     voltaDasInstrucoes = null;
 
     /**
+     * Quem mostra o "aproximar" nas instruções (ver "As instruções", no
+     * index.html) põe aqui uma função, e a câmara pergunta-lhe a cada
+     * imagem quantos metros andar para a frente — para onde a vista olha;
+     * negativo é para trás. Entra na própria atualização da câmara, antes
+     * de os marcadores se porem no ecrã, para tudo andar junto. Recebe se
+     * pode mexer: não pode se alguém estiver de facto a mexer nela ou se
+     * for a meio de uma viagem — e aí não conta o passo como dado. Não
+     * conta como gesto feito.
+     *
+     * @type {((podeMexer: boolean) => number)|null}
+     */
+    avancoDasInstrucoes = null;
+
+    /**
      * O leitor de profundidade que diz em que sítio do bairro se carregou.
      * Nasce no primeiro clique.
      *
@@ -2557,6 +2571,20 @@ class CameraControls extends Script {
             const graus = this.voltaDasInstrucoes(podeRodar);
             if (podeRodar && Number.isFinite(graus) && graus !== 0) {
                 this._pose.angles.y += graus;
+                this._controller.attach(this._pose, false);
+            }
+        }
+
+        // --- O avanço das instruções (ver `avancoDasInstrucoes`) ---
+        if (this.avancoDasInstrucoes) {
+            const podeMexer = this._mode === 'fly' && !this._botaoEmBaixo && !this._viagem;
+            const metros = this.avancoDasInstrucoes(podeMexer);
+            if (podeMexer && Number.isFinite(metros) && metros !== 0) {
+                const inclinacao = this._pose.angles.x * math.DEG_TO_RAD;
+                const rumo = this._pose.angles.y * math.DEG_TO_RAD;
+                this._pose.position.x += -Math.sin(rumo) * Math.cos(inclinacao) * metros;
+                this._pose.position.y += Math.sin(inclinacao) * metros;
+                this._pose.position.z += -Math.cos(rumo) * Math.cos(inclinacao) * metros;
                 this._controller.attach(this._pose, false);
             }
         }
