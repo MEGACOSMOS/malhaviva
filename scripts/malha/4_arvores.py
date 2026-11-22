@@ -93,7 +93,6 @@ kk = fj[idx] * W + fi[idx]
 soma = np.zeros((W * H, 3)); np.add.at(soma, kk, c); n = np.bincount(kk, minlength=W * H)
 media = (soma / np.maximum(n, 1)[:, None]).reshape(H, W, 3)
 exg = (2 * media[:, :, 1] - media[:, :, 0] - media[:, :, 2]) / (media.sum(2) + 1e-6)
-del fino
 
 # --- a zona das árvores ---
 arv = ((ndsm > 1.5) & (exg > 0.03)).astype(np.uint8)
@@ -103,8 +102,26 @@ nl, lab, st, _ = cv2.connectedComponentsWithStats(arv, 8)
 fica = np.zeros(nl, bool); fica[1:] = st[1:, cv2.CC_STAT_AREA] >= 16
 arv = fica[lab]
 largo = cv2.dilate(arv.astype(np.uint8), cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (7, 7))).astype(bool)
-np.savez(os.path.join(PASTA, "arvores.npz"), arv=arv, largo=largo, dtm=dtm, dsm=dsm, X0=X0, Z0=Z0, R=R)
+# Uma orla mais larga (3 m): a copa que se estende por cima do que a rodeia.
+largo3 = cv2.dilate(arv.astype(np.uint8), cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (13, 13))).astype(bool)
 print("árvores: %.0f m² (com a orla, %.0f m²)" % (arv.sum() * R * R, largo.sum() * R * R))
+
+# O espaço que o splat do bairro ocupa perto das árvores: cubos de meio
+# metro com manchas opacas do nível mais fino, e os vizinhos de cada um. A
+# malha, à volta das copas, tem bocados a pairar onde o splat não tem nada
+# (a bolha da copa estendida por cima da estrada); o passo 5 baixa-os. Os
+# telhados e as paredes ficam: o splat tem-nos.
+V = 0.5
+fi, fj, fok = celulas(fino["pos"])
+fok &= fino["alfa"] > 64
+fok[fok] = largo3[fj[fok], fi[fok]]
+cena = np.stack([fino["pos"][fok, 0], -fino["pos"][fok, 1], -fino["pos"][fok, 2]], 1)
+cubos = np.unique(np.floor(cena / V).astype(np.int64), axis=0)
+del fino, cena
+viz = np.array([(a_, b_, c_) for a_ in (-1, 0, 1) for b_ in (-1, 0, 1) for c_ in (-1, 0, 1)], np.int64)
+chave = lambda q: ((q[..., 0] + 4096) * 8192 + (q[..., 1] + 4096)) * 8192 + (q[..., 2] + 4096)
+ocupado = np.unique(chave(cubos[:, None, :] + viz[None, :, :]).ravel())
+print("espaço do splat perto das árvores: %d cubos" % len(ocupado))
 vis = (np.clip(media, 0, 1)[:, :, ::-1] * 255).astype(np.uint8)
 cont, _ = cv2.findContours(arv.astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
 cv2.drawContours(vis, cont, -1, (255, 0, 255), 1)
@@ -121,8 +138,24 @@ sy = -s["pos"][sok, 1]
 # uma parede encostada a uma árvore ficam na malha.
 cs = np.clip(0.5 + 0.2820948 * s["sh0"][sok], 0, 1)
 verde = (2 * cs[:, 1] - cs[:, 0] - cs[:, 2]) / (cs.sum(1) + 1e-6) > 0.0
-sel[sok] = largo[b, a] & (arv[b, a] | verde) & (sy > dtm[b, a] - 0.5) & (sy < cimo + 1.5) & (np.exp(s["esc"][sok].max(1)) < 1.5)
+# E, até 3 m, as manchas verdes à altura de copa: a copa que passa por
+# cima da estrada ou de um quintal.
+sel[sok] = (((largo[b, a] & (arv[b, a] | verde)) | (largo3[b, a] & verde & (sy > dtm[b, a] + 0.8)))
+            & (sy > dtm[b, a] - 0.5) & (sy < cimo + 1.5) & (np.exp(s["esc"][sok].max(1)) < 1.5))
 k = np.where(sel)[0]
+
+# O cimo das copas, em cada célula: a mancha opaca mais alta das árvores
+# (alargado meia célula). No passo 5, o que da malha ficar debaixo deste
+# cimo, até 3 m da zona das árvores, é copa, mesmo que na fotografia não
+# seja verde — a borda de uma copa por cima da estrada tem a estrada
+# pintada, e ficava no ar como um lençol.
+opacas = k[s["alfa"][k] > 64]
+oi, oj = si[opacas], sj[opacas]
+topo_arv = np.full(W * H, -np.inf, np.float32)
+np.maximum.at(topo_arv, oj * W + oi, (-s["pos"][opacas, 1]).astype(np.float32))
+topo_arv = cv2.dilate(topo_arv.reshape(H, W), np.ones((3, 3), np.uint8))
+np.savez(os.path.join(PASTA, "arvores.npz"), arv=arv, largo=largo, largo3=largo3, dtm=dtm, dsm=dsm,
+         topo_arv=topo_arv, ocupado=ocupado, V=V, X0=X0, Z0=Z0, R=R)
 bytes_ = escrever_sog(os.path.join(PUBLICO, "malha", VERSAO, "arvores"),
                       s["pos"][k], s["esc"][k], s["sh0"][k], s["alfa"][k], s["quat"][k])
 print("manchas das árvores:", len(k), "— %.2f MB" % (bytes_ / 1e6))

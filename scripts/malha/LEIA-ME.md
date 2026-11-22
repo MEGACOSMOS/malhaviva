@@ -54,13 +54,21 @@ próprio site (passo 4), desenhadas por cima da malha. O resto continua malha.
   (tira casas e árvores) e esbatido; o verde é o índice 2G−R−B das manchas
   do cimo. Limpa-se (nada abaixo de 4 m²) e alarga-se 1,5 m para apanhar a
   orla da copa. Fica uma imagem para ver em `<trabalho>/arvores/arvores.png`.
-- **A malha** não perde nada: as copas (triângulos dessa zona mais de 0,8 m
-  acima do chão e, na orla, verdes na fotografia) são **baixadas até ao
-  chão** (passo 5). Apagá-las deixava buracos — o drone não vê o chão
-  debaixo das árvores, por isso a malha não o tem — que as manchas, espaçadas,
-  não tapavam (primeira versão, v3, 2026-11-21). Assim, debaixo das árvores
-  fica a fotografia da copa vista de cima, e as paredes e telhados encostados
-  às árvores ficam como estão.
+- **A malha** não perde nada: as copas são **baixadas** (passo 5). É copa um
+  triângulo mais de 0,8 m acima do chão e: na zona das árvores, no miolo ou
+  verde na fotografia; ou, até 3 m dela, debaixo do cimo das manchas das
+  árvores, ou num sítio onde o splat do bairro não tem nada (bocados da
+  bolha da copa a pairar por cima da estrada, pintados com a estrada).
+  - Apagá-las deixava buracos — o drone não vê o chão debaixo das árvores,
+    por isso a malha não o tem (v3). Baixá-las até à estimativa do chão
+    abria valas na orla do bairro, onde a estrada está num aterro e a
+    estimativa fica 3 m abaixo dela (v4). Agora descem como um **pano
+    esticado** entre os vértices que ficam à volta (`pano` no passo 5):
+    assentam na estrada, no quintal ou no beiral que as rodeia.
+  - Depois, perto das árvores, os **bicos** (vértices mais de 40 cm acima de
+    todos os vizinhos) descem à média dos vizinhos.
+  - A malha é pintada dos dois lados, para onde dobra não ficar uma frincha
+    preta.
 - **As manchas** são as dessa zona, do chão (−0,5 m) até 1,5 m acima do
   cimo, sem as soltas maiores do que 1,5 m e, na orla, só as verdes, do **nível 1** do splat (um
   décimo do mais fino). O nível 0 fica quase igual ao bairro no computador,

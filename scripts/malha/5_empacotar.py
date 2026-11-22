@@ -21,6 +21,8 @@ Apague à mão a pasta da versão antiga.
 """
 import json, struct, sys, os, io, subprocess, tempfile
 import numpy as np, DracoPy
+from scipy import sparse
+from scipy.sparse import linalg as splinalg
 from PIL import Image
 from comum import TRABALHO, PUBLICO
 VERSAO = sys.argv[1]
@@ -35,7 +37,16 @@ COM_ARVORES = os.path.exists(os.path.join(PASTA_ARVORES, "meta.json"))
 if COM_ARVORES:
     A = np.load(os.path.join(TRABALHO, "arvores", "arvores.npz"))
     A_R, A_X0, A_Z0 = float(A["R"]), float(A["X0"]), float(A["Z0"])
-    A_LARGO, A_DTM, A_ARV = A["largo"], A["dtm"], A["arv"]
+    A_LARGO, A_DTM, A_ARV, A_LARGO3 = A["largo"], A["dtm"], A["arv"], A["largo3"]
+    A_TOPO = A["topo_arv"]
+    A_OCUPADO, A_V = A["ocupado"], float(A["V"])
+
+
+def no_splat(pts):
+    """Se cada ponto (cena) cai num sítio onde o splat do bairro tem manchas."""
+    q = np.floor(pts / A_V).astype(np.int64)
+    k = ((q[:, 0] + 4096) * 8192 + (q[:, 1] + 4096)) * 8192 + (q[:, 2] + 4096)
+    return np.isin(k, A_OCUPADO)
 
 
 def sem_copas(draco, atlas):
@@ -46,10 +57,15 @@ def sem_copas(draco, atlas):
     árvores, espaçadas, não chegam a tapar. Em vez disso, os vértices que só
     pertencem a copas descem até um pouco abaixo do chão: a superfície fica
     inteira, e debaixo das árvores fica a fotografia da copa vista de cima.
+    Descem como um pano esticado entre os que ficam (ver `pano`).
 
-    É copa um triângulo dentro da zona das árvores, com o centro mais de
-    0,8 m acima do chão e, na orla (fora do miolo), verde na fotografia — as
-    paredes e os telhados encostados às árvores ficam como estão.
+    É copa um triângulo com o centro mais de 0,8 m acima do chão e: dentro
+    da zona das árvores, no miolo ou verde na fotografia; ou, até 3 m dela,
+    debaixo do cimo das manchas das árvores (a borda de uma copa por cima da
+    estrada tem a estrada pintada, e ficava no ar como um lençol); ou, até
+    3 m dela, num sítio onde o splat do bairro não tem nada (bocados da bolha
+    da copa a pairar por cima da estrada). As paredes e os telhados
+    encostados às árvores ficam como estão: o splat tem-nos.
     Devolve (draco novo, ids dos atributos, triângulos, vértices, baixados)."""
     d = DracoPy.decode(draco)
     P = np.asarray(d.points, np.float64); F = np.asarray(d.faces, np.int64).reshape(-1, 3)
@@ -66,17 +82,64 @@ def sem_copas(draco, atlas):
     verde = (2 * rgb[:, 1] - rgb[:, 0] - rgb[:, 2]) / (rgb.sum(1) + 1e-6) > 0.03
     copa = np.zeros(len(F), bool)
     io, jo = i[ok], j[ok]
-    copa[ok] = A_LARGO[jo, io] & (c[ok, 1] > A_DTM[jo, io] + 0.8) & (A_ARV[jo, io] | verde[ok])
+    alto = c[ok, 1] > A_DTM[jo, io] + 0.8
+    perto = A_LARGO3[jo, io] & alto
+    debaixo = c[ok, 1] <= A_TOPO[jo, io] + 0.5
+    vazio = np.zeros(ok.sum(), bool)
+    vazio[perto] = ~no_splat(c[ok][perto])
+    copa[ok] = alto & ((A_LARGO[jo, io] & (A_ARV[jo, io] | verde[ok])) | (perto & (debaixo | vazio)))
     # Vértices só de copas (nenhum triângulo que fica os usa) descem ao chão.
     fica = np.zeros(len(P), bool); fica[F[~copa].ravel()] = True
     desce = np.zeros(len(P), bool); desce[F[copa].ravel()] = True; desce &= ~fica
     vi = np.clip(((P[:, 0] - A_X0) / A_R).astype(int), 0, A_LARGO.shape[1] - 1)
     vj = np.clip(((P[:, 2] - A_Z0) / A_R).astype(int), 0, A_LARGO.shape[0] - 1)
-    P[desce, 1] = np.minimum(P[desce, 1], A_DTM[vj[desce], vi[desce]] - 0.15)
+    P[desce, 1] = np.minimum(P[desce, 1], pano(F, P[:, 1], desce, A_DTM[vj, vi] - 0.15)[desce])
+    # Bicos: perto das árvores, um vértice mais alto do que todos os vizinhos
+    # (mais de 40 cm) é a ponta de um bocado da bolha que ficou — um beiral
+    # ou o cimo de uma parede tem vizinhos à mesma altura ao longo da aresta.
+    # Desce à média dos vizinhos, umas quantas vezes, para os dentes de serra.
+    perto_v = A_LARGO3[vj, vi]
+    a = np.concatenate([F[:, 0], F[:, 1], F[:, 2], F[:, 1], F[:, 2], F[:, 0]])
+    b = np.concatenate([F[:, 1], F[:, 2], F[:, 0], F[:, 0], F[:, 1], F[:, 2]])
+    grau = np.bincount(a, minlength=len(P)).astype(np.float64)
+    for _ in range(6):
+        y = P[:, 1]
+        maior = np.full(len(P), -np.inf); np.maximum.at(maior, a, y[b])
+        media = np.bincount(a, weights=y[b], minlength=len(P)) / np.maximum(grau, 1)
+        bico = perto_v & (y > maior + 0.4)
+        if not bico.any():
+            break
+        P[bico, 1] = media[bico]
     e = DracoPy.encode(P, F, quantization_bits=16, compression_level=7, tex_coord=UV, tex_coord_quantization_bits=14)
     dd = DracoPy.decode(e)
     novos = {x["attribute_type"]: x["unique_id"] for x in dd.attributes}
     return e, {"POSITION": novos[0], "TEXCOORD_0": novos[3]}, len(np.asarray(dd.faces).reshape(-1, 3)), len(np.asarray(dd.points)), int(copa.sum())
+
+
+def pano(F, y, solto, chao):
+    """A altura dos vértices soltos (os das copas) como um pano esticado entre
+    os que ficam: cada um à altura média dos vizinhos, com os de fora presos.
+
+    O pano assenta no que rodeia a copa — a estrada, o quintal, o beiral —
+    em vez de numa estimativa do chão: essa, junto à orla do bairro, onde a
+    estrada está num aterro, chegava a ficar 3 m abaixo da estrada, e baixar
+    as copas até lá abria valas com paredes. Uma copa sem nada preso à volta
+    vai à estimativa do chão (o termo pequeno `eps`)."""
+    n = len(y)
+    a = np.concatenate([F[:, 0], F[:, 1], F[:, 2]]); b = np.concatenate([F[:, 1], F[:, 2], F[:, 0]])
+    M = sparse.coo_matrix((np.ones(2 * len(a)), (np.concatenate([a, b]), np.concatenate([b, a]))), shape=(n, n)).tocsr()
+    M.data[:] = 1.0
+    d = np.where(solto)[0]; f = np.where(~solto)[0]
+    if len(d) == 0:
+        return y.copy()
+    Mdd = M[d][:, d]; Mdf = M[d][:, f]
+    grau = np.asarray(M[d].sum(1)).ravel()
+    eps = 1e-3
+    L = sparse.diags(grau + eps) - Mdd
+    rhs = Mdf @ y[f] + eps * chao[d]
+    novo = y.copy()
+    novo[d] = splinalg.spsolve(L.tocsc(), rhs)
+    return novo
 
 
 def textura(im):

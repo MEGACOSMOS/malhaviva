@@ -22,7 +22,7 @@
  *
  * Como foi feita: scripts/malha/LEIA-ME.md.
  */
-import { Asset, Entity, Layer, WasmModule } from 'playcanvas';
+import { Asset, CULLFACE_NONE, Entity, Layer, WasmModule } from 'playcanvas';
 
 const PASTA = 'malha/';
 
@@ -206,6 +206,10 @@ export function ligarBairroEmMalha(app, opcoes = {}) {
                 m.useLighting = false;
                 m.useSkybox = false;
                 m.useFog = false;
+                // As duas faces: onde a malha dobra (à volta das copas
+                // baixadas, nas orlas) vê-se às vezes o verso, e sem isto
+                // o verso não se pinta — ficava uma frincha preta.
+                m.cull = CULLFACE_NONE;
                 const textura = m.emissiveMap || m.diffuseMap;
                 if (textura && anisotropia > 1) textura.anisotropy = anisotropia;
                 m.update();
