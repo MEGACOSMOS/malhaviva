@@ -2881,18 +2881,13 @@
         #instrucoes .ins-andar-d rect,
         #instrucoes .ins-andar-d text { animation-duration: 3.2s; animation-delay: 1.6s; }
 
-        /* Olhar à volta (a câmara clássica): carrega-se e arrasta-se para
-           um lado e para o outro. */
+        /* Olhar à volta (a câmara clássica): o cursor parado, depois o
+           botão em baixo (o quadrado) e o arrasto para um lado e para o
+           outro, com a vista do bairro a rodar ao mesmo tempo. Quem mexe no
+           cursor e no quadrado é o código das instruções, não a folha de
+           estilos: tem de ir a par com a câmara. */
         #instrucoes .ins-olhar-mao {
             transform: translate(150px, 96px);
-            animation: ins-olhar-mao 3s ease-in-out infinite;
-        }
-        @keyframes ins-olhar-mao {
-            0% { transform: translate(150px, 96px); opacity: 0; }
-            10% { transform: translate(150px, 96px) scale(0.86); opacity: 1; }
-            40% { transform: translate(90px, 96px) scale(0.86); }
-            75% { transform: translate(210px, 96px) scale(0.86); opacity: 1; }
-            90%, 100% { transform: translate(210px, 96px); opacity: 0; }
         }
         #instrucoes .ins-olhar-seta {
             opacity: 0.85;
@@ -2902,12 +2897,6 @@
             stroke: #ffffff;
             stroke-width: 2.5;
             opacity: 0;
-            animation: ins-olhar-anel 3s ease-in-out infinite;
-        }
-        @keyframes ins-olhar-anel {
-            0%, 8% { opacity: 0; }
-            12%, 74% { opacity: 1; }
-            80%, 100% { opacity: 0; }
         }
 
         /* Aproximar: quadrados a crescer a partir do sítio para onde se
@@ -4659,8 +4648,10 @@
             </svg>
         </div>
 
-        <!-- Olhar à volta: carrega-se e arrasta-se para o lado. O quadrado à
-             volta do cursor é o botão em baixo, do princípio ao fim. -->
+        <!-- Olhar à volta: o cursor parado, depois carrega-se e arrasta-se
+             para o lado, e a vista roda ao mesmo tempo. O quadrado à volta
+             do cursor é o botão em baixo, do princípio ao fim do arrasto.
+             Mexe-lhes o código das instruções (ver `olharMostrado`). -->
         <div class="ins-gesto" data-gesto="olhar" aria-hidden="true">
             <svg viewBox="0 0 300 180">
                 <path class="ins-traco ins-olhar-seta" d="M86 132H214"></path>
@@ -5164,11 +5155,97 @@
             porOCartao(caixas);
         };
 
+        // ── O "olhar à volta" mostrado ──
+        // O cursor aparece e fica parado um instante; depois carrega (o
+        // quadrado à volta dele) e arrasta para a esquerda, para a direita
+        // e de volta ao meio, e a vista do bairro roda com ele, como se
+        // fosse a mão de quem lá está (ver `olharComoORato` em
+        // camera-controls-classico.mjs). Recomeça do princípio sempre que o
+        // passo aparece, e pára mal o gesto é feito.
+        const OLHAR_CICLO = 4400;
+        // Quanto a vista roda por cada ponto que o cursor desenhado anda: o
+        // desenho é pequeno, e a vista tem de rodar o bastante para se ver.
+        const OLHAR_GANHO = 2.5;
+        const OLHAR_MEIO = 150;
+        const olharDesenho = desenhos.olhar;
+        const olharMao = olharDesenho && olharDesenho.querySelector('.ins-olhar-mao');
+        const olharAnel = olharDesenho && olharDesenho.querySelector('.ins-olhar-anel');
+        const menosMovimento = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+        let olharAntes = null;
+        let olharDesde = 0;
+
+        const suave = (a) => (a <= 0 ? 0 : a >= 1 ? 1 : a * a * (3 - 2 * a));
+        const entre = (f, de, ate) => suave((f - de) / (ate - de));
+
+        /**
+         * Onde está o cursor desenhado a uma altura do ciclo.
+         *
+         * @param {number} f - De 0 a 1.
+         * @returns {{x: number, cursor: number, quadrado: number}} O x no
+         * desenho, e quanto se vêem o cursor e o quadrado (de 0 a 1).
+         */
+        const olharEm = (f) => {
+            let x = OLHAR_MEIO;
+            if (f >= 0.27 && f < 0.45) x = OLHAR_MEIO - 60 * entre(f, 0.27, 0.45);
+            else if (f >= 0.45 && f < 0.71) x = OLHAR_MEIO - 60 + 120 * entre(f, 0.45, 0.71);
+            else if (f >= 0.71) x = OLHAR_MEIO + 60 - 60 * entre(f, 0.71, 0.86);
+            const cursor = Math.min(entre(f, 0, 0.06), 1 - entre(f, 0.92, 1));
+            const quadrado = Math.min(entre(f, 0.23, 0.26), 1 - entre(f, 0.86, 0.89));
+            return { x, cursor, quadrado };
+        };
+
+        const comandosDaCamara = () => {
+            const pcApp = document.querySelector('pc-app');
+            const camara = pcApp && pcApp.app && pcApp.app.root.findByName('camera');
+            return camara && camara.script && camara.script.cameraControls;
+        };
+
+        const olharMostrado = () => {
+            if (!olharMao) return;
+            const passo = PASSOS[atual];
+            const aMostrar = aberta && passo.desenho === 'olhar' && !feitos.has(atual) && !janelaAFrente();
+            if (!aMostrar) {
+                olharAntes = null;
+                return;
+            }
+            if (menosMovimento) {
+                olharMao.style.transform = 'translate(' + OLHAR_MEIO + 'px, 96px) scale(0.86)';
+                olharMao.style.opacity = '1';
+                olharAnel.style.opacity = '1';
+                return;
+            }
+            // Passo mostrado de novo: o ciclo volta ao princípio, e o salto
+            // do cursor para o meio não roda a vista.
+            if (olharDesde !== comecouEm) {
+                olharDesde = comecouEm;
+                olharAntes = null;
+            }
+            const f = ((performance.now() - comecouEm) % OLHAR_CICLO) / OLHAR_CICLO;
+            const agora = olharEm(f);
+            const encolhe = 1 - 0.14 * agora.quadrado;
+            olharMao.style.transform = 'translate(' + agora.x.toFixed(2) + 'px, 96px) scale(' + encolhe.toFixed(3) + ')';
+            olharMao.style.opacity = agora.cursor.toFixed(3);
+            olharAnel.style.opacity = agora.quadrado.toFixed(3);
+
+            // A vista roda com o que o cursor andou desde a imagem anterior,
+            // em pontos de ecrã.
+            if (olharAntes !== null) {
+                const pontosPorUnidade = olharDesenho.getBoundingClientRect().width / 300;
+                const comandos = comandosDaCamara();
+                const andou = agora.x - olharAntes;
+                if (andou && comandos && comandos.olharComoORato) {
+                    comandos.olharComoORato(andou * pontosPorUnidade * OLHAR_GANHO);
+                }
+            }
+            olharAntes = agora.x;
+        };
+
         // As peças mexem-se com o bairro: o foco vai atrás delas a cada
         // imagem, enquanto as instruções estiverem abertas.
         const ciclo = () => {
             if (!aberta) return;
             arrumar();
+            olharMostrado();
             requestAnimationFrame(ciclo);
         };
 

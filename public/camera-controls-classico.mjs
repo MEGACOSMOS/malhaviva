@@ -453,6 +453,15 @@ class CameraControls extends Script {
     _viagem = null;
 
     /**
+     * Os pontos de ecrã que as instruções arrastaram desde a última imagem,
+     * a fingir o rato (ver `olharComoORato`).
+     *
+     * @type {number}
+     * @private
+     */
+    _olharDeMentira = 0;
+
+    /**
      * O leitor de profundidade que diz em que sítio do bairro se carregou.
      * Nasce no primeiro clique.
      *
@@ -1963,6 +1972,19 @@ class CameraControls extends Script {
     }
 
     /**
+     * Roda a vista como se se arrastasse o rato com o botão em baixo — é o
+     * que as instruções fazem para mostrar o "olhar à volta" (ver "As
+     * instruções", no index.html). Não conta como gesto feito, e perde-se
+     * se alguém estiver de facto a carregar ou se a câmara for a meio de
+     * uma viagem.
+     *
+     * @param {number} pontos - Pontos de ecrã, para a direita.
+     */
+    olharComoORato(pontos) {
+        if (Number.isFinite(pontos)) this._olharDeMentira += pontos;
+    }
+
+    /**
      * Diz às instruções que um gesto foi feito no bairro (ver "As
      * instruções", no index.html). Aqui os nomes são 'ir', 'olhar',
      * 'aproximar', 'arrastar' (Ctrl e arrastar) e 'andar' (WASD ou setas). O mesmo gesto, repetido seguido, só se diz de tempos a
@@ -2364,7 +2386,11 @@ class CameraControls extends Script {
         v.set(0, 0, 0);
         
         // Target rotation based on mouse input (reduced multiplier to 0.4 for better tracking and slower speed)
-        const targetRotate = tmpV2.set(-mouse[0] * 0.4, -mouse[1] * 0.4, 0).mulScalar(ctrlArrasto ? 0 : rotateDeltaMult);
+        // O arrasto fingido das instruções soma-se ao do rato, a não ser
+        // que haja um botão em baixo ou uma viagem: aí é de quem manda.
+        const fingido = (botaoEmBaixo || this._viagem) ? 0 : this._olharDeMentira;
+        this._olharDeMentira = 0;
+        const targetRotate = tmpV2.set(-(mouse[0] + fingido) * 0.4, -mouse[1] * 0.4, 0).mulScalar(ctrlArrasto ? 0 : rotateDeltaMult);
         
         v.add(targetRotate);
         deltas.rotate.append([v.x, v.y, v.z]);
