@@ -6442,12 +6442,11 @@ void modifySplatColor(vec3 center, inout vec4 color) {
                         splatEl.entity.gsplat.lodBaseDistance = 150;
                         splatEl.entity.gsplat.lodMultiplier = 2.5; 
                     } else if (isMed) {
-                        // No Médio (bairro misto) os dois anéis de manchas
-                        // vão mais longe: o fino como no Alto, e o do meio
-                        // três vezes isso, até onde começa a malha. Antes
-                        // eram 110 e 2,5, e com o tecto ficavam ainda mais
-                        // curtos.
-                        splatEl.entity.gsplat.lodBaseDistance = 150;
+                        // No Médio (bairro misto) os dois anéis de manchas: o
+                        // fino até aos 100 (para os lados menos, para a
+                        // frente o dobro, ver lod-foco.mjs), e o do meio três
+                        // vezes isso, até onde começa a malha. Esteve em 150.
+                        splatEl.entity.gsplat.lodBaseDistance = 100;
                         splatEl.entity.gsplat.lodMultiplier = 3;
                     } else { // isLow
                         splatEl.entity.gsplat.lodBaseDistance = 70; 
