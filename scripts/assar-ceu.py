@@ -66,6 +66,17 @@ primeiro e posta como se tivesse sido, e so depois passa pelo LUT:
      LUT da fica pouco abaixo do branco, e o branco passa a ser BRANCO.
      Acima de 94 % os altos encostam ao branco devagar, como nos videos.
 
+As sombras (desde 2026-11-24, a pedido: "sobe um pouco as sombras")
+------------------------------------------------------------------
+
+Com o LUT, 5 % do chao ficava quase preto (abaixo de 9 em 255). Antes de
+tudo, ainda em luz linear, as zonas escuras sobem SOMBRAS stops: por inteiro
+abaixo de SOMBRAS_DE, e cada vez menos ate nada acima de SOMBRAS_ATE. O que
+conta e a luz da zona (um filtro guiado, que respeita as orlas), e nao a de
+cada ponto, para o pormenor dentro das sombras ficar com o contraste que
+tinha. So do horizonte para baixo: o azul fundo do ceu nao e sombra, e fica
+igual. Meios-tons e claros tambem.
+
 Os numeros foram escolhidos contra as fotografias do proprio drone (os JPG
 de Brutos\\JPG, na exposicao do meio), projectando a panoramica em seis
 das vistas delas: cinzentos, claros e escuros no mesmo sitio, e contraste
@@ -87,6 +98,7 @@ import shutil
 import subprocess
 import sys
 
+import cv2
 import numpy as np
 from PIL import Image
 
@@ -96,6 +108,12 @@ Image.MAX_IMAGE_PIXELS = None
 ORIGINAL = r"C:\Users\malve\Videos\Malha Viva\Imagens\HDRi\HDRi - Preenchimento Generativo.exr"
 # O LUT. Fica fora do repositorio: e de um pacote comprado, nao se publica.
 LUT_HH = r"C:\Users\malve\Videos\Malha Viva\Vídeo\Cor\Correção\HH-CINEMATIC-SONY-LUT-PACK\HLG\1-Basic LUT.cube"
+# Fora do portatil, os dois estao na copia dele no Google Drive.
+COPIA = r"G:\Outros computadores\O meu portátil\Malha Viva"
+if not os.path.isfile(ORIGINAL):
+    ORIGINAL = ORIGINAL.replace(r"C:\Users\malve\Videos\Malha Viva", COPIA)
+if not os.path.isfile(LUT_HH):
+    LUT_HH = LUT_HH.replace(r"C:\Users\malve\Videos\Malha Viva", COPIA)
 # So a paragem do Olho de Aguia; o ceu do bairro fica como esta.
 SAIDA = os.path.join('public', 'olho-de-aguia-360.jpg')
 
@@ -105,6 +123,11 @@ SAIDA = os.path.join('public', 'olho-de-aguia-360.jpg')
 LARGURA = 4096
 
 ACERTOS = {
+    # Quantos stops sobem as sombras do chao, e entre que luzes (linear):
+    # por inteiro abaixo da primeira, nada acima da segunda.
+    'sombras': 1.0,
+    'sombras_de': 0.02,
+    'sombras_ate': 0.16,
     # Quanto sobe a cor, em luz linear, antes do LUT (ponto 2 acima).
     'cor': 1.5,
     # Stops a mais, em luz linear, antes do LUT (ponto 3).
@@ -241,6 +264,38 @@ def do_video_para_a_web(x):
     return np.where(luz <= 0.0031308, 12.92 * luz, 1.055 * np.power(luz, 1 / 2.4) - 0.055)
 
 
+def degrau(x, de, ate):
+    """De 0 a 1, devagar, entre dois valores."""
+    t = np.clip((x - de) / (ate - de), 0.0, 1.0)
+    return t * t * (3.0 - 2.0 * t)
+
+
+def luz_da_zona(luz, raio=24, orla=0.25):
+    """Filtro guiado da luz (em stops): alisa as zonas e respeita as orlas. Da a volta de lado a lado."""
+    margem = raio * 3
+    x = np.concatenate([luz[:, -margem:], luz, luz[:, :margem]], axis=1)
+
+    def media(a):
+        return cv2.blur(a, (2 * raio + 1, 2 * raio + 1), borderType=cv2.BORDER_REPLICATE)
+
+    m = media(x)
+    variancia = media(x * x) - m * m
+    a = variancia / (variancia + orla)
+    b = m - a * m
+    return (media(a) * x + media(b))[:, margem:-margem]
+
+
+def subir_sombras(linear, acertos=ACERTOS):
+    """As sombras do chao sobem um pouco, em luz linear; o ceu, os meios-tons e os claros ficam iguais."""
+    cinzento = linear @ np.array([0.2126, 0.7152, 0.0722], dtype=np.float32)
+    zona = luz_da_zona(np.log2(np.maximum(cinzento, 1e-4)))
+    peso = 1.0 - degrau(zona, np.log2(acertos['sombras_de']), np.log2(acertos['sombras_ate']))
+    # O horizonte fica a meio da imagem; a passagem e na orla dele.
+    altura = np.arange(linear.shape[0], dtype=np.float32) / linear.shape[0]
+    peso = peso * degrau(altura, 0.475, 0.505)[:, None]
+    return linear * np.exp2(acertos['sombras'] * peso)[..., None].astype(np.float32)
+
+
 def como_se_fosse_hlg(linear, acertos=ACERTOS):
     """Pontos 1 a 4: da luz linear (709) ao sinal que o LUT espera (HLG, BT.2020)."""
     largas = np.clip(linear, 0.0, None) @ DE_709_PARA_2020.T
@@ -290,6 +345,8 @@ def main():
     print('A trazer o original a %d pontos de largura...' % LARGURA)
     imagem = trazer_original(LARGURA)
     confirmar_que_esta_direita(imagem)
+    print('A subir as sombras...')
+    imagem = subir_sombras(imagem)
     print('A aplicar o LUT (%s)...' % os.path.basename(LUT_HH))
     tratada = tratar(imagem, ler_cube(LUT_HH))
     print('A escrever %s...' % saida)
