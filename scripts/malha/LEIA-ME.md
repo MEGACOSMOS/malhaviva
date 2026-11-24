@@ -7,9 +7,10 @@ fotografia por cima** (`public/bairro-malha.mjs`). As manchas pintam cada
 ponto do ecrã muitas vezes, com transparências umas por cima das outras; a
 malha pinta-o uma vez só.
 
-No nível **Médio** o bairro é misto: o gaussian splat fica no primeiro anel
-de detalhe, à volta de quem olha, e a malha faz o segundo e o terceiro anéis
-(`soPrimeiroAnel` em `public/lod-foco.mjs`). A malha e as árvores dela
+No nível **Médio** o bairro é misto: o gaussian splat fica nos dois
+primeiros anéis de detalhe, à volta de quem olha (o fino, com as manchas
+todas, e o do meio, com o nível de manchas do meio), e a malha faz o
+terceiro, o de longe (`aneisDeManchas` em `public/lod-foco.mjs`). A malha e as árvores dela
 escondem-se, por uma grelha de um metro vista de cima, nos sítios onde as
 manchas já estão desenhadas (`vigiarAsManchas` em `public/bairro-malha.mjs`);
 onde ainda não chegaram, ou já se foram, fica a malha, e por isso não há

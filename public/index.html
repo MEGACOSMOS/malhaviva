@@ -5850,10 +5850,10 @@
                     motorDaMalha.setAttribute('max-pixel-ratio', densidadeDaMalha.toFixed(3));
                 }
             } else if (nivel !== 'high' && nivel !== 'max') {
-                // No nível Médio o bairro é misto: manchas só no primeiro
-                // anel de detalhe, à volta de quem olha, e a malha poligonal
-                // no segundo e no terceiro (ver bairro-malha.mjs e
-                // `soPrimeiroAnel` em lod-foco.mjs).
+                // No nível Médio o bairro é misto: manchas nos dois
+                // primeiros anéis de detalhe, à volta de quem olha (o fino e
+                // o do meio), e a malha poligonal no terceiro, o de longe
+                // (ver bairro-malha.mjs e `aneisDeManchas` em lod-foco.mjs).
                 if (nivel === 'med') window.bairroMisto = true;
                 var motor = document.getElementById('main-app');
                 if (motor) {
@@ -5883,13 +5883,13 @@
             Vec3, Texture,
             PIXELFORMAT_RGBA8, FILTER_LINEAR, ADDRESS_CLAMP_TO_EDGE
         } from 'playcanvas';
-        import { ligarLodNoCentroDaVista } from './lod-foco.mjs?v=7';
+        import { ligarLodNoCentroDaVista } from './lod-foco.mjs?v=8';
         import { medirACargaDoBairro } from './carga-do-bairro.mjs?v=2';
         import { criarAfinadorDeFluidez, construirEscada } from './fluidez.mjs?v=1';
         import { criarModoVR } from './vr.mjs?v=16';
         import { ligarCeu } from './ceu.mjs?v=16';
         import { ligarEdificios } from './edificios.mjs?v=6';
-        import { ligarBairroEmMalha } from './bairro-malha.mjs?v=5';
+        import { ligarBairroEmMalha } from './bairro-malha.mjs?v=7';
         import { ligarComando } from './comando.mjs?v=13';
 
         // O código do site chegou e está a correr: o primeiro sinal de vida
@@ -6099,6 +6099,11 @@
             // No nivel Baixo fica desligado: poupa o trabalho extra por cada
             // ponto do mapa e a imagem de bordas que o acompanha.
             if (window.actualQuality === 'low') return;
+            // No bairro misto (Médio) também: debaixo das manchas não há
+            // malha (ver bairro-malha.mjs), e as manchas esbatidas da orla
+            // deixavam ver o fundo escuro — manchas pretas ao lado da malha,
+            // que acaba a direito. Aqui as manchas acabam a direito como ela.
+            if (window.bairroMisto) return;
 
             const comp = splat && splat.gsplat;
             if (!comp || !comp.setWorkBufferModifier) return;
@@ -7062,7 +7067,7 @@ void modifySplatColor(vec3 center, inout vec4 color) {
             // motor): começa a chegar já, e é pelos bytes dela que o
             // logótipo do ecrã de espera se acende.
             // No Médio o bairro é misto, e chegam as duas coisas: as manchas
-            // do primeiro anel e a malha do resto. A luz acende-se pelos
+            // dos dois primeiros anéis e a malha do resto. A luz acende-se pelos
             // bytes de ambas; quando o ecrã de espera volta (ao fechar um
             // vídeo 360º) a malha já cá está, e conta-se só o que falta das
             // manchas.
@@ -7654,11 +7659,11 @@ void modifySplatColor(vec3 center, inout vec4 color) {
             // lados e para trás das costas, e o que está fora do ecrã desce
             // um nível. Pinta as mesmas manchas no ecrã que antes, ou menos.
             // No Máximo o balão não é encolhido para poupar manchas.
-            // No Médio (bairro misto) as manchas ficam só no primeiro anel:
-            // o resto é a malha.
+            // No Médio (bairro misto) as manchas ficam nos dois primeiros
+            // anéis, o fino e o do meio: o de longe é a malha.
             window.lodFoco = ligarLodNoCentroDaVista(app, {
                 conterNoAntigo: !isMax,
-                soPrimeiroAnel: !!window.bairroMisto
+                aneisDeManchas: window.bairroMisto ? 2 : 0
             });
 
             // O ecrã de espera só sai quando o bairro estiver mesmo lá — e

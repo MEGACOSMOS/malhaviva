@@ -42,9 +42,10 @@ import { math } from 'playcanvas';
  *    reconstruído a meio de um arrasto. Andar continua a reavaliar como
  *    sempre reavaliou.
  *
- * No nível Médio o bairro é misto (`soPrimeiroAnel`): só o primeiro anel,
- * o do detalhe fino, é de manchas; os pedaços que caberiam ao segundo e ao
- * terceiro não se desenham, e no lugar deles está a malha poligonal (ver
+ * No nível Médio o bairro é misto (`aneisDeManchas`): os dois primeiros
+ * anéis — o do detalhe fino e o do meio, cada um com o seu nível de
+ * manchas — são de manchas; os pedaços que caberiam ao terceiro, o de
+ * longe, não se desenham, e no lugar deles está a malha poligonal (ver
  * bairro-malha.mjs).
  */
 
@@ -148,12 +149,12 @@ function corrigirRepartidorDoTecto(mundo, definicoes) {
         const mundoDele = this.mundoDoTecto;
         if (!mundoDele || !(tecto > 0)) return;
 
-        // No bairro misto o primeiro anel fica do tamanho que o nível lhe
-        // dá: o tecto pode apertá-lo, mas não o alarga. Sem isto, as manchas
-        // que deixaram de ir para os anéis de fora (agora malha) iam todas
-        // alargar o primeiro, e o anel não seria o mesmo.
+        // No bairro misto os anéis de manchas ficam do tamanho que o nível
+        // lhes dá: o tecto pode apertá-los, mas não os alarga. Sem isto, as
+        // manchas que deixaram de ir para o anel de longe (agora malha) iam
+        // todas alargar os outros, e os anéis não seriam os mesmos.
         const definicoesDele = this.definicoesDoTecto;
-        if (definicoesDele && definicoesDele.soPrimeiroAnel && mundoDele._budgetScale > 1) {
+        if (definicoesDele && definicoesDele.aneisDeManchas > 0 && mundoDele._budgetScale > 1) {
             mundoDele._budgetScale = 1;
         }
 
@@ -316,8 +317,9 @@ function avaliarNiveis(instancia, cameraNode, maxLod, lodBaseDistance, lodMultip
     // que manda, e o balão só decide a forma.
     const conterNoAntigo = definicoes.conterNoAntigo && !(params && params.splatBudget > 0);
 
-    // Bairro misto: manchas só no primeiro anel (ver `nivelDoPedaco`).
-    const soPrimeiroAnel = !!definicoes.soPrimeiroAnel;
+    // Bairro misto: quantos anéis são de manchas; os outros são malha
+    // (ver `nivelDoPedaco`). Zero quer dizer o bairro todo em manchas.
+    const aneis = definicoes.aneisDeManchas > 0 ? definicoes.aneisDeManchas : 0;
 
     // Memória de trabalho, guardada no mapa para não nascer a cada vez:
     // a distância no balão, o nível que a bola dá (só conta a partir do
@@ -394,7 +396,7 @@ function avaliarNiveis(instancia, cameraNode, maxLod, lodBaseDistance, lodMultip
         peso[nodeIndex] = pesoDoPedaco;
 
         if (conterNoAntigo && maxLod >= 1) {
-            const lodDaBola = nodes[nodeIndex].lods[soPrimeiroAnel && nivelBola > 0 ? -1 : nivelBola];
+            const lodDaBola = nodes[nodeIndex].lods[aneis && nivelBola >= aneis ? -1 : nivelBola];
             if (lodDaBola) custoDaBola += lodDaBola.count * pesoDoPedaco;
         }
     }
@@ -412,30 +414,20 @@ function avaliarNiveis(instancia, cameraNode, maxLod, lodBaseDistance, lodMultip
     const nivelDoPedaco = (nodeIndex, encolhimento) => {
         if (maxLod === 0) return 0;
         const balao = noBalao[nodeIndex] * encolhimento;
-
-        // Com o bairro misto (nível Médio) só o primeiro anel é de manchas:
-        // um pedaço é do detalhe fino ou não se desenha (-1), e onde não se
-        // desenha está a malha (ver bairro-malha.mjs). Sem degrau para o
-        // que fica fora do ecrã — esse degrau levava-o logo para a malha, e
-        // ao virar a cara via-se o chão aos pés a passar de malha a manchas.
-        // A folga da fronteira vale na mesma, nos dois sentidos.
-        if (soPrimeiroAnel) {
-            let dentro = balao < lodBaseDistance;
-            if (histerese > 0 && Math.abs(balao - lodBaseDistance) < lodBaseDistance * histerese) {
-                const currentLod = nodeInfos[nodeIndex].currentLod;
-                if (currentLod === 0) dentro = true;
-                else if (currentLod < 0) dentro = false;
-            }
-            return dentro && rangeMin === 0 ? 0 : -1;
-        }
-
         const nivelBola = nivelDaBola[nodeIndex];
         let nivel = balao < lodBaseDistance && rangeMin === 0 ? 0 : (nivelBola > 0 ? nivelBola : 1);
 
-        const degrau = fora[nodeIndex] && nivel < maxLod ? 1 : 0;
+        // No bairro misto (nível Médio) o degrau de fora do ecrã só se dá
+        // entre anéis de manchas: levar um pedaço do último anel de manchas
+        // para a malha por estar fora do ecrã fazia, ao virar a cara, o
+        // bairro passar de malha a manchas à frente de quem olha.
+        const degrau = fora[nodeIndex] && nivel < maxLod && (!aneis || nivel + 1 < aneis) ? 1 : 0;
         nivel += degrau;
 
-        const currentLod = nodeInfos[nodeIndex].currentLod;
+        // Para a folga da fronteira, um pedaço que não se desenha (-1, no
+        // bairro misto) está no primeiro anel da malha.
+        let currentLod = nodeInfos[nodeIndex].currentLod;
+        if (aneis && currentLod < 0) currentLod = aneis;
         if (histerese > 0 && currentLod >= 0 && currentLod !== nivel &&
             (currentLod === nivel + 1 || currentLod === nivel - 1)) {
             // A fronteira que se está a passar, descontado o degrau.
@@ -451,6 +443,10 @@ function avaliarNiveis(instancia, cameraNode, maxLod, lodBaseDistance, lodMultip
 
         if (nivel < rangeMin) nivel = rangeMin;
         if (nivel > rangeMax) nivel = rangeMax;
+
+        // No bairro misto os anéis para lá dos de manchas não se desenham
+        // (-1): no lugar deles está a malha (ver bairro-malha.mjs).
+        if (aneis && nivel >= aneis) return -1;
         return nivel;
     };
 
@@ -682,7 +678,7 @@ export function ligarLodNoCentroDaVista(app, opcoes = {}) {
         histerese: opcoes.histerese ?? HISTERESE,
         intervaloEntreRotacoes: opcoes.intervaloEntreRotacoes ?? INTERVALO_ENTRE_ROTACOES,
         conterNoAntigo: opcoes.conterNoAntigo ?? true,
-        soPrimeiroAnel: opcoes.soPrimeiroAnel ?? false,
+        aneisDeManchas: opcoes.aneisDeManchas ?? 0,
         ligado: false
     };
 
@@ -694,7 +690,7 @@ export function ligarLodNoCentroDaVista(app, opcoes = {}) {
 
         // No bairro misto quem tapa os buracos enquanto o detalhe fino não
         // chega é a malha: os níveis grosseiros nem se pedem.
-        if (definicoes.soPrimeiroAnel) {
+        if (definicoes.aneisDeManchas > 0) {
             app.scene.gsplat.lodUnderfillLimit = 0;
         } else {
             const recurso = app.scene.gsplat.lodUnderfillLimit || 0;

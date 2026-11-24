@@ -20,10 +20,11 @@
  * do splat do site, só elas, num nível de pormenor leve — desenhadas por
  * cima da malha.
  *
- * No nível Médio o bairro é misto: as manchas ficam no primeiro anel de
- * detalhe, à volta de quem olha, e a malha faz o segundo e o terceiro (ver
- * `soPrimeiroAnel` em lod-foco.mjs). A malha esconde-se onde as manchas já
- * estão desenhadas, e só aí — ver `vigiarAsManchas`.
+ * No nível Médio o bairro é misto: as manchas ficam nos dois primeiros
+ * anéis de detalhe, à volta de quem olha (o fino e o do meio), e a malha faz
+ * o terceiro, o de longe (ver `aneisDeManchas` em lod-foco.mjs). A malha
+ * esconde-se onde as manchas já estão desenhadas, e só aí — ver
+ * `vigiarAsManchas`.
  *
  * Como foi feita: scripts/malha/LEIA-ME.md.
  */
@@ -41,16 +42,22 @@ const CELULA = 1;
 
 // Quanto cada pedaço de manchas alarga para lá da caixa dele na grelha, em
 // metros: entre dois pedaços vizinhos há às vezes uma frincha, e por ela via-se
-// a malha.
-const ALARGAMENTO = 0.75;
+// a malha. Pouco: para lá da caixa já não há manchas dele, e onde a malha sai
+// sem manchas por cima fica preto.
+const ALARGAMENTO = 0.25;
 
-// Quanto tempo um pedaço de manchas tem de estar desenhado antes de a malha
-// lhe sair de baixo, em milissegundos. Um pedaço chegado ainda é arrumado e
-// ordenado ao longo de umas quantas imagens antes de aparecer: tirada a malha
-// logo, ficava um buraco nesse instante.
-const ESPERA_AO_ENTRAR = 350;
+// Um pedaço chegado ainda é arrumado e ordenado ao longo de umas quantas
+// imagens antes de aparecer: tirada a malha logo, ficava um buraco preto
+// nesse instante. Por isso a malha só lhe sai de baixo quando o motor diz
+// que já desenha tudo o que tem (ver `mundoEmDia`), e nunca antes de um
+// instante mínimo; se o motor não o disser, ao fim de um instante máximo.
+// Em milissegundos.
+const ESPERA_MINIMA_AO_ENTRAR = 120;
+const ESPERA_MAXIMA_AO_ENTRAR = 1500;
 
-// De quanto em quanto tempo, no máximo, se refaz a grelha.
+// De quanto em quanto tempo, no máximo, se refaz a grelha quando entram
+// pedaços. Quando sai algum, refaz-se logo: aí cada instante de atraso é um
+// buraco preto.
 const INTERVALO_DA_GRELHA = 120;
 
 /**
@@ -104,7 +111,8 @@ function criarCamada(app) {
  *
  * @param {object} app - A aplicação 3D.
  * @param {object} camara - A entidade da câmara do mapa.
- * @returns {object|null} A instância do mapa.
+ * @returns {{instancia: object, mundo: object}|null} A instância do mapa e
+ *     o gestor que a desenha.
  */
 function mapaDasManchas(app, camara) {
     const director = app.renderer && app.renderer.gsplatDirector;
@@ -116,10 +124,24 @@ function mapaDasManchas(app, camara) {
         const mundo = dadosCamada.gsplatManager && dadosCamada.gsplatManager.world;
         if (!mundo || !mundo._octreeInstances) continue;
         for (const instancia of mundo._octreeInstances.values()) {
-            if (instancia.octree && instancia.octree.nodeBoundsMinMax && instancia.nodeInfos) return instancia;
+            if (instancia.octree && instancia.octree.nodeBoundsMinMax && instancia.nodeInfos) return { instancia, mundo };
         }
     }
     return null;
+}
+
+/**
+ * Se o motor já desenha tudo o que tem: cada mudança nos pedaços faz uma
+ * versão nova do bairro, e ela só aparece depois de ordenada. Enquanto a
+ * versão desenhada não for a última, há pedaços chegados que ainda não se
+ * veem. `null` se o motor não o disser.
+ *
+ * @param {object} mundo - O gestor que desenha as manchas.
+ * @returns {boolean|null}
+ */
+function mundoEmDia(mundo) {
+    if (typeof mundo.currentVersion !== 'number' || typeof mundo.lastWorldStateVersion !== 'number') return null;
+    return mundo.currentVersion === mundo.lastWorldStateVersion;
 }
 
 /**
@@ -131,7 +153,7 @@ function mapaDasManchas(app, camara) {
  * estão desenhados: numa coluna com um pedaço desenhado e outro não (um
  * telhado e o chão por baixo, na fronteira do anel), a malha fica, e por
  * cima dela as manchas que houver. E só conta depois de o pedaço estar
- * desenhado há um instante (`ESPERA_AO_ENTRAR`); ao sair, deixa de contar
+ * mesmo no ecrã (ver `ESPERA_MINIMA_AO_ENTRAR`); ao sair, deixa de contar
  * logo. Assim nunca há buraco: onde as manchas ainda não chegaram, ou já se
  * foram, está a malha.
  *
@@ -164,12 +186,15 @@ function vigiarAsManchas(app, aoMudar) {
     let atual = { textura: vazia, parametros: new Float32Array([0, 0, 1, 1]) };
 
     let instancia = null;
+    let mundo = null;
     let grelha = null;
     let desde = null;
+    let quadroDesde = null;
     let cobre = null;
     let tapa = null;
     let sujo = false;
     let ultimaGrelha = 0;
+    let quadro = 0;
 
     // A caixa de cada pedaço, vista de cima, em quadrados da grelha: a
     // alargada (onde ele conta como desenhado) e a justa (onde, não estando
@@ -249,13 +274,17 @@ function vigiarAsManchas(app, aoMudar) {
     }
 
     app.on('prerender', () => {
-        const mapa = mapaDasManchas(app, camara);
+        quadro++;
+        const achado = mapaDasManchas(app, camara);
+        const mapa = achado ? achado.instancia : null;
+        mundo = achado ? achado.mundo : null;
         if (mapa !== instancia) {
             instancia = mapa;
             if (grelha) grelha.textura.destroy();
             grelha = mapa ? medirGrelha(mapa) : null;
             if (grelha) {
                 desde = new Float64Array(grelha.nos);
+                quadroDesde = new Uint32Array(grelha.nos);
                 cobre = new Uint8Array(grelha.nos);
                 tapa = new Uint8Array(grelha.nos).fill(1);
                 refazerGrelha();
@@ -268,20 +297,33 @@ function vigiarAsManchas(app, aoMudar) {
         if (!grelha) return;
 
         const agora = performance.now();
+        const emDia = mundoEmDia(mundo);
         const infos = instancia.nodeInfos;
+        let saiu = false;
         for (let i = 0; i < grelha.nos; i++) {
-            const desenhado = !!infos[i] && infos[i].currentLod === 0;
-            if (!desenhado) desde[i] = 0;
-            else if (!desde[i]) desde[i] = agora;
-            const passaACobrir = desenhado && agora - desde[i] >= ESPERA_AO_ENTRAR ? 1 : 0;
+            const desenhado = !!infos[i] && infos[i].currentLod >= 0;
+            if (!desenhado) {
+                desde[i] = 0;
+            } else if (!desde[i]) {
+                desde[i] = agora;
+                quadroDesde[i] = quadro;
+            }
+            // Já no ecrã: o motor está em dia desde uma imagem depois de o
+            // pedaço ter chegado (a versão com ele já foi feita e ordenada).
+            const espera = agora - desde[i];
+            const jaSeVe = emDia === null
+                ? espera >= ESPERA_MAXIMA_AO_ENTRAR / 4
+                : (emDia && quadro > quadroDesde[i] + 1) || espera >= ESPERA_MAXIMA_AO_ENTRAR;
+            const passaACobrir = desenhado && espera >= ESPERA_MINIMA_AO_ENTRAR && jaSeVe ? 1 : 0;
             const passaATapar = desenhado ? 0 : 1;
             if (passaACobrir !== cobre[i] || passaATapar !== tapa[i]) {
+                if (passaATapar && !tapa[i]) saiu = true;
                 cobre[i] = passaACobrir;
                 tapa[i] = passaATapar;
                 sujo = true;
             }
         }
-        if (sujo && agora - ultimaGrelha >= INTERVALO_DA_GRELHA) {
+        if (sujo && (saiu || agora - ultimaGrelha >= INTERVALO_DA_GRELHA)) {
             sujo = false;
             ultimaGrelha = agora;
             refazerGrelha();
