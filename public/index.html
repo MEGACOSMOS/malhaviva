@@ -2682,7 +2682,7 @@
         }
         /* Com um vídeo ou uma paragem aberta por cima, as instruções
            esperam escondidas, e voltam quando ela fechar. */
-        #instrucoes.aberta.de-lado {
+        #instrucoes.de-lado {
             opacity: 0;
             visibility: hidden;
         }
@@ -4718,6 +4718,11 @@
      * uma cruz e fecha; a cruz do canto fecha a qualquer altura, e o
      * Escape também. Com um vídeo ou uma paragem aberta por cima, as
      * instruções esperam escondidas.
+     *
+     * Quem as ignora — anda à vontade pelo bairro sem fazer o que o passo
+     * pede, ou abre uma anotação de que o passo não fala — não as quer: vão-se
+     * embora sozinhas e não voltam (ver "Quem as ignora", mais abaixo).
+     * Quem as pediu nos Controlos tem-nas até as fechar.
      */
     (function () {
         const caixa = document.getElementById('instrucoes');
@@ -4848,8 +4853,8 @@
         ];
         const PASSOS = [
             ...PASSOS_DA_CAMARA,
-            { titulo: 'ins.historiasTitulo', texto: porToque ? 'ins.historiasToque' : 'ins.historias', alvos: alvosDasHistorias },
-            { titulo: 'ins.ceuTitulo', texto: 'ins.ceu', alvos: alvosDoCeu },
+            { titulo: 'ins.historiasTitulo', texto: porToque ? 'ins.historiasToque' : 'ins.historias', alvos: alvosDasHistorias, abre: ['testemunho', 'rota'] },
+            { titulo: 'ins.ceuTitulo', texto: 'ins.ceu', alvos: alvosDoCeu, abre: ['ceu'] },
             ...(window.cameraClassica ? [
                 // Na câmara clássica, a pesquisa das casas e o resto numa
                 // janela só, com as peças todas em foco.
@@ -4915,6 +4920,7 @@
             atual = Math.max(0, Math.min(PASSOS.length - 1, n));
             const passo = PASSOS[atual];
             comecouEm = performance.now();
+            recomecarAVigia();
             const gesto = !!passo.gestos;
             const feito = feitos.has(atual);
             Object.keys(desenhos).forEach((k) => {
@@ -4987,6 +4993,142 @@
             const este = atual;
             relogioDoFeito = setTimeout(() => { if (aberta && atual === este) seguinte(); }, 1400);
         });
+
+        // ── Quem as ignora ──
+        // Cada passo conta quantas vezes se pegou no bairro para outra coisa
+        // que não a que ele pede, e quanto tempo ao todo. Chegando a um dos
+        // limites, é porque se anda à vontade: as instruções vão-se embora.
+        // Nos passos que são só de ler o limite é maior, que aí é natural
+        // ir mexendo no bairro para ver as peças de que se fala. Começa do
+        // zero a cada passo: quem vai fazendo o que se pede nunca lá chega.
+        //
+        // Não conta o que se parece com tentar: um clique que escorregou
+        // uns pontos, ou dois dedos num passo que pede dois dedos.
+        const LIMITE_DO_GESTO = { vezes: 3, tempo: 3500 };
+        const LIMITE_DE_LER = { vezes: 5, tempo: 6000 };
+        // Ao entrar num passo, o resto do movimento de antes não conta.
+        const FOLGA_DO_PASSO = 800;
+        // Quanto um dedo ou o rato anda (pontos de ecrã) até ser arrastar.
+        const ARRASTO_A_SERIO = 40;
+        // Gestos sem dedo nem rato em baixo (teclas, roda, comando): com
+        // mais do que isto entre dois, são duas vezes.
+        const INTERVALO = 700;
+
+        let vigiadas = false;
+        let vezes = 0;
+        let tempo = 0;
+        let pegada = null;
+        let ultimoSolto = -Infinity;
+        let rodaForaEm = -Infinity;
+        let anotacaoAntes = null;
+
+        const recomecarAVigia = () => {
+            vezes = 0;
+            tempo = 0;
+            if (pegada) {
+                pegada.contada = true;
+                pegada.doPasso = false;
+                pegada.vistaEm = performance.now();
+            }
+        };
+
+        const noBairro = (alvo) => !!alvo && !!alvo.closest &&
+            (alvo.tagName === 'CANVAS' || !!alvo.closest('#annotations-container'));
+
+        const emVigia = () => {
+            if (!aberta || !vigiadas || janelaAFrente()) return false;
+            if (PASSOS[atual].gestos && feitos.has(atual)) return false;
+            return performance.now() - comecouEm > FOLGA_DO_PASSO;
+        };
+
+        const verOsLimites = () => {
+            const limite = PASSOS[atual].gestos ? LIMITE_DO_GESTO : LIMITE_DE_LER;
+            if (vezes >= limite.vezes || tempo >= limite.tempo) fechar();
+        };
+
+        // A pegada que há, se já for um arrasto a sério a fazer outra coisa.
+        const contarAPegada = () => {
+            if (!pegada || !pegada.gesto || pegada.doPasso || pegada.longe < ARRASTO_A_SERIO) return;
+            // Dois dedos num passo que pede dois dedos: está-se a tentar.
+            const pedidos = PASSOS[atual].gestos;
+            if (pedidos && pegada.dedos > 1 && pedidos.indexOf('mover') < 0) return;
+            const agora = performance.now();
+            if (!pegada.contada) {
+                pegada.contada = true;
+                vezes++;
+            } else if (pegada.vistaEm) {
+                tempo += agora - pegada.vistaEm;
+            }
+            pegada.vistaEm = agora;
+            verOsLimites();
+        };
+
+        const contarSolto = (gesto) => {
+            const agora = performance.now();
+            const desde = agora - ultimoSolto;
+            ultimoSolto = agora;
+            // Cada clique que leva a câmara a um sítio é uma vez.
+            if (gesto === 'ir' || desde > INTERVALO) vezes++;
+            else tempo += desde;
+            verOsLimites();
+        };
+
+        window.addEventListener('gestoNoBairro', (e) => {
+            const gesto = e.detail && e.detail.gesto;
+            // A roda sobre um menu não é andar pelo bairro.
+            if (gesto === 'aproximar' && performance.now() - rodaForaEm < 100) return;
+            const pedidos = PASSOS[atual].gestos;
+            const doPasso = !!pedidos && pedidos.indexOf(gesto) >= 0;
+            if (pegada) {
+                pegada.gesto = gesto;
+                if (doPasso) pegada.doPasso = true;
+            }
+            if (doPasso || !emVigia()) return;
+            if (pegada && gesto !== 'ir') contarAPegada();
+            else contarSolto(gesto);
+        });
+
+        const escuta = { capture: true, passive: true };
+        window.addEventListener('pointerdown', (e) => {
+            if (!e.isPrimary) {
+                if (pegada) pegada.dedos++;
+                return;
+            }
+            pegada = noBairro(e.target) ?
+                { id: e.pointerId, x: e.clientX, y: e.clientY, dedos: 1, longe: 0, gesto: null, doPasso: false, contada: false, vistaEm: 0 } :
+                null;
+        }, escuta);
+        window.addEventListener('pointermove', (e) => {
+            if (!pegada || e.pointerId !== pegada.id) return;
+            pegada.longe = Math.max(pegada.longe, Math.hypot(e.clientX - pegada.x, e.clientY - pegada.y));
+            if (emVigia()) contarAPegada();
+        }, escuta);
+        const largar = (e) => { if (pegada && e.pointerId === pegada.id) pegada = null; };
+        window.addEventListener('pointerup', largar, escuta);
+        window.addEventListener('pointercancel', largar, escuta);
+        window.addEventListener('blur', () => { pegada = null; });
+
+        // Na câmara clássica, afastar com a roda não chega como gesto.
+        window.addEventListener('wheel', (e) => {
+            if (!noBairro(e.target)) {
+                rodaForaEm = performance.now();
+                return;
+            }
+            const pedidos = PASSOS[atual].gestos;
+            if (!window.cameraClassica || e.deltaY <= 0 || !emVigia()) return;
+            if (!pedidos || pedidos.indexOf('aproximar') < 0) contarSolto('aproximar');
+        }, escuta);
+
+        /**
+         * A anotação que está aberta por cima do bairro.
+         *
+         * @returns {string|null} 'testemunho', 'rota', 'ceu', ou nada.
+         */
+        const anotacaoAberta = () => {
+            if (janelaAberta('video-modal')) return 'testemunho';
+            if (!janelaAberta('modal-360')) return null;
+            return document.getElementById('modal-360').classList.contains('inteira') ? 'ceu' : 'rota';
+        };
 
         // ── O foco e o sítio do cartão ──
 
@@ -5098,17 +5240,27 @@
         // Uma janela por cima de tudo (um vídeo, uma paragem), a navegação
         // até uma casa, ou o painel de um local marcado: as instruções
         // esperam escondidas.
+        const janelaAberta = (id) => {
+            const el = document.getElementById(id);
+            return !!el && el.style.display !== 'none' && getComputedStyle(el).display !== 'none';
+        };
         const janelaAFrente = () => document.body.classList.contains('a-navegar') ||
             document.body.classList.contains('com-local') ||
-            ['video-modal', 'modal-360'].some((id) => {
-                const el = document.getElementById(id);
-                return !!el && el.style.display !== 'none' && getComputedStyle(el).display !== 'none';
-            });
+            janelaAberta('video-modal') || janelaAberta('modal-360');
 
         const arrumar = () => {
             if (!aberta) return;
             caixa.classList.toggle('de-lado', janelaAFrente());
             const passo = PASSOS[atual];
+            // Abriu-se uma anotação: se não é das que o passo convida a
+            // abrir, as instruções foram ignoradas (ver "Quem as ignora").
+            const anotacao = anotacaoAberta();
+            const acabadaDeAbrir = anotacao && !anotacaoAntes;
+            anotacaoAntes = anotacao;
+            if (acabadaDeAbrir && vigiadas && (passo.abre || []).indexOf(anotacao) < 0) {
+                fechar();
+                return;
+            }
             if (passo.gestos) {
                 desenharFoco([]);
                 cartaoEmBaixo();
@@ -5421,9 +5573,17 @@
             return new RegExp('(^|; )' + CHAVE + '=vistas(;|$)').test(document.cookie);
         };
 
-        const abrir = () => {
+        /**
+         * Abre as instruções, no primeiro passo.
+         *
+         * @param {boolean} [sozinhas] - Se apareceram sem ninguém as pedir:
+         * só essas se vão embora quando são ignoradas.
+         */
+        const abrir = (sozinhas = false) => {
             if (aberta) return;
             aberta = true;
+            vigiadas = sozinhas === true;
+            anotacaoAntes = anotacaoAberta();
             feitos.clear();
             caixa.hidden = false;
             mostrar(0);
@@ -5440,8 +5600,14 @@
             cartao.classList.remove('a-trocar');
             guardarVistas();
             if (caixa.contains(document.activeElement)) document.activeElement.blur();
-            caixa.classList.remove('aberta', 'com-foco', 'de-lado');
-            setTimeout(() => { if (!aberta) caixa.hidden = true; }, 350);
+            caixa.classList.remove('aberta', 'com-foco');
+            // O "de lado" fica até ao fim: com uma anotação à frente, o
+            // cartão não se esbate por cima dela.
+            setTimeout(() => {
+                if (aberta) return;
+                caixa.hidden = true;
+                caixa.classList.remove('de-lado');
+            }, 350);
         };
 
         direita.addEventListener('click', seguinte);
@@ -5482,7 +5648,7 @@
                 marcado = true;
                 observador.disconnect();
                 setTimeout(() => {
-                    if (!document.body.classList.contains('em-cartao')) abrir();
+                    if (!document.body.classList.contains('em-cartao')) abrir(!pedidas);
                 }, 900);
             };
             const observador = new MutationObserver(quandoPronto);

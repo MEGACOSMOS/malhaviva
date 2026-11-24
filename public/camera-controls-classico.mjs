@@ -2356,6 +2356,7 @@ class CameraControls extends Script {
         // pela conta da zona morta e chega a passar dos dois — sem isto,
         // andava-se com o comando ao dobro da velocidade das teclas.
         if (leftStick[0] !== 0 || leftStick[1] !== 0) {
+            this._avisarGesto('andar');
             keyMove.x += leftStick[0];
             keyMove.z -= leftStick[1];
             const passo = Math.sqrt(keyMove.x * keyMove.x + keyMove.z * keyMove.z);
