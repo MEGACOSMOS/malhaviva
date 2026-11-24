@@ -52,6 +52,11 @@ const ALARGAMENTO = 0.25;
 // poucos por cima dela. Em milissegundos.
 const TEMPO_DE_DESVANECER = 1000;
 
+// Na faixa de passagem, cada mancha mede-se com a câmara de agora e com a de
+// há pouco, até `TEMPO_DE_DESVANECER` atrás, guardada tantas vezes quantas
+// aqui se diz (ver `acompanharOOlhar`).
+const PASSOS_DO_RASTO = 8;
+
 // Um nível chegado a uma zona só aparece no ecrã quando o motor refaz a
 // lista do que desenha e a ordena, umas imagens depois: começado logo, o
 // aparecer gastava-se com ele ainda invisível. Por isso só começa quando a
@@ -874,7 +879,10 @@ fn modifySplatColor(center: vec3f, color: ptr<function, vec4f>) {
  * que o lod-foco.mjs faz aos pedaços, com a câmara de agora — e passa de um
  * nível para o outro conforme ela: perto do começo da faixa vê-se o fino,
  * perto do fim o do meio, e a meio os dois um nada sobrepostos, para não
- * se ver o fundo. Isto acompanha a câmara a cada imagem, sem saltos.
+ * se ver o fundo. Faz essa conta com a câmara de agora e com a do último
+ * segundo (ver `acompanharOOlhar`), e fica com a média: um movimento brusco
+ * da câmara leva a fronteira de uma vez para outro sítio, e sem isto as zonas
+ * por onde ela passava trocavam de nível de repente.
  *
  * Por cima disso, as grelhas (ver `vigiarAsManchas`) dizem que níveis estão
  * lá e quanto: um nível só dá lugar ao outro onde todos os pedaços do
@@ -891,8 +899,9 @@ uniform sampler2D uBairroMisto;
 uniform sampler2D uBairroMenor;
 uniform highp sampler2D uBairroPedacos;
 uniform vec4 uBairroMistoGrelha;
-uniform vec4 uBairroOlho;
-uniform vec4 uBairroFrente;
+uniform vec4 uBairroOlhos[${PASSOS_DO_RASTO + 1}];
+uniform vec4 uBairroFrentes[${PASSOS_DO_RASTO + 1}];
+uniform vec4 uBairroRasto;
 uniform vec4 uBairroBalao;
 void modifySplatCenter(inout vec3 center) {}
 void modifySplatRotationScale(vec3 originalCenter, vec3 modifiedCenter, inout vec4 rotation, inout vec3 scale) {}
@@ -906,17 +915,28 @@ void modifySplatColor(vec3 center, inout vec4 color) {
         color.a *= 1.0 - f.b;
         return;
     }
-    vec3 d = center - uBairroOlho.xyz;
-    float aoLongo = dot(d, uBairroFrente.xyz);
-    float deLado2 = max(dot(d, d) - aoLongo * aoLongo, 0.0);
-    float frente = aoLongo >= 0.0 ? aoLongo * uBairroBalao.x : -aoLongo * uBairroBalao.z;
-    float balao = sqrt(frente * frente + deLado2 * uBairroBalao.y * uBairroBalao.y) * uBairroOlho.w;
-    float t = smoothstep(uBairroFrente.w * (1.0 - uBairroBalao.w), uBairroFrente.w * (1.0 + uBairroBalao.w), balao);
-    float w0 = clamp((1.0 - t) / 0.6, 0.0, 1.0);
-    float w1 = clamp(t / 0.6, 0.0, 1.0);
     int pedaco = int(loadBairroPedaco().r);
     vec2 meu = pedaco > 0 ? texelFetch(uBairroPedacos, ivec2(pedaco % 64, pedaco / 64), 0).rg : vec2(1.0);
     f.rg = min(f.rg, meu);
+    // Onde só há um nível, a faixa não conta: escusa-se a conta.
+    float outro = marca > 0.5 ? menor.r : menor.g;
+    float w0 = 1.0;
+    float w1 = 1.0;
+    if (outro > 0.0) {
+        w0 = 0.0;
+        w1 = 0.0;
+        int quantos = int(uBairroRasto.y);
+        for (int k = 0; k < quantos; k++) {
+            vec3 d = center - uBairroOlhos[k].xyz;
+            float aoLongo = dot(d, uBairroFrentes[k].xyz);
+            float deLado2 = max(dot(d, d) - aoLongo * aoLongo, 0.0);
+            float frente = aoLongo >= 0.0 ? aoLongo * uBairroBalao.x : -aoLongo * uBairroBalao.z;
+            float balao = sqrt(frente * frente + deLado2 * uBairroBalao.y * uBairroBalao.y) * uBairroOlhos[k].w;
+            float t = smoothstep(uBairroRasto.x * (1.0 - uBairroBalao.w), uBairroRasto.x * (1.0 + uBairroBalao.w), balao);
+            w0 += uBairroFrentes[k].w * clamp((1.0 - t) / 0.6, 0.0, 1.0);
+            w1 += uBairroFrentes[k].w * clamp(t / 0.6, 0.0, 1.0);
+        }
+    }
     if (marca > 0.5) {
         color.a *= f.g * (1.0 - menor.r * (1.0 - w1));
     } else {
@@ -930,8 +950,9 @@ var uBairroMenor: texture_2d<f32>;
 var uBairroMenorSampler: sampler;
 var uBairroPedacos: texture_2d<f32>;
 uniform uBairroMistoGrelha: vec4f;
-uniform uBairroOlho: vec4f;
-uniform uBairroFrente: vec4f;
+uniform uBairroOlhos: array<vec4f, ${PASSOS_DO_RASTO + 1}>;
+uniform uBairroFrentes: array<vec4f, ${PASSOS_DO_RASTO + 1}>;
+uniform uBairroRasto: vec4f;
 uniform uBairroBalao: vec4f;
 fn modifySplatCenter(center: ptr<function, vec3f>) {}
 fn modifySplatRotationScale(originalCenter: vec3f, modifiedCenter: vec3f, rotation: ptr<function, vec4f>, scale: ptr<function, vec3f>) {}
@@ -945,19 +966,29 @@ fn modifySplatColor(center: vec3f, color: ptr<function, vec4f>) {
         (*color).a = (*color).a * (1.0 - f.b);
         return;
     }
-    let d = center - uniform.uBairroOlho.xyz;
-    let aoLongo = dot(d, uniform.uBairroFrente.xyz);
-    let deLado2 = max(dot(d, d) - aoLongo * aoLongo, 0.0);
-    let frente = select(-aoLongo * uniform.uBairroBalao.z, aoLongo * uniform.uBairroBalao.x, aoLongo >= 0.0);
-    let balao = sqrt(frente * frente + deLado2 * uniform.uBairroBalao.y * uniform.uBairroBalao.y) * uniform.uBairroOlho.w;
-    let t = smoothstep(uniform.uBairroFrente.w * (1.0 - uniform.uBairroBalao.w), uniform.uBairroFrente.w * (1.0 + uniform.uBairroBalao.w), balao);
-    let w0 = clamp((1.0 - t) / 0.6, 0.0, 1.0);
-    let w1 = clamp(t / 0.6, 0.0, 1.0);
     let pedaco = i32(loadBairroPedaco().r);
     var meu = vec2f(1.0);
     if (pedaco > 0) { meu = textureLoad(uBairroPedacos, vec2i(pedaco % 64, pedaco / 64), 0).rg; }
     f.r = min(f.r, meu.r);
     f.g = min(f.g, meu.g);
+    let outro = select(menor.g, menor.r, marca > 0.5);
+    var w0: f32 = 1.0;
+    var w1: f32 = 1.0;
+    if (outro > 0.0) {
+        w0 = 0.0;
+        w1 = 0.0;
+        let quantos = i32(uniform.uBairroRasto.y);
+        for (var k: i32 = 0; k < quantos; k++) {
+            let d = center - uniform.uBairroOlhos[k].xyz;
+            let aoLongo = dot(d, uniform.uBairroFrentes[k].xyz);
+            let deLado2 = max(dot(d, d) - aoLongo * aoLongo, 0.0);
+            let frente = select(-aoLongo * uniform.uBairroBalao.z, aoLongo * uniform.uBairroBalao.x, aoLongo >= 0.0);
+            let balao = sqrt(frente * frente + deLado2 * uniform.uBairroBalao.y * uniform.uBairroBalao.y) * uniform.uBairroOlhos[k].w;
+            let t = smoothstep(uniform.uBairroRasto.x * (1.0 - uniform.uBairroBalao.w), uniform.uBairroRasto.x * (1.0 + uniform.uBairroBalao.w), balao);
+            w0 = w0 + uniform.uBairroFrentes[k].w * clamp((1.0 - t) / 0.6, 0.0, 1.0);
+            w1 = w1 + uniform.uBairroFrentes[k].w * clamp(t / 0.6, 0.0, 1.0);
+        }
+    }
     if (marca > 0.5) {
         (*color).a = (*color).a * f.g * (1.0 - menor.r * (1.0 - w1));
     } else {
@@ -970,20 +1001,49 @@ fn modifySplatColor(center: vec3f, color: ptr<function, vec4f>) {
 /**
  * Bairro misto: o que as manchas precisam de saber da câmara, a cada
  * imagem, para a faixa de passagem (ver `ensinarAGrelhaAsManchas`): onde
- * está e a abertura, para onde olha e a distância do fino, e a forma do
- * balão e a largura da faixa — as mesmas do lod-foco.mjs.
+ * esteve e para onde olhou no último segundo, quanto pesa cada um desses
+ * momentos, e a forma do balão e a largura da faixa — as mesmas do
+ * lod-foco.mjs.
+ *
+ * O rasto é guardado `PASSOS_DO_RASTO` vezes por `TEMPO_DE_DESVANECER`. A
+ * câmara de agora entra aos poucos, do peso zero ao inteiro, enquanto o
+ * momento mais antigo sai, do inteiro ao zero; quando ela fica inteira é
+ * guardada, e começa outra. Assim, por mais brusco que seja o movimento, o
+ * peso de cada nível muda sempre a direito ao longo de um segundo. Com a
+ * câmara parada os momentos são todos iguais e juntam-se num só, que é o que
+ * se paga a desenhar.
  *
  * @param {object} app - A aplicação 3D.
  * @param {object|null} bairro - A entidade do bairro de manchas.
- * @returns {{olho: Float32Array, frente: Float32Array, balao: Float32Array}}
- *     Os valores, refeitos antes de cada imagem.
+ * @returns {{olhos: Float32Array, frentes: Float32Array, rasto: Float32Array, balao: Float32Array}}
+ *     Os valores, refeitos antes de cada imagem: onde (e a abertura), para
+ *     onde (e o peso), a distância do fino com quantos momentos contam, e a
+ *     forma do balão.
  */
 function acompanharOOlhar(app, bairro) {
-    const olho = new Float32Array([0, 0, 0, 1]);
-    const frente = new Float32Array([0, 0, -1, 150]);
+    const olhos = new Float32Array((PASSOS_DO_RASTO + 1) * 4);
+    const frentes = new Float32Array((PASSOS_DO_RASTO + 1) * 4);
+    const rasto = new Float32Array([150, 1, 0, 0]);
     const balao = new Float32Array([0.5, 1 / 0.55, 2.5, 0.2]);
+    frentes[2] = -1;
+    frentes[3] = 1;
+    olhos[3] = 1;
     const camara = app.root.findByName('camera');
     const REF = Math.tan(22.5 * Math.PI / 180);
+    const PASSO = TEMPO_DE_DESVANECER / PASSOS_DO_RASTO;
+
+    // Os momentos guardados, do mais antigo ao mais novo, cada um com onde
+    // (3), a abertura e para onde (3); e há quanto tempo foi o último.
+    let momentos = null;
+    let fase = 0;
+    let antes = 0;
+    const iguais = (a, b) => {
+        for (let k = 0; k < 3; k++) if (Math.abs(a[k] - b[k]) > 0.02) return false;
+        if (Math.abs(a[3] - b[3]) > 0.0005) return false;
+        for (let k = 4; k < 7; k++) if (Math.abs(a[k] - b[k]) > 0.0005) return false;
+        return true;
+    };
+
     app.on('prerender', () => {
         const cam = camara && camara.camera;
         if (!cam) return;
@@ -992,11 +1052,41 @@ function acompanharOOlhar(app, bairro) {
         let tanV = Math.tan(cam.fov * 0.5 * Math.PI / 180);
         if (cam.horizontalFov) tanV /= cam.aspectRatio;
         const tanH = tanV * cam.aspectRatio;
-        olho[0] = p.x; olho[1] = p.y; olho[2] = p.z;
-        olho[3] = Math.min(tanV, tanH) / REF;
-        frente[0] = fw.x; frente[1] = fw.y; frente[2] = fw.z;
+        const agora = [p.x, p.y, p.z, Math.min(tanV, tanH) / REF, fw.x, fw.y, fw.z];
+
+        const relogio = performance.now();
+        // Uma imagem que demorou muito (ou o separador escondido) não gasta
+        // a passagem toda de uma vez.
+        if (!momentos) momentos = new Array(PASSOS_DO_RASTO).fill(agora);
+        else fase += Math.min(relogio - antes, 100) / PASSO;
+        antes = relogio;
+        while (fase >= 1) {
+            momentos.shift();
+            momentos.push(agora);
+            fase -= 1;
+        }
+
+        // Os pesos, somando os momentos iguais seguidos.
+        let quantos = 0;
+        let anterior = null;
+        for (let k = 0; k <= PASSOS_DO_RASTO; k++) {
+            const m = k < PASSOS_DO_RASTO ? momentos[k] : agora;
+            const peso = (k === 0 ? 1 - fase : k === PASSOS_DO_RASTO ? fase : 1) / PASSOS_DO_RASTO;
+            if (peso <= 0) continue;
+            if (anterior && iguais(anterior, m)) {
+                frentes[(quantos - 1) * 4 + 3] += peso;
+                continue;
+            }
+            const o = quantos * 4;
+            olhos[o] = m[0]; olhos[o + 1] = m[1]; olhos[o + 2] = m[2]; olhos[o + 3] = m[3];
+            frentes[o] = m[4]; frentes[o + 1] = m[5]; frentes[o + 2] = m[6]; frentes[o + 3] = peso;
+            anterior = m;
+            quantos++;
+        }
+        rasto[1] = quantos;
+
         const g = bairro && bairro.gsplat;
-        if (g && g.lodBaseDistance > 0) frente[3] = g.lodBaseDistance;
+        if (g && g.lodBaseDistance > 0) rasto[0] = g.lodBaseDistance;
         const d = window.lodFoco;
         if (d) {
             balao[0] = 1 / d.alcanceAFrente;
@@ -1005,7 +1095,7 @@ function acompanharOOlhar(app, bairro) {
             balao[3] = d.faixa || 0;
         }
     });
-    return { olho, frente, balao };
+    return { olhos, frentes, rasto, balao };
 }
 
 /**
@@ -1063,6 +1153,11 @@ export function ligarBairroEmMalha(app, opcoes = {}) {
         alvo.setParameter('uBairroMistoGrelha', grelhaDasManchas.parametros);
     };
     if (misto) {
+        // As manchas ordenadas pela distância à câmara, e não pela
+        // profundidade: assim a ordem não muda ao rodar. De outro modo, num
+        // movimento brusco de lado, o que entrava no ecrã vinha mal ordenado
+        // e acertava-se de repente um instante depois.
+        app.scene.gsplat.radialSorting = true;
         // Um número a mais por mancha: de que pedaço ela é.
         app.scene.gsplat.format.addExtraStreams([{ name: 'bairroPedaco', format: PIXELFORMAT_R32U }]);
         grelhaDasManchas = vigiarAsManchas(app, (grelha) => {
@@ -1079,11 +1174,12 @@ export function ligarBairroEmMalha(app, opcoes = {}) {
         });
         if (materialDasManchas) {
             darAGrelha(materialDasManchas);
-            // A câmara de agora, para a faixa de passagem entre o fino e o
-            // do meio: os valores mudam no sítio a cada imagem.
+            // A câmara do último segundo, para a faixa de passagem entre o
+            // fino e o do meio: os valores mudam no sítio a cada imagem.
             const olhar = acompanharOOlhar(app, bairro);
-            materialDasManchas.setParameter('uBairroOlho', olhar.olho);
-            materialDasManchas.setParameter('uBairroFrente', olhar.frente);
+            materialDasManchas.setParameter('uBairroOlhos[0]', olhar.olhos);
+            materialDasManchas.setParameter('uBairroFrentes[0]', olhar.frentes);
+            materialDasManchas.setParameter('uBairroRasto', olhar.rasto);
             materialDasManchas.setParameter('uBairroBalao', olhar.balao);
             ensinarAGrelhaAsManchas(materialDasManchas);
         }

@@ -23,6 +23,11 @@ vez de uma linha entre o nítido e o desfocado, um degradé, que acompanha a
 câmara sem saltos. Nos lados, onde o balão é mais estreito e a fronteira
 fica perto, era onde a linha mais se via.
 
+Essa conta faz-se com a câmara de agora e com a do último segundo, e fica a
+média (`acompanharOOlhar`): por mais brusco que seja o movimento, cada mancha
+demora 1 s a passar de um nível ao outro. As manchas ordenam-se pela distância
+à câmara (`radialSorting`), para a ordem não mudar ao rodar.
+
 Duas grelhas de um metro, vista de cima, dizem em cada sítio que níveis lá
 estão e quanto se vê de cada um (`vigiarAsManchas`): uma com o pedaço que
 mais os tem (e as manchas todas, que decidem a malha e as árvores dela),
