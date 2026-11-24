@@ -30,7 +30,8 @@
  */
 import {
     Asset, CULLFACE_NONE, Entity, Layer, WasmModule, Texture, Vec3,
-    PIXELFORMAT_RGBA8, PIXELFORMAT_RG8, FILTER_LINEAR, ADDRESS_CLAMP_TO_EDGE,
+    PIXELFORMAT_RGBA8, PIXELFORMAT_RG8, PIXELFORMAT_R32U, PIXELFORMAT_RG32U,
+    FILTER_LINEAR, FILTER_NEAREST, ADDRESS_CLAMP_TO_EDGE,
     SHADERLANGUAGE_GLSL, SHADERLANGUAGE_WGSL
 } from 'playcanvas';
 
@@ -301,6 +302,49 @@ function separarLugares(mundo) {
     return true;
 }
 
+// O mapa de agora, e, por ficheiro de manchas, onde começa cada pedaço.
+let octreeDaCopia = null;
+const iniciosPorFicheiro = new WeakMap();
+
+/**
+ * Onde começa cada pedaço dentro de um ficheiro de manchas: uma tabela, por
+ * ordem, de (primeira mancha, pedaço + 1). É por ela que cada mancha, ao ser
+ * copiada, sabe de que pedaço é (ver `marcarAsManchas`).
+ *
+ * @param {object} device - A placa gráfica.
+ * @param {object} splatInfo - O ficheiro, tal como o motor o vai copiar.
+ * @returns {{textura: Texture, quantos: number}} A tabela.
+ */
+function iniciosDoFicheiro(device, splatInfo) {
+    let feito = iniciosPorFicheiro.get(splatInfo.resource);
+    if (feito) return feito;
+    const lista = [];
+    const nivel = splatInfo.lodIndex > 0 ? splatInfo.lodIndex : 0;
+    const zona = splatInfo.intervalNodeIndices[0];
+    const ficheiro = octreeDaCopia && zona !== undefined && octreeDaCopia.nodes[zona].lods[nivel]
+        ? octreeDaCopia.nodes[zona].lods[nivel].fileIndex : -1;
+    if (ficheiro >= 0) {
+        for (let n = 0; n < octreeDaCopia.nodes.length; n++) {
+            const lod = octreeDaCopia.nodes[n].lods[nivel];
+            if (lod && lod.fileIndex === ficheiro && lod.count > 0) lista.push([lod.offset, n + 1]);
+        }
+    }
+    lista.sort((a, b) => a[0] - b[0]);
+    const textura = new Texture(device, {
+        name: 'bairroInicios', width: Math.max(1, lista.length), height: 1,
+        format: PIXELFORMAT_RG32U, mipmaps: false,
+        minFilter: FILTER_NEAREST, magFilter: FILTER_NEAREST,
+        addressU: ADDRESS_CLAMP_TO_EDGE, addressV: ADDRESS_CLAMP_TO_EDGE
+    });
+    const dados = textura.lock();
+    dados.fill(0);
+    lista.forEach((par, k) => { dados[k * 2] = par[0]; dados[k * 2 + 1] = par[1]; });
+    textura.unlock();
+    feito = { textura, quantos: lista.length };
+    iniciosPorFicheiro.set(splatInfo.resource, feito);
+    return feito;
+}
+
 /**
  * Bairro misto: na cópia das manchas para a memória do motor, cada mancha
  * do bairro passa a levar, no azul, o nível de onde vem (ver
@@ -310,7 +354,8 @@ function separarLugares(mundo) {
  * @param {object} mundo - O gestor que desenha as manchas.
  * @returns {boolean} Verdadeiro se ficou ligado.
  */
-function dizerONivelNaCopia(mundo) {
+function dizerONivelNaCopia(mundo, octree) {
+    octreeDaCopia = octree;
     const buffer = mundo && mundo._workBuffer;
     const passo = buffer && (buffer.renderPass || buffer.colorRenderPass);
     const modelo = passo && Object.getPrototypeOf(passo);
@@ -320,6 +365,11 @@ function dizerONivelNaCopia(mundo) {
     modelo.renderSplat = function (splatInfo, ...resto) {
         if (this.device && splatInfo) {
             this.device.scope.resolve('uNivelDoBairro').setValue(splatInfo.lodIndex > 0 ? splatInfo.lodIndex : 0);
+            if (splatInfo.octreeNodes) {
+                const inicios = iniciosDoFicheiro(this.device, splatInfo);
+                this.device.scope.resolve('uInicios').setValue(inicios.textura);
+                this.device.scope.resolve('uQuantosInicios').setValue(inicios.quantos);
+            }
         }
         return copiarDeOrigem.call(this, splatInfo, ...resto);
     };
@@ -391,7 +441,21 @@ function vigiarAsManchas(app, aoMudar, aoAcharMapa) {
     vaziaMenor.lock().set(new Uint8Array([0, 0]));
     vaziaMenor.unlock();
     // origem X, origem Z, 1 / largura e 1 / altura da grelha, em metros.
-    const semGrelha = () => ({ textura: vazia, texturaMenor: vaziaMenor, parametros: new Float32Array([0, 0, 1, 1]) });
+    // Quanto se vê de cada pedaço, em cada nível: um ponto por pedaço, 64 por
+    // linha. A grelha sozinha junta os pedaços vizinhos num quadrado só, e as
+    // manchas de um que acabou de chegar, na orla, apareciam logo inteiras
+    // por o vizinho já lá estar.
+    const criarPedacos = (n) => new Texture(dispositivo, {
+        name: 'bairroPedacos', width: 64, height: Math.max(1, Math.ceil((n + 1) / 64)),
+        format: PIXELFORMAT_RG8, mipmaps: false,
+        minFilter: FILTER_NEAREST, magFilter: FILTER_NEAREST,
+        addressU: ADDRESS_CLAMP_TO_EDGE, addressV: ADDRESS_CLAMP_TO_EDGE
+    });
+    let pedacosVistos = null;
+    const pedacosVazios = criarPedacos(0);
+    pedacosVazios.lock().fill(0);
+    pedacosVazios.unlock();
+    const semGrelha = () => ({ textura: vazia, texturaMenor: vaziaMenor, pedacos: pedacosVazios, parametros: new Float32Array([0, 0, 1, 1]) });
     let atual = semGrelha();
 
     let instancia = null;
@@ -539,6 +603,8 @@ function vigiarAsManchas(app, aoMudar, aoAcharMapa) {
         grelha.textura.unlock();
         grelha.texturaMenor.lock().set(grelha.dadosMenor);
         grelha.texturaMenor.unlock();
+        grelha.texturaPedacos.lock().set(pedacosVistos);
+        grelha.texturaPedacos.unlock();
     }
 
     // Se um pedaço tem um nível guardado a desvanecer-se (ver `mexerNosNiveis`).
@@ -557,6 +623,7 @@ function vigiarAsManchas(app, aoMudar, aoAcharMapa) {
             if (grelha) {
                 grelha.textura.destroy();
                 grelha.texturaMenor.destroy();
+                grelha.texturaPedacos.destroy();
             }
             grelha = mapa ? medirGrelha(mapa) : null;
             if (grelha) {
@@ -571,9 +638,11 @@ function vigiarAsManchas(app, aoMudar, aoAcharMapa) {
                 gT = new Float32Array(n);
                 versaoVista = -1;
                 niveis = mexerNosNiveis(mapa);
-                dizerONivelNaCopia(mundo);
+                grelha.texturaPedacos = criarPedacos(n);
+                pedacosVistos = new Uint8Array(64 * grelha.texturaPedacos.height * 2);
+                dizerONivelNaCopia(mundo, mapa.octree);
                 enviarGrelha();
-                atual = { textura: grelha.textura, texturaMenor: grelha.texturaMenor, parametros: grelha.parametros };
+                atual = { textura: grelha.textura, texturaMenor: grelha.texturaMenor, pedacos: grelha.texturaPedacos, parametros: grelha.parametros };
                 if (aoAcharMapa) aoAcharMapa(mapa, mundo);
             } else {
                 atual = semGrelha();
@@ -691,6 +760,8 @@ function vigiarAsManchas(app, aoMudar, aoAcharMapa) {
                 g0[i] = v0[i];
                 g1[i] = v1[i];
                 gT[i] = vista;
+                pedacosVistos[(i + 1) * 2] = Math.round(255 * v0[i]);
+                pedacosVistos[(i + 1) * 2 + 1] = Math.round(255 * v1[i]);
                 refazerQuadrados(i);
                 mudou = true;
             }
@@ -753,18 +824,43 @@ uniform uBairroMistoGrelha: vec4f;
  */
 function marcarAsManchas(componente, marca) {
     const glsl = `
-${marca === null ? 'uniform float uNivelDoBairro;' : ''}
+${marca === null ? `uniform float uNivelDoBairro;
+uniform highp usampler2D uInicios;
+uniform int uQuantosInicios;
+uint pedacoDaMancha() {
+    int baixo = 0;
+    int alto = uQuantosInicios;
+    for (int k = 0; k < 16 && baixo < alto; k++) {
+        int meio = (baixo + alto) / 2;
+        if (texelFetch(uInicios, ivec2(meio, 0), 0).r <= splat.index) baixo = meio + 1; else alto = meio;
+    }
+    return baixo > 0 ? texelFetch(uInicios, ivec2(baixo - 1, 0), 0).g : 0u;
+}` : 'uint pedacoDaMancha() { return 0u; }'}
 void modifySplatCenter(inout vec3 center) {}
 void modifySplatRotationScale(vec3 originalCenter, vec3 modifiedCenter, inout vec4 rotation, inout vec3 scale) {}
 void modifySplatColor(vec3 center, inout vec4 color) {
     color.b = ${marca === null ? 'min(uNivelDoBairro, 1.0)' : marca} + 0.02 + clamp(color.b, 0.0, 1.0) * 0.96;
+    writeBairroPedaco(uvec4(pedacoDaMancha(), 0u, 0u, 0u));
 }`;
     const wgsl = `
-${marca === null ? 'uniform uNivelDoBairro: f32;' : ''}
+${marca === null ? `uniform uNivelDoBairro: f32;
+var uInicios: texture_2d<u32>;
+uniform uQuantosInicios: i32;
+fn pedacoDaMancha() -> u32 {
+    var baixo: i32 = 0;
+    var alto: i32 = uniform.uQuantosInicios;
+    for (var k: i32 = 0; k < 16 && baixo < alto; k++) {
+        let meio = (baixo + alto) / 2;
+        if (textureLoad(uInicios, vec2i(meio, 0), 0).r <= splat.index) { baixo = meio + 1; } else { alto = meio; }
+    }
+    if (baixo > 0) { return textureLoad(uInicios, vec2i(baixo - 1, 0), 0).g; }
+    return 0u;
+}` : 'fn pedacoDaMancha() -> u32 { return 0u; }'}
 fn modifySplatCenter(center: ptr<function, vec3f>) {}
 fn modifySplatRotationScale(originalCenter: vec3f, modifiedCenter: vec3f, rotation: ptr<function, vec4f>, scale: ptr<function, vec3f>) {}
 fn modifySplatColor(center: vec3f, color: ptr<function, vec4f>) {
     (*color).b = ${marca === null ? 'min(uniform.uNivelDoBairro, 1.0)' : marca} + 0.02 + clamp((*color).b, 0.0, 1.0) * 0.96;
+    writeBairroPedaco(vec4u(pedacoDaMancha(), 0u, 0u, 0u));
 }`;
     componente.setWorkBufferModifier({ glsl, wgsl });
 }
@@ -793,6 +889,7 @@ function ensinarAGrelhaAsManchas(material) {
     material.getShaderChunks(SHADERLANGUAGE_GLSL).set('gsplatModifyVS', `
 uniform sampler2D uBairroMisto;
 uniform sampler2D uBairroMenor;
+uniform highp sampler2D uBairroPedacos;
 uniform vec4 uBairroMistoGrelha;
 uniform vec4 uBairroOlho;
 uniform vec4 uBairroFrente;
@@ -817,6 +914,9 @@ void modifySplatColor(vec3 center, inout vec4 color) {
     float t = smoothstep(uBairroFrente.w * (1.0 - uBairroBalao.w), uBairroFrente.w * (1.0 + uBairroBalao.w), balao);
     float w0 = clamp((1.0 - t) / 0.6, 0.0, 1.0);
     float w1 = clamp(t / 0.6, 0.0, 1.0);
+    int pedaco = int(loadBairroPedaco().r);
+    vec2 meu = pedaco > 0 ? texelFetch(uBairroPedacos, ivec2(pedaco % 64, pedaco / 64), 0).rg : vec2(1.0);
+    f.rg = min(f.rg, meu);
     if (marca > 0.5) {
         color.a *= f.g * (1.0 - menor.r * (1.0 - w1));
     } else {
@@ -828,6 +928,7 @@ var uBairroMisto: texture_2d<f32>;
 var uBairroMistoSampler: sampler;
 var uBairroMenor: texture_2d<f32>;
 var uBairroMenorSampler: sampler;
+var uBairroPedacos: texture_2d<f32>;
 uniform uBairroMistoGrelha: vec4f;
 uniform uBairroOlho: vec4f;
 uniform uBairroFrente: vec4f;
@@ -836,7 +937,7 @@ fn modifySplatCenter(center: ptr<function, vec3f>) {}
 fn modifySplatRotationScale(originalCenter: vec3f, modifiedCenter: vec3f, rotation: ptr<function, vec4f>, scale: ptr<function, vec3f>) {}
 fn modifySplatColor(center: vec3f, color: ptr<function, vec4f>) {
     let uv = (center.xz - uniform.uBairroMistoGrelha.xy) * uniform.uBairroMistoGrelha.zw;
-    let f = textureSampleLevel(uBairroMisto, uBairroMistoSampler, uv, 0.0);
+    var f = textureSampleLevel(uBairroMisto, uBairroMistoSampler, uv, 0.0);
     let menor = textureSampleLevel(uBairroMenor, uBairroMenorSampler, uv, 0.0).rg;
     let marca = floor((*color).b);
     (*color).b = clamp(((*color).b - marca - 0.02) / 0.96, 0.0, 1.0);
@@ -852,6 +953,11 @@ fn modifySplatColor(center: vec3f, color: ptr<function, vec4f>) {
     let t = smoothstep(uniform.uBairroFrente.w * (1.0 - uniform.uBairroBalao.w), uniform.uBairroFrente.w * (1.0 + uniform.uBairroBalao.w), balao);
     let w0 = clamp((1.0 - t) / 0.6, 0.0, 1.0);
     let w1 = clamp(t / 0.6, 0.0, 1.0);
+    let pedaco = i32(loadBairroPedaco().r);
+    var meu = vec2f(1.0);
+    if (pedaco > 0) { meu = textureLoad(uBairroPedacos, vec2i(pedaco % 64, pedaco / 64), 0).rg; }
+    f.r = min(f.r, meu.r);
+    f.g = min(f.g, meu.g);
     if (marca > 0.5) {
         (*color).a = (*color).a * f.g * (1.0 - menor.r * (1.0 - w1));
     } else {
@@ -953,9 +1059,12 @@ export function ligarBairroEmMalha(app, opcoes = {}) {
     const darAGrelha = (alvo) => {
         alvo.setParameter('uBairroMisto', grelhaDasManchas.textura);
         alvo.setParameter('uBairroMenor', grelhaDasManchas.texturaMenor);
+        alvo.setParameter('uBairroPedacos', grelhaDasManchas.pedacos);
         alvo.setParameter('uBairroMistoGrelha', grelhaDasManchas.parametros);
     };
     if (misto) {
+        // Um número a mais por mancha: de que pedaço ela é.
+        app.scene.gsplat.format.addExtraStreams([{ name: 'bairroPedaco', format: PIXELFORMAT_R32U }]);
         grelhaDasManchas = vigiarAsManchas(app, (grelha) => {
             grelhaDasManchas = grelha;
             materiaisMistos.forEach(darAGrelha);
