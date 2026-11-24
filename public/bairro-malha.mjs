@@ -49,7 +49,7 @@ const ALARGAMENTO = 0.25;
 // Quanto demora uma zona a passar de manchas a malha, ou de malha a
 // manchas: as manchas desvanecem-se por cima da malha, ou aparecem aos
 // poucos por cima dela. Em milissegundos.
-const TEMPO_DE_DESVANECER = 600;
+const TEMPO_DE_DESVANECER = 1000;
 
 // Um nível chegado a uma zona só aparece no ecrã quando o motor refaz a
 // lista do que desenha e a ordena, umas imagens depois: começado logo, o

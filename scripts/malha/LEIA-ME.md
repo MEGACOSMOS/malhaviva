@@ -20,7 +20,7 @@ azul uma marca do nível de onde vem (`marcarAsManchas`), e é por ela que
 aparece na medida da sua parte da grelha; as árvores da malha aparecem na
 medida contrária, e a malha só se apaga onde as manchas estão inteiras.
 
-Trocas de nível, em 0,6 s:
+Trocas de nível, em 1 s:
 
 - de manchas para malha, as manchas desvanecem-se por cima da malha, e só
   depois a zona sai (`segurarNaPassagem` em `public/lod-foco.mjs`);
