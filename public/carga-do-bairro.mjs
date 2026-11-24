@@ -33,6 +33,9 @@
  * inventar.
  */
 
+// O que pesa uma mancha, em média, em bytes (ver acima: entre 11,9 e 13,1).
+const BYTES_POR_MANCHA = 12.5;
+
 /**
  * Os mapas do bairro tal como o motor os está a usar: um por cada cena
  * de manchas, com o nível de detalhe que cada zona merece.
@@ -107,6 +110,22 @@ export function medirACargaDoBairro(app) {
     };
 
     function medir() {
+        const conta = contar();
+        if (!conta) return null;
+        // Com tudo o que é preciso já cá, não falta nada.
+        if (conta.total <= 0) return 1;
+        return conta.veio / conta.total;
+    }
+
+    // O mesmo em bytes (contados pelas manchas), para o bairro misto, que
+    // soma a esta conta a da malha: `null` se o motor ainda não decidiu.
+    function medirBytes() {
+        const conta = contar();
+        if (!conta) return null;
+        return { veio: conta.veio * BYTES_POR_MANCHA, total: conta.total * BYTES_POR_MANCHA };
+    }
+
+    function contar() {
         const mapas = mapasEmUso(app);
         let decidido = false;
         let total = 0;
@@ -119,6 +138,10 @@ export function medirACargaDoBairro(app) {
                 typeof octree.getFileResource !== 'function') continue;
             const { manchas, indice } = pesos(octree);
             const maisGrosso = octree.lodLevels - 1;
+            // No bairro misto pode não haver pedaço nenhum que mereça
+            // manchas (vê-se tudo de longe, em malha): mesmo assim o motor
+            // já decidiu, se a conta do balão já correu (lod-foco.mjs).
+            if (mapa.focoDiagnostico) decidido = true;
             const recurso = (app.scene.gsplat && app.scene.gsplat.lodUnderfillLimit) || 0;
 
             // Os pedaços que ainda faltam: para cada zona, os níveis entre
@@ -163,14 +186,12 @@ export function medirACargaDoBairro(app) {
         }
 
         if (!decidido) return null;
-        // Com tudo o que é preciso já cá, não falta nada.
-        if (total <= 0) return 1;
-        return veio / total;
+        return { veio, total };
     }
 
     function recomecar() {
         trazidos = new Set();
     }
 
-    return { medir, recomecar };
+    return { medir, medirBytes, recomecar };
 }

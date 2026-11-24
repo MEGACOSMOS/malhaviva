@@ -5850,6 +5850,11 @@
                     motorDaMalha.setAttribute('max-pixel-ratio', densidadeDaMalha.toFixed(3));
                 }
             } else if (nivel !== 'high' && nivel !== 'max') {
+                // No nível Médio o bairro é misto: manchas só no primeiro
+                // anel de detalhe, à volta de quem olha, e a malha poligonal
+                // no segundo e no terceiro (ver bairro-malha.mjs e
+                // `soPrimeiroAnel` em lod-foco.mjs).
+                if (nivel === 'med') window.bairroMisto = true;
                 var motor = document.getElementById('main-app');
                 if (motor) {
                     // Um ponto do modelo por cada ponto do ecrã. Num
@@ -5878,13 +5883,13 @@
             Vec3, Texture,
             PIXELFORMAT_RGBA8, FILTER_LINEAR, ADDRESS_CLAMP_TO_EDGE
         } from 'playcanvas';
-        import { ligarLodNoCentroDaVista } from './lod-foco.mjs?v=6';
-        import { medirACargaDoBairro } from './carga-do-bairro.mjs?v=1';
+        import { ligarLodNoCentroDaVista } from './lod-foco.mjs?v=7';
+        import { medirACargaDoBairro } from './carga-do-bairro.mjs?v=2';
         import { criarAfinadorDeFluidez, construirEscada } from './fluidez.mjs?v=1';
         import { criarModoVR } from './vr.mjs?v=16';
         import { ligarCeu } from './ceu.mjs?v=16';
         import { ligarEdificios } from './edificios.mjs?v=6';
-        import { ligarBairroEmMalha } from './bairro-malha.mjs?v=4';
+        import { ligarBairroEmMalha } from './bairro-malha.mjs?v=5';
         import { ligarComando } from './comando.mjs?v=13';
 
         // O código do site chegou e está a correr: o primeiro sinal de vida
@@ -6938,9 +6943,11 @@ void modifySplatColor(vec3 center, inout vec4 color) {
          * nada está a caminho, e abrir aí seria repetir o erro em pequeno.
          *
          * @param {object} app - A aplicação 3D.
+         * @param {object|null} cargaDasManchas - A conta do que chegou das
+         *     manchas (carga-do-bairro.mjs), ou `null` no bairro em malha.
          * @returns {Promise<void>} Cumpre-se quando o bairro está lá.
          */
-        function esperarPeloBairro(app) {
+        function esperarPeloBairro(app, cargaDasManchas) {
             // Quanto tempo sem nada a caminho até se dar o bairro por feito,
             // e quantas imagens desenhadas nesse sossego. São as duas coisas
             // ao mesmo tempo, e não uma só: um bocado chegado ainda não é um
@@ -6955,7 +6962,7 @@ void modifySplatColor(vec3 center, inout vec4 color) {
             // lá quando chegaram todas e já passaram pelo ecrã umas
             // quantas imagens (as texturas sobem para a placa gráfica na
             // primeira vez que se desenham).
-            if (window.bairroMalha) {
+            if (window.bairroMalha && !window.bairroMisto) {
                 return window.bairroMalha.pronto.catch((erro) => {
                     console.warn('O bairro em malha não chegou:', erro);
                 }).then(() => new Promise((resolve) => {
@@ -6975,7 +6982,22 @@ void modifySplatColor(vec3 center, inout vec4 color) {
                 !!asset.file && typeof asset.file.url === 'string' &&
                 !asset.file.url.endsWith('lod-meta.json');
 
-            return new Promise((resolve) => {
+            // No bairro misto (Médio) espera-se primeiro pela malha inteira,
+            // e depois pelas manchas como sempre — mas pode não ser preciso
+            // pedaço de manchas nenhum: visto de longe, o bairro todo é
+            // malha. A conta das manchas diz quando o motor já decidiu isso.
+            const malhaPronta = window.bairroMisto && window.bairroMalha
+                ? window.bairroMalha.pronto.catch((erro) => {
+                    console.warn('O bairro em malha não chegou:', erro);
+                })
+                : Promise.resolve();
+            const semManchasPrecisas = () => {
+                if (!window.bairroMisto || !cargaDasManchas) return false;
+                const conta = cargaDasManchas.medirBytes();
+                return !!conta && conta.total === 0;
+            };
+
+            return malhaPronta.then(() => new Promise((resolve) => {
                 let calmoDesde = 0;
                 let imagensCalmas = 0;
 
@@ -6997,7 +7019,7 @@ void modifySplatColor(vec3 center, inout vec4 color) {
                     // arranque pode descansar (ver `arranque`).
                     if (chegaram > 0 && window.arranque) window.arranque.marcar('bairro');
 
-                    if (chegaram === 0 || aCaminho > 0) {
+                    if ((chegaram === 0 && !semManchasPrecisas()) || aCaminho > 0) {
                         calmoDesde = 0;
                         imagensCalmas = 0;
                         return;
@@ -7016,7 +7038,7 @@ void modifySplatColor(vec3 center, inout vec4 color) {
                 // Com a página escondida o navegador não desenha nada, e esta
                 // conta fica parada — que é o que se quer: ninguém está a ver.
                 app.on('frameend', espreitar);
-            });
+            }));
         }
 
         // Espera pelo arranque real do motor 3D (método oficial dos web components),
@@ -7039,17 +7061,45 @@ void modifySplatColor(vec3 center, inout vec4 color) {
             // No nível Baixo o bairro é a malha (ver o script antes do
             // motor): começa a chegar já, e é pelos bytes dela que o
             // logótipo do ecrã de espera se acende.
-            if (window.bairroEmMalha) {
+            // No Médio o bairro é misto, e chegam as duas coisas: as manchas
+            // do primeiro anel e a malha do resto. A luz acende-se pelos
+            // bytes de ambas; quando o ecrã de espera volta (ao fechar um
+            // vídeo 360º) a malha já cá está, e conta-se só o que falta das
+            // manchas.
+            if (window.bairroEmMalha || window.bairroMisto) {
                 window.bairroMalha = ligarBairroEmMalha(app, {
-                    anisotropia: window.modoDePoupanca ? 1 : 4
+                    anisotropia: window.modoDePoupanca ? 1 : 4,
+                    misto: !!window.bairroMisto
                 });
                 window.bairroMalha.primeira.then(() => {
                     if (window.arranque) window.arranque.marcar('bairro');
                 });
             }
-            const cargaDoBairro = window.bairroMalha
+            const cargaDasManchas = window.bairroEmMalha ? null : medirACargaDoBairro(app);
+            let soAsManchas = false;
+            const cargaDoBairro = window.bairroEmMalha
                 ? { medir: window.bairroMalha.medir, recomecar() {} }
-                : medirACargaDoBairro(app);
+                : window.bairroMisto
+                    ? {
+                        medir() {
+                            const manchas = cargaDasManchas.medirBytes();
+                            if (!manchas) return null;
+                            let veio = manchas.veio;
+                            let total = manchas.total;
+                            if (!soAsManchas) {
+                                const malha = window.bairroMalha.medirBytes();
+                                if (!malha) return null;
+                                veio += malha.veio;
+                                total += malha.total;
+                            }
+                            return total > 0 ? veio / total : 1;
+                        },
+                        recomecar() {
+                            soAsManchas = true;
+                            cargaDasManchas.recomecar();
+                        }
+                    }
+                    : cargaDasManchas;
             const ecraDeEspera = document.getElementById('loading-overlay');
             let ecraDeEsperaAVista = true;
             app.on('frameend', () => {
@@ -7604,11 +7654,16 @@ void modifySplatColor(vec3 center, inout vec4 color) {
             // lados e para trás das costas, e o que está fora do ecrã desce
             // um nível. Pinta as mesmas manchas no ecrã que antes, ou menos.
             // No Máximo o balão não é encolhido para poupar manchas.
-            window.lodFoco = ligarLodNoCentroDaVista(app, { conterNoAntigo: !isMax });
+            // No Médio (bairro misto) as manchas ficam só no primeiro anel:
+            // o resto é a malha.
+            window.lodFoco = ligarLodNoCentroDaVista(app, {
+                conterNoAntigo: !isMax,
+                soPrimeiroAnel: !!window.bairroMisto
+            });
 
             // O ecrã de espera só sai quando o bairro estiver mesmo lá — e
             // aí, com tudo chegado, o logótipo está inteiro.
-            esperarPeloBairro(app).then(() => {
+            esperarPeloBairro(app, cargaDasManchas).then(() => {
                 if (window.barraDeCarga) window.barraDeCarga.peloMenos(1);
                 showUIOnce();
             });

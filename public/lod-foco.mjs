@@ -41,6 +41,11 @@ import { math } from 'playcanvas';
  *    umas três vezes por segundo, para o mapa não estar sempre a ser
  *    reconstruído a meio de um arrasto. Andar continua a reavaliar como
  *    sempre reavaliou.
+ *
+ * No nível Médio o bairro é misto (`soPrimeiroAnel`): só o primeiro anel,
+ * o do detalhe fino, é de manchas; os pedaços que caberiam ao segundo e ao
+ * terceiro não se desenham, e no lugar deles está a malha poligonal (ver
+ * bairro-malha.mjs).
  */
 
 // Quantas vezes mais longe chega o detalhe fino ao meio da vista.
@@ -129,11 +134,12 @@ const NUM_BUCKETS = 64;
  *
  * @param {object} mundo - O gestor interno de mapas do motor.
  */
-function corrigirRepartidorDoTecto(mundo) {
+function corrigirRepartidorDoTecto(mundo, definicoes) {
     const repartidor = mundo && mundo._budgetBalancer;
     if (!repartidor) return;
 
     repartidor.mundoDoTecto = mundo;
+    repartidor.definicoesDoTecto = definicoes;
 
     const modelo = Object.getPrototypeOf(repartidor);
     if (!modelo || typeof modelo.balance !== 'function' || modelo.tectoSuavizado) return;
@@ -141,6 +147,15 @@ function corrigirRepartidorDoTecto(mundo) {
     modelo.balance = function (instancias, tecto) {
         const mundoDele = this.mundoDoTecto;
         if (!mundoDele || !(tecto > 0)) return;
+
+        // No bairro misto o primeiro anel fica do tamanho que o nível lhe
+        // dá: o tecto pode apertá-lo, mas não o alarga. Sem isto, as manchas
+        // que deixaram de ir para os anéis de fora (agora malha) iam todas
+        // alargar o primeiro, e o anel não seria o mesmo.
+        const definicoesDele = this.definicoesDoTecto;
+        if (definicoesDele && definicoesDele.soPrimeiroAnel && mundoDele._budgetScale > 1) {
+            mundoDele._budgetScale = 1;
+        }
 
         let total = 0;
         for (const [, instancia] of instancias) {
@@ -301,6 +316,9 @@ function avaliarNiveis(instancia, cameraNode, maxLod, lodBaseDistance, lodMultip
     // que manda, e o balão só decide a forma.
     const conterNoAntigo = definicoes.conterNoAntigo && !(params && params.splatBudget > 0);
 
+    // Bairro misto: manchas só no primeiro anel (ver `nivelDoPedaco`).
+    const soPrimeiroAnel = !!definicoes.soPrimeiroAnel;
+
     // Memória de trabalho, guardada no mapa para não nascer a cada vez:
     // a distância no balão, o nível que a bola dá (só conta a partir do
     // nível do meio), se o pedaço está fora do ecrã e da folga, e quanto
@@ -376,7 +394,8 @@ function avaliarNiveis(instancia, cameraNode, maxLod, lodBaseDistance, lodMultip
         peso[nodeIndex] = pesoDoPedaco;
 
         if (conterNoAntigo && maxLod >= 1) {
-            custoDaBola += nodes[nodeIndex].lods[nivelBola].count * pesoDoPedaco;
+            const lodDaBola = nodes[nodeIndex].lods[soPrimeiroAnel && nivelBola > 0 ? -1 : nivelBola];
+            if (lodDaBola) custoDaBola += lodDaBola.count * pesoDoPedaco;
         }
     }
 
@@ -393,6 +412,23 @@ function avaliarNiveis(instancia, cameraNode, maxLod, lodBaseDistance, lodMultip
     const nivelDoPedaco = (nodeIndex, encolhimento) => {
         if (maxLod === 0) return 0;
         const balao = noBalao[nodeIndex] * encolhimento;
+
+        // Com o bairro misto (nível Médio) só o primeiro anel é de manchas:
+        // um pedaço é do detalhe fino ou não se desenha (-1), e onde não se
+        // desenha está a malha (ver bairro-malha.mjs). Sem degrau para o
+        // que fica fora do ecrã — esse degrau levava-o logo para a malha, e
+        // ao virar a cara via-se o chão aos pés a passar de malha a manchas.
+        // A folga da fronteira vale na mesma, nos dois sentidos.
+        if (soPrimeiroAnel) {
+            let dentro = balao < lodBaseDistance;
+            if (histerese > 0 && Math.abs(balao - lodBaseDistance) < lodBaseDistance * histerese) {
+                const currentLod = nodeInfos[nodeIndex].currentLod;
+                if (currentLod === 0) dentro = true;
+                else if (currentLod < 0) dentro = false;
+            }
+            return dentro && rangeMin === 0 ? 0 : -1;
+        }
+
         const nivelBola = nivelDaBola[nodeIndex];
         let nivel = balao < lodBaseDistance && rangeMin === 0 ? 0 : (nivelBola > 0 ? nivelBola : 1);
 
@@ -424,7 +460,8 @@ function avaliarNiveis(instancia, cameraNode, maxLod, lodBaseDistance, lodMultip
     const custoDoBalaoCom = (encolhimento) => {
         let custo = 0;
         for (let nodeIndex = 0; nodeIndex < total; nodeIndex++) {
-            custo += nodes[nodeIndex].lods[nivelDoPedaco(nodeIndex, encolhimento)].count * peso[nodeIndex];
+            const lod = nodes[nodeIndex].lods[nivelDoPedaco(nodeIndex, encolhimento)];
+            if (lod) custo += lod.count * peso[nodeIndex];
         }
         return custo;
     };
@@ -498,6 +535,16 @@ function ligarNaInstancia(instancia, definicoes) {
     const infos = instancia.nodeInfos;
     definicoes.chegouTarde = !!(infos && infos.length && infos[0].optimalLod >= 0);
 
+    // Um pedaço que não se desenha (-1, no bairro misto) não tem nível de
+    // recurso: o motor de origem iria procurá-lo a partir do -1.
+    if (typeof modelo.selectDesiredLodIndex === 'function') {
+        const escolherDeOrigem = modelo.selectDesiredLodIndex;
+        modelo.selectDesiredLodIndex = function (node, optimalLodIndex, maxLod, lodUnderfillLimit) {
+            if (optimalLodIndex < 0) return -1;
+            return escolherDeOrigem.call(this, node, optimalLodIndex, maxLod, lodUnderfillLimit);
+        };
+    }
+
     const original = modelo.evaluateNodeLods;
     modelo.evaluateNodeLods = function (cameraNode, maxLod, lodBaseDistance, lodMultiplier, rangeMin, rangeMax, params, uniformScale2, accumulateSplats = true, globalMaxDistanceForBuckets = 0) {
         if (!definicoes.ativo || !cameraNode || !cameraNode.camera || !this.octree || !this.octree.nodeBoundsMinMax) {
@@ -528,7 +575,7 @@ function ligarNaInstancia(instancia, definicoes) {
  */
 function prepararMundo(mundo, definicoes) {
     if (!mundo) return false;
-    corrigirRepartidorDoTecto(mundo);
+    corrigirRepartidorDoTecto(mundo, definicoes);
     travarReavaliacoesPorRotacao(mundo, definicoes);
 
     const modelo = Object.getPrototypeOf(mundo);
@@ -635,6 +682,7 @@ export function ligarLodNoCentroDaVista(app, opcoes = {}) {
         histerese: opcoes.histerese ?? HISTERESE,
         intervaloEntreRotacoes: opcoes.intervaloEntreRotacoes ?? INTERVALO_ENTRE_ROTACOES,
         conterNoAntigo: opcoes.conterNoAntigo ?? true,
+        soPrimeiroAnel: opcoes.soPrimeiroAnel ?? false,
         ligado: false
     };
 
@@ -644,8 +692,14 @@ export function ligarLodNoCentroDaVista(app, opcoes = {}) {
         const atual = app.scene.gsplat.lodUpdateAngle || 0;
         app.scene.gsplat.lodUpdateAngle = Math.max(atual, ANGULO_DE_ATUALIZACAO);
 
-        const recurso = app.scene.gsplat.lodUnderfillLimit || 0;
-        app.scene.gsplat.lodUnderfillLimit = Math.max(recurso, NIVEIS_DE_RECURSO);
+        // No bairro misto quem tapa os buracos enquanto o detalhe fino não
+        // chega é a malha: os níveis grosseiros nem se pedem.
+        if (definicoes.soPrimeiroAnel) {
+            app.scene.gsplat.lodUnderfillLimit = 0;
+        } else {
+            const recurso = app.scene.gsplat.lodUnderfillLimit || 0;
+            app.scene.gsplat.lodUnderfillLimit = Math.max(recurso, NIVEIS_DE_RECURSO);
+        }
     }
 
     // O motor só expõe estas contas lá por dentro. As armadilhas apanham
