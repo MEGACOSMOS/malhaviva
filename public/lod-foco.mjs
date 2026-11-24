@@ -536,11 +536,12 @@ function avaliarNiveis(instancia, cameraNode, maxLod, lodBaseDistance, lodMultip
  *  - Um pedaço que acabou de mudar de nível não volta ao nível de onde
  *    veio antes de `TEMPO_SEM_VOLTAR_ATRAS`: sem isto, à beira de um anel,
  *    acendia e apagava.
- *  - Um pedaço que está à vista não troca de nível de repente: primeiro
+ *  - Um pedaço que está à vista não passa a malha de repente: primeiro
  *    desvanece-se (com a malha a aparecer por baixo, ver bairro-malha.mjs,
  *    que diz quanto ele está à vista em `nodeInfo.vista`), e só depois
- *    troca. Enquanto se desvanece fica no nível que tem, marcado como
- *    `aSair`; quando o nível novo chega, aparece aos poucos.
+ *    sai. Enquanto se desvanece fica no nível que tem, marcado como
+ *    `aSair`. Entre os dois níveis de manchas troca logo: os dois ficam
+ *    desenhados um bocado, um a aparecer e o outro a desvanecer-se.
  *
  * @param {object} nodeInfo - O estado do pedaço no motor.
  * @param {number} nivel - O nível que a régua lhe dá agora (-1 = malha).
@@ -561,8 +562,11 @@ function segurarNaPassagem(nodeInfo, nivel, agora, definicoes) {
         if (!definicoes.reavaliarEm || fim < definicoes.reavaliarEm) definicoes.reavaliarEm = fim;
     }
 
+    // Só para ir para a malha é que se espera: entre os dois níveis de
+    // manchas a troca faz-se logo, e é a malha que desvanece um enquanto o
+    // outro aparece (os dois ficam desenhados durante a troca).
     const atual = nodeInfo.currentLod;
-    if (nivel !== atual && atual >= 0 && nodeInfo.vista > 0.01) {
+    if (nivel < 0 && atual >= 0 && nodeInfo.vista > 0.01) {
         nodeInfo.aSair = true;
         return atual;
     }

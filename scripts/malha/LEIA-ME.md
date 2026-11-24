@@ -14,14 +14,27 @@ terceiro, o de longe (`aneisDeManchas` em `public/lod-foco.mjs`). Não há
 tecto de manchas no Médio.
 
 Uma grelha de um metro, vista de cima, diz em cada sítio quanto das manchas
-está à vista, de zero a um (`vigiarAsManchas` em `public/bairro-malha.mjs`).
-As manchas do bairro aparecem na medida dela, as árvores da malha na medida
-contrária, e a malha só se apaga onde ela está cheia. Cada zona que troca
-de nível desvanece-se primeiro (0,6 s) por cima da malha, e a do nível novo
-aparece aos poucos; e uma zona que acabou de trocar não volta ao nível de
-onde veio antes de 2,5 s (`segurarNaPassagem`), para não piscar. Onde as
-manchas ainda não chegaram, ou já se foram, fica a malha, e por isso não há
-buracos.
+está à vista, de zero a um, em três partes: o nível fino, o do meio, e tudo
+junto (`vigiarAsManchas` em `public/bairro-malha.mjs`). Cada mancha leva no
+azul uma marca do nível de onde vem (`marcarAsManchas`), e é por ela que
+aparece na medida da sua parte da grelha; as árvores da malha aparecem na
+medida contrária, e a malha só se apaga onde as manchas estão inteiras.
+
+Trocas de nível, em 0,6 s:
+
+- de manchas para malha, as manchas desvanecem-se por cima da malha, e só
+  depois a zona sai (`segurarNaPassagem` em `public/lod-foco.mjs`);
+- de malha para manchas, aparecem aos poucos por cima dela;
+- do fino para o do meio, e ao contrário, os dois níveis ficam desenhados
+  juntos durante a troca, um a aparecer e o outro a desvanecer-se. O motor
+  não o faz sozinho: guarda-se o nível antigo (`guardarNivelAntigo`), dá-se-lhe
+  um lugar próprio na memória gráfica (`separarLugares` — sem isso os dois
+  disputavam o mesmo lugar e a zona ficava preta umas imagens), e só se
+  larga na atualização do próprio motor.
+
+Uma zona que acabou de trocar não volta ao nível de onde veio antes de
+2,5 s, para não piscar. Onde as manchas ainda não chegaram, ou já se foram,
+fica a malha, e por isso não há buracos.
 
 ## De onde vem
 
