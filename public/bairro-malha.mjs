@@ -30,14 +30,14 @@
  */
 import {
     Asset, CULLFACE_NONE, Entity, Layer, WasmModule, Texture, Vec3,
-    PIXELFORMAT_R8, FILTER_NEAREST, ADDRESS_CLAMP_TO_EDGE,
-    SHADERLANGUAGE_GLSL, SHADERLANGUAGE_WGSL, WORKBUFFER_UPDATE_ONCE
+    PIXELFORMAT_R8, FILTER_LINEAR, ADDRESS_CLAMP_TO_EDGE,
+    SHADERLANGUAGE_GLSL, SHADERLANGUAGE_WGSL
 } from 'playcanvas';
 
 const PASTA = 'malha/';
 
-// Bairro misto: o lado de cada quadrado da grelha que diz onde já há
-// manchas, em metros.
+// Bairro misto: o lado de cada quadrado da grelha que diz quanto das
+// manchas está à vista em cada sítio, em metros.
 const CELULA = 1;
 
 // Quanto cada pedaço de manchas alarga para lá da caixa dele na grelha, em
@@ -46,19 +46,17 @@ const CELULA = 1;
 // sem manchas por cima fica preto.
 const ALARGAMENTO = 0.25;
 
-// Um pedaço chegado ainda é arrumado e ordenado ao longo de umas quantas
-// imagens antes de aparecer: tirada a malha logo, ficava um buraco preto
-// nesse instante. Por isso a malha só lhe sai de baixo quando o motor diz
-// que já desenha tudo o que tem (ver `mundoEmDia`), e nunca antes de um
-// instante mínimo; se o motor não o disser, ao fim de um instante máximo.
-// Em milissegundos.
-const ESPERA_MINIMA_AO_ENTRAR = 120;
-const ESPERA_MAXIMA_AO_ENTRAR = 1500;
+// Quanto demora uma zona a passar de manchas a malha, ou de malha a
+// manchas: as manchas desvanecem-se por cima da malha, ou aparecem aos
+// poucos por cima dela. Em milissegundos.
+const TEMPO_DE_DESVANECER = 600;
 
-// De quanto em quanto tempo, no máximo, se refaz a grelha quando entram
-// pedaços. Quando sai algum, refaz-se logo: aí cada instante de atraso é um
-// buraco preto.
-const INTERVALO_DA_GRELHA = 120;
+// Um pedaço chegado ainda é arrumado e ordenado ao longo de umas quantas
+// imagens antes de aparecer: começado logo, o aparecer gastava-se com ele
+// ainda invisível. Por isso só começa quando o motor diz que já desenha
+// tudo o que tem (ver `mundoEmDia`); se não o disser, ao fim deste tempo,
+// em milissegundos.
+const ESPERA_MAXIMA_AO_ENTRAR = 1500;
 
 /**
  * A camada da malha, logo a seguir à cúpula do céu.
@@ -145,21 +143,29 @@ function mundoEmDia(mundo) {
 }
 
 /**
- * Bairro misto: vigia que pedaços das manchas estão desenhados e mantém
- * uma grelha, vista de cima, com os quadrados onde estão. A malha e as
- * árvores dela não se pintam nesses quadrados.
+ * Bairro misto: vigia os pedaços das manchas e mantém uma grelha, vista de
+ * cima, que diz em cada quadrado quanto das manchas está à vista — de zero
+ * (só malha) a um (só manchas). Tudo lê esta grelha ao mesmo tempo:
  *
- * Um quadrado só conta quando todos os pedaços que lhe passam por cima
- * estão desenhados: numa coluna com um pedaço desenhado e outro não (um
- * telhado e o chão por baixo, na fronteira do anel), a malha fica, e por
- * cima dela as manchas que houver. E só conta depois de o pedaço estar
- * mesmo no ecrã (ver `ESPERA_MINIMA_AO_ENTRAR`); ao sair, deixa de contar
- * logo. Assim nunca há buraco: onde as manchas ainda não chegaram, ou já se
- * foram, está a malha.
+ *  - as manchas do bairro aparecem na medida dela;
+ *  - as árvores em manchas da malha, ao contrário;
+ *  - a malha só se apaga onde ela está cheia.
+ *
+ * Cada pedaço tem o seu "à vista", que anda aos poucos (`TEMPO_DE_DESVANECER`):
+ * sobe quando o pedaço chega e o motor já o desenha, desce quando o
+ * lod-foco.mjs o quer trocar de nível (`aSair`) — e só depois de ter
+ * descido é que a troca se faz (ver `segurarNaPassagem`). Assim nenhuma
+ * zona troca de uma vez: as manchas desvanecem-se por cima da malha, que
+ * já lá está, e as do nível novo aparecem por cima dela.
+ *
+ * Num quadrado onde passam vários pedaços manda o que está menos à vista:
+ * numa coluna com um pedaço desenhado e outro não (um telhado e o chão por
+ * baixo, na fronteira de um anel), fica a malha. E onde não há pedaço
+ * nenhum fica a malha. Assim nunca há buraco preto.
  *
  * @param {object} app - A aplicação 3D.
  * @param {function(object): void} aoMudar - Chamada com a grelha nova
- *     (`{textura, parametros}`) sempre que ela muda.
+ *     (`{textura, parametros}`) quando ela passa a ser outra.
  * @returns {{textura: Texture, parametros: Float32Array}} A grelha de agora.
  */
 function vigiarAsManchas(app, aoMudar) {
@@ -172,8 +178,10 @@ function vigiarAsManchas(app, aoMudar) {
         height: altura,
         format: PIXELFORMAT_R8,
         mipmaps: false,
-        minFilter: FILTER_NEAREST,
-        magFilter: FILTER_NEAREST,
+        // Entre dois quadrados, o meio-termo: as orlas de cada zona ficam
+        // esbatidas num metro, em vez de aos degraus.
+        minFilter: FILTER_LINEAR,
+        magFilter: FILTER_LINEAR,
         addressU: ADDRESS_CLAMP_TO_EDGE,
         addressV: ADDRESS_CLAMP_TO_EDGE
     });
@@ -188,17 +196,17 @@ function vigiarAsManchas(app, aoMudar) {
     let instancia = null;
     let mundo = null;
     let grelha = null;
+    let vista = null;
     let desde = null;
     let quadroDesde = null;
-    let cobre = null;
-    let tapa = null;
-    let sujo = false;
-    let ultimaGrelha = 0;
+    let nivelVisto = null;
     let quadro = 0;
+    let antes = 0;
 
-    // A caixa de cada pedaço, vista de cima, em quadrados da grelha: a
-    // alargada (onde ele conta como desenhado) e a justa (onde, não estando
-    // desenhado, impede o quadrado de contar).
+    // A caixa de cada pedaço, vista de cima, em quadrados da grelha, e, para
+    // cada quadrado, os pedaços que lhe passam por cima: os da caixa justa
+    // contam para o "menos à vista"; os que só lá chegam pela caixa
+    // alargada contam só para tapar frinchas.
     function medirGrelha(mapa) {
         const nos = mapa.octree.nodes.length;
         const caixas = mapa.octree.nodeBoundsMinMax;
@@ -248,27 +256,66 @@ function vigiarAsManchas(app, aoMudar) {
             justa[i * 4 + 2] = quadrado(z0, origemZ, linhas);
             justa[i * 4 + 3] = quadrado(z1, origemZ, linhas);
         }
+
+        // Os pedaços de cada quadrado, todos seguidos numa lista só: o
+        // quadrado q tem os de inicio[q] a inicio[q + 1]. Cada um vem como
+        // pedaço * 2, mais um se o quadrado está na caixa justa dele.
+        const total = colunas * linhas;
+        const inicio = new Uint32Array(total + 1);
+        for (let i = 0; i < nos; i++) {
+            for (let j = alargada[i * 4 + 2]; j <= alargada[i * 4 + 3]; j++) {
+                for (let c = alargada[i * 4]; c <= alargada[i * 4 + 1]; c++) inicio[j * colunas + c + 1]++;
+            }
+        }
+        for (let q = 0; q < total; q++) inicio[q + 1] += inicio[q];
+        const pedacos = new Uint32Array(inicio[total]);
+        const cheio = inicio.slice(0, total);
+        for (let i = 0; i < nos; i++) {
+            const ji0 = justa[i * 4 + 2], ji1 = justa[i * 4 + 3];
+            const ci0 = justa[i * 4], ci1 = justa[i * 4 + 1];
+            for (let j = alargada[i * 4 + 2]; j <= alargada[i * 4 + 3]; j++) {
+                for (let c = alargada[i * 4]; c <= alargada[i * 4 + 1]; c++) {
+                    const naJusta = j >= ji0 && j <= ji1 && c >= ci0 && c <= ci1 ? 1 : 0;
+                    pedacos[cheio[j * colunas + c]++] = i * 2 + naJusta;
+                }
+            }
+        }
+
         const textura = criarTextura(colunas, linhas, 'bairroMisto');
         return {
-            nos, colunas, linhas, alargada, justa, textura,
-            dados: new Uint8Array(colunas * linhas),
+            nos, colunas, linhas, alargada, inicio, pedacos, textura,
+            dados: new Uint8Array(total),
             parametros: new Float32Array([origemX, origemZ, 1 / (colunas * CELULA), 1 / (linhas * CELULA)])
         };
     }
 
-    function pintar(caixa, i, valor) {
-        const { colunas, dados } = grelha;
-        const i0 = caixa[i * 4], i1 = caixa[i * 4 + 1];
-        const j0 = caixa[i * 4 + 2], j1 = caixa[i * 4 + 3];
-        for (let j = j0; j <= j1; j++) {
-            dados.fill(valor, j * colunas + i0, j * colunas + i1 + 1);
+    // Quanto das manchas está à vista num quadrado: o mais à vista dos
+    // pedaços que lá chegam, mas nunca mais do que o menos à vista dos que
+    // lá estão de facto (caixa justa).
+    function valorDoQuadrado(q) {
+        const { inicio, pedacos } = grelha;
+        let maior = 0;
+        let menor = 1;
+        for (let k = inicio[q]; k < inicio[q + 1]; k++) {
+            const e = pedacos[k];
+            const v = vista[e >> 1];
+            if (v > maior) maior = v;
+            if ((e & 1) && v < menor) menor = v;
+        }
+        return Math.round(255 * Math.min(maior, menor));
+    }
+
+    function refazerQuadrados(i) {
+        const { colunas, alargada, dados } = grelha;
+        for (let j = alargada[i * 4 + 2]; j <= alargada[i * 4 + 3]; j++) {
+            for (let c = alargada[i * 4]; c <= alargada[i * 4 + 1]; c++) {
+                const q = j * colunas + c;
+                dados[q] = valorDoQuadrado(q);
+            }
         }
     }
 
-    function refazerGrelha() {
-        grelha.dados.fill(0);
-        for (let i = 0; i < grelha.nos; i++) if (cobre[i]) pintar(grelha.alargada, i, 255);
-        for (let i = 0; i < grelha.nos; i++) if (tapa[i]) pintar(grelha.justa, i, 0);
+    function enviarGrelha() {
         grelha.textura.lock().set(grelha.dados);
         grelha.textura.unlock();
     }
@@ -283,60 +330,77 @@ function vigiarAsManchas(app, aoMudar) {
             if (grelha) grelha.textura.destroy();
             grelha = mapa ? medirGrelha(mapa) : null;
             if (grelha) {
+                vista = new Float32Array(grelha.nos);
                 desde = new Float64Array(grelha.nos);
                 quadroDesde = new Uint32Array(grelha.nos);
-                cobre = new Uint8Array(grelha.nos);
-                tapa = new Uint8Array(grelha.nos).fill(1);
-                refazerGrelha();
+                nivelVisto = new Int8Array(grelha.nos).fill(-1);
+                enviarGrelha();
                 atual = { textura: grelha.textura, parametros: grelha.parametros };
             } else {
                 atual = { textura: vazia, parametros: new Float32Array([0, 0, 1, 1]) };
             }
             aoMudar(atual);
         }
-        if (!grelha) return;
 
         const agora = performance.now();
+        // Com o separador escondido o tempo passa sem imagens: não se
+        // salta o desvanecer de uma vez ao voltar.
+        const passo = Math.min(agora - antes, 100) / TEMPO_DE_DESVANECER;
+        antes = agora;
+        if (!grelha) return;
+
         const emDia = mundoEmDia(mundo);
         const infos = instancia.nodeInfos;
-        let saiu = false;
+        let mudou = false;
+        let reavaliar = false;
         for (let i = 0; i < grelha.nos; i++) {
-            const desenhado = !!infos[i] && infos[i].currentLod >= 0;
-            if (!desenhado) {
+            const info = infos[i];
+            if (!info) continue;
+            const nivel = info.currentLod;
+            let v = vista[i];
+            if (nivel < 0) {
+                // Já não está no motor: a malha fica sozinha.
+                v = 0;
+                nivelVisto[i] = -1;
                 desde[i] = 0;
-            } else if (!desde[i]) {
-                desde[i] = agora;
-                quadroDesde[i] = quadro;
+            } else {
+                if (nivel !== nivelVisto[i]) {
+                    nivelVisto[i] = nivel;
+                    desde[i] = agora;
+                    quadroDesde[i] = quadro;
+                }
+                // Já no ecrã: o motor está em dia desde uma imagem depois de
+                // o pedaço ter chegado (a versão com ele já foi feita e
+                // ordenada).
+                const espera = agora - desde[i];
+                const jaSeVe = emDia === null
+                    ? espera >= ESPERA_MAXIMA_AO_ENTRAR / 4
+                    : (emDia && quadro > quadroDesde[i] + 1) || espera >= ESPERA_MAXIMA_AO_ENTRAR;
+                const alvo = !info.aSair && (jaSeVe || v > 0) ? 1 : 0;
+                if (v < alvo) v = Math.min(alvo, v + passo);
+                else if (v > alvo) v = Math.max(alvo, v - passo);
+                if (info.aSair && v <= 0.01) reavaliar = true;
             }
-            // Já no ecrã: o motor está em dia desde uma imagem depois de o
-            // pedaço ter chegado (a versão com ele já foi feita e ordenada).
-            const espera = agora - desde[i];
-            const jaSeVe = emDia === null
-                ? espera >= ESPERA_MAXIMA_AO_ENTRAR / 4
-                : (emDia && quadro > quadroDesde[i] + 1) || espera >= ESPERA_MAXIMA_AO_ENTRAR;
-            const passaACobrir = desenhado && espera >= ESPERA_MINIMA_AO_ENTRAR && jaSeVe ? 1 : 0;
-            const passaATapar = desenhado ? 0 : 1;
-            if (passaACobrir !== cobre[i] || passaATapar !== tapa[i]) {
-                if (passaATapar && !tapa[i]) saiu = true;
-                cobre[i] = passaACobrir;
-                tapa[i] = passaATapar;
-                sujo = true;
+            info.vista = v;
+            if (v !== vista[i]) {
+                vista[i] = v;
+                refazerQuadrados(i);
+                mudou = true;
             }
         }
-        if (sujo && (saiu || agora - ultimaGrelha >= INTERVALO_DA_GRELHA)) {
-            sujo = false;
-            ultimaGrelha = agora;
-            refazerGrelha();
-            aoMudar(atual);
-        }
+        if (mudou) enviarGrelha();
+        // Um pedaço que acabou de se desvanecer já pode trocar de nível: o
+        // motor reavalia sem esperar que a câmara se mexa.
+        if (reavaliar && 'needsLodUpdate' in instancia) instancia.needsLodUpdate = true;
     });
 
     return atual;
 }
 
 /**
- * Ensina a um material da malha a não se pintar onde a grelha das
- * manchas diz que elas já estão.
+ * Ensina a um material da malha a não se pintar onde a grelha diz que as
+ * manchas estão inteiramente à vista. Onde estão só em parte (a aparecer,
+ * a desvanecer, ou na orla esbatida de uma zona), a malha fica por baixo.
  *
  * @param {object} material - Um material da malha.
  */
@@ -346,7 +410,7 @@ uniform sampler2D uBairroMisto;
 uniform vec4 uBairroMistoGrelha;
 `);
     material.getShaderChunks(SHADERLANGUAGE_GLSL).set('litUserMainStartPS', `
-    if (texture(uBairroMisto, (vPositionW.xz - uBairroMistoGrelha.xy) * uBairroMistoGrelha.zw).r > 0.5) {
+    if (texture(uBairroMisto, (vPositionW.xz - uBairroMistoGrelha.xy) * uBairroMistoGrelha.zw).r > 0.99) {
         discard;
     }
 `);
@@ -356,7 +420,7 @@ var uBairroMistoSampler: sampler;
 uniform uBairroMistoGrelha: vec4f;
 `);
     material.getShaderChunks(SHADERLANGUAGE_WGSL).set('litUserMainStartPS', `
-    if (textureSampleLevel(uBairroMisto, uBairroMistoSampler, (vPositionW.xz - uniform.uBairroMistoGrelha.xy) * uniform.uBairroMistoGrelha.zw, 0.0).r > 0.5) {
+    if (textureSampleLevel(uBairroMisto, uBairroMistoSampler, (vPositionW.xz - uniform.uBairroMistoGrelha.xy) * uniform.uBairroMistoGrelha.zw, 0.0).r > 0.99) {
         discard;
     }
 `);
@@ -364,34 +428,70 @@ uniform uBairroMistoGrelha: vec4f;
 }
 
 /**
- * O mesmo, para as árvores em manchas da malha: onde as manchas do bairro
- * já estão, as árvores são as delas, e estas apagam-se. A conta é feita
- * quando as manchas das árvores são arrumadas para desenhar, e por isso é
- * refeita (`WORKBUFFER_UPDATE_ONCE`) sempre que a grelha muda.
+ * As árvores em manchas da malha levam uma marca na cor, posta quando são
+ * arrumadas para desenhar: o azul passa a contar a partir de dois. As
+ * manchas das árvores e as do bairro são desenhadas juntas, com o mesmo
+ * programa (ver `ensinarAGrelhaAsManchas`), e é por esta marca que ele as
+ * distingue. O motor guarda cada cor entre zero e quatro, por isso a marca
+ * cabe sem estragar a cor.
  *
  * @param {object} componente - O componente de manchas das árvores.
  */
-function ensinarAGrelhaAsArvores(componente) {
+function marcarAsArvores(componente) {
     const glsl = `
+void modifySplatCenter(inout vec3 center) {}
+void modifySplatRotationScale(vec3 originalCenter, vec3 modifiedCenter, inout vec4 rotation, inout vec3 scale) {}
+void modifySplatColor(vec3 center, inout vec4 color) {
+    color.b = clamp(color.b, 0.0, 1.0) + 2.0;
+}`;
+    const wgsl = `
+fn modifySplatCenter(center: ptr<function, vec3f>) {}
+fn modifySplatRotationScale(originalCenter: vec3f, modifiedCenter: vec3f, rotation: ptr<function, vec4f>, scale: ptr<function, vec3f>) {}
+fn modifySplatColor(center: vec3f, color: ptr<function, vec4f>) {
+    (*color).b = clamp((*color).b, 0.0, 1.0) + 2.0;
+}`;
+    componente.setWorkBufferModifier({ glsl, wgsl });
+}
+
+/**
+ * Ensina às manchas, no momento de as desenhar (a cada imagem, e por isso
+ * o desvanecer anda sem refazer nada), a lerem a grelha: as do bairro
+ * aparecem na medida dela, as das árvores da malha (marcadas, ver
+ * `marcarAsArvores`) na medida contrária.
+ *
+ * @param {object} material - O material de todas as manchas da cena.
+ */
+function ensinarAGrelhaAsManchas(material) {
+    material.getShaderChunks(SHADERLANGUAGE_GLSL).set('gsplatModifyVS', `
 uniform sampler2D uBairroMisto;
 uniform vec4 uBairroMistoGrelha;
 void modifySplatCenter(inout vec3 center) {}
 void modifySplatRotationScale(vec3 originalCenter, vec3 modifiedCenter, inout vec4 rotation, inout vec3 scale) {}
 void modifySplatColor(vec3 center, inout vec4 color) {
-    if (texture(uBairroMisto, (center.xz - uBairroMistoGrelha.xy) * uBairroMistoGrelha.zw).r > 0.5) color.a = 0.0;
-}`;
-    const wgsl = `
+    float f = textureLod(uBairroMisto, (center.xz - uBairroMistoGrelha.xy) * uBairroMistoGrelha.zw, 0.0).r;
+    if (color.b >= 1.5) {
+        color.b -= 2.0;
+        color.a *= 1.0 - f;
+    } else {
+        color.a *= f;
+    }
+}`);
+    material.getShaderChunks(SHADERLANGUAGE_WGSL).set('gsplatModifyVS', `
 var uBairroMisto: texture_2d<f32>;
 var uBairroMistoSampler: sampler;
 uniform uBairroMistoGrelha: vec4f;
 fn modifySplatCenter(center: ptr<function, vec3f>) {}
 fn modifySplatRotationScale(originalCenter: vec3f, modifiedCenter: vec3f, rotation: ptr<function, vec4f>, scale: ptr<function, vec3f>) {}
 fn modifySplatColor(center: vec3f, color: ptr<function, vec4f>) {
-    if (textureSampleLevel(uBairroMisto, uBairroMistoSampler, (center.xz - uniform.uBairroMistoGrelha.xy) * uniform.uBairroMistoGrelha.zw, 0.0).r > 0.5) {
-        (*color).a = 0.0;
+    let f = textureSampleLevel(uBairroMisto, uBairroMistoSampler, (center.xz - uniform.uBairroMistoGrelha.xy) * uniform.uBairroMistoGrelha.zw, 0.0).r;
+    if ((*color).b >= 1.5) {
+        (*color).b = (*color).b - 2.0;
+        (*color).a = (*color).a * (1.0 - f);
+    } else {
+        (*color).a = (*color).a * f;
     }
-}`;
-    componente.setWorkBufferModifier({ glsl, wgsl });
+}`);
+    material.update();
 }
 
 /**
@@ -434,11 +534,13 @@ export function ligarBairroEmMalha(app, opcoes = {}) {
     (bairro || app.root).addChild(raiz);
     const camada = criarCamada(app);
 
-    // Bairro misto: a grelha de onde as manchas já estão, entregue a cada
-    // material da malha e às árvores, e de novo sempre que muda.
+    // Bairro misto: a grelha de quanto das manchas está à vista, entregue a
+    // cada material da malha e ao material de todas as manchas da cena, e
+    // de novo quando passa a ser outra (o conteúdo dela muda a cada imagem
+    // sem ser preciso entregá-la outra vez).
     const misto = !!opcoes.misto;
     const materiaisMistos = new Set();
-    let arvoresMistas = null;
+    const materialDasManchas = misto && app.scene.gsplat && app.scene.gsplat.material;
     let grelhaDasManchas = null;
     const darAGrelha = (alvo) => {
         alvo.setParameter('uBairroMisto', grelhaDasManchas.textura);
@@ -448,11 +550,15 @@ export function ligarBairroEmMalha(app, opcoes = {}) {
         grelhaDasManchas = vigiarAsManchas(app, (grelha) => {
             grelhaDasManchas = grelha;
             materiaisMistos.forEach(darAGrelha);
-            if (arvoresMistas) {
-                darAGrelha(arvoresMistas);
-                arvoresMistas.workBufferUpdate = WORKBUFFER_UPDATE_ONCE;
+            if (materialDasManchas) {
+                darAGrelha(materialDasManchas);
+                materialDasManchas.update();
             }
         });
+        if (materialDasManchas) {
+            darAGrelha(materialDasManchas);
+            ensinarAGrelhaAsManchas(materialDasManchas);
+        }
     }
 
     // Bytes de cada peça: os que já chegaram e os que vão chegar.
@@ -500,11 +606,7 @@ export function ligarBairroEmMalha(app, opcoes = {}) {
                 chegou.set(peca.ficheiro, peca.bytes);
                 const arvores = new Entity('bairro-malha-arvores');
                 arvores.addComponent('gsplat', { asset });
-                if (misto) {
-                    ensinarAGrelhaAsArvores(arvores.gsplat);
-                    arvoresMistas = arvores.gsplat;
-                    darAGrelha(arvoresMistas);
-                }
+                if (misto) marcarAsArvores(arvores.gsplat);
                 (bairro || app.root).addChild(arvores);
                 resolve();
             });

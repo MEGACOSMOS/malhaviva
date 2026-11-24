@@ -75,6 +75,16 @@ const PESO_FORA_DO_ECRA = 0.1;
 // fracção da distância, para trocar de nível.
 const HISTERESE = 0.08;
 
+// No bairro misto (nível Médio), a folga da fronteira entre níveis.
+const HISTERESE_DO_MISTO = 0.15;
+
+// No bairro misto, quanto tempo um pedaço que acabou de mudar de nível
+// fica proibido de voltar ao nível de onde veio, em milissegundos. Era
+// assim que se viam zonas a acender e a apagar: um pedaço à beira de um
+// anel, com a câmara a rodar um nada para cá e para lá, trocava de nível a
+// cada reavaliação.
+const TEMPO_SEM_VOLTAR_ATRAS = 2500;
+
 // Quantos graus a câmara tem de rodar para o detalhe ser recalculado.
 // De origem o motor só reagia a deslocações; agora que a direcção do
 // olhar manda no detalhe, a rotação também tem de contar.
@@ -113,7 +123,7 @@ const NUM_BUCKETS = 64;
 /**
  * Tira ao tecto de pontos o hábito de comer o nível de detalhe do meio.
  *
- * Quando há tecto de pontos (níveis Médio e Baixo), o motor cumpre-o de
+ * Quando há tecto de pontos (nível Baixo), o motor cumpre-o de
  * duas maneiras. Uma é boa: aperta ou alarga as distâncias a que cada
  * nível começa, e as três faixas — fina, média e grosseira — encolhem ou
  * crescem juntas, mantendo a passagem suave. A outra é gulosa: percorre os
@@ -307,7 +317,11 @@ function avaliarNiveis(instancia, cameraNode, maxLod, lodBaseDistance, lodMultip
     const alcance = definicoes.alcanceAFrente;
     const aperto = definicoes.apertoLateral;
     const atras = definicoes.pesoAtras;
-    const histerese = definicoes.histerese;
+    // No bairro misto a folga da fronteira é maior: ali uma troca de nível
+    // é uma zona inteira a passar de manchas a malha, e vê-se.
+    const histerese = definicoes.aneisDeManchas > 0
+        ? Math.max(definicoes.histerese, HISTERESE_DO_MISTO)
+        : definicoes.histerese;
     const invAlcance2 = 1 / (alcance * alcance);
     const invAperto2 = 1 / (aperto * aperto);
     const atras2 = atras * atras;
@@ -493,10 +507,13 @@ function avaliarNiveis(instancia, cameraNode, maxLod, lodBaseDistance, lodMultip
     };
 
     // Segunda passagem: o nível de cada pedaço.
+    const agora = aneis ? performance.now() : 0;
+    if (aneis) definicoes.mapasMistos.add(instancia);
     let totalSplats = 0;
     for (let nodeIndex = 0; nodeIndex < total; nodeIndex++) {
         const nodeInfo = nodeInfos[nodeIndex];
-        const optimalLodIndex = nivelDoPedaco(nodeIndex, encolhimento);
+        let optimalLodIndex = nivelDoPedaco(nodeIndex, encolhimento);
+        if (aneis) optimalLodIndex = segurarNaPassagem(nodeInfo, optimalLodIndex, agora, definicoes);
         nodeInfo.optimalLod = optimalLodIndex;
         nodeInfo.worldDistance = noBalao[nodeIndex] * encolhimento * uniformScale2;
         if (bucketScale > 0 && optimalLodIndex >= 0) {
@@ -511,6 +528,51 @@ function avaliarNiveis(instancia, cameraNode, maxLod, lodBaseDistance, lodMultip
         }
     }
     return totalSplats;
+}
+
+/**
+ * Bairro misto: as duas regras que mantêm as trocas de nível calmas.
+ *
+ *  - Um pedaço que acabou de mudar de nível não volta ao nível de onde
+ *    veio antes de `TEMPO_SEM_VOLTAR_ATRAS`: sem isto, à beira de um anel,
+ *    acendia e apagava.
+ *  - Um pedaço que está à vista não troca de nível de repente: primeiro
+ *    desvanece-se (com a malha a aparecer por baixo, ver bairro-malha.mjs,
+ *    que diz quanto ele está à vista em `nodeInfo.vista`), e só depois
+ *    troca. Enquanto se desvanece fica no nível que tem, marcado como
+ *    `aSair`; quando o nível novo chega, aparece aos poucos.
+ *
+ * @param {object} nodeInfo - O estado do pedaço no motor.
+ * @param {number} nivel - O nível que a régua lhe dá agora (-1 = malha).
+ * @param {number} agora - O relógio, em milissegundos.
+ * @param {object} definicoes - Afinações em vigor.
+ * @returns {number} O nível a pedir ao motor.
+ */
+function segurarNaPassagem(nodeInfo, nivel, agora, definicoes) {
+    const anterior = nodeInfo.optimalLod;
+    const tempo = definicoes.tempoSemVoltarAtras;
+
+    if (nivel !== anterior && nivel === nodeInfo.nivelDeOndeVeio &&
+        agora - (nodeInfo.mudouDeNivelEm || 0) < tempo) {
+        nivel = anterior;
+        // Quando o prazo acabar, reavalia-se, mesmo com a câmara parada:
+        // senão o pedaço ficava no nível errado até ela se mexer.
+        const fim = nodeInfo.mudouDeNivelEm + tempo + 50;
+        if (!definicoes.reavaliarEm || fim < definicoes.reavaliarEm) definicoes.reavaliarEm = fim;
+    }
+
+    const atual = nodeInfo.currentLod;
+    if (nivel !== atual && atual >= 0 && nodeInfo.vista > 0.01) {
+        nodeInfo.aSair = true;
+        return atual;
+    }
+    nodeInfo.aSair = false;
+
+    if (nivel !== anterior) {
+        nodeInfo.nivelDeOndeVeio = anterior;
+        nodeInfo.mudouDeNivelEm = agora;
+    }
+    return nivel;
 }
 
 /**
@@ -679,6 +741,11 @@ export function ligarLodNoCentroDaVista(app, opcoes = {}) {
         intervaloEntreRotacoes: opcoes.intervaloEntreRotacoes ?? INTERVALO_ENTRE_ROTACOES,
         conterNoAntigo: opcoes.conterNoAntigo ?? true,
         aneisDeManchas: opcoes.aneisDeManchas ?? 0,
+        tempoSemVoltarAtras: opcoes.tempoSemVoltarAtras ?? TEMPO_SEM_VOLTAR_ATRAS,
+        // Bairro misto: os mapas onde há pedaços à espera de um prazo, e
+        // quando o próximo prazo acaba (ver `segurarNaPassagem`).
+        mapasMistos: new Set(),
+        reavaliarEm: 0,
         ligado: false
     };
 
@@ -707,6 +774,16 @@ export function ligarLodNoCentroDaVista(app, opcoes = {}) {
         };
         app.on('update', aoAtualizar);
     }
+
+    // Bairro misto: acabado o prazo de um pedaço que não podia voltar atrás,
+    // o motor reavalia o detalhe, com a câmara parada ou não.
+    app.on('update', () => {
+        if (!definicoes.reavaliarEm || performance.now() < definicoes.reavaliarEm) return;
+        definicoes.reavaliarEm = 0;
+        definicoes.mapasMistos.forEach((mapa) => {
+            if ('needsLodUpdate' in mapa) mapa.needsLodUpdate = true;
+        });
+    });
 
     return definicoes;
 }

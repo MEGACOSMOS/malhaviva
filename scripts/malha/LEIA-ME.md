@@ -10,10 +10,17 @@ malha pinta-o uma vez só.
 No nível **Médio** o bairro é misto: o gaussian splat fica nos dois
 primeiros anéis de detalhe, à volta de quem olha (o fino, com as manchas
 todas, e o do meio, com o nível de manchas do meio), e a malha faz o
-terceiro, o de longe (`aneisDeManchas` em `public/lod-foco.mjs`). A malha e as árvores dela
-escondem-se, por uma grelha de um metro vista de cima, nos sítios onde as
-manchas já estão desenhadas (`vigiarAsManchas` em `public/bairro-malha.mjs`);
-onde ainda não chegaram, ou já se foram, fica a malha, e por isso não há
+terceiro, o de longe (`aneisDeManchas` em `public/lod-foco.mjs`). Não há
+tecto de manchas no Médio.
+
+Uma grelha de um metro, vista de cima, diz em cada sítio quanto das manchas
+está à vista, de zero a um (`vigiarAsManchas` em `public/bairro-malha.mjs`).
+As manchas do bairro aparecem na medida dela, as árvores da malha na medida
+contrária, e a malha só se apaga onde ela está cheia. Cada zona que troca
+de nível desvanece-se primeiro (0,6 s) por cima da malha, e a do nível novo
+aparece aos poucos; e uma zona que acabou de trocar não volta ao nível de
+onde veio antes de 2,5 s (`segurarNaPassagem`), para não piscar. Onde as
+manchas ainda não chegaram, ou já se foram, fica a malha, e por isso não há
 buracos.
 
 ## De onde vem

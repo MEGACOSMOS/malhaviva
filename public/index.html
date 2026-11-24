@@ -5883,13 +5883,13 @@
             Vec3, Texture,
             PIXELFORMAT_RGBA8, FILTER_LINEAR, ADDRESS_CLAMP_TO_EDGE
         } from 'playcanvas';
-        import { ligarLodNoCentroDaVista } from './lod-foco.mjs?v=8';
+        import { ligarLodNoCentroDaVista } from './lod-foco.mjs?v=10';
         import { medirACargaDoBairro } from './carga-do-bairro.mjs?v=2';
         import { criarAfinadorDeFluidez, construirEscada } from './fluidez.mjs?v=1';
         import { criarModoVR } from './vr.mjs?v=16';
         import { ligarCeu } from './ceu.mjs?v=16';
         import { ligarEdificios } from './edificios.mjs?v=6';
-        import { ligarBairroEmMalha } from './bairro-malha.mjs?v=7';
+        import { ligarBairroEmMalha } from './bairro-malha.mjs?v=8';
         import { ligarComando } from './comando.mjs?v=13';
 
         // O código do site chegou e está a correr: o primeiro sinal de vida
@@ -6275,8 +6275,13 @@ void modifySplatColor(vec3 center, inout vec4 color) {
                         splatEl.entity.gsplat.lodBaseDistance = 150;
                         splatEl.entity.gsplat.lodMultiplier = 2.5; 
                     } else if (isMed) {
-                        splatEl.entity.gsplat.lodBaseDistance = 110; 
-                        splatEl.entity.gsplat.lodMultiplier = 2.5; 
+                        // No Médio (bairro misto) os dois anéis de manchas
+                        // vão mais longe: o fino como no Alto, e o do meio
+                        // três vezes isso, até onde começa a malha. Antes
+                        // eram 110 e 2,5, e com o tecto ficavam ainda mais
+                        // curtos.
+                        splatEl.entity.gsplat.lodBaseDistance = 150;
+                        splatEl.entity.gsplat.lodMultiplier = 3;
                     } else { // isLow
                         splatEl.entity.gsplat.lodBaseDistance = 70; 
                         splatEl.entity.gsplat.lodMultiplier = 2;
@@ -6344,7 +6349,7 @@ void modifySplatColor(vec3 center, inout vec4 color) {
          * diz-se o que cada degrau faz de verdade. Há dois botões:
          *
          *  - o pormenor do bairro: até onde vai o detalhe fino. Nos níveis
-         *    com tecto de manchas (Médio e Baixo) o motor refaz sozinho as
+         *    com tecto de manchas (o Baixo) o motor refaz sozinho as
          *    distâncias para encher esse tecto, e desfaria o que se mexesse
          *    só nelas — por isso aí mexe-se também no próprio tecto;
          *  - a densidade da imagem: quantos pontos se pintam por cada ponto
@@ -7123,8 +7128,14 @@ void modifySplatColor(vec3 center, inout vec4 color) {
             // cada nível de detalhe começa, para o que está no ecrã caber
             // sempre nessa conta.
             //
-            // No Médio e no Baixo há tecto, e apertado: são máquinas em que
-            // a folga é pouca e mais vale gastá-la a andar sem solavancos.
+            // No Baixo há tecto, e apertado: são máquinas em que a folga é
+            // pouca e mais vale gastá-la a andar sem solavancos.
+            //
+            // No Médio deixou de haver: com o tecto, o motor estava sempre a
+            // apertar e a alargar os anéis para caber na conta, e as zonas à
+            // beira de um anel acendiam e apagavam. Lá, o anel de longe é a
+            // malha, que pesa pouco; no Automático é o afinador de fluidez
+            // que encurta os anéis se o aparelho não aguentar.
             //
             // No Alto não há: quem chega a este nível tem máquina para isso,
             // e o que se quer aqui é o bairro com todo o pormenor que ele
@@ -7136,15 +7147,16 @@ void modifySplatColor(vec3 center, inout vec4 color) {
             // Fica aqui, e não depois de a página abrir, para o bairro nunca
             // chegar a pedir mais detalhe do que aquele que vai desenhar.
             if (app.scene && app.scene.gsplat) {
-                if (isMax) {
-                    // No Máximo não há tecto nenhum, dito de propósito.
+                if (isMax || isMed) {
+                    // No Máximo e no Médio não há tecto nenhum, dito de
+                    // propósito.
                     app.scene.gsplat.splatBudget = 0;
                 } else if (!isHigh) {
                     // No Baixo o tecto desceu de quinhentas para trezentas
                     // mil manchas: um telemóvel de gama média ficava sem
                     // memória gráfica a meio da visita e a placa desistia.
                     // Em modo de poupança desce ainda mais.
-                    app.scene.gsplat.splatBudget = isMed ? 1200000 : (window.modoDePoupanca ? 150000 : 300000);
+                    app.scene.gsplat.splatBudget = window.modoDePoupanca ? 150000 : 300000;
                 }
             }
 
@@ -7660,9 +7672,12 @@ void modifySplatColor(vec3 center, inout vec4 color) {
             // um nível. Pinta as mesmas manchas no ecrã que antes, ou menos.
             // No Máximo o balão não é encolhido para poupar manchas.
             // No Médio (bairro misto) as manchas ficam nos dois primeiros
-            // anéis, o fino e o do meio: o de longe é a malha.
+            // anéis, o fino e o do meio: o de longe é a malha. E lá o balão
+            // não é encolhido nem esticado a cada reavaliação: mudava de
+            // tamanho de vista para vista, e as zonas à beira de um anel
+            // acendiam e apagavam.
             window.lodFoco = ligarLodNoCentroDaVista(app, {
-                conterNoAntigo: !isMax,
+                conterNoAntigo: !isMax && !window.bairroMisto,
                 aneisDeManchas: window.bairroMisto ? 2 : 0
             });
 
