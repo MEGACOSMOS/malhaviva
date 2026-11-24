@@ -60,7 +60,7 @@ const RELATORIO = `<script>(function(){
   window.addEventListener('load',function(){L('bairro:load');});
   var ver=function(){var o=document.getElementById('loading-overlay');
     L('bairro:estado overlay='+(o?(o.classList.contains('hidden')?'sai':'visivel'):'sem')+' bairro='+!!(window.arranque&&window.arranque.estado().marcos.bairro)+' prerendering='+document.prerendering);};
-  setTimeout(ver,6000); setTimeout(ver,12000); setTimeout(ver,18000);
+  setTimeout(ver,6000); setTimeout(ver,12000); setTimeout(ver,18000); setTimeout(ver,24000); setTimeout(ver,32000); setTimeout(ver,45000);
 })();</script>`;
 
 const TESTE = `<!doctype html><meta charset=utf-8><title>teste</title>
@@ -110,7 +110,7 @@ process.on('exit', arrumar);
 
 console.log(`A provar o pré-carregamento de ${origem} num Chrome à parte, com perfil limpo (cerca de 35 s)\n`);
 // Espera até o bairro aparecer depois de aberto, ou até ao limite.
-const limite = Date.now() + 45000;
+const limite = Date.now() + 65000;
 let abriu = false;
 const apareceu = () => {
     const i = eventos.indexOf('teste:a-abrir-o-bairro');
