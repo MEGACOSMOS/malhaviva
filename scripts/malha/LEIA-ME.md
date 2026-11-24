@@ -13,26 +13,35 @@ todas, e o do meio, com o nível de manchas do meio), e a malha faz o
 terceiro, o de longe (`aneisDeManchas` em `public/lod-foco.mjs`). Não há
 tecto de manchas no Médio.
 
-Uma grelha de um metro, vista de cima, diz em cada sítio quanto das manchas
-está à vista, de zero a um, em três partes: o nível fino, o do meio, e tudo
-junto (`vigiarAsManchas` em `public/bairro-malha.mjs`). Cada mancha leva no
-azul uma marca do nível de onde vem (`marcarAsManchas`), e é por ela que
-aparece na medida da sua parte da grelha; as árvores da malha aparecem na
-medida contrária, e a malha só se apaga onde as manchas estão inteiras.
+Entre o fino e o do meio há uma faixa de passagem, de 0,8 a 1,2 vezes a
+distância do fino (`FAIXA_DE_PASSAGEM` em `public/lod-foco.mjs`). Os pedaços
+que lhe tocam têm os dois níveis ao mesmo tempo (o segundo nível é pedido em
+`mexerNosNiveis`, em `public/bairro-malha.mjs`), e cada mancha, ao ser
+desenhada, mede a sua própria distância no balão com a câmara de agora e
+passa de um nível para o outro conforme ela (`ensinarAGrelhaAsManchas`): em
+vez de uma linha entre o nítido e o desfocado, um degradé, que acompanha a
+câmara sem saltos. Nos lados, onde o balão é mais estreito e a fronteira
+fica perto, era onde a linha mais se via.
 
-Trocas de nível, em 1 s:
+Duas grelhas de um metro, vista de cima, dizem em cada sítio que níveis lá
+estão e quanto se vê de cada um (`vigiarAsManchas`): uma com o pedaço que
+mais os tem (e as manchas todas, que decidem a malha e as árvores dela),
+outra com o que menos os tem — um nível só dá lugar ao outro onde todos os
+pedaços do sítio têm o outro, senão via-se uma frincha escura na orla entre
+dois pedaços. Cada mancha leva no azul uma marca do nível de onde vem
+(`marcarAsManchas`).
 
-- de manchas para malha, as manchas desvanecem-se por cima da malha, e só
-  depois a zona sai (`segurarNaPassagem` em `public/lod-foco.mjs`);
-- de malha para manchas, aparecem aos poucos por cima dela;
-- do fino para o do meio, e ao contrário, os dois níveis ficam desenhados
-  juntos durante a troca, um a aparecer e o outro a desvanecer-se. O motor
-  não o faz sozinho: guarda-se o nível antigo (`guardarNivelAntigo`), dá-se-lhe
-  um lugar próprio na memória gráfica (`separarLugares` — sem isso os dois
-  disputavam o mesmo lugar e a zona ficava preta umas imagens), e só se
-  larga na atualização do próprio motor.
+Cada nível de cada pedaço aparece e desaparece em 1 s: sobe quando o motor
+já o desenha, e desce só depois de o outro nível que o pedaço quer estar
+inteiro. Um pedaço que vai para a malha desvanece-se primeiro, e só depois
+sai (`segurarNaPassagem` em `public/lod-foco.mjs`). O motor só conta com um
+nível por pedaço, por isso: o nível que sai fica guardado até se
+desvanecer, o do meio de cada pedaço tem um lugar seu na memória gráfica
+(`separarLugares` — sem isso os dois disputavam o mesmo e a zona ficava
+preta umas imagens), e juntar ou largar níveis só se faz na atualização do
+próprio motor.
 
-Uma zona que acabou de trocar não volta ao nível de onde veio antes de
+Um pedaço que acabou de trocar não volta ao nível de onde veio antes de
 2,5 s, para não piscar. Onde as manchas ainda não chegaram, ou já se foram,
 fica a malha, e por isso não há buracos.
 

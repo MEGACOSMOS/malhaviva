@@ -30,7 +30,7 @@
  */
 import {
     Asset, CULLFACE_NONE, Entity, Layer, WasmModule, Texture, Vec3,
-    PIXELFORMAT_RGBA8, FILTER_LINEAR, ADDRESS_CLAMP_TO_EDGE,
+    PIXELFORMAT_RGBA8, PIXELFORMAT_RG8, FILTER_LINEAR, ADDRESS_CLAMP_TO_EDGE,
     SHADERLANGUAGE_GLSL, SHADERLANGUAGE_WGSL
 } from 'playcanvas';
 
@@ -152,29 +152,41 @@ function oQueSeDesenha(mundo, conjunto) {
 }
 
 /**
- * Bairro misto: deixa uma zona que troca de nível de manchas (do fino para
- * o do meio, ou ao contrário) com os dois níveis desenhados ao mesmo tempo
- * durante a troca, para um se desvanecer enquanto o outro aparece.
+ * Bairro misto: deixa uma zona ter dois níveis de manchas desenhados ao
+ * mesmo tempo — o principal, que o motor escolhe, e um segundo — e mexe
+ * neles só na vez do motor.
  *
- * O motor larga o nível antigo de uma zona no instante em que o novo está
- * pronto. Aqui, quando ele o vai largar e a zona continua com outro nível
- * desenhado, o antigo fica guardado em `nodeInfo.aDesvanecer` (ficheiro →
- * nível), e quem o larga a sério é o `vigiarAsManchas`, quando ele acabar
- * de se desvanecer. Se a zona voltar a esse nível antes disso, ele deixa
- * de estar a desvanecer-se.
+ *  - O motor larga o nível antigo de uma zona no instante em que o novo
+ *    está pronto. Aqui, quando ele o vai largar e a zona continua com outro
+ *    nível desenhado, o antigo fica guardado em `nodeInfo.aDesvanecer`
+ *    (ficheiro → nível), e quem o larga a sério é o `vigiarAsManchas`,
+ *    quando ele acabar de se desvanecer. Se a zona voltar a esse nível
+ *    antes disso, ele deixa de estar a desvanecer-se.
+ *  - O segundo nível de uma zona que toca a faixa de passagem (ver
+ *    `segundoNivel` em lod-foco.mjs) é pedido aqui, porque o motor só pede
+ *    um nível por zona.
+ *  - Juntar ou largar um nível muda a lista do que o motor desenha. Feito
+ *    fora da vez dele, o motor ficava umas dez imagens a desenhar com a
+ *    lista desacertada, e a zona inteira ficava preta. Por isso as duas
+ *    coisas ficam numa fila e só se fazem quando ele próprio se atualiza:
+ *    aí a lista nova é feita logo.
  *
  * Lê e muda contas que o motor guarda lá por dentro, como o lod-foco.mjs.
  *
  * @param {object} instancia - O mapa (a instância da octree do motor).
- * @returns {function(number, number): void|null} Larga de vez o nível
- *     guardado de um ficheiro numa zona; `null` se o motor não deixar.
+ * @returns {{largar: function(number, number, number): void,
+ *     juntar: function(number, number, number): void}|null} Põem na fila
+ *     largar ou juntar o nível (ficheiro, zona, nível); `null` se o motor
+ *     não deixar.
  */
-function guardarNivelAntigo(instancia) {
+function mexerNosNiveis(instancia) {
     const modelo = Object.getPrototypeOf(instancia);
-    if (!modelo || typeof modelo.decrementFileRef !== 'function' || typeof modelo.incrementFileRef !== 'function') return null;
-    if (!modelo.largarDeVez) {
+    if (!modelo || typeof modelo.decrementFileRef !== 'function' ||
+        typeof modelo.incrementFileRef !== 'function' || typeof modelo.update !== 'function') return null;
+    if (!modelo.niveisNaVezDoMotor) {
         const largarDeOrigem = modelo.decrementFileRef;
         const juntarDeOrigem = modelo.incrementFileRef;
+        const atualizarDeOrigem = modelo.update;
         modelo.decrementFileRef = function (fileIndex, nodeIndex) {
             const info = this.nodeInfos && this.nodeInfos[nodeIndex];
             const p = fileIndex >= 0 && this.filePlacements ? this.filePlacements[fileIndex] : null;
@@ -186,10 +198,7 @@ function guardarNivelAntigo(instancia) {
                     if (f !== fileIndex && q && q.resource && q.intervals.has(nodeIndex)) outro = true;
                 }
                 if (outro) {
-                    const lods = this.octree.nodes[nodeIndex].lods;
-                    let nivel = 0;
-                    for (let l = 0; l < lods.length; l++) if (lods[l].fileIndex === fileIndex) nivel = l;
-                    (info.aDesvanecer || (info.aDesvanecer = new Map())).set(fileIndex, nivel);
+                    (info.aDesvanecer || (info.aDesvanecer = new Map())).set(fileIndex, p.lodIndex > 0 ? p.lodIndex : 0);
                     return;
                 }
             }
@@ -203,45 +212,57 @@ function guardarNivelAntigo(instancia) {
             }
             return juntarDeOrigem.call(this, fileIndex, nodeIndex, lodIndex);
         };
-        // Largar um nível muda a lista do que o motor desenha. Feito fora
-        // da vez dele, o motor ficava umas dez imagens a desenhar com a
-        // lista desacertada, e a zona inteira ficava preta. Por isso só se
-        // larga quando ele próprio se atualiza: aí a lista nova é feita logo.
-        const atualizarDeOrigem = modelo.update;
-        if (typeof atualizarDeOrigem === 'function') {
-            modelo.update = function (...argumentos) {
-                if (this.aLargar && this.aLargar.length) {
-                    const lista = this.aLargar;
-                    this.aLargar = [];
-                    for (const [f, n] of lista) largarDeOrigem.call(this, f, n);
+        modelo.update = function (...argumentos) {
+            if (this.aJuntar && this.aJuntar.length) {
+                const lista = this.aJuntar;
+                this.aJuntar = [];
+                for (const [f, n, nivel] of lista) {
+                    const info = this.nodeInfos[n];
+                    const p = this.filePlacements[f];
+                    // Só se ainda for preciso, e se ainda lá não estiver.
+                    if (!info || info.segundoAtivo !== nivel || info.currentLod === nivel) continue;
+                    if (p && p.intervals.has(n)) continue;
+                    if (info.aDesvanecer) info.aDesvanecer.delete(f);
+                    juntarDeOrigem.call(this, f, n, nivel);
                 }
-                return atualizarDeOrigem.apply(this, argumentos);
-            };
-        }
-        modelo.largarDeVez = largarDeOrigem;
+            }
+            if (this.aLargar && this.aLargar.length) {
+                const lista = this.aLargar;
+                this.aLargar = [];
+                for (const [f, n, nivel] of lista) {
+                    const info = this.nodeInfos[n];
+                    // Se entretanto passou a ser o nível principal, fica.
+                    if (info && info.currentLod === nivel) continue;
+                    largarDeOrigem.call(this, f, n);
+                }
+            }
+            return atualizarDeOrigem.apply(this, argumentos);
+        };
+        modelo.niveisNaVezDoMotor = true;
     }
     if (!instancia.aLargar) instancia.aLargar = [];
-    // Um motor sem a sua própria atualização (outra versão): larga-se logo.
-    if (typeof modelo.update !== 'function') {
-        return (fileIndex, nodeIndex) => modelo.largarDeVez.call(instancia, fileIndex, nodeIndex);
-    }
-    return (fileIndex, nodeIndex) => { instancia.aLargar.push([fileIndex, nodeIndex]); };
+    if (!instancia.aJuntar) instancia.aJuntar = [];
+    return {
+        largar: (fileIndex, nodeIndex, nivel) => { instancia.aLargar.push([fileIndex, nodeIndex, nivel]); },
+        juntar: (fileIndex, nodeIndex, nivel) => { instancia.aJuntar.push([fileIndex, nodeIndex, nivel]); }
+    };
 }
 
-// Os lugares próprios dos níveis a desvanecer-se (ver `separarLugares`):
+// Os lugares próprios do nível do meio de cada zona (ver `separarLugares`):
 // números bem acima dos que o motor dá, para nunca se encontrarem.
 let proximoLugar = 2 ** 30;
 
 /**
- * Bairro misto: dá ao nível que se está a desvanecer numa zona um lugar seu
- * na memória gráfica do motor.
+ * Bairro misto: dá a cada nível de cada zona o seu lugar na memória gráfica
+ * do motor.
  *
  * O motor arruma as manchas por zona: cada zona tem um número, e é por ele
  * que encontra o lugar onde estão as manchas dela. Só conta com um nível de
- * cada vez; com os dois desenhados (ver `guardarNivelAntigo`), disputavam o
- * mesmo lugar, e ao largar o antigo o novo ficava sem sítio umas imagens —
- * a zona ficava preta. Aqui, ao montar a lista do que desenha, o nível que
- * não é o atual da zona recebe um número seu.
+ * cada vez; com dois desenhados, disputavam o mesmo lugar, e ao largar um
+ * o outro ficava sem sítio umas imagens — a zona ficava preta. Aqui, ao
+ * montar a lista do que desenha, o nível do meio de cada zona recebe um
+ * número seu, que guarda sempre: trocar de principal não obriga a copiar
+ * nada outra vez.
  *
  * @param {object} mundo - O gestor que desenha as manchas.
  * @returns {boolean} Verdadeiro se ficou ligado.
@@ -260,13 +281,12 @@ function separarLugares(mundo) {
     modelo.updateIntervals = function (intervals) {
         const resultado = montarDeOrigem.call(this, intervals);
         const zonas = this.intervalNodeIndices;
-        if (this.nodeInfos && zonas && zonas.length) {
+        if (this.nodeInfos && zonas && zonas.length && this.lodIndex > 0) {
             for (let j = 0; j < zonas.length; j++) {
                 const info = this.nodeInfos[zonas[j]];
-                if (info && info.aDesvanecer && info.aDesvanecer.size && info.currentLod !== this.lodIndex) {
-                    if (!info.lugarDoAntigo) info.lugarDoAntigo = proximoLugar++;
-                    this.intervalAllocIds[j] = info.lugarDoAntigo;
-                }
+                if (!info) continue;
+                if (!info.lugarDoMeio) info.lugarDoMeio = proximoLugar++;
+                this.intervalAllocIds[j] = info.lugarDoMeio;
             }
         }
         return resultado;
@@ -303,22 +323,30 @@ function dizerONivelNaCopia(mundo) {
 
 /**
  * Bairro misto: vigia os pedaços das manchas e mantém uma grelha, vista de
- * cima, que diz em cada quadrado quanto das manchas está à vista, de zero a
- * um, em três partes:
+ * cima, que diz em cada quadrado quanto de cada nível está à vista, de zero
+ * a um:
  *
- *  - vermelho: as manchas do nível fino;
- *  - verde: as do nível do meio;
+ *  - vermelho: as manchas do nível fino, no pedaço que mais as tem;
+ *  - verde: as do nível do meio, no pedaço que mais as tem;
  *  - azul: as manchas todas — a malha só se apaga onde ele está cheio, e as
  *    árvores em manchas da malha aparecem na medida contrária.
  *
- * Cada pedaço tem o seu "à vista", que anda aos poucos (`TEMPO_DE_DESVANECER`):
+ * E uma segunda grelha com o mesmo, mas no pedaço que menos as tem: é a
+ * que diz se um nível pode dar lugar ao outro. Num quadrado partilhado por
+ * um pedaço só com o fino e outro só com o do meio, nenhum dos dois o pode
+ * fazer — senão as manchas de cada um apagavam-se a contar com as do outro,
+ * que ali não são as suas, e via-se uma frincha escura.
  *
- *  - de malha para manchas, sobe quando o motor já o desenha;
- *  - de manchas para malha, desce primeiro, e só depois o lod-foco.mjs o
- *    deixa sair (ver `segurarNaPassagem`);
- *  - de um nível de manchas para o outro, os dois ficam desenhados (ver
- *    `guardarNivelAntigo`): o novo aparece enquanto o antigo se desvanece,
- *    com os dois um nada sobrepostos a meio, para não se ver o fundo.
+ * Cada nível de cada pedaço tem o seu "à vista", que anda aos poucos
+ * (`TEMPO_DE_DESVANECER`): sobe quando o pedaço o quer e o motor já o
+ * desenha; desce quando já não o quer — mas só depois de o outro nível que
+ * ele quer estar inteiro, para nunca se ver o fundo pelo meio. Um nível que
+ * acabou de descer é largado. Um pedaço que vai para a malha desce os dois,
+ * e só depois o lod-foco.mjs o deixa sair (ver `segurarNaPassagem`).
+ *
+ * Onde estão os dois, quem decide quanto se vê de cada um é a distância de
+ * cada mancha à fronteira, na faixa de passagem (ver
+ * `ensinarAGrelhaAsManchas`); esta grelha diz só quais estão lá.
  *
  * Num quadrado onde há um pedaço que não está à vista (um telhado e o chão
  * por baixo, na fronteira de um anel), fica a malha; onde não há pedaço
@@ -335,11 +363,11 @@ function vigiarAsManchas(app, aoMudar, aoAcharMapa) {
     const camara = app.root.findByName('camera');
     const dispositivo = app.graphicsDevice;
 
-    const criarTextura = (largura, altura, nome) => new Texture(dispositivo, {
+    const criarTextura = (largura, altura, nome, formato = PIXELFORMAT_RGBA8) => new Texture(dispositivo, {
         name: nome,
         width: largura,
         height: altura,
-        format: PIXELFORMAT_RGBA8,
+        format: formato,
         mipmaps: false,
         // Entre dois quadrados, o meio-termo: as orlas de cada zona ficam
         // esbatidas num metro, em vez de aos degraus.
@@ -353,21 +381,22 @@ function vigiarAsManchas(app, aoMudar, aoAcharMapa) {
     const vazia = criarTextura(1, 1, 'bairroMistoVazio');
     vazia.lock().set(new Uint8Array([0, 0, 0, 0]));
     vazia.unlock();
+    const vaziaMenor = criarTextura(1, 1, 'bairroMistoMenorVazio', PIXELFORMAT_RG8);
+    vaziaMenor.lock().set(new Uint8Array([0, 0]));
+    vaziaMenor.unlock();
     // origem X, origem Z, 1 / largura e 1 / altura da grelha, em metros.
-    let atual = { textura: vazia, parametros: new Float32Array([0, 0, 1, 1]) };
+    const semGrelha = () => ({ textura: vazia, texturaMenor: vaziaMenor, parametros: new Float32Array([0, 0, 1, 1]) });
+    let atual = semGrelha();
 
     let instancia = null;
     let mundo = null;
-    let largar = null;
+    let niveis = null;
     let lugaresProntos = false;
     let grelha = null;
     let antes = 0;
-    // Por pedaço: o nível que o motor desenha e quanto se vê dele; o nível
-    // que se está a desvanecer e quanto se vê dele (e quanto se via ao
-    // começar); quanto já andou a troca; desde quando o nível de agora está
-    // no motor; e quanto se vê de cada nível e de tudo, para a grelha.
-    let nivelVisto, vNovo, nivelAntigo, vAntigo, vAntigoInicio, progresso;
-    let desde, v0, v1, vT;
+    // Por pedaço: quanto se vê do nível fino e do meio, desde quando cada
+    // um está no motor, e o que a grelha tem dele (fino, meio, tudo).
+    let v0, v1, desde, g0, g1, gT;
     // O que o motor desenha, refeito só quando a versão no ecrã muda.
     const desenhados = new Set();
     let versaoVista = -1;
@@ -452,9 +481,11 @@ function vigiarAsManchas(app, aoMudar, aoAcharMapa) {
         }
 
         const textura = criarTextura(colunas, linhas, 'bairroMisto');
+        const texturaMenor = criarTextura(colunas, linhas, 'bairroMistoMenor', PIXELFORMAT_RG8);
         return {
-            nos, colunas, linhas, alargada, inicio, pedacos, textura,
+            nos, colunas, linhas, alargada, inicio, pedacos, textura, texturaMenor,
             dados: new Uint8Array(total * 4),
+            dadosMenor: new Uint8Array(total * 2),
             parametros: new Float32Array([origemX, origemZ, 1 / (colunas * CELULA), 1 / (linhas * CELULA)])
         };
     }
@@ -463,20 +494,28 @@ function vigiarAsManchas(app, aoMudar, aoAcharMapa) {
     // chegam, mas nunca mais do que o menos à vista dos que lá estão de facto
     // (caixa justa).
     function refazerQuadrado(q) {
-        const { inicio, pedacos, dados } = grelha;
-        let m0 = 0, m1 = 0, mT = 0, menor = 1;
+        const { inicio, pedacos, dados, dadosMenor } = grelha;
+        let m0 = 0, m1 = 0, mT = 0, menor = 1, n0 = 1, n1 = 1, algum = false;
         for (let k = inicio[q]; k < inicio[q + 1]; k++) {
             const e = pedacos[k];
             const i = e >> 1;
-            if (v0[i] > m0) m0 = v0[i];
-            if (v1[i] > m1) m1 = v1[i];
-            if (vT[i] > mT) mT = vT[i];
-            if ((e & 1) && vT[i] < menor) menor = vT[i];
+            if (g0[i] > m0) m0 = g0[i];
+            if (g1[i] > m1) m1 = g1[i];
+            if (gT[i] > mT) mT = gT[i];
+            if (e & 1) {
+                algum = true;
+                if (gT[i] < menor) menor = gT[i];
+                if (g0[i] < n0) n0 = g0[i];
+                if (g1[i] < n1) n1 = g1[i];
+            }
         }
+        if (!algum) { n0 = 0; n1 = 0; }
         const o = q * 4;
         dados[o] = Math.round(255 * Math.min(m0, menor));
         dados[o + 1] = Math.round(255 * Math.min(m1, menor));
         dados[o + 2] = Math.round(255 * Math.min(mT, menor));
+        dadosMenor[q * 2] = Math.round(255 * n0);
+        dadosMenor[q * 2 + 1] = Math.round(255 * n1);
     }
 
     function refazerQuadrados(i) {
@@ -489,17 +528,15 @@ function vigiarAsManchas(app, aoMudar, aoAcharMapa) {
     function enviarGrelha() {
         grelha.textura.lock().set(grelha.dados);
         grelha.textura.unlock();
+        grelha.texturaMenor.lock().set(grelha.dadosMenor);
+        grelha.texturaMenor.unlock();
     }
 
-    // Larga de vez os níveis que acabaram de se desvanecer numa zona.
-    function largarAntigos(i, info) {
-        if (info.aDesvanecer && info.aDesvanecer.size) {
-            if (largar) info.aDesvanecer.forEach((nivel, ficheiro) => largar(ficheiro, i));
-            info.aDesvanecer.clear();
-        }
-        nivelAntigo[i] = -1;
-        vAntigo[i] = 0;
-        vAntigoInicio[i] = 0;
+    // Se um pedaço tem um nível guardado a desvanecer-se (ver `mexerNosNiveis`).
+    function aDesvanecer(info, nivel) {
+        if (!info.aDesvanecer || !info.aDesvanecer.size) return false;
+        for (const n of info.aDesvanecer.values()) if (n === nivel) return true;
+        return false;
     }
 
     app.on('prerender', () => {
@@ -508,28 +545,27 @@ function vigiarAsManchas(app, aoMudar, aoAcharMapa) {
         mundo = achado ? achado.mundo : null;
         if (mapa !== instancia) {
             instancia = mapa;
-            if (grelha) grelha.textura.destroy();
+            if (grelha) {
+                grelha.textura.destroy();
+                grelha.texturaMenor.destroy();
+            }
             grelha = mapa ? medirGrelha(mapa) : null;
             if (grelha) {
                 const n = grelha.nos;
-                nivelVisto = new Int8Array(n).fill(-1);
-                nivelAntigo = new Int8Array(n).fill(-1);
-                vNovo = new Float32Array(n);
-                vAntigo = new Float32Array(n);
-                vAntigoInicio = new Float32Array(n);
-                progresso = new Float32Array(n);
-                desde = new Float64Array(n);
-                versaoVista = -1;
                 v0 = new Float32Array(n);
                 v1 = new Float32Array(n);
-                vT = new Float32Array(n);
-                largar = guardarNivelAntigo(mapa);
+                desde = new Float64Array(n * 2);
+                g0 = new Float32Array(n);
+                g1 = new Float32Array(n);
+                gT = new Float32Array(n);
+                versaoVista = -1;
+                niveis = mexerNosNiveis(mapa);
                 dizerONivelNaCopia(mundo);
                 enviarGrelha();
-                atual = { textura: grelha.textura, parametros: grelha.parametros };
+                atual = { textura: grelha.textura, texturaMenor: grelha.texturaMenor, parametros: grelha.parametros };
                 if (aoAcharMapa) aoAcharMapa(mapa, mundo);
             } else {
-                atual = { textura: vazia, parametros: new Float32Array([0, 0, 1, 1]) };
+                atual = semGrelha();
             }
             aoMudar(atual);
         }
@@ -541,90 +577,94 @@ function vigiarAsManchas(app, aoMudar, aoAcharMapa) {
         antes = agora;
         if (!grelha) return;
 
-        // Os dois níveis de uma zona só ficam desenhados juntos quando cada
-        // um pode ter o seu lugar (ver `separarLugares`); até lá, e num
-        // motor que não o deixe, a troca entre níveis de manchas é seca.
+        // Dois níveis numa zona só quando cada um pode ter o seu lugar (ver
+        // `separarLugares`); até lá, e num motor que não o deixe, cada zona
+        // tem um nível só, e a troca entre eles é seca.
         if (!lugaresProntos) lugaresProntos = separarLugares(mundo);
-        instancia.trocasSuaves = lugaresProntos && !!largar;
+        const doisNiveis = lugaresProntos && !!niveis;
+        instancia.trocasSuaves = doisNiveis;
 
         if (mundo && mundo.currentVersion !== versaoVista) {
             versaoVista = mundo.currentVersion;
             sabeOQueDesenha = oQueSeDesenha(mundo, desenhados) !== null;
         }
         const infos = instancia.nodeInfos;
+        const nos = instancia.octree.nodes;
         let mudou = false;
         let reavaliar = false;
         for (let i = 0; i < grelha.nos; i++) {
             const info = infos[i];
             if (!info) continue;
-            const nivel = info.currentLod;
-            const comAntigo = !!(info.aDesvanecer && info.aDesvanecer.size);
+            const principal = info.currentLod;
+            const lods = nos[i].lods;
 
-            if (nivel < 0) {
-                // Já não está no motor: a malha fica sozinha.
-                vNovo[i] = 0;
-                nivelVisto[i] = -1;
-                desde[i] = 0;
-                if (comAntigo || nivelAntigo[i] >= 0) largarAntigos(i, info);
-            } else {
-                if (nivel !== nivelVisto[i]) {
-                    if (comAntigo && nivelVisto[i] >= 0) {
-                        // Troca de nível de manchas: o que se via passa a
-                        // ser o antigo, a desvanecer-se, e o novo começa do
-                        // zero.
-                        nivelAntigo[i] = nivelVisto[i];
-                        vAntigo[i] = Math.max(vAntigo[i], vNovo[i]);
-                        vAntigoInicio[i] = vAntigo[i];
-                        vNovo[i] = 0;
-                        progresso[i] = 0;
-                    }
-                    nivelVisto[i] = nivel;
-                    desde[i] = agora;
-                }
-                // Já no ecrã: a zona, neste nível, está na lista que o motor
-                // desenha agora.
-                const espera = agora - desde[i];
-                const jaSeVe = sabeOQueDesenha
-                    ? desenhados.has(i * 4 + nivel) || espera >= ESPERA_MAXIMA_AO_ENTRAR
-                    : espera >= ESPERA_MAXIMA_AO_ENTRAR / 4;
-
-                if (comAntigo && nivelAntigo[i] >= 0) {
-                    if (info.aSair) {
-                        // A meio de uma troca, a zona vai para a malha: os
-                        // dois desvanecem-se.
-                        vNovo[i] = Math.max(0, vNovo[i] - passo);
-                        vAntigo[i] = Math.max(0, vAntigo[i] - passo);
-                        if (vAntigo[i] <= 0) largarAntigos(i, info);
-                    } else if (jaSeVe) {
-                        // O novo aparece nos primeiros 60 % da troca, o
-                        // antigo some-se nos últimos 60 %: a meio estão os
-                        // dois quase inteiros, e o fundo não se vê.
-                        progresso[i] = Math.min(1, progresso[i] + passo);
-                        const p = progresso[i];
-                        vNovo[i] = Math.max(vNovo[i], Math.min(1, p / 0.6));
-                        vAntigo[i] = vAntigoInicio[i] * Math.min(1, (1 - p) / 0.6);
-                        if (p >= 1) largarAntigos(i, info);
-                    }
-                } else {
-                    if (comAntigo) largarAntigos(i, info);
-                    const alvo = !info.aSair && (jaSeVe || vNovo[i] > 0) ? 1 : 0;
-                    if (vNovo[i] < alvo) vNovo[i] = Math.min(alvo, vNovo[i] + passo);
-                    else if (vNovo[i] > alvo) vNovo[i] = Math.max(alvo, vNovo[i] - passo);
+            // O segundo nível que passou a ser o principal já não é segundo.
+            if (info.segundoAtivo >= 0 && info.segundoAtivo === principal) info.segundoAtivo = -1;
+            const segundo = doisNiveis && info.segundoNivel >= 0 && info.segundoNivel !== principal && principal >= 0
+                ? info.segundoNivel : -1;
+            if (segundo >= 0 && info.segundoAtivo !== segundo) {
+                if (aDesvanecer(info, segundo)) {
+                    // Estava a desvanecer-se e voltou a ser preciso: fica,
+                    // como segundo.
+                    info.aDesvanecer.forEach((n, f) => { if (n === segundo) info.aDesvanecer.delete(f); });
+                    info.segundoAtivo = segundo;
+                } else if (info.segundoAtivo < 0 && lods[segundo] && lods[segundo].fileIndex >= 0) {
+                    info.segundoAtivo = segundo;
+                    niveis.juntar(lods[segundo].fileIndex, i, segundo);
                 }
             }
 
-            const vista = Math.max(vNovo[i], vAntigo[i]);
+            for (let nivel = 0; nivel < 2; nivel++) {
+                const guardado = aDesvanecer(info, nivel);
+                const tem = principal === nivel || info.segundoAtivo === nivel || guardado;
+                const quer = !info.aSair && (principal === nivel || segundo === nivel);
+                const k = i * 2 + nivel;
+                let v = nivel ? v1[i] : v0[i];
+                if (!tem) {
+                    v = 0;
+                    desde[k] = 0;
+                } else {
+                    if (!desde[k]) desde[k] = agora;
+                    const espera = agora - desde[k];
+                    if (quer) {
+                        // Sobe quando já está no ecrã: a zona, neste nível,
+                        // está na lista que o motor desenha agora.
+                        const seVe = sabeOQueDesenha
+                            ? desenhados.has(i * 4 + nivel) || espera >= ESPERA_MAXIMA_AO_ENTRAR
+                            : espera >= ESPERA_MAXIMA_AO_ENTRAR / 4;
+                        if (seVe) v = Math.min(1, v + passo);
+                    } else {
+                        // Desce só quando o outro, se for preciso, já está
+                        // inteiro.
+                        const outro = 1 - nivel;
+                        const outroPreciso = !info.aSair && (principal === outro || segundo === outro);
+                        const outroInteiro = (outro ? v1[i] : v0[i]) >= 0.999;
+                        if (!outroPreciso || outroInteiro) v = Math.max(0, v - passo);
+                        if (v <= 0 && niveis) {
+                            // Desceu de todo: larga-se, na vez do motor.
+                            if (guardado) {
+                                info.aDesvanecer.forEach((n, f) => {
+                                    if (n === nivel) { niveis.largar(f, i, nivel); info.aDesvanecer.delete(f); }
+                                });
+                            }
+                            if (info.segundoAtivo === nivel) {
+                                if (lods[nivel] && lods[nivel].fileIndex >= 0) niveis.largar(lods[nivel].fileIndex, i, nivel);
+                                info.segundoAtivo = -1;
+                            }
+                        }
+                    }
+                }
+                if (nivel) v1[i] = v; else v0[i] = v;
+            }
+
+            const vista = Math.max(v0[i], v1[i]);
             info.vista = vista;
             if (info.aSair && vista <= 0.01) reavaliar = true;
 
-            let a0 = 0, a1 = 0;
-            if (nivelVisto[i] === 0) a0 = vNovo[i]; else if (nivelVisto[i] >= 1) a1 = vNovo[i];
-            if (nivelAntigo[i] === 0) a0 = Math.max(a0, vAntigo[i]); else if (nivelAntigo[i] >= 1) a1 = Math.max(a1, vAntigo[i]);
-            const aT = Math.min(1, a0 + a1);
-            if (a0 !== v0[i] || a1 !== v1[i] || aT !== vT[i]) {
-                v0[i] = a0;
-                v1[i] = a1;
-                vT[i] = aT;
+            if (v0[i] !== g0[i] || v1[i] !== g1[i] || vista !== gT[i]) {
+                g0[i] = v0[i];
+                g1[i] = v1[i];
+                gT[i] = vista;
                 refazerQuadrados(i);
                 mudou = true;
             }
@@ -702,51 +742,136 @@ fn modifySplatColor(center: vec3f, color: ptr<function, vec4f>) {
 }
 
 /**
- * Ensina às manchas, no momento de as desenhar (a cada imagem, e por isso
- * o desvanecer anda sem refazer nada), a lerem a grelha: cada nível do
- * bairro aparece na medida da sua parte dela, e as árvores da malha na
- * medida contrária à das manchas todas. A marca no azul (ver
- * `marcarAsManchas`) é tirada aqui, e a cor volta a ser a de origem.
+ * Ensina às manchas, no momento de as desenhar (a cada imagem), quanto se
+ * vê de cada uma.
+ *
+ * Na faixa de passagem entre o fino e o do meio (ver `FAIXA_DE_PASSAGEM` em
+ * lod-foco.mjs), cada mancha mede a sua distância no balão — a mesma conta
+ * que o lod-foco.mjs faz aos pedaços, com a câmara de agora — e passa de um
+ * nível para o outro conforme ela: perto do começo da faixa vê-se o fino,
+ * perto do fim o do meio, e a meio os dois um nada sobrepostos, para não
+ * se ver o fundo. Isto acompanha a câmara a cada imagem, sem saltos.
+ *
+ * Por cima disso, as grelhas (ver `vigiarAsManchas`) dizem que níveis estão
+ * lá e quanto: um nível só dá lugar ao outro onde todos os pedaços do
+ * quadrado têm o outro; onde só está um, ele vê-se inteiro; onde nenhum
+ * está, a malha fica. As árvores da malha (marcadas, ver `marcarAsManchas`) aparecem na
+ * medida contrária à das manchas todas. A marca no azul é tirada aqui, e a
+ * cor volta a ser a de origem.
  *
  * @param {object} material - O material de todas as manchas da cena.
  */
 function ensinarAGrelhaAsManchas(material) {
     material.getShaderChunks(SHADERLANGUAGE_GLSL).set('gsplatModifyVS', `
 uniform sampler2D uBairroMisto;
+uniform sampler2D uBairroMenor;
 uniform vec4 uBairroMistoGrelha;
+uniform vec4 uBairroOlho;
+uniform vec4 uBairroFrente;
+uniform vec4 uBairroBalao;
 void modifySplatCenter(inout vec3 center) {}
 void modifySplatRotationScale(vec3 originalCenter, vec3 modifiedCenter, inout vec4 rotation, inout vec3 scale) {}
 void modifySplatColor(vec3 center, inout vec4 color) {
-    vec4 f = textureLod(uBairroMisto, (center.xz - uBairroMistoGrelha.xy) * uBairroMistoGrelha.zw, 0.0);
+    vec2 uv = (center.xz - uBairroMistoGrelha.xy) * uBairroMistoGrelha.zw;
+    vec4 f = textureLod(uBairroMisto, uv, 0.0);
+    vec2 menor = textureLod(uBairroMenor, uv, 0.0).rg;
     float marca = floor(color.b);
     color.b = clamp((color.b - marca - 0.02) / 0.96, 0.0, 1.0);
     if (marca > 1.5) {
         color.a *= 1.0 - f.b;
-    } else if (marca > 0.5) {
-        color.a *= f.g;
+        return;
+    }
+    vec3 d = center - uBairroOlho.xyz;
+    float aoLongo = dot(d, uBairroFrente.xyz);
+    float deLado2 = max(dot(d, d) - aoLongo * aoLongo, 0.0);
+    float frente = aoLongo >= 0.0 ? aoLongo * uBairroBalao.x : -aoLongo * uBairroBalao.z;
+    float balao = sqrt(frente * frente + deLado2 * uBairroBalao.y * uBairroBalao.y) * uBairroOlho.w;
+    float t = smoothstep(uBairroFrente.w * (1.0 - uBairroBalao.w), uBairroFrente.w * (1.0 + uBairroBalao.w), balao);
+    float w0 = clamp((1.0 - t) / 0.6, 0.0, 1.0);
+    float w1 = clamp(t / 0.6, 0.0, 1.0);
+    if (marca > 0.5) {
+        color.a *= f.g * (1.0 - menor.r * (1.0 - w1));
     } else {
-        color.a *= f.r;
+        color.a *= f.r * (1.0 - menor.g * (1.0 - w0));
     }
 }`);
     material.getShaderChunks(SHADERLANGUAGE_WGSL).set('gsplatModifyVS', `
 var uBairroMisto: texture_2d<f32>;
 var uBairroMistoSampler: sampler;
+var uBairroMenor: texture_2d<f32>;
+var uBairroMenorSampler: sampler;
 uniform uBairroMistoGrelha: vec4f;
+uniform uBairroOlho: vec4f;
+uniform uBairroFrente: vec4f;
+uniform uBairroBalao: vec4f;
 fn modifySplatCenter(center: ptr<function, vec3f>) {}
 fn modifySplatRotationScale(originalCenter: vec3f, modifiedCenter: vec3f, rotation: ptr<function, vec4f>, scale: ptr<function, vec3f>) {}
 fn modifySplatColor(center: vec3f, color: ptr<function, vec4f>) {
-    let f = textureSampleLevel(uBairroMisto, uBairroMistoSampler, (center.xz - uniform.uBairroMistoGrelha.xy) * uniform.uBairroMistoGrelha.zw, 0.0);
+    let uv = (center.xz - uniform.uBairroMistoGrelha.xy) * uniform.uBairroMistoGrelha.zw;
+    let f = textureSampleLevel(uBairroMisto, uBairroMistoSampler, uv, 0.0);
+    let menor = textureSampleLevel(uBairroMenor, uBairroMenorSampler, uv, 0.0).rg;
     let marca = floor((*color).b);
     (*color).b = clamp(((*color).b - marca - 0.02) / 0.96, 0.0, 1.0);
     if (marca > 1.5) {
         (*color).a = (*color).a * (1.0 - f.b);
-    } else if (marca > 0.5) {
-        (*color).a = (*color).a * f.g;
+        return;
+    }
+    let d = center - uniform.uBairroOlho.xyz;
+    let aoLongo = dot(d, uniform.uBairroFrente.xyz);
+    let deLado2 = max(dot(d, d) - aoLongo * aoLongo, 0.0);
+    let frente = select(-aoLongo * uniform.uBairroBalao.z, aoLongo * uniform.uBairroBalao.x, aoLongo >= 0.0);
+    let balao = sqrt(frente * frente + deLado2 * uniform.uBairroBalao.y * uniform.uBairroBalao.y) * uniform.uBairroOlho.w;
+    let t = smoothstep(uniform.uBairroFrente.w * (1.0 - uniform.uBairroBalao.w), uniform.uBairroFrente.w * (1.0 + uniform.uBairroBalao.w), balao);
+    let w0 = clamp((1.0 - t) / 0.6, 0.0, 1.0);
+    let w1 = clamp(t / 0.6, 0.0, 1.0);
+    if (marca > 0.5) {
+        (*color).a = (*color).a * f.g * (1.0 - menor.r * (1.0 - w1));
     } else {
-        (*color).a = (*color).a * f.r;
+        (*color).a = (*color).a * f.r * (1.0 - menor.g * (1.0 - w0));
     }
 }`);
     material.update();
+}
+
+/**
+ * Bairro misto: o que as manchas precisam de saber da câmara, a cada
+ * imagem, para a faixa de passagem (ver `ensinarAGrelhaAsManchas`): onde
+ * está e a abertura, para onde olha e a distância do fino, e a forma do
+ * balão e a largura da faixa — as mesmas do lod-foco.mjs.
+ *
+ * @param {object} app - A aplicação 3D.
+ * @param {object|null} bairro - A entidade do bairro de manchas.
+ * @returns {{olho: Float32Array, frente: Float32Array, balao: Float32Array}}
+ *     Os valores, refeitos antes de cada imagem.
+ */
+function acompanharOOlhar(app, bairro) {
+    const olho = new Float32Array([0, 0, 0, 1]);
+    const frente = new Float32Array([0, 0, -1, 150]);
+    const balao = new Float32Array([0.5, 1 / 0.55, 2.5, 0.2]);
+    const camara = app.root.findByName('camera');
+    const REF = Math.tan(22.5 * Math.PI / 180);
+    app.on('prerender', () => {
+        const cam = camara && camara.camera;
+        if (!cam) return;
+        const p = camara.getPosition();
+        const fw = camara.forward;
+        let tanV = Math.tan(cam.fov * 0.5 * Math.PI / 180);
+        if (cam.horizontalFov) tanV /= cam.aspectRatio;
+        const tanH = tanV * cam.aspectRatio;
+        olho[0] = p.x; olho[1] = p.y; olho[2] = p.z;
+        olho[3] = Math.min(tanV, tanH) / REF;
+        frente[0] = fw.x; frente[1] = fw.y; frente[2] = fw.z;
+        const g = bairro && bairro.gsplat;
+        if (g && g.lodBaseDistance > 0) frente[3] = g.lodBaseDistance;
+        const d = window.lodFoco;
+        if (d) {
+            balao[0] = 1 / d.alcanceAFrente;
+            balao[1] = 1 / d.apertoLateral;
+            balao[2] = d.pesoAtras;
+            balao[3] = d.faixa || 0;
+        }
+    });
+    return { olho, frente, balao };
 }
 
 /**
@@ -799,6 +924,7 @@ export function ligarBairroEmMalha(app, opcoes = {}) {
     let grelhaDasManchas = null;
     const darAGrelha = (alvo) => {
         alvo.setParameter('uBairroMisto', grelhaDasManchas.textura);
+        alvo.setParameter('uBairroMenor', grelhaDasManchas.texturaMenor);
         alvo.setParameter('uBairroMistoGrelha', grelhaDasManchas.parametros);
     };
     if (misto) {
@@ -816,6 +942,12 @@ export function ligarBairroEmMalha(app, opcoes = {}) {
         });
         if (materialDasManchas) {
             darAGrelha(materialDasManchas);
+            // A câmara de agora, para a faixa de passagem entre o fino e o
+            // do meio: os valores mudam no sítio a cada imagem.
+            const olhar = acompanharOOlhar(app, bairro);
+            materialDasManchas.setParameter('uBairroOlho', olhar.olho);
+            materialDasManchas.setParameter('uBairroFrente', olhar.frente);
+            materialDasManchas.setParameter('uBairroBalao', olhar.balao);
             ensinarAGrelhaAsManchas(materialDasManchas);
         }
     }

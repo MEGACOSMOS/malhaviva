@@ -78,6 +78,13 @@ const HISTERESE = 0.08;
 // No bairro misto (nível Médio), a folga da fronteira entre níveis.
 const HISTERESE_DO_MISTO = 0.15;
 
+// No bairro misto, a largura da faixa de passagem entre o detalhe fino e o
+// do meio, em fracção da distância do fino, para cada lado da fronteira.
+// Dentro dela os pedaços têm os dois níveis, e cada mancha passa de um
+// para o outro conforme a distância a que está (ver bairro-malha.mjs): em
+// vez de uma linha entre o nítido e o desfocado, um degradé.
+const FAIXA_DE_PASSAGEM = 0.2;
+
 // No bairro misto, quanto tempo um pedaço que acabou de mudar de nível
 // fica proibido de voltar ao nível de onde veio, em milissegundos. Era
 // assim que se viam zonas a acender e a apagar: um pedaço à beira de um
@@ -346,10 +353,16 @@ function avaliarNiveis(instancia, cameraNode, maxLod, lodBaseDistance, lodMultip
             naBola: new Float32Array(total),
             nivelDaBola: new Uint8Array(total),
             foraDoEcra: new Uint8Array(total),
-            peso: new Float32Array(total)
+            peso: new Float32Array(total),
+            noBalaoLonge: new Float32Array(total)
         };
     }
-    const { noBalao, naBola, nivelDaBola, foraDoEcra: fora, peso } = memoria;
+    const { noBalao, naBola, nivelDaBola, foraDoEcra: fora, peso, noBalaoLonge } = memoria;
+
+    // Bairro misto: a faixa de passagem vai de (1 - faixa) a (1 + faixa)
+    // vezes a distância do fino. O fino chega até ao fim dela.
+    const faixa = aneis ? definicoes.faixa : 0;
+    const limiteFino = lodBaseDistance * (1 + faixa);
 
     // Primeira passagem: as distâncias de cada pedaço, e — se for preciso
     // conter — quanto custaria a bola.
@@ -384,6 +397,24 @@ function avaliarNiveis(instancia, cameraNode, maxLod, lodBaseDistance, lodMultip
 
         noBalao[nodeIndex] = balao;
         naBola[nodeIndex] = bola;
+
+        // Bairro misto: o ponto do pedaço mais longe no balão (um dos oito
+        // cantos), para saber se o pedaço chega para lá do começo da faixa.
+        if (aneis) {
+            let longe = 0;
+            for (let k = 0; k < 8; k++) {
+                const ux = (k & 1 ? maxX : minX) - px;
+                const uy = (k & 2 ? maxY : minY) - py;
+                const uz = (k & 4 ? maxZ : minZ) - pz;
+                const u2 = ux * ux + uy * uy + uz * uz;
+                const al = ux * fwx + uy * fwy + uz * fwz;
+                let la2 = u2 - al * al;
+                if (la2 < 0) la2 = 0;
+                const v = (al >= 0 ? al * al * invAlcance2 : al * al * atras2) + la2 * invAperto2;
+                if (v > longe) longe = v;
+            }
+            noBalaoLonge[nodeIndex] = Math.sqrt(longe) * fovScale;
+        }
         let nivelBola = nivelPorDistancia(bola, maxLod, lodBaseDistance, minDistBuf);
         if (nivelBola < rangeMin) nivelBola = rangeMin; else if (nivelBola > rangeMax) nivelBola = rangeMax;
         nivelDaBola[nodeIndex] = nivelBola;
@@ -429,7 +460,7 @@ function avaliarNiveis(instancia, cameraNode, maxLod, lodBaseDistance, lodMultip
         if (maxLod === 0) return 0;
         const balao = noBalao[nodeIndex] * encolhimento;
         const nivelBola = nivelDaBola[nodeIndex];
-        let nivel = balao < lodBaseDistance && rangeMin === 0 ? 0 : (nivelBola > 0 ? nivelBola : 1);
+        let nivel = balao < limiteFino && rangeMin === 0 ? 0 : (nivelBola > 0 ? nivelBola : 1);
 
         // No bairro misto (nível Médio) o degrau de fora do ecrã só se dá
         // entre anéis de manchas: levar um pedaço do último anel de manchas
@@ -447,7 +478,7 @@ function avaliarNiveis(instancia, cameraNode, maxLod, lodBaseDistance, lodMultip
             // A fronteira que se está a passar, descontado o degrau.
             const fronteira = (currentLod > nivel ? currentLod : nivel) - degrau;
             if (fronteira >= 1 && fronteira <= maxLod) {
-                const limiar = minDistBuf[fronteira];
+                const limiar = fronteira === 1 ? limiteFino : minDistBuf[fronteira];
                 const distancia = fronteira === 1 ? balao : naBola[nodeIndex];
                 if (Math.abs(distancia - limiar) < limiar * histerese) {
                     nivel = currentLod;
@@ -513,7 +544,22 @@ function avaliarNiveis(instancia, cameraNode, maxLod, lodBaseDistance, lodMultip
     for (let nodeIndex = 0; nodeIndex < total; nodeIndex++) {
         const nodeInfo = nodeInfos[nodeIndex];
         let optimalLodIndex = nivelDoPedaco(nodeIndex, encolhimento);
-        if (aneis) optimalLodIndex = segurarNaPassagem(nodeInfo, optimalLodIndex, agora, definicoes);
+        if (aneis) {
+            optimalLodIndex = segurarNaPassagem(nodeInfo, optimalLodIndex, agora, definicoes);
+            // O segundo nível, para os pedaços que tocam a faixa de passagem:
+            // o do meio para os que têm o fino, e o fino para os que têm o
+            // do meio. Fora do ecrã, ou a sair para a malha, não há.
+            let segundo = -1;
+            if (!fora[nodeIndex] && !nodeInfo.aSair) {
+                const querFino = noBalao[nodeIndex] < limiteFino;
+                const querMeio = noBalaoLonge[nodeIndex] > lodBaseDistance * (1 - faixa) &&
+                    nivelDaBola[nodeIndex] < aneis;
+                if (optimalLodIndex === 0 && querMeio) segundo = 1;
+                else if (optimalLodIndex === 1 && querFino) segundo = 0;
+            }
+            segundo = segurarOSegundo(nodeInfo, segundo, optimalLodIndex, agora, definicoes);
+            nodeInfo.segundoNivel = segundo;
+        }
         nodeInfo.optimalLod = optimalLodIndex;
         nodeInfo.worldDistance = noBalao[nodeIndex] * encolhimento * uniformScale2;
         if (bucketScale > 0 && optimalLodIndex >= 0) {
@@ -577,6 +623,29 @@ function segurarNaPassagem(nodeInfo, nivel, agora, definicoes) {
         nodeInfo.mudouDeNivelEm = agora;
     }
     return nivel;
+}
+
+/**
+ * Bairro misto: um segundo nível que um pedaço acabou de ganhar fica pelo
+ * menos `TEMPO_SEM_VOLTAR_ATRAS`, para não estar a ser pedido e largado a
+ * cada reavaliação à beira da faixa (não se veria — à beira da faixa ele
+ * quase não conta —, mas seria trabalho e descargas à toa).
+ *
+ * @param {object} nodeInfo - O estado do pedaço no motor.
+ * @param {number} segundo - O segundo nível que a régua lhe dá (-1 = nenhum).
+ * @param {number} nivel - O nível principal pedido.
+ * @param {number} agora - O relógio, em milissegundos.
+ * @param {object} definicoes - Afinações em vigor.
+ * @returns {number} O segundo nível a ter.
+ */
+function segurarOSegundo(nodeInfo, segundo, nivel, agora, definicoes) {
+    const antes = nodeInfo.segundoNivel;
+    if (segundo < 0 && antes >= 0 && antes !== nivel && !nodeInfo.aSair && nivel >= 0 &&
+        agora - (nodeInfo.segundoDesde || 0) < definicoes.tempoSemVoltarAtras) {
+        return antes;
+    }
+    if (segundo >= 0 && segundo !== antes) nodeInfo.segundoDesde = agora;
+    return segundo;
 }
 
 /**
@@ -745,6 +814,7 @@ export function ligarLodNoCentroDaVista(app, opcoes = {}) {
         intervaloEntreRotacoes: opcoes.intervaloEntreRotacoes ?? INTERVALO_ENTRE_ROTACOES,
         conterNoAntigo: opcoes.conterNoAntigo ?? true,
         aneisDeManchas: opcoes.aneisDeManchas ?? 0,
+        faixa: opcoes.faixa ?? FAIXA_DE_PASSAGEM,
         tempoSemVoltarAtras: opcoes.tempoSemVoltarAtras ?? TEMPO_SEM_VOLTAR_ATRAS,
         // Bairro misto: os mapas onde há pedaços à espera de um prazo, e
         // quando o próximo prazo acaba (ver `segurarNaPassagem`).
