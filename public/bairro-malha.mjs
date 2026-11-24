@@ -232,7 +232,13 @@ function mexerNosNiveis(instancia) {
                 for (const [f, n, nivel] of lista) {
                     const info = this.nodeInfos[n];
                     // Se entretanto passou a ser o nível principal, fica.
-                    if (info && info.currentLod === nivel) continue;
+                    // Ou se voltou a ser pedido, como segundo, entretanto.
+                    if (info && (info.currentLod === nivel || info.segundoAtivo === nivel)) continue;
+                    // Ou se o motor o tem a caminho, para ser o principal:
+                    // sem ele, o que está à vista seria largado por nada.
+                    const aCaminho = this.pendingDecrements && this.pendingDecrements.get(n);
+                    if (aCaminho && aCaminho.newFileIndex === f) continue;
+                    if (this.pendingVisibleAdds && this.pendingVisibleAdds.get(n) === f) continue;
                     largarDeOrigem.call(this, f, n);
                 }
             }
@@ -397,6 +403,9 @@ function vigiarAsManchas(app, aoMudar, aoAcharMapa) {
     // Por pedaço: quanto se vê do nível fino e do meio, desde quando cada
     // um está no motor, e o que a grelha tem dele (fino, meio, tudo).
     let v0, v1, desde, g0, g1, gT;
+    // Níveis largados de que a lista do motor ainda fala (ela chega umas
+    // imagens atrasada), e quando cada zona pediu o segundo nível.
+    let atrasado, pedidoEm;
     // O que o motor desenha, refeito só quando a versão no ecrã muda.
     const desenhados = new Set();
     let versaoVista = -1;
@@ -555,6 +564,8 @@ function vigiarAsManchas(app, aoMudar, aoAcharMapa) {
                 v0 = new Float32Array(n);
                 v1 = new Float32Array(n);
                 desde = new Float64Array(n * 2);
+                atrasado = new Uint8Array(n * 2);
+                pedidoEm = new Float64Array(n);
                 g0 = new Float32Array(n);
                 g1 = new Float32Array(n);
                 gT = new Float32Array(n);
@@ -610,8 +621,17 @@ function vigiarAsManchas(app, aoMudar, aoAcharMapa) {
                     info.segundoAtivo = segundo;
                 } else if (info.segundoAtivo < 0 && lods[segundo] && lods[segundo].fileIndex >= 0) {
                     info.segundoAtivo = segundo;
+                    pedidoEm[i] = agora;
                     niveis.juntar(lods[segundo].fileIndex, i, segundo);
                 }
+            }
+            // O segundo nível que devia estar no motor e não está (o motor
+            // largou-o por conta dele) pede-se outra vez.
+            if (niveis && info.segundoAtivo >= 0 && agora - pedidoEm[i] > 300) {
+                pedidoEm[i] = agora;
+                const f = lods[info.segundoAtivo].fileIndex;
+                const p = instancia.filePlacements[f];
+                if (!p || !p.intervals.has(i)) niveis.juntar(f, i, info.segundoAtivo);
             }
 
             for (let nivel = 0; nivel < 2; nivel++) {
@@ -623,14 +643,20 @@ function vigiarAsManchas(app, aoMudar, aoAcharMapa) {
                 if (!tem) {
                     v = 0;
                     desde[k] = 0;
+                    atrasado[k] = desenhados.has(i * 4 + nivel) ? 1 : 0;
                 } else {
                     if (!desde[k]) desde[k] = agora;
                     const espera = agora - desde[k];
+                    const naLista = desenhados.has(i * 4 + nivel);
+                    if (atrasado[k] && (!naLista || espera > 1000)) atrasado[k] = 0;
                     if (quer) {
                         // Sobe quando já está no ecrã: a zona, neste nível,
-                        // está na lista que o motor desenha agora.
+                        // está na lista que o motor desenha agora. Espera-se
+                        // o que for preciso: um nível que ainda vem da
+                        // internet, dado por visto antes de chegar, surgia
+                        // depois de repente.
                         const seVe = sabeOQueDesenha
-                            ? desenhados.has(i * 4 + nivel) || espera >= ESPERA_MAXIMA_AO_ENTRAR
+                            ? naLista && !atrasado[k]
                             : espera >= ESPERA_MAXIMA_AO_ENTRAR / 4;
                         if (seVe) v = Math.min(1, v + passo);
                     } else {
@@ -682,7 +708,9 @@ function vigiarAsManchas(app, aoMudar, aoAcharMapa) {
  * Ensina a um material da malha a não se pintar onde a grelha diz que as
  * manchas estão inteiramente à vista (o azul cheio). Onde estão só em
  * parte (a aparecer, a desvanecer, ou na orla esbatida de uma zona), a
- * malha fica por baixo.
+ * malha fica por baixo, e a partir de 0,6 vai-se apagando ponto a ponto: ela
+ * tapa as manchas que lhe ficam por trás, e apagada de uma vez elas surgiam
+ * todas no mesmo instante.
  *
  * @param {object} material - Um material da malha.
  */
@@ -692,7 +720,7 @@ uniform sampler2D uBairroMisto;
 uniform vec4 uBairroMistoGrelha;
 `);
     material.getShaderChunks(SHADERLANGUAGE_GLSL).set('litUserMainStartPS', `
-    if (texture(uBairroMisto, (vPositionW.xz - uBairroMistoGrelha.xy) * uBairroMistoGrelha.zw).b > 0.99) {
+    if (texture(uBairroMisto, (vPositionW.xz - uBairroMistoGrelha.xy) * uBairroMistoGrelha.zw).b > mix(0.6, 0.99, fract(52.9829189 * fract(dot(floor(gl_FragCoord.xy), vec2(0.06711056, 0.00583715)))))) {
         discard;
     }
 `);
@@ -702,7 +730,7 @@ var uBairroMistoSampler: sampler;
 uniform uBairroMistoGrelha: vec4f;
 `);
     material.getShaderChunks(SHADERLANGUAGE_WGSL).set('litUserMainStartPS', `
-    if (textureSampleLevel(uBairroMisto, uBairroMistoSampler, (vPositionW.xz - uniform.uBairroMistoGrelha.xy) * uniform.uBairroMistoGrelha.zw, 0.0).b > 0.99) {
+    if (textureSampleLevel(uBairroMisto, uBairroMistoSampler, (vPositionW.xz - uniform.uBairroMistoGrelha.xy) * uniform.uBairroMistoGrelha.zw, 0.0).b > mix(0.6, 0.99, fract(52.9829189 * fract(dot(floor(pcPosition.xy), vec2f(0.06711056, 0.00583715)))))) {
         discard;
     }
 `);
