@@ -410,7 +410,8 @@
             overflow: visible;
         }
         /* Só se desenha o rato a quem tem rato, e o dedo a quem tem dedo —
-           um dedo desenhado, com a unha na ponta e a ponta onde toca. */
+           um dedo desenhado, com a unha na ponta e a ponta onde toca, e só
+           com linhas direitas, sem curvas. */
         #instrucoes .so-toque { display: none; }
         #instrucoes.por-toque .so-rato { display: none; }
         #instrucoes.por-toque .so-toque { display: inline; }
@@ -465,10 +466,10 @@
             opacity: 0;
         }
         #instrucoes .ins-pinca-a {
-            transform: translate(132px, 102px);
+            transform: translate(126px, 106px);
         }
         #instrucoes .ins-pinca-b {
-            transform: translate(168px, 78px);
+            transform: translate(174px, 74px);
         }
         #instrucoes .ins-tecla rect {
             fill: transparent;
@@ -1186,7 +1187,7 @@
                 <g class="ins-olhar-mao">
                     <rect class="ins-olhar-anel" x="-14" y="-14" width="28" height="28"></rect>
                     <path class="so-rato" fill="#ffffff" stroke="#05050a" stroke-width="1.2" stroke-linejoin="round" d="M0 0L0 22L6 16.6L10.4 26L14.3 24.2L10 15.1L17 15.1Z"></path>
-                    <g class="so-toque" transform="rotate(-18)"><path fill="#ffffff" d="M-9 2A9 9 0 0 1 9 2L10 50H-10Z"></path><path fill="none" stroke="#05050a" stroke-width="1.2" stroke-linejoin="round" d="M-10 50L-9 2A9 9 0 0 1 9 2L10 50"></path><path fill="none" stroke="#05050a" stroke-width="1.2" stroke-linejoin="round" d="M-5.5 -1A5.5 5.5 0 0 1 5.5 -1V8H-5.5Z"></path><path fill="none" stroke="#05050a" stroke-width="1" d="M-7.5 27H8"></path></g>
+                    <g class="so-toque" transform="rotate(-18)"><path fill="#ffffff" d="M-9 -7H9L10 50H-10Z"></path><path fill="none" stroke="#05050a" stroke-width="1.2" stroke-linejoin="miter" d="M-10 50L-9 -7H9L10 50"></path><path fill="none" stroke="#05050a" stroke-width="1.2" stroke-linejoin="miter" d="M-5.5 -3.5H5.5V8H-5.5Z"></path><path fill="none" stroke="#05050a" stroke-width="1" d="M-7.5 27H8"></path></g>
                 </g>
             </svg>
         </div>
@@ -1216,8 +1217,8 @@
                 </g>
                 <rect class="ins-trackpad" x="164" y="52" width="100" height="76"></rect>
                 <g class="ins-trackpad-dedos">
-                    <circle class="ins-dedo" cx="202" cy="90" r="9"></circle>
-                    <circle class="ins-dedo" cx="226" cy="90" r="9"></circle>
+                    <rect class="ins-dedo" x="194" y="82" width="16" height="16"></rect>
+                    <rect class="ins-dedo" x="218" y="82" width="16" height="16"></rect>
                 </g>
             </svg>
         </div>
@@ -1226,8 +1227,8 @@
              juntar-se, e a imagem aproxima-se e afasta-se com eles. -->
         <div class="ins-gesto" data-gesto="zoom-dedos" aria-hidden="true">
             <svg viewBox="0 0 300 180">
-                <g class="ins-pinca-a"><g transform="rotate(45)"><path fill="#ffffff" d="M-9 2A9 9 0 0 1 9 2L10 50H-10Z"></path><path fill="none" stroke="#05050a" stroke-width="1.2" stroke-linejoin="round" d="M-10 50L-9 2A9 9 0 0 1 9 2L10 50"></path><path fill="none" stroke="#05050a" stroke-width="1.2" stroke-linejoin="round" d="M-5.5 -1A5.5 5.5 0 0 1 5.5 -1V8H-5.5Z"></path><path fill="none" stroke="#05050a" stroke-width="1" d="M-7.5 27H8"></path></g></g>
-                <g class="ins-pinca-b"><g transform="rotate(-135)"><path fill="#ffffff" d="M-9 2A9 9 0 0 1 9 2L10 50H-10Z"></path><path fill="none" stroke="#05050a" stroke-width="1.2" stroke-linejoin="round" d="M-10 50L-9 2A9 9 0 0 1 9 2L10 50"></path><path fill="none" stroke="#05050a" stroke-width="1.2" stroke-linejoin="round" d="M-5.5 -1A5.5 5.5 0 0 1 5.5 -1V8H-5.5Z"></path><path fill="none" stroke="#05050a" stroke-width="1" d="M-7.5 27H8"></path></g></g>
+                <g class="ins-pinca-a"><g transform="rotate(45)"><path fill="#ffffff" d="M-9 -7H9L10 50H-10Z"></path><path fill="none" stroke="#05050a" stroke-width="1.2" stroke-linejoin="miter" d="M-10 50L-9 -7H9L10 50"></path><path fill="none" stroke="#05050a" stroke-width="1.2" stroke-linejoin="miter" d="M-5.5 -3.5H5.5V8H-5.5Z"></path><path fill="none" stroke="#05050a" stroke-width="1" d="M-7.5 27H8"></path></g></g>
+                <g class="ins-pinca-b"><g transform="rotate(-135)"><path fill="#ffffff" d="M-9 -7H9L10 50H-10Z"></path><path fill="none" stroke="#05050a" stroke-width="1.2" stroke-linejoin="miter" d="M-10 50L-9 -7H9L10 50"></path><path fill="none" stroke="#05050a" stroke-width="1.2" stroke-linejoin="miter" d="M-5.5 -3.5H5.5V8H-5.5Z"></path><path fill="none" stroke="#05050a" stroke-width="1" d="M-7.5 27H8"></path></g></g>
             </svg>
         </div>
 
@@ -2698,7 +2699,9 @@
             const olharAnel = desenhos.olhar.querySelector('.ins-olhar-anel');
             // A volta que o desenho está a dar à imagem, e a direção do
             // sítio agarrado, a partir da câmara.
-            const mostra = { desde: -1, direcao: null, amplitude: 0, volta: 0 };
+            // `fica` é o sítio a que o cursor continua agarrado depois de a
+            // mostra acabar, enquanto o desenho se apaga.
+            const mostra = { desde: -1, direcao: null, amplitude: 0, volta: 0, fica: null };
 
             const suave = (a) => (a <= 0 ? 0 : a >= 1 ? 1 : a * a * (3 - 2 * a));
             const entre = (f, de, ate) => suave((f - de) / (ate - de));
@@ -2710,6 +2713,47 @@
                 if (f < 0.71) return -1 + 2 * entre(f, 0.45, 0.71);
                 return 1 - entre(f, 0.71, 0.86);
             };
+            // ── Agarrados à imagem ──
+            // Um dedo (ou o cursor) que está a carregar não escorrega: fica
+            // sempre por cima do mesmo sítio da imagem, quer seja o desenho a
+            // mexê-la, quer seja quem está a ver. Guarda-se a direção desse
+            // sítio a partir da câmara e, a cada imagem, vê-se onde ele
+            // está no ecrã. Estas contas são sempre da imagem que vai ser
+            // desenhada agora.
+
+            // Onde estão, agora, o desenho, a tela e a lente (ou nada, se
+            // ainda não há com que fazer contas).
+            const medir = (svg) => {
+                const lente = cameraEl.getObject3D('camera');
+                const tela = scene.canvas && scene.canvas.getBoundingClientRect();
+                const quadro = svg.getBoundingClientRect();
+                const escala = quadro.width / 300;
+                if (!lente || !tela || !tela.width || !tela.height || !escala || !window.AFRAME) return null;
+                return { lente, tela, quadro, escala };
+            };
+            // A direção do sítio da imagem que está por baixo de um ponto do
+            // desenho.
+            const agarrar = (m, ponto) => {
+                const THREE = AFRAME.THREE;
+                cameraEl.object3D.updateMatrixWorld(true);
+                const px = m.quadro.left + ponto.x * m.escala - m.tela.left;
+                const py = m.quadro.top + ponto.y * m.escala - m.tela.top;
+                const longe = new THREE.Vector3(px / m.tela.width * 2 - 1, 1 - py / m.tela.height * 2, 0.5).unproject(m.lente);
+                return longe.sub(new THREE.Vector3().setFromMatrixPosition(m.lente.matrixWorld)).normalize();
+            };
+            // Onde está agora, no desenho, um sítio agarrado (nada, se ficou
+            // para trás da câmara).
+            const ondeEsta = (m, direcao) => {
+                const THREE = AFRAME.THREE;
+                cameraEl.object3D.updateMatrixWorld(true);
+                const p = new THREE.Vector3().setFromMatrixPosition(m.lente.matrixWorld).add(direcao).project(m.lente);
+                if (!Number.isFinite(p.x) || !Number.isFinite(p.y) || p.z > 1) return null;
+                return {
+                    x: ((p.x + 1) / 2 * m.tela.width + m.tela.left - m.quadro.left) / m.escala,
+                    y: ((1 - p.y) / 2 * m.tela.height + m.tela.top - m.quadro.top) / m.escala
+                };
+            };
+
             const porOCursor = (x, y, encolhe, cursor, quadrado) => {
                 olharMao.style.transform = 'translate(' + x.toFixed(2) + 'px, ' + y.toFixed(2) + 'px) scale(' + encolhe.toFixed(3) + ')';
                 olharMao.style.opacity = cursor.toFixed(3);
@@ -2722,6 +2766,7 @@
             const largarAMostra = () => {
                 const olhar = olharDaCena();
                 if (mostra.volta && olhar) olhar.yawObject.rotation.y += mostra.volta;
+                if (mostra.direcao) mostra.fica = mostra.direcao;
                 mostra.volta = 0;
                 mostra.direcao = null;
                 mostra.desde = -1;
@@ -2774,6 +2819,24 @@
             const setasBaixo = zoomRoda.querySelector('.ins-zoom-baixo');
             const pincaA = desenhos['zoom-dedos'].querySelector('.ins-pinca-a');
             const pincaB = desenhos['zoom-dedos'].querySelector('.ins-pinca-b');
+            const pincaSvg = desenhos['zoom-dedos'].querySelector('svg');
+            // Onde os dois dedos pousam, e os sítios da imagem que agarram:
+            // daí em diante vão com eles, e afastam-se exatamente o que a
+            // imagem cresce.
+            const PINCA_A = { x: 126, y: 106 };
+            const PINCA_B = { x: 174, y: 74 };
+            const dedos = { desde: -1, a: null, b: null };
+            const porOsDedos = (a, b) => {
+                if (a) pincaA.style.transform = 'translate(' + a.x.toFixed(2) + 'px, ' + a.y.toFixed(2) + 'px)';
+                if (b) pincaB.style.transform = 'translate(' + b.x.toFixed(2) + 'px, ' + b.y.toFixed(2) + 'px)';
+            };
+            const agarrarOsDedos = (m) => {
+                dedos.a = agarrar(m, PINCA_A);
+                dedos.b = agarrar(m, PINCA_B);
+            };
+            const osDedosVaoComAImagem = (m) => {
+                if (m && dedos.a) porOsDedos(ondeEsta(m, dedos.a), ondeEsta(m, dedos.b));
+            };
             // Quão perto se está a uma altura do ciclo: 0 onde se começou,
             // 1 o mais perto.
             const pertoEm = (f) => {
@@ -2793,7 +2856,7 @@
                     lente.updateProjectionMatrix();
                 }
             };
-            const mostrarOZoom = () => {
+            const mostrarOZoom = (camara) => {
                 const f = menosMovimento ? 0.5 : ((performance.now() - comecouEm) % ZOOM_CICLO) / ZOOM_CICLO;
                 const k = menosMovimento ? 0 : pertoEm(f);
                 const ver = menosMovimento ? 1 : Math.min(entre(f, 0, 0.06), 1 - entre(f, 0.92, 1));
@@ -2803,16 +2866,37 @@
                 trackpadDedos.style.opacity = ver.toFixed(3);
                 setasCima.style.opacity = aAfastar ? '0' : '1';
                 setasBaixo.style.opacity = aAfastar ? '1' : '0';
-                pincaA.style.transform = 'translate(' + (132 - 36 * k).toFixed(2) + 'px, ' + (102 + 28 * k).toFixed(2) + 'px)';
                 pincaA.style.opacity = ver.toFixed(3);
-                pincaB.style.transform = 'translate(' + (168 + 36 * k).toFixed(2) + 'px, ' + (78 - 28 * k).toFixed(2) + 'px)';
                 pincaB.style.opacity = ver.toFixed(3);
-                const lente = cameraEl.getObject3D('camera');
-                if (lente && !menosMovimento) {
-                    lente.fov = angulo * (1 - ZOOM_APERTO * k);
-                    lente.updateProjectionMatrix();
-                    zoomAMostrar = true;
+                // Passo mostrado de novo, ou um ciclo novo: os dedos voltam
+                // ao princípio, parados e ainda sem agarrar nada.
+                if (dedos.desde !== comecouEm || menosMovimento || f < 0.2) {
+                    dedos.desde = comecouEm;
+                    dedos.a = dedos.b = null;
+                    porOsDedos(PINCA_A, PINCA_B);
                 }
+                const lente = cameraEl.getObject3D('camera');
+                if (!lente || menosMovimento) return;
+                const m = passos[atual].desenho === 'zoom-dedos' ? medir(pincaSvg) : null;
+                if (m && f >= 0.2 && !dedos.a) {
+                    // Os dedos pousam: agarram o que têm por baixo.
+                    lente.fov = angulo;
+                    lente.updateProjectionMatrix();
+                    agarrarOsDedos(m);
+                }
+                lente.fov = angulo * (1 - ZOOM_APERTO * k);
+                lente.updateProjectionMatrix();
+                zoomAMostrar = true;
+                if (!m) return;
+                // A imagem cresce a partir do meio dos dois dedos, e não do
+                // meio do ecrã: a vista inclina-se o bastante para esse
+                // sítio não sair de onde está.
+                const acima = m.tela.top + m.tela.height / 2 -
+                    (m.quadro.top + (PINCA_A.y + PINCA_B.y) / 2 * m.escala);
+                const focal = (abertura) => m.tela.height / 2 / Math.tan(abertura * RAD / 2);
+                camara.rotation.x = Math.max(-INCLINACAO_MAXIMA, Math.min(INCLINACAO_MAXIMA,
+                    camara.rotation.x + Math.atan(acima / focal(angulo)) - Math.atan(acima / focal(lente.fov))));
+                osDedosVaoComAImagem(m);
             };
 
             // ── O teclado mostrado ──
@@ -2857,12 +2941,33 @@
             };
 
             const olharNaCamara = (camara) => {
-                if (!aberta) return;
-                vigiar();
+                if (caixa.hidden) return;
+                if (aberta) {
+                    // Se o gesto foi feito agora, a volta que o desenho dava
+                    // acabou de passar para a mão de cima: conta já nesta
+                    // imagem, senão a vista dava um salto de uma imagem.
+                    const olhar = olharDaCena();
+                    const antes = olhar ? [olhar.yawObject.rotation.y, olhar.pitchObject.rotation.x] : null;
+                    vigiar();
+                    if (antes) {
+                        camara.rotation.y += olhar.yawObject.rotation.y - antes[0];
+                        camara.rotation.x += olhar.pitchObject.rotation.x - antes[1];
+                    }
+                }
                 const passo = passos[atual];
-                if (!passo || feitos.has(atual)) return;
+                const aMostrar = aberta && passo && !feitos.has(atual) ? passo.desenho : '';
+                // Um desenho que se está a apagar continua agarrado à
+                // imagem: quem está a ver já a anda a mexer, e o dedo não pode
+                // ficar para trás, a escorregar por cima dela.
+                if (aMostrar !== 'olhar' && mostra.fica) {
+                    const m = medir(olharSvg);
+                    const aqui = m && ondeEsta(m, mostra.fica);
+                    if (aqui) porOCursor(aqui.x, aqui.y, 0.86, Number(olharMao.style.opacity), Number(olharAnel.style.opacity));
+                }
+                if (aMostrar !== 'zoom-dedos' && dedos.a) osDedosVaoComAImagem(medir(pincaSvg));
+                if (!aMostrar) return;
                 if (passo.desenho === 'zoom-roda' || passo.desenho === 'zoom-dedos') {
-                    mostrarOZoom();
+                    mostrarOZoom(camara);
                     return;
                 }
                 if (passo.desenho === 'teclado') {
@@ -2877,18 +2982,15 @@
                 // Passo mostrado de novo: o ciclo volta ao princípio.
                 if (mostra.desde !== comecouEm) {
                     largarAMostra();
+                    mostra.fica = null;
                     mostra.desde = comecouEm;
                 }
                 const f = ((performance.now() - comecouEm) % OLHAR_CICLO) / OLHAR_CICLO;
                 const cursor = Math.min(entre(f, 0, 0.06), 1 - entre(f, 0.92, 1));
                 const quadrado = Math.min(entre(f, OLHAR_CARREGA, OLHAR_CARREGA + 0.03), 1 - entre(f, 0.86, 0.89));
                 const encolhe = 1 - 0.14 * quadrado;
-                const caixaDoDesenho = olharSvg.getBoundingClientRect();
-                const escala = caixaDoDesenho.width / 300;
-                const lente = cameraEl.getObject3D('camera');
-                const tela = scene.canvas && scene.canvas.getBoundingClientRect();
-                const THREE = window.AFRAME && AFRAME.THREE;
-                if (f < OLHAR_CARREGA || !lente || !tela || !tela.width || !tela.height || !escala || !THREE) {
+                const m = medir(olharSvg);
+                if (f < OLHAR_CARREGA || !m) {
                     // Ainda parado: o cursor no meio do desenho, e um ciclo
                     // novo por começar (o anterior acabou de volta ao meio).
                     mostra.direcao = null;
@@ -2900,25 +3002,16 @@
                     // O botão desce: agarra-se o sítio que está debaixo da
                     // ponta do cursor, e mede-se quanto se roda para ele
                     // andar o alcance do desenho.
-                    camara.updateMatrixWorld(true);
-                    const px = caixaDoDesenho.left + OLHAR_MEIO.x * escala - tela.left;
-                    const py = caixaDoDesenho.top + OLHAR_MEIO.y * escala - tela.top;
-                    const longe = new THREE.Vector3(px / tela.width * 2 - 1, 1 - py / tela.height * 2, 0.5).unproject(lente);
-                    const daqui = new THREE.Vector3().setFromMatrixPosition(lente.matrixWorld);
-                    mostra.direcao = longe.sub(daqui).normalize();
-                    const focal = tela.height / 2 / Math.tan((lente.fov || 80) * RAD / 2);
-                    mostra.amplitude = Math.atan((OLHAR_ALCANCE * escala) / focal);
+                    mostra.direcao = agarrar(m, OLHAR_MEIO);
+                    const focal = m.tela.height / 2 / Math.tan((m.lente.fov || 80) * RAD / 2);
+                    mostra.amplitude = Math.atan((OLHAR_ALCANCE * m.escala) / focal);
                 }
-                // A imagem roda pela curva…
+                // A imagem roda pela curva, e o cursor vai para onde o sítio
+                // agarrado está agora.
                 mostra.volta = mostra.amplitude * ladoEm(f);
                 camara.rotation.y += mostra.volta;
-                camara.updateMatrixWorld(true);
-                // …e o cursor vai para onde o sítio agarrado está agora.
-                const daqui = new THREE.Vector3().setFromMatrixPosition(lente.matrixWorld);
-                const noEcra = daqui.add(mostra.direcao).project(lente);
-                const x = ((noEcra.x + 1) / 2 * tela.width + tela.left - caixaDoDesenho.left) / escala;
-                const y = ((1 - noEcra.y) / 2 * tela.height + tela.top - caixaDoDesenho.top) / escala;
-                porOCursor(Number.isFinite(x) ? x : OLHAR_MEIO.x, Number.isFinite(y) ? y : OLHAR_MEIO.y, encolhe, cursor, quadrado);
+                const aqui = ondeEsta(m, mostra.direcao) || OLHAR_MEIO;
+                porOCursor(aqui.x, aqui.y, encolhe, cursor, quadrado);
             };
             instrucoesNaCamara = olharNaCamara;
 
@@ -3035,6 +3128,16 @@
                 const passo = passos[atual];
                 if (!passo || passo.gesto !== nome || feitos.has(atual)) return;
                 if (performance.now() - comecouEm < 350) return;
+                // O desenho vai apagar-se com a imagem já a mexer: se ainda
+                // não tinha agarrado nada, agarra agora (ver `olharNaCamara`).
+                if (passo.desenho === 'olhar' && !mostra.direcao) {
+                    const m = medir(olharSvg);
+                    if (m) mostra.fica = agarrar(m, OLHAR_MEIO);
+                }
+                if (passo.desenho === 'zoom-dedos' && !dedos.a) {
+                    const m = medir(pincaSvg);
+                    if (m) agarrarOsDedos(m);
+                }
                 largarAMostra();
                 largarOZoom();
                 largarAsTeclas();
@@ -3171,6 +3274,9 @@
 
         const handleInteractionEnd = (clientX, clientY, target, porToque) => {
             if (target.closest('.video-controls') || target.closest('#play-overlay') || target.closest('.big-play-btn')) return;
+            // Enquanto se pratica, o filme espera parado: um toque na imagem
+            // não o põe a andar por baixo dos desenhos.
+            if (document.body.classList.contains('com-instrucoes')) return;
 
             const dx = clientX - mousedownPos.x;
             const dy = clientY - mousedownPos.y;
@@ -3195,6 +3301,7 @@
         window.addEventListener('dblclick', (e) => {
             const alvo = e.target;
             if (!alvo || alvo.tagName.toLowerCase() !== 'canvas') return;
+            if (document.body.classList.contains('com-instrucoes')) return;
             clearTimeout(cliqueSozinho);
             saltar(e.clientX < window.innerWidth / 2 ? -SALTO : SALTO);
         });
