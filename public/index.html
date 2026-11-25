@@ -43,7 +43,7 @@
      *    deste) e volta para aqui, já com a língua que se tinha escolhido.
      *  - `bairro`: o código correu, mas o bairro nunca chegou ao ecrã. Pode
      *    ser a placa gráfica a não aguentar a qualidade escolhida à mão,
-     *    por isso a qualidade volta à escolha automática.
+     *    por isso passa-se para a que vem a seguir, mais leve.
      *
      * Uma visita que se fecha a meio do arranque deixa a marca também —
      * quem carrega em F5 por impaciência, quem fecha o separador e volta a
@@ -91,7 +91,10 @@
                 return;
             }
             if (anterior.fase === 'bairro' && idade < 5 * 60 * 1000 && vistoAntes >= PACIENCIA_BAIRRO) {
-                apagar('quality');
+                // Escolhida à mão, continua a ser à mão: só desce um modo.
+                var escolhida = ler('quality');
+                if (escolhida === 'high' || escolhida === 'max') escrever('quality', 'med');
+                else if (escolhida === 'med') escrever('quality', 'low');
             }
         }
         if (acabadoDeReparar && window.history.replaceState) {
@@ -151,7 +154,7 @@
 
     <!-- As línguas do site. Fica antes de tudo o resto para o texto
          nascer já na língua certa, sem piscar em português primeiro. -->
-    <script src="/idiomas.js?v=67"></script>
+    <script src="/idiomas.js?v=68"></script>
     <script src="/contar.js?v=1"></script>
     <script src="/legendas.js?v=4"></script>
 
@@ -329,6 +332,10 @@
            sozinho (ver o guião do ecrã de espera). */
         #loading-overlay[data-momento="abertura"] .loading-square,
         #loading-overlay[data-momento="regresso"] .loading-logotipo {
+            display: none;
+        }
+
+        #carga-ficar[hidden] {
             display: none;
         }
 
@@ -2309,7 +2316,7 @@
         }
 
         /* O botão é uma tecla, como as do rodapé: só o traço e a letra. */
-        #recenter-btn, #ecra-iphone-ok {
+        #recenter-btn, #ecra-iphone-ok, #carga-ficar {
             background: transparent;
             color: var(--color-text);
             border: 2.5px solid rgba(255, 255, 255, 0.25);
@@ -2324,11 +2331,11 @@
             transition: background 0.15s ease, border-color 0.15s ease, transform 0.1s;
         }
 
-        #recenter-btn:hover, #ecra-iphone-ok:hover {
+        #recenter-btn:hover, #ecra-iphone-ok:hover, #carga-ficar:hover {
             background: rgba(255, 255, 255, 0.1);
             border-color: rgba(255, 255, 255, 0.45);
         }
-        #recenter-btn:active, #ecra-iphone-ok:active {
+        #recenter-btn:active, #ecra-iphone-ok:active, #carga-ficar:active {
             transform: scale(0.97);
         }
 
@@ -3377,7 +3384,11 @@
                 <div class="loading-logotipo" id="loading-logotipo" role="img" aria-label="Malha Viva" data-i18n-aria="site.nome"></div>
                 <div class="loading-square" id="loading-square" aria-hidden="true"></div>
             </div>
-            <div class="loading-text" data-i18n="carga.modelo">A carregar modelo 3D…</div>
+            <div class="loading-text" data-i18n="carga.modelo" role="status">A carregar modelo 3D…</div>
+            <!-- Só aparece enquanto se carrega o modo Alto, que é grande (ver
+                 `mostrarACargaDoAlto`): numa ligação lenta ninguém fica preso
+                 à espera dele. -->
+            <button type="button" id="carga-ficar" data-i18n="carga.ficar" hidden>Ficar no Médio</button>
         </div>
     </div>
 
@@ -3465,10 +3476,13 @@
      *  - Baixo: o dos telemóveis — o bairro todo em malha, sem descarregar as
      *    manchas.
      *
-     * Quem visita pode escolher um; se não escolher, o site escolhe sozinho,
-     * conforme a fluidez com que o bairro anda neste aparelho (ver
-     * `escolha-de-qualidade.mjs` e `escolherPelaFluidez`). O que se mediu fica
-     * guardado, para a visita seguinte abrir logo no modo certo.
+     * De origem é o site que escolhe, conforme a fluidez com que o bairro anda
+     * neste aparelho (ver `escolha-de-qualidade.mjs` e `medirAFluidez`); o que
+     * se mediu fica guardado, para a visita seguinte abrir logo no modo certo.
+     * Mal quem visita escolhe um modo no menu, o site deixa de escolher, nessa
+     * visita e nas seguintes: a partir daí só muda quem escolhe. (A única
+     * excepção é a placa gráfica desistir: aí desce-se um modo, que é melhor
+     * do que um ecrã preto — ver `placaGrafica`.)
      *
      * Guardam-se duas coisas no navegador:
      *  - `quality`: o modo escolhido por quem visita; sem ele, é o site que
@@ -3529,7 +3543,7 @@
                 return MODOS.indexOf(q) >= 0 ? q : null;
             },
 
-            /** Guarda a escolha de quem visita (`null`: escolhe o site). */
+            /** Guarda a escolha de quem visita. */
             escolher: function (modo) { guardar('quality', modo); },
 
             /**
@@ -3592,10 +3606,7 @@
                 for (var k = 0; k < (vezes || 1); k++) lista.push(Date.now());
                 m.quedas[modo] = lista.slice(-4);
                 guardar('qualidade-medida', JSON.stringify(m));
-            },
-
-            /** Esquece o que se mediu. */
-            esquecer: function () { guardar('qualidade-medida', null); }
+            }
         };
         window.qualidade = qualidade;
     })();
@@ -3614,8 +3625,8 @@
      *
      * Desce-se um degrau de cada vez, a recarregar a página:
      *  1. do Alto para o Médio, e do Médio para o Baixo. Se o modo tinha
-     *     sido escolhido à mão, a escolha passa a ser do site, que fica a
-     *     saber que aquele não cabe neste aparelho;
+     *     sido escolhido à mão, continua a ser à mão, um abaixo; se não, o
+     *     site fica a saber que aquele não cabe neste aparelho;
      *  2. já no Baixo, o modo de poupança, a pedir muito menos ao aparelho;
      *  3. se já se estava em poupança e mesmo assim não deu, diz-se com
      *     todas as letras, com um botão para tentar de novo — e a porta do
@@ -3723,9 +3734,12 @@
             // Sem memória, recarregar dava o mesmo: segue-se para o degrau
             // seguinte.
             if (!q.persiste()) return false;
-            if (k > 0) q.registarQueda(modo, 2);
-            q.escolher(null);
-            q.guardarMedido(novo);
+            if (q.escolhida()) {
+                q.escolher(novo);
+            } else {
+                if (k > 0) q.registarQueda(modo, 2);
+                q.guardarMedido(novo);
+            }
             placa.desistida = true;
             const letreiro = mostrarEcraDeEspera();
             if (letreiro) letreiro.textContent = t('gpu.maisLeve', 'Este aparelho está com dificuldade em mostrar o bairro neste modo. A passar para um mais leve…');
@@ -4342,14 +4356,10 @@
                         <line x1="19" y1="5" x2="5" y2="19"></line>
                     </svg>
                 </button>
-                <!-- Com a escolha automática ligada, o modo assinalado é o
-                     que o site está a usar; carregar num deles desliga-a. -->
+                <!-- O modo assinalado é o que está em uso. De origem foi o site
+                     que o escolheu; carregar num deles passa a mandar. -->
                 <div class="settings-title" data-i18n="def.qualidade">Qualidade Gráfica</div>
                 <div class="settings-options">
-                    <label class="settings-radio">
-                        <input type="checkbox" id="qualidade-automatica">
-                        <span data-i18n="def.auto">Escolha automática</span>
-                    </label>
                     <label class="settings-radio">
                         <input type="radio" name="quality" value="high" id="radio-high">
                         <span data-i18n="def.alto">Alto (Muito Detalhe)</span>
@@ -4363,10 +4373,6 @@
                         <span data-i18n="def.baixo">Baixo (Mais Performance)</span>
                     </label>
                 </div>
-                <!-- Só aparece enquanto o detalhe do Alto está a chegar (ver
-                     `crescerAte`): sem isto, numa ligação lenta parecia que
-                     escolher o Alto não fazia nada. -->
-                <p id="qualidade-a-chegar" class="settings-nota" role="status" data-i18n="def.aChegar" hidden>O detalhe do Alto está a chegar: aparece aos poucos, do mais perto para o mais longe. Da primeira vez pode demorar uns minutos.</p>
                 <!-- Só aparece no modo de poupança (ver `setQuality`): diz
                      porque é que nenhum modo está escolhido. -->
                 <p id="qualidade-poupanca" class="settings-nota" data-i18n="def.poupanca" hidden>O aparelho ficou sem memória gráfica e o bairro está a poupá-la. Escolhe um modo para sair da poupança.</p>
@@ -6177,9 +6183,9 @@
         import { whenReady } from '@playcanvas/web-components';
         import { Vec3 } from 'playcanvas';
         import { ligarLodNoCentroDaVista } from './lod-foco.mjs?v=13';
-        import { medirACargaDoBairro } from './carga-do-bairro.mjs?v=2';
+        import { medirACargaDoBairro } from './carga-do-bairro.mjs?v=3';
         import { criarAfinadorDeFluidez, construirEscada } from './fluidez.mjs?v=2';
-        import { criarEscolhaDeModo } from './escolha-de-qualidade.mjs?v=3';
+        import { criarEscolhaDeModo } from './escolha-de-qualidade.mjs?v=4';
         import { criarModoVR } from './vr.mjs?v=16';
         import { ligarCeu } from './ceu.mjs?v=16';
         import { ligarEdificios } from './edificios.mjs?v=6';
@@ -6404,24 +6410,26 @@
         let modo = window.actualQuality;
         let automatica = !emPoupanca && !qualidade.escolhida();
 
-        /** Assinala no menu o modo em uso, e quem o escolheu. */
+        /** Assinala no menu o modo em uso. */
         function mostrarQualidade() {
             // No modo de poupança (a placa gráfica desistiu nesta visita: ver
             // "Quando a placa gráfica desiste") o bairro não está em nenhum dos
             // modos: nenhum fica marcado, e a frase por baixo diz porquê — e
             // assim qualquer um se pode escolher para sair dela.
-            document.getElementById('qualidade-automatica').checked = automatica;
             qualidade.MODOS.forEach((m) => {
                 document.getElementById('radio-' + m).checked = !emPoupanca && m === modo;
             });
             const nota = document.getElementById('qualidade-poupanca');
             if (nota) nota.hidden = !emPoupanca;
-            const aChegar = document.getElementById('qualidade-a-chegar');
-            if (aChegar) aChegar.hidden = !crescer;
         }
-        let crescer = null;
         mostrarQualidade();
 
+        // A conta do que chegou das manchas (carga-do-bairro.mjs), e o bairro
+        // inteiro, quando foi pedido para o Alto (`trazerTudo`).
+        let cargaDasManchas = null;
+        let tudo = null;
+        // O que o ecrã de espera está a contar, quando é o do modo Alto.
+        let cargaDoAlto = null;
 
         function showUI() {
             overlay.classList.add('hidden');
@@ -6484,8 +6492,8 @@
          * Põe o bairro num modo, sem recarregar a página.
          *
          * Entre o Alto e o Médio só muda até onde vai o pormenor, e cada zona
-         * passa de um nível ao outro a desvanecer. A subir, a distância cresce
-         * aos poucos (ver `crescerAte`).
+         * passa de um nível ao outro a desvanecer. Para o Alto, o bairro
+         * inteiro já cá tem de estar (ver `passarAoAlto`).
          * No Baixo, numa página que abriu com manchas, elas desvanecem-se todas
          * para a malha e a memória delas é largada.
          *
@@ -6514,9 +6522,8 @@
                 foco.reavaliarEm = 1;
             }
             if (novo === 'low') {
-                clearInterval(crescer);
-                crescer = null;
-                mostrarQualidade();
+                if (tudo) tudo.soltar();
+                tudo = null;
                 return;
             }
 
@@ -6524,45 +6531,160 @@
             if (splatEl && splatEl.entity && splatEl.entity.gsplat) {
                 splatEl.entity.gsplat.lodMultiplier = VEZES_DO_MEIO;
             }
-            crescerAte(app, DISTANCIA_DO_DETALHE[novo]);
+            porDistancia(DISTANCIA_DO_DETALHE[novo]);
         }
 
         /**
-         * Leva a distância do detalhe até à do modo. A descer, de uma vez; a
-         * subir, anel a anel: cada um só se pede depois de o anterior chegar.
-         * Pedido tudo ao mesmo tempo, o que está perto vinha misturado com o
-         * que está longe — e numa ligação lenta o que se tinha à frente dos
-         * olhos ficava desfocado meio minuto.
+         * Pede o bairro inteiro, para o Alto.
+         *
+         * @param {boolean} depressa - Se se aproveita a ligação toda (com um
+         *     ecrã de espera por cima) ou se vem devagar, por trás de quem anda
+         *     a passear.
+         */
+        function trazerOBairroInteiro(depressa) {
+            if (!cargaDasManchas) return null;
+            tudo = cargaDasManchas.trazerTudo({ niveis: 2, aoMesmoTempo: depressa ? 6 : 2 });
+            return tudo;
+        }
+
+        /** Mostra que o ecrã de espera está a carregar o Alto, e deixa sair. */
+        function mostrarACargaDoAlto(sim) {
+            const letreiro = overlay.querySelector('.loading-text');
+            const ficar = document.getElementById('carga-ficar');
+            if (letreiro) {
+                letreiro.textContent = sim
+                    ? (window.Idiomas && window.Idiomas.t('carga.alto')) || 'A carregar o modo Alto…'
+                    : (window.Idiomas && window.Idiomas.t('carga.modelo')) || 'A carregar modelo 3D…';
+            }
+            if (ficar) ficar.hidden = !sim;
+        }
+
+        /**
+         * Espera que o bairro inteiro cá esteja e se veja no Alto.
+         *
+         * Traz tudo de uma vez, e só depois põe a distância do Alto: cada zona
+         * encontra logo o que precisa, e quando a espera acaba não falta vir
+         * nada. Se a ligação ficar muda (nada chega durante um bocado, à
+         * vista), desiste-se de esperar: o que falta há-de chegar por trás.
          *
          * @param {object} app - A aplicação 3D.
-         * @param {number} alvo - A distância do modo.
+         * @param {{cancelada: boolean}} espera - Posta a `cancelada` por quem
+         *     carrega em "Ficar no Médio".
+         * @returns {Promise<boolean>} Se se chegou ao Alto.
          */
-        function crescerAte(app, alvo) {
-            // Ao fim deste tempo o anel seguinte pede-se na mesma: quem anda
-            // sem parar tem sempre alguma coisa a chegar.
-            const PACIENCIA = 8000;
-            clearInterval(crescer);
-            crescer = null;
-            porDistancia(Math.min(window.distanciaDoDetalhe || DISTANCIA_DO_DETALHE.med, alvo));
-            if (window.distanciaDoDetalhe < alvo) {
-                let desde = performance.now();
-                crescer = setInterval(() => {
-                    // Com a página escondida nada se desenha, nem se pede.
-                    if (document.hidden) return;
-                    const aChegar = bairroAChegar(app);
-                    if (window.distanciaDoDetalhe >= alvo) {
-                        if (aChegar) return;
-                        clearInterval(crescer);
-                        crescer = null;
-                        mostrarQualidade();
+        function esperarPeloAlto(app, espera) {
+            const SILENCIO = 25000;     // sem chegar nada, desiste-se
+            const ASSENTAR = 10000;     // com tudo cá, para se ver tudo
+            const conta = trazerOBairroInteiro(true);
+            if (!conta) return Promise.resolve(false);
+            return new Promise((resolve) => {
+                let maior = -1;
+                let silencio = 0;
+                let antes = performance.now();
+                let posto = false;
+                let imagens = 0;
+                let assentar = 0;
+                const acabar = (chegou) => {
+                    app.off('frameend', ver);
+                    resolve(chegou);
+                };
+                const ver = () => {
+                    const agora = performance.now();
+                    // Com a página escondida não se desenha, e o tempo não conta.
+                    const passou = Math.min(agora - antes, 500);
+                    antes = agora;
+                    if (espera.cancelada || (window.placaGrafica && window.placaGrafica.desistida)) {
+                        acabar(false);
                         return;
                     }
-                    if (aChegar && performance.now() - desde < PACIENCIA) return;
-                    porDistancia(Math.min(alvo, window.distanciaDoDetalhe * 1.35));
-                    desde = performance.now();
-                }, 500);
+                    if (!posto) {
+                        const fraccao = conta.medir();
+                        if (fraccao !== null && fraccao > maior) {
+                            maior = fraccao;
+                            silencio = 0;
+                        } else {
+                            silencio += passou;
+                        }
+                        if (!conta.pronto() && silencio < SILENCIO) return;
+                        posto = true;
+                        aplicarModo('high');
+                        return;
+                    }
+                    // O motor só reavalia de dez em dez imagens: dá-se-lhe tempo
+                    // antes de perguntar se já está.
+                    assentar += passou;
+                    if (++imagens < 40) return;
+                    if (bairroAssente(app) || assentar >= ASSENTAR) acabar(true);
+                };
+                app.on('frameend', ver);
+            });
+        }
+
+        // A passagem para o Alto que está a decorrer, com ecrã de espera.
+        let passagem = null;
+
+        /**
+         * Passa do Médio (ou do Baixo, sem recarregar) ao Alto, com o ecrã de
+         * espera por cima até o bairro estar todo cá.
+         *
+         * @param {object} app - A aplicação 3D.
+         */
+        function passarAoAlto(app) {
+            // Já cá está tudo: muda-se sem esperar.
+            if (tudo && tudo.pronto()) {
+                aplicarModo('high');
+                return;
             }
-            mostrarQualidade();
+            const espera = passagem = { cancelada: false };
+            const menu = document.getElementById('definicoes-menu');
+            if (menu) menu.classList.remove('open');
+            mostrarACargaDoAlto(true);
+            overlay.classList.remove('hidden');
+            esperarPeloAlto(app, espera).then((chegou) => {
+                if (passagem !== espera) return;
+                passagem = null;
+                cargaDoAlto = null;
+                if (window.placaGrafica && window.placaGrafica.desistida) return;
+                if (chegou && window.barraDeCarga) window.barraDeCarga.peloMenos(1);
+                if (!chegou) ficarNoMedio();
+                overlay.classList.add('hidden');
+                setTimeout(() => { if (!passagem) mostrarACargaDoAlto(false); }, 800);
+            });
+            cargaDoAlto = tudo;
+        }
+
+        /** Desiste do Alto que estava a carregar. */
+        function ficarNoMedio() {
+            if (tudo) tudo.soltar();
+            tudo = null;
+            if (qualidade.escolhida()) qualidade.escolher('med');
+            else qualidade.guardarMedido('med');
+            if (escolhaDoModo) escolhaDoModo.por('med');
+            aplicarModo('med');
+        }
+        document.getElementById('carga-ficar').addEventListener('click', () => {
+            if (passagem) passagem.cancelada = true;
+        });
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && passagem) passagem.cancelada = true;
+        });
+
+        /**
+         * Diz se o bairro está tal como o modo o quer: nada a chegar, cada zona
+         * no nível que merece, e nenhuma a meio de desvanecer.
+         */
+        function bairroAssente(app) {
+            if (bairroAChegar(app)) return false;
+            const foco = window.lodFoco;
+            if (!foco || !foco.mapasMistos) return true;
+            for (const mapa of foco.mapasMistos) {
+                for (const info of mapa.nodeInfos) {
+                    if (info.optimalLod !== info.currentLod) return false;
+                    if (info.currentLod >= 0 && !(info.vista >= 0.99)) return false;
+                    if (info.aDesvanecer && info.aDesvanecer.size) return false;
+                }
+            }
+            return true;
         }
 
         /**
@@ -6603,7 +6725,7 @@
         /**
          * Mede o tempo de cada imagem, e faz duas coisas com ele:
          *
-         *  - com a escolha automática ligada, escolhe o modo (ver
+         *  - enquanto quem visita não escolher um modo, escolhe-o (ver
          *    `escolha-de-qualidade.mjs`). Passa de um para outro sem recarregar
          *    a página. Numa página que abriu no Baixo não há manchas para onde
          *    subir: se houver folga, fica guardado que a visita seguinte pode
@@ -6645,7 +6767,15 @@
                 modos: qualidade.MODOS,
                 partida: modo,
                 parado,
-                ocupado: () => bairroAChegar(app),
+                ocupado: () => bairroAChegar(app) || !!passagem || (!!tudo && !tudo.pronto()),
+                // Para o Alto, o bairro inteiro vem primeiro, devagar e por
+                // trás: quem anda a passear não é interrompido por um ecrã de
+                // espera que não pediu. Quando cá está tudo, muda-se de uma vez.
+                pronto: (m) => {
+                    if (paginaDeMalha || m !== 'high') return true;
+                    const conta = trazerOBairroInteiro(false);
+                    return !conta || conta.pronto();
+                },
                 postoDeParte: (m) => qualidade.postoDeParte(m),
                 // No Baixo só se sobe com a imagem inteira, e fora dos
                 // aparelhos que ficam sempre nele.
@@ -6656,6 +6786,11 @@
                     qualidade.guardarMedido(m);
                     // Sem manchas nesta página, é para a visita seguinte.
                     if (paginaDeMalha) return;
+                    // Desceu por aperto: larga-se o que o Alto segurava.
+                    if (m !== 'high' && tudo) {
+                        tudo.soltar();
+                        tudo = null;
+                    }
                     aplicarModo(m);
                 }
             });
@@ -6672,8 +6807,8 @@
         }
 
         /**
-         * Muda o modo gráfico, a pedido de quem visita (`null`: passa a
-         * escolher o site).
+         * Muda o modo gráfico, a pedido de quem visita. A partir daqui é quem
+         * visita que escolhe: o site deixa de mudar de modo sozinho.
          *
          * Escolher manda sempre. Quando a placa gráfica fica sem memória a
          * meio de uma visita, a página desce para o modo de poupança, e essa
@@ -6685,18 +6820,17 @@
          * não couber no aparelho, a descida recomeça do princípio.
          *
          * Só se recarrega a página quando o bairro é outro: para o Baixo, do
-         * Baixo, e para sair da poupança.
+         * Baixo, e para sair da poupança. Para o Alto há um ecrã de espera (ver
+         * `passarAoAlto`); para o Médio, vindo do Alto, já cá está tudo.
          *
-         * @param {string|null} escolhido - O modo escolhido.
+         * @param {string} escolhido - O modo escolhido.
          */
         function setQuality(escolhido) {
+            const eraAutomatica = automatica;
             qualidade.escolher(escolhido);
-            // Pedida de novo, a escolha automática começa do princípio: o que se
-            // mediu antes pode já não ser verdade.
-            if (escolhido === null) qualidade.esquecer();
-            const alvo = escolhido || (paginaDeMalha ? qualidade.deAbertura() : modo);
+            automatica = false;
 
-            if (emPoupanca || paginaDeMalha !== (alvo === 'low')) {
+            if (emPoupanca || paginaDeMalha !== (escolhido === 'low')) {
                 try {
                     sessionStorage.removeItem('poupanca');
                     sessionStorage.removeItem('motor-sem-desenho');
@@ -6704,9 +6838,19 @@
                 window.location.reload();
                 return;
             }
-            automatica = escolhido === null;
-            if (escolhaDoModo) escolhaDoModo.por(alvo);
-            aplicarModo(alvo);
+            if (escolhaDoModo) escolhaDoModo.por(escolhido);
+            const pcApp = document.querySelector('pc-app');
+            const app = pcApp && pcApp.app;
+            if (escolhido === 'high' && modo !== 'high' && app) {
+                passarAoAlto(app);
+                return;
+            }
+            // O Alto que o site estava a trazer por trás já não é preciso.
+            if (eraAutomatica && escolhido !== 'high' && modo !== 'high' && tudo && !tudo.pronto()) {
+                tudo.soltar();
+                tudo = null;
+            }
+            aplicarModo(escolhido);
         }
 
         // O ecrã inteiro.
@@ -7108,16 +7252,11 @@
             input.addEventListener('change', (e) => {
                 setQuality(e.target.value);
             });
-            // Com a escolha automática, carregar no modo que ela já tem posto
-            // não é uma mudança para o navegador, mas é uma escolha: fica-se
-            // com ele.
+            // Carregar no modo que o site já tem posto não é uma mudança para o
+            // navegador, mas é uma escolha: fica-se com ele.
             input.addEventListener('click', (e) => {
                 if (automatica && e.target.value === modo) setQuality(modo);
             });
-        });
-        document.getElementById('qualidade-automatica').addEventListener('change', (e) => {
-            // Desligada, fica-se no modo em que se está.
-            setQuality(e.target.checked ? null : modo);
         });
 
         // --- Anotações: ligar/desligar cada tipo ---
@@ -7353,10 +7492,16 @@
             window.bairroMalha.primeira.then(() => {
                 if (window.arranque) window.arranque.marcar('bairro');
             });
-            // Abre-se sempre com o pormenor do Médio: no Alto, o resto chega
-            // depois de o bairro estar à vista (ver `aplicarModo`).
+            // Abre-se com o pormenor do Médio. No Alto, o bairro inteiro vem logo
+            // atrás, ainda com o ecrã de espera posto, e só então se abre (ver
+            // `esperarPeloAlto`).
             if (!paginaDeMalha) window.distanciaDoDetalhe = DISTANCIA_DO_DETALHE.med;
-            const cargaDasManchas = window.bairroEmMalha ? null : medirACargaDoBairro(app);
+            cargaDasManchas = window.bairroEmMalha ? null : medirACargaDoBairro(app);
+            if (modo === 'high' && !paginaDeMalha) {
+                trazerOBairroInteiro(true);
+                mostrarACargaDoAlto(true);
+                passagem = { cancelada: false };
+            }
             let soAsManchas = false;
             const cargaDoBairro = window.bairroEmMalha
                 ? { medir: window.bairroMalha.medir, recomecar() {} }
@@ -7386,7 +7531,7 @@
                 if (aVista && !ecraDeEsperaAVista) cargaDoBairro.recomecar();
                 ecraDeEsperaAVista = aVista;
                 if (!aVista || !window.barraDeCarga) return;
-                const fraccao = cargaDoBairro.medir();
+                const fraccao = cargaDoAlto ? cargaDoAlto.medir() : cargaDoBairro.medir();
                 if (fraccao !== null) window.barraDeCarga.peloMenos(fraccao);
             });
 
@@ -7442,7 +7587,6 @@
             });
 
             vigiarAPlacaGrafica(app);
-            vigiarAEntrada(app);
 
             // --- Comando de jogo ---
             // Os dois sticks já andavam pelo bairro por conta do motor; o
@@ -7532,82 +7676,6 @@
                 if (device.canvas) device.canvas.addEventListener('webglcontextlost', desistiu);
                 if (device.wgpu && device.wgpu.lost && device.wgpu.lost.then) device.wgpu.lost.then(desistiu, () => {});
                 if (typeof device.on === 'function') device.on('devicelost', desistiu);
-            }
-
-            /**
-             * Quando a qualidade escolhida à mão não aguenta a entrada.
-             *
-             * Uma qualidade escolhida à mão fica guardada para as visitas
-             * seguintes — também num aparelho que não a aguenta, ou depois de
-             * o aparelho mudar (outro ecrã, a bateria a poupar). O bairro entra
-             * então aos solavancos, uma imagem de longe a longe, e quem chega
-             * não tem como saber que a culpa é de uma escolha antiga. Isto
-             * conta as imagens nos primeiros segundos à vista: se andarem
-             * abaixo de IMAGENS_MINIMAS por segundo durante JANELA segundos
-             * seguidos, passa-se para o modo a seguir, mais leve, e a escolha
-             * passa a ser do site.
-             *
-             * Com a escolha automática não há nada a fazer aqui: é ela que
-             * trata disso (ver `medirAFluidez`). Só se conta com a página à vista e
-             * fora dos óculos; e as primeiras imagens não contam, que essas
-             * demoram sempre, a preparar o desenho.
-             *
-             * @param {object} app - A aplicação 3D.
-             */
-            function vigiarAEntrada(app) {
-                const placa = window.placaGrafica;
-                if (automatica || emPoupanca || paginaDeMalha || window.modoVRpedido || !placa) return;
-                const AQUECER = 3;          // segundos à vista antes de contar
-                const VIGIAR = 45;          // segundos à vista em que se vigia
-                const JANELA = 8;           // segundos seguidos aos solavancos
-                const IMAGENS_MINIMAS = 6;  // imagens por segundo
-                let imagens = 0;
-                let visto = 0;
-                let lento = 0;
-                let antes = performance.now();
-                const contar = () => { imagens++; };
-                app.on('frameend', contar);
-                const parar = () => {
-                    clearInterval(relogio);
-                    app.off('frameend', contar);
-                };
-                // O tempo vem do relógio a sério, e não do número de voltas:
-                // com o aparelho aflito, uma volta de um segundo pode
-                // demorar três.
-                const relogio = setInterval(() => {
-                    const agora = performance.now();
-                    const passou = (agora - antes) / 1000;
-                    antes = agora;
-                    const destaVez = imagens;
-                    imagens = 0;
-                    const parado = document.hidden ||
-                        (app.xr && app.xr.active) ||
-                        document.body.classList.contains('em-cartao');
-                    if (parado || placa.desistida) {
-                        lento = 0;
-                        return;
-                    }
-                    // Entretanto passou a escolher o site.
-                    if (automatica) {
-                        parar();
-                        return;
-                    }
-                    visto += passou;
-                    if (visto <= AQUECER) return;
-                    lento = destaVez / Math.max(passou, 0.001) < IMAGENS_MINIMAS ? lento + passou : 0;
-                    if (lento >= JANELA) {
-                        parar();
-                        const leve = qualidade.MODOS[Math.max(0, qualidade.MODOS.indexOf(modo) - 1)];
-                        qualidade.escolher(null);
-                        qualidade.registarQueda(modo, 2);
-                        qualidade.guardarMedido(leve);
-                        automatica = true;
-                        if (escolhaDoModo) escolhaDoModo.por(leve);
-                        aplicarModo(leve);
-                        return;
-                    }
-                    if (visto >= AQUECER + VIGIAR) parar();
-                }, 1000);
             }
 
             /**
@@ -7895,9 +7963,17 @@
 
             // O ecrã de espera só sai quando o bairro estiver mesmo lá — e
             // aí, com tudo chegado, o logótipo está inteiro.
-            esperarPeloBairro(app, cargaDasManchas).then(() => {
+            const abrirNoAlto = passagem;
+            const oAlto = abrirNoAlto
+                ? esperarPeloAlto(app, abrirNoAlto).then((chegou) => {
+                    passagem = null;
+                    if (!chegou && !(window.placaGrafica && window.placaGrafica.desistida)) ficarNoMedio();
+                })
+                : Promise.resolve();
+            oAlto.then(() => esperarPeloBairro(app, cargaDasManchas)).then(() => {
                 if (window.barraDeCarga) window.barraDeCarga.peloMenos(1);
                 showUIOnce();
+                setTimeout(() => { if (!passagem) mostrarACargaDoAlto(false); }, 800);
             });
         });
 
@@ -7924,6 +8000,14 @@
                     const motor = document.querySelector('pc-app');
                     if (!(motor && motor.app) && window.placaGrafica) {
                         window.placaGrafica.semMotor();
+                        return;
+                    }
+                    // A carregar o Alto inteiro, o limite é o dele: desiste se a
+                    // ligação ficar muda (ver `esperarPeloAlto`), e quem não quer
+                    // esperar tem onde carregar.
+                    if (passagem) {
+                        parar();
+                        andar();
                         return;
                     }
                     showUIOnce();

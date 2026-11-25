@@ -58,8 +58,6 @@
             'ecra.iphoneBotao': 'Percebi',
 
             'def.qualidade': 'Qualidade Gráfica',
-            'def.auto': 'Escolha automática',
-            'def.aChegar': 'O detalhe do Alto está a chegar: aparece aos poucos, do mais perto para o mais longe. Da primeira vez pode demorar uns minutos.',
             'def.alto': 'Alto (Muito Detalhe)',
             'def.medio': 'Médio (Equilibrado)',
             'def.baixo': 'Baixo (Mais Performance)',
@@ -121,6 +119,8 @@
 
             'carga.modelo': 'A carregar modelo 3D…',
             'carga.restaurar': 'A restaurar ambiente 3D…',
+            'carga.alto': 'A carregar o modo Alto…',
+            'carga.ficar': 'Ficar no Médio',
             'gpu.aTentar': 'O aparelho ficou sem memória gráfica. A tentar de novo com menos detalhe…',
             'gpu.desistiu': 'Este aparelho não consegue mostrar o bairro em 3D.',
             'gpu.botao': 'Tentar de novo',
@@ -520,8 +520,6 @@
             'ecra.iphoneBotao': 'Got it',
 
             'def.qualidade': 'Graphics Quality',
-            'def.auto': 'Choose automatically',
-            'def.aChegar': 'The High detail is arriving: it appears little by little, nearest first. The first time it can take a few minutes.',
             'def.alto': 'High (Lots of Detail)',
             'def.medio': 'Medium (Balanced)',
             'def.baixo': 'Low (Best Performance)',
@@ -583,6 +581,8 @@
 
             'carga.modelo': 'Loading 3D model…',
             'carga.restaurar': 'Restoring 3D environment…',
+            'carga.alto': 'Loading High mode…',
+            'carga.ficar': 'Stay on Medium',
             'gpu.aTentar': 'The device ran out of graphics memory. Trying again with less detail…',
             'gpu.desistiu': 'This device cannot display the neighbourhood in 3D.',
             'gpu.botao': 'Try again',
@@ -971,8 +971,6 @@
             'ecra.iphoneBotao': 'Entendido',
 
             'def.qualidade': 'Calidad Gráfica',
-            'def.auto': 'Elección automática',
-            'def.aChegar': 'El detalle del Alto está llegando: aparece poco a poco, de lo más cercano a lo más lejano. La primera vez puede tardar unos minutos.',
             'def.alto': 'Alto (Mucho Detalle)',
             'def.medio': 'Medio (Equilibrado)',
             'def.baixo': 'Bajo (Más Rendimiento)',
@@ -1034,6 +1032,8 @@
 
             'carga.modelo': 'Cargando modelo 3D…',
             'carga.restaurar': 'Restaurando entorno 3D…',
+            'carga.alto': 'Cargando el modo Alto…',
+            'carga.ficar': 'Quedarse en Medio',
             'gpu.aTentar': 'El dispositivo se quedó sin memoria gráfica. Intentando de nuevo con menos detalle…',
             'gpu.desistiu': 'Este dispositivo no puede mostrar el barrio en 3D.',
             'gpu.botao': 'Intentar de nuevo',
@@ -1422,8 +1422,6 @@
             'ecra.iphoneBotao': 'Dja N intendi',
 
             'def.qualidade': 'Kualidadi di imajen',
-            'def.auto': 'Skodje automátiku',
-            'def.aChegar': 'Detalhi di Altu sta ta txiga: ta parse poku poku, di más pertu pa más lonji. Purmeru bes pode dura uns minutu.',
             'def.alto': 'Altu (Txeu detalhi)',
             'def.medio': 'Médiu (Ekilibradu)',
             'def.baixo': 'Baxu (Más rapidez)',
@@ -1485,6 +1483,8 @@
 
             'carga.modelo': 'Ta karega modelu 3D…',
             'carga.restaurar': 'Ta restaura anbienti 3D…',
+            'carga.alto': 'Ta karega modu Altu…',
+            'carga.ficar': 'Fika na Médiu',
             'gpu.aTentar': 'Aparelhu fika sen memória gráfika. Ta tenta di novu ku ménus detalhi…',
             'gpu.desistiu': 'Es aparelhu ka konsigi mostra bairu na 3D.',
             'gpu.botao': 'Tenta di novu',

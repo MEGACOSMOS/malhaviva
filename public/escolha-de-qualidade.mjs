@@ -86,6 +86,8 @@ const TAMANHO_DO_DIARIO = 40;
  * @param {function(string): boolean} [opcoes.postoDeParte] - Diz se um modo
  *     está posto de parte (caiu-se dele vezes a mais).
  * @param {function(): boolean} [opcoes.podeSubir] - Diz se agora se pode subir.
+ * @param {function(string): boolean} [opcoes.pronto] - Diz se um modo acima já
+ *     se pode pôr; se não, começa a prepará-lo, e volta-se a perguntar.
  * @param {function(): boolean} [opcoes.ocupado] - Diz se o bairro ainda está a
  *     chegar.
  * @param {function(): boolean} [opcoes.parado] - Diz se não se deve medir.
@@ -97,6 +99,7 @@ export function criarEscolhaDeModo(opcoes) {
     const parado = opcoes.parado || (() => false);
     const ocupado = opcoes.ocupado || (() => false);
     const podeSubir = opcoes.podeSubir || (() => true);
+    const pronto = opcoes.pronto || (() => true);
     const postoDeParte = opcoes.postoDeParte || (() => false);
     const aoCair = opcoes.aoCair || (() => {});
 
@@ -199,6 +202,7 @@ export function criarEscolhaDeModo(opcoes) {
         const acima = indice + 1;
         if (acima >= modos.length || postoDeParte(modos[acima]) ||
             agora - caiuEm[acima] < ESPERA_DEPOIS_DE_CAIR || !podeSubir()) return;
+        if (!pronto(modos[acima])) return;
         subiuEm = agora;
         mudarPara(acima, agora, ASSENTAR_DEPOIS_DE_SUBIR, 'folga');
     }

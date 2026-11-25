@@ -62,10 +62,11 @@ function mapasEmUso(app) {
  * Começa a ouvir o motor e devolve a conta de quanto do bairro já chegou.
  *
  * @param {object} app - A aplicação 3D.
- * @returns {{medir: function(): (number|null), recomecar: function()}}
+ * @returns {{medir: function(): (number|null), recomecar: function(), trazerTudo: function()}}
  *     `medir` dá a fracção que já chegou, de zero a um, ou `null` se o
  *     motor ainda não decidiu o que vai pedir; `recomecar` esquece o que
- *     foi trazido antes, para quando o ecrã de espera volta.
+ *     foi trazido antes, para quando o ecrã de espera volta; `trazerTudo`
+ *     traz o bairro inteiro de uma vez (o modo Alto).
  */
 export function medirACargaDoBairro(app) {
     const eBocado = (asset) => !!asset &&
@@ -165,6 +166,12 @@ export function medirACargaDoBairro(app) {
                     if (fi >= 0) precisos.add(octree.files[fi].url);
                 }
             }
+            // Com o bairro inteiro pedido, é preciso tudo o que ainda não veio.
+            if (tudo) {
+                octree.files.forEach((ficheiro, i) => {
+                    if (tudo.serve(ficheiro) && !octree.getFileResource(i)) precisos.add(ficheiro.url);
+                });
+            }
 
             // E os que já foram pedidos, cheguem ou não a ficar.
             for (const asset of app.assets.list()) {
@@ -193,5 +200,129 @@ export function medirACargaDoBairro(app) {
         trazidos = new Set();
     }
 
-    return { medir, medirBytes, recomecar };
+    // O bairro inteiro, se foi pedido (ver `trazerTudo`).
+    let tudo = null;
+
+    /**
+     * Traz o bairro inteiro de uma vez — todos os pedaços dos níveis que se
+     * usam — e segura-o na memória: depois disso não falta vir mais nada,
+     * ande-se por onde se andar, e passa-se do Médio ao Alto e do Alto ao
+     * Médio sem esperar.
+     *
+     * O motor larga cada pedaço que deixa de usar, ao fim de um instante.
+     * Aqui conta-se como mais um a usá-los (é a conta dele, a das
+     * referências de cada ficheiro), e por isso ficam.
+     *
+     * Pedido outra vez enquanto vale, é o mesmo.
+     *
+     * @param {object} [opcoes]
+     * @param {number} [opcoes.niveis] - Quantos níveis, a contar do mais fino.
+     * @param {number} [opcoes.aoMesmoTempo] - Quantos pedaços se trazem ao
+     *     mesmo tempo. O motor traz dois; com mais aproveita-se a ligação
+     *     toda, mas a câmara fica aos soluços: é para quando há um ecrã de
+     *     espera por cima.
+     * @returns {{pronto: function(): boolean, medir: function(): (number|null),
+     *     serve: function(object): boolean, soltar: function(): void}}
+     *     `pronto` diz se já cá está tudo (um pedaço que falhou de vez não
+     *     conta: no lugar dele fica o que houver); `medir` a fracção do que
+     *     faltava que já veio, ou `null` se ainda não se sabe; `soltar`
+     *     desiste e larga o que não está a ser usado.
+     */
+    function trazerTudo({ niveis = 2, aoMesmoTempo = 2 } = {}) {
+        if (tudo) {
+            tudo.apressar(aoMesmoTempo);
+            return tudo;
+        }
+        let octree = null;
+        let presos = [];
+        let faltavam = null;
+        let quadro = 0;
+        let limiteDeOrigem = 2;
+        let limite = aoMesmoTempo;
+        const serve = (ficheiro) => ficheiro.lodLevel >= 0 && ficheiro.lodLevel < niveis;
+
+        const falhou = (i) => !!(octree.assetLoader && octree.assetLoader.hasFailed &&
+            octree.assetLoader.hasFailed(octree.files[i].url));
+        const pronto = () => !!octree && presos.every((i) => octree.getFileResource(i) || falhou(i));
+
+        const porLimite = (n) => {
+            const quemTraz = octree && octree.assetLoader;
+            if (!quemTraz || !('maxConcurrentLoads' in quemTraz)) return;
+            quemTraz.maxConcurrentLoads = n;
+            if (typeof quemTraz._processQueue === 'function') quemTraz._processQueue();
+        };
+
+        const passo = () => {
+            if (!octree) {
+                const mapa = mapasEmUso(app).find((m) => m.octree && m.octree.files &&
+                    typeof m.octree.incRefCount === 'function' &&
+                    typeof m.octree.ensureFileResource === 'function');
+                if (!mapa) return;
+                octree = mapa.octree;
+                const { manchas } = pesos(octree);
+                faltavam = new Map();
+                octree.files.forEach((ficheiro, i) => {
+                    if (!serve(ficheiro)) return;
+                    if (!octree.getFileResource(i)) faltavam.set(ficheiro.url, manchas.get(ficheiro.url) || 0);
+                    octree.incRefCount(i);
+                    presos.push(i);
+                });
+                if (octree.assetLoader && octree.assetLoader.maxConcurrentLoads > 0) {
+                    limiteDeOrigem = octree.assetLoader.maxConcurrentLoads;
+                }
+                porLimite(Math.max(limite, limiteDeOrigem));
+            }
+            // De dez em dez imagens, como o motor faz: pede o que falta, e
+            // arruma o que chegou.
+            if (quadro++ % 10) return;
+            let falta = false;
+            for (const i of presos) {
+                if (octree.getFileResource(i) || falhou(i)) continue;
+                falta = true;
+                octree.ensureFileResource(i);
+            }
+            if (!falta) {
+                app.off('update', passo);
+                porLimite(limiteDeOrigem);
+            }
+        };
+        app.on('update', passo);
+
+        function medirOQueFaltava() {
+            if (!faltavam) return null;
+            let total = 0;
+            let veio = 0;
+            for (const [endereco, peso] of faltavam) {
+                const asset = app.assets.getByUrl(endereco);
+                const i = pesos(octree).indice.get(endereco);
+                const parte = octree.getFileResource(i) || falhou(i) || (asset && asset.loaded)
+                    ? 1 : (chegou.get(endereco) || 0);
+                total += peso;
+                veio += peso * parte;
+            }
+            return total > 0 ? veio / total : 1;
+        }
+
+        tudo = {
+            serve,
+            pronto,
+            medir: medirOQueFaltava,
+            apressar(n) {
+                limite = Math.max(limite, n);
+                if (octree && !pronto()) porLimite(Math.max(limite, limiteDeOrigem));
+            },
+            soltar() {
+                app.off('update', passo);
+                if (octree) {
+                    porLimite(limiteDeOrigem);
+                    presos.forEach((i) => octree.decRefCount(i, octree.cooldownTicks));
+                }
+                presos = [];
+                tudo = null;
+            }
+        };
+        return tudo;
+    }
+
+    return { medir, medirBytes, recomecar, trazerTudo };
 }

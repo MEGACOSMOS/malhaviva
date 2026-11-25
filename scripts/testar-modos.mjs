@@ -2,11 +2,12 @@
  * Prova dos modos de qualidade (Baixo, Médio, Alto) e da escolha automática,
  * num Chrome à parte com a placa gráfica a sério.
  *
- * Confere que cada modo abre como deve, que se passa de um para outro sem
- * recarregar quando se pode, que a escolha automática sobe com folga e desce
- * com um peso artificial, que o que se mediu fica para a visita seguinte, que
- * as escolhas antigas (`auto` e `max`) ainda se entendem, e que uma queda da
- * placa gráfica passa para o modo mais leve.
+ * Confere que cada modo abre como deve; que do Médio para o Alto há um ecrã de
+ * espera, e que quando ele sai está tudo carregado, ande-se por onde se andar;
+ * que a escolha automática sobe com folga e desce com um peso artificial, sem
+ * interromper ninguém; que mal se escolhe à mão o site deixa de escolher; que o
+ * que se mediu fica para a visita seguinte; que as escolhas antigas (`auto` e
+ * `max`) ainda se entendem; e que uma queda da placa gráfica desce um modo.
  *
  *     bun scripts/testar-modos.mjs [http://localhost:8000] [--fotos=pasta]
  *
@@ -95,7 +96,7 @@ async function abrir(preparar) {
     await avaliar(`localStorage.setItem('instrucoes-vistas', '1'); ${preparar || ''}; 1`);
     await enviar('Page.navigate', { url: origem + '/' });
     await dormir(1500);
-    return esperar(aberto, 90);
+    return esperar(aberto, 240);
 }
 const estado = async () => JSON.parse(await avaliar(`(() => {
     const app = document.querySelector('pc-app').app;
@@ -107,7 +108,10 @@ const estado = async () => JSON.parse(await avaliar(`(() => {
     if (inst) inst.nodeInfos.forEach((n) => { if (n.currentLod === 0) finos++; else if (n.currentLod === 1) meios++; });
     return JSON.stringify({
         modo: window.actualQuality, misto: !!window.bairroMisto, malha: !!window.bairroEmMalha,
-        automatica: document.getElementById('qualidade-automatica').checked,
+        automatica: !window.qualidade.escolhida(),
+        aChegar: (() => { let n = 0; if (dados) for (const l of dados.layersMap.values()) { const w = l.gsplatManager && l.gsplatManager.world; if (w) n += w.pendingLoadCount; } return n; })(),
+        ficheiros: inst ? inst.octree.files.filter((f, i) => f.lodLevel < 2 && inst.octree.getFileResource(i)).length + '/' + inst.octree.files.filter((f) => f.lodLevel >= 0 && f.lodLevel < 2).length : null,
+        porAcertar: inst ? inst.nodeInfos.filter((n) => n.currentLod !== n.optimalLod || (n.currentLod >= 0 && !(n.vista >= 0.99))).length : 0,
         marcado: (document.querySelector('input[name=quality]:checked') || {}).value || null,
         botoes: [...document.querySelectorAll('input[name=quality]')].map((i) => i.value).join(' '),
         guardada: localStorage.getItem('quality'), medida: JSON.parse(localStorage.getItem('qualidade-medida') || 'null'),
@@ -131,37 +135,117 @@ async function foto(nome) {
 }
 const pesar = (ms) => avaliar(`(() => { window.__peso = ${ms}; if (!window.__pesado) { window.__pesado = true; document.querySelector('pc-app').app.on('update', () => { const f = performance.now() + (window.__peso || 0); while (performance.now() < f) { /* peso */ } }); } return 1; })()`);
 
+const ecraPosto = `!document.getElementById('loading-overlay').classList.contains('hidden')`;
+const ecraFora = `document.getElementById('loading-overlay').classList.contains('hidden')`;
+const ficarAVista = `(() => { const b = document.getElementById('carga-ficar'); return !b.hidden && b.getBoundingClientRect().height > 10; })()`;
+const rede = (mbit) => enviar('Network.emulateNetworkConditions', { offline: mbit === 0, latency: mbit === null ? 0 : 30, downloadThroughput: mbit ? mbit * 125000 : -1, uploadThroughput: mbit ? 1e6 : -1 });
+await enviar('Network.enable');
+// Passeia pelo bairro e diz quantas vezes alguma coisa teve de vir da rede.
+const passear = async () => {
+    let vezes = 0;
+    for (const [x, z, fx, fz] of [[-150, -120, -60, -60], [120, 60, 40, 0], [0, 180, 0, 60], [-40, -200, 0, -100], [60, -60, 130, -120]]) {
+        await por(x, 18, z, fx, 0, fz);
+        for (let k = 0; k < 6; k++) { await dormir(250); if ((await estado()).aChegar > 0) vezes++; }
+    }
+    return vezes;
+};
+const limpo = 'localStorage.removeItem("quality"); localStorage.removeItem("qualidade-medida")';
+
 // --- Aparelho novo, escolha automática ----------------------------------
-verificar('abre num aparelho novo', await abrir('localStorage.removeItem("quality"); localStorage.removeItem("qualidade-medida")'));
+verificar('abre num aparelho novo', await abrir(limpo));
 let e = await estado();
-verificar('só há três modos no menu: Alto, Médio e Baixo', e.botoes === 'high med low', e.botoes);
-verificar('um aparelho novo abre no Médio, com a escolha automática ligada', e.modo === 'med' && e.automatica && e.marcado === 'med' && e.misto, e);
+verificar('só há três modos no menu: Alto, Médio e Baixo', e.botoes === 'high med low' && await avaliar(`!document.getElementById('qualidade-automatica')`), e.botoes);
+verificar('um aparelho novo abre no Médio, escolhido pelo site', e.modo === 'med' && e.automatica && e.marcado === 'med' && e.misto, e);
 await por(-30, 25, 70, 10, 0, 10);
 let antes = cargas;
-verificar('com folga, sobe sozinho ao Alto', await esperar(`window.actualQuality === 'high'`, 180), await estado());
-verificar('o pormenor cresce até à distância do Alto', await esperar(`window.distanciaDoDetalhe === 600`, 180), await estado());
-await dormir(12000);
+await avaliar(`window.__ecra = 0; new MutationObserver(() => { if (${ecraPosto}) window.__ecra++; }).observe(document.getElementById('loading-overlay'), { attributes: true, attributeFilter: ['class'] }); 1`);
+verificar('com folga, sobe sozinho ao Alto', await esperar(`window.actualQuality === 'high'`, 240), await estado());
 e = await estado();
-verificar('sobe sem recarregar a página, e o menu acompanha', cargas === antes && e.marcado === 'high' && e.automatica, e);
-verificar('no Alto há muito mais pedaços finos', e.finos > 400, e);
+verificar('... só depois de cá estar tudo', e.aChegar === 0 && e.ficheiros.split('/')[0] === e.ficheiros.split('/')[1] && e.distancia === 600, e);
+await dormir(5000);
+e = await estado();
+verificar('... sem recarregar e sem ecrã de espera, e o menu acompanha', cargas === antes && e.marcado === 'high' && e.automatica && await avaliar('window.__ecra === 0'), e);
+verificar('no Alto há muito mais pedaços finos', e.finos > 700 && e.porAcertar === 0, e);
 verificar('o Alto fica guardado para a visita seguinte', e.medida && e.medida.modo === 'high' && e.guardada === null, e);
 await foto('alto');
-await carregar('definicoes-btn');
-await dormir(500);
+await clicar('#definicoes-btn');
+await dormir(800);
 await foto('menu');
 verificar('a visita seguinte abre logo no Alto', await abrir() && (await estado()).modo === 'high', await estado());
+e = await estado();
+verificar('... e quando o ecrã de espera sai está tudo carregado', e.aChegar === 0 && e.porAcertar === 0 && e.distancia === 600 && e.finos > 700, e);
 
-// --- À mão ----------------------------------------------------------------
+// --- Do Médio para o Alto, à mão, com o rato e a câmara parada -----------
+await abrir(limpo + '; localStorage.setItem("quality", "med")');
+await dormir(2000);
 antes = cargas;
+e = await estado();
+const finosNoMedio = e.finos;
+verificar('aberto no Médio, escolhido à mão', e.modo === 'med' && !e.automatica && e.distancia === 100, e);
+await clicar('#definicoes-btn');
+await clicar('#radio-high');
+await dormir(300);
+verificar('escolher o Alto põe o ecrã de espera, e fecha o menu', await avaliar(`${ecraPosto} && !document.getElementById('definicoes-menu').classList.contains('open')`), null);
+verificar('... que diz que é o Alto, e deixa ficar no Médio', await avaliar(`document.querySelector('#loading-overlay .loading-text').textContent.includes('Alto') && ${ficarAVista}`), null);
+await dormir(900);
+await foto('ecra-do-alto');
+verificar('... e sai quando o bairro está pronto', await esperar(ecraFora, 240), await estado());
+e = await estado();
+verificar('quando sai está tudo disponível: nada a chegar, tudo no nível certo', e.modo === 'high' && e.distancia === 600 && e.aChegar === 0 && e.porAcertar === 0 && e.finos > finosNoMedio + 500 && cargas === antes, e);
+verificar('... todos os pedaços, do bairro inteiro', e.ficheiros.split('/')[0] === e.ficheiros.split('/')[1], e.ficheiros);
+verificar('... e a escolha fica guardada', e.guardada === 'high' && e.marcado === 'high', e);
+verificar('passear pelo bairro no Alto não traz mais nada', await passear() === 0, await estado());
+await clicar('#definicoes-btn');
+await clicar('#radio-med');
+await dormir(300);
+verificar('do Alto para o Médio não há espera', await avaliar(ecraFora), null);
+await dormir(4000);
+e = await estado();
+verificar('... e o detalhe encolhe', e.modo === 'med' && e.distancia === 100 && e.marcado === 'med', e);
+verificar('passear no Médio também já não traz mais nada', await passear() === 0, await estado());
+await clicar('#radio-high');
+await dormir(300);
+verificar('voltar ao Alto, com tudo cá, não tem espera', await avaliar(ecraFora) && (await estado()).modo === 'high', await estado());
+
+// --- Ficar no Médio, e uma ligação que se cala ----------------------------
+await rede(12);
+await abrir('localStorage.setItem("quality", "med")');
+await enviar('Network.setCacheDisabled', { cacheDisabled: true });
+await clicar('#definicoes-btn');
+await clicar('#radio-high');
+await dormir(5000);
+const luz = await avaliar(ecraPosto);
+verificar('com a ligação lenta, o ecrã de espera fica', luz === true, luz);
+await foto('ecra-do-alto-a-meio');
+await clicar('#carga-ficar');
+await dormir(2500);
+e = await estado();
+verificar('"Ficar no Médio" sai da espera, e fica no Médio à mão', await avaliar(ecraFora) && e.modo === 'med' && e.guardada === 'med' && e.marcado === 'med' && e.distancia === 100, e);
+await clicar('#definicoes-btn');
+await clicar('#radio-high');
+await dormir(4000);
+await rede(0);
+verificar('se a ligação se calar, desiste de esperar', await esperar(ecraFora, 60), await estado());
+await rede(null);
+await enviar('Network.setCacheDisabled', { cacheDisabled: false });
+
+// --- À mão, e para ficar ------------------------------------------------
+await abrir(limpo);
+await clicar('#definicoes-btn');
+await clicar('#radio-med');
+e = await estado();
+verificar('carregar no modo que o site já tem posto também é escolher', !e.automatica && e.guardada === 'med' && e.modo === 'med', e);
 await por(-30, 25, 70, 10, 0, 10);
-await carregar('radio-med');
-await dormir(500);
+await dormir(25000);
 e = await estado();
-verificar('escolher o Médio: sem recarregar, e desliga a escolha automática', cargas === antes && e.modo === 'med' && !e.automatica && e.guardada === 'med' && e.distancia === 100, e);
-await dormir(15000);
-e = await estado();
-verificar('à mão, não muda sozinho', e.modo === 'med' && e.distancia === 100, e);
+verificar('depois de escolher à mão, com folga não sobe', e.modo === 'med' && e.distancia === 100, e);
 await foto('medio');
+await pesar(120);
+await dormir(20000);
+e = await estado();
+verificar('... e com peso não desce', e.modo === 'med' && !e.automatica, e);
+await pesar(0);
+antes = cargas;
 await carregar('radio-low');
 await dormir(2000);
 verificar('escolher o Baixo: abre na malha, como no telemóvel', await esperar(aberto, 60) && cargas === antes + 1, cargas - antes);
@@ -170,44 +254,19 @@ verificar('no Baixo não há manchas do bairro', e.malha && !e.misto && e.modo =
 await por(-30, 25, 70, 10, 0, 10);
 await dormir(3000);
 await foto('baixo');
-await carregar('qualidade-automatica');
+await carregar('radio-high');
 await dormir(2000);
-verificar('ligar a escolha automática no Baixo: volta ao Médio', await esperar(aberto, 60), null);
+verificar('do Baixo para o Alto: abre de novo', await esperar(aberto, 240), null);
 e = await estado();
-verificar('... e o menu diz que é o site que escolhe', e.modo === 'med' && e.automatica && e.misto, e);
-
-// --- À mão, com o menu aberto e a câmara parada ------------------------
-await abrir('localStorage.setItem("quality", "med")');
-await dormir(2000);
-antes = cargas;
-e = await estado();
-const finosNoMedio = e.finos;
-await clicar('#definicoes-btn');
-await clicar('#radio-high');
-await dormir(1000);
-e = await estado();
-verificar('escolher o Alto no menu: fica logo assinalado, sem recarregar', cargas === antes && e.modo === 'high' && e.marcado === 'high' && !e.automatica && e.guardada === 'high', e);
-verificar('... e diz que o detalhe está a chegar', await avaliar(`!document.getElementById('qualidade-a-chegar').hidden && document.getElementById('qualidade-a-chegar').getBoundingClientRect().height > 10`), null);
-await foto('menu-a-chegar');
-verificar('... e o detalhe chega com o menu aberto e a câmara parada', await esperar(`(() => { for (const m of window.lodFoco.mapasMistos) { let n = 0; m.nodeInfos.forEach((i) => { if (i.currentLod === 0) n++; }); return n > ${finosNoMedio} + 500; } return false; })()`, 240), await estado());
-verificar('... e no fim deixa de o dizer', await esperar(`document.getElementById('qualidade-a-chegar').hidden`, 240), await estado());
-await clicar('#radio-med');
-await dormir(4000);
-e = await estado();
-verificar('voltar ao Médio com o menu aberto: o detalhe encolhe', e.modo === 'med' && e.finos < finosNoMedio + 100, e);
-await abrir('localStorage.removeItem("quality"); localStorage.removeItem("qualidade-medida")');
-await clicar('#definicoes-btn');
-await clicar('#radio-med');
-e = await estado();
-verificar('com a escolha automática, carregar no modo já assinalado fica com ele', !e.automatica && e.guardada === 'med' && e.modo === 'med', e);
+verificar('... já no Alto, com tudo carregado', e.modo === 'high' && e.misto && e.aChegar === 0 && e.porAcertar === 0 && e.distancia === 600 && !e.automatica, e);
 
 // --- Desce com peso -------------------------------------------------------
-await abrir('localStorage.removeItem("quality"); localStorage.removeItem("qualidade-medida")');
+await abrir(limpo);
 await por(-30, 25, 70, 10, 0, 10);
 await dormir(6000);
 antes = cargas;
 await pesar(70);
-verificar('com um peso de 70 ms por imagem, desce ao Baixo sozinho', await esperar(`window.actualQuality === 'low'`, 30), await estado());
+verificar('sem escolha à mão, com um peso de 70 ms por imagem desce ao Baixo', await esperar(`window.actualQuality === 'low'`, 30), await estado());
 await pesar(0);
 await dormir(6000);
 e = await estado();
@@ -228,39 +287,46 @@ e = await estado();
 verificar('quem tinha o Máximo abre no Alto, escolhido à mão', e.modo === 'high' && !e.automatica && e.marcado === 'high', e);
 await abrir('localStorage.setItem("quality", "auto")');
 e = await estado();
-verificar('quem tinha o Automático fica com a escolha automática', e.modo === 'med' && e.automatica, e);
+verificar('quem tinha o Automático fica com a escolha do site', e.modo === 'med' && e.automatica, e);
 
 // --- A placa gráfica cai --------------------------------------------------
+const cair = () => avaliar(`document.querySelector('pc-app').app.graphicsDevice.gl.getExtension('WEBGL_lose_context').loseContext(); 1`);
 await abrir('localStorage.removeItem("qualidade-medida"); localStorage.setItem("quality", "high")');
-await avaliar(`document.querySelector('pc-app').app.graphicsDevice.gl.getExtension('WEBGL_lose_context').loseContext(); 1`);
+await cair();
 await dormir(4000);
-verificar('a placa cai no Alto: volta a abrir', await esperar(aberto, 60), null);
+verificar('a placa cai no Alto escolhido à mão: volta a abrir', await esperar(aberto, 60), null);
 e = await estado();
-verificar('... no Médio, com a escolha automática', e.modo === 'med' && e.automatica && e.guardada === null, e);
-await avaliar(`document.querySelector('pc-app').app.graphicsDevice.gl.getExtension('WEBGL_lose_context').loseContext(); 1`);
+verificar('... no Médio, ainda à mão', e.modo === 'med' && !e.automatica && e.guardada === 'med', e);
+await cair();
 await dormir(4000);
 await esperar(aberto, 60);
 e = await estado();
-verificar('a placa cai no Médio: abre no Baixo', e.modo === 'low' && e.malha && (await avaliar('!window.modoDePoupanca')), e);
-await avaliar(`document.querySelector('pc-app').app.graphicsDevice.gl.getExtension('WEBGL_lose_context').loseContext(); 1`);
+verificar('a placa cai no Médio: abre no Baixo, ainda à mão', e.modo === 'low' && e.malha && e.guardada === 'low' && (await avaliar('!window.modoDePoupanca')), e);
+await cair();
 await dormir(4000);
 await esperar(aberto, 60);
 e = await estado();
 verificar('a placa cai no Baixo: modo de poupança, sem modo marcado', (await avaliar('window.modoDePoupanca')) === true && e.marcado === null, e);
 await avaliar('sessionStorage.clear(); 1');
+await abrir('localStorage.removeItem("quality"); localStorage.setItem("qualidade-medida", JSON.stringify({ modo: "high", quando: Date.now(), quedas: {} }))');
+await cair();
+await dormir(4000);
+await esperar(aberto, 60);
+e = await estado();
+verificar('a placa cai no Alto escolhido pelo site: abre no Médio, e o Alto fica de parte', e.modo === 'med' && e.automatica && e.medida.quedas.high.length === 2, e);
 
 // --- Telemóvel ------------------------------------------------------------
 await enviar('Emulation.setUserAgentOverride', { userAgent: 'Mozilla/5.0 (Linux; Android 14; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Mobile Safari/537.36' });
 await enviar('Emulation.setDeviceMetricsOverride', { width: 412, height: 915, deviceScaleFactor: 2.625, mobile: true });
 await enviar('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 5 });
-await abrir('localStorage.removeItem("quality"); localStorage.removeItem("qualidade-medida")');
+await abrir(limpo);
 e = await estado();
-verificar('no telemóvel abre no Baixo, com a escolha automática', e.modo === 'low' && e.malha && e.automatica, e);
+verificar('no telemóvel abre no Baixo, escolhido pelo site', e.modo === 'low' && e.malha && e.automatica, e);
 await dormir(20000);
 e = await estado();
 verificar('... e nunca guarda que pode subir', !e.medida || e.medida.modo === 'low', e);
 
-const aSerio = erros.filter((x) => !/registry already|CONTEXT_LOST|context lost|Failed to load resource/i.test(x));
+const aSerio = erros.filter((x) => !/registry already|CONTEXT_LOST|context lost|Failed to load resource|ERR_INTERNET_DISCONNECTED|Error loading|Failed to fetch/i.test(x));
 verificar('sem erros na consola', aSerio.length === 0, aSerio.slice(0, 4));
 console.log(falhas ? `\n${falhas} com falha.` : '\nTudo certo.');
 await enviar('Page.navigate', { url: 'about:blank' });
