@@ -151,7 +151,7 @@
 
     <!-- As línguas do site. Fica antes de tudo o resto para o texto
          nascer já na língua certa, sem piscar em português primeiro. -->
-    <script src="/idiomas.js?v=66"></script>
+    <script src="/idiomas.js?v=67"></script>
     <script src="/contar.js?v=1"></script>
     <script src="/legendas.js?v=4"></script>
 
@@ -4363,6 +4363,10 @@
                         <span data-i18n="def.baixo">Baixo (Mais Performance)</span>
                     </label>
                 </div>
+                <!-- Só aparece enquanto o detalhe do Alto está a chegar (ver
+                     `crescerAte`): sem isto, numa ligação lenta parecia que
+                     escolher o Alto não fazia nada. -->
+                <p id="qualidade-a-chegar" class="settings-nota" role="status" data-i18n="def.aChegar" hidden>O detalhe do Alto está a chegar: aparece aos poucos, do mais perto para o mais longe. Da primeira vez pode demorar uns minutos.</p>
                 <!-- Só aparece no modo de poupança (ver `setQuality`): diz
                      porque é que nenhum modo está escolhido. -->
                 <p id="qualidade-poupanca" class="settings-nota" data-i18n="def.poupanca" hidden>O aparelho ficou sem memória gráfica e o bairro está a poupá-la. Escolhe um modo para sair da poupança.</p>
@@ -6412,7 +6416,10 @@
             });
             const nota = document.getElementById('qualidade-poupanca');
             if (nota) nota.hidden = !emPoupanca;
+            const aChegar = document.getElementById('qualidade-a-chegar');
+            if (aChegar) aChegar.hidden = !crescer;
         }
+        let crescer = null;
         mostrarQualidade();
 
 
@@ -6478,13 +6485,12 @@
          *
          * Entre o Alto e o Médio só muda até onde vai o pormenor, e cada zona
          * passa de um nível ao outro a desvanecer. A subir, a distância cresce
-         * aos poucos, em vez de o bairro todo se pôr a chegar ao mesmo tempo.
+         * aos poucos (ver `crescerAte`).
          * No Baixo, numa página que abriu com manchas, elas desvanecem-se todas
          * para a malha e a memória delas é largada.
          *
          * @param {string} novo - O modo.
          */
-        let crescer = null;
         function aplicarModo(novo) {
             const pcApp = document.querySelector('pc-app');
             const app = pcApp && pcApp.app;
@@ -6502,29 +6508,92 @@
             if (afinadorDaDensidade && novo === 'low') afinadorDaDensidade.recomecar();
             if (paginaDeMalha) return;
 
-            clearInterval(crescer);
             const foco = window.lodFoco;
             if (foco && foco.soMalha !== (novo === 'low')) {
                 foco.soMalha = novo === 'low';
                 foco.reavaliarEm = 1;
             }
-            if (novo === 'low') return;
+            if (novo === 'low') {
+                clearInterval(crescer);
+                crescer = null;
+                mostrarQualidade();
+                return;
+            }
 
-            // A câmara reescreve a distância a cada imagem e vai buscá-la a
-            // `distanciaDoDetalhe`.
             const splatEl = document.querySelector('pc-entity[name="gsplat-scene"]');
             if (splatEl && splatEl.entity && splatEl.entity.gsplat) {
                 splatEl.entity.gsplat.lodMultiplier = VEZES_DO_MEIO;
             }
-            const alvo = DISTANCIA_DO_DETALHE[novo];
-            const agora = Math.min(window.distanciaDoDetalhe || DISTANCIA_DO_DETALHE.med, alvo);
-            window.distanciaDoDetalhe = agora;
-            if (agora < alvo) {
+            crescerAte(app, DISTANCIA_DO_DETALHE[novo]);
+        }
+
+        /**
+         * Leva a distância do detalhe até à do modo. A descer, de uma vez; a
+         * subir, anel a anel: cada um só se pede depois de o anterior chegar.
+         * Pedido tudo ao mesmo tempo, o que está perto vinha misturado com o
+         * que está longe — e numa ligação lenta o que se tinha à frente dos
+         * olhos ficava desfocado meio minuto.
+         *
+         * @param {object} app - A aplicação 3D.
+         * @param {number} alvo - A distância do modo.
+         */
+        function crescerAte(app, alvo) {
+            // Ao fim deste tempo o anel seguinte pede-se na mesma: quem anda
+            // sem parar tem sempre alguma coisa a chegar.
+            const PACIENCIA = 8000;
+            clearInterval(crescer);
+            crescer = null;
+            porDistancia(Math.min(window.distanciaDoDetalhe || DISTANCIA_DO_DETALHE.med, alvo));
+            if (window.distanciaDoDetalhe < alvo) {
+                let desde = performance.now();
                 crescer = setInterval(() => {
-                    window.distanciaDoDetalhe = Math.min(alvo, window.distanciaDoDetalhe * 1.35);
-                    if (window.distanciaDoDetalhe >= alvo) clearInterval(crescer);
-                }, 1000);
+                    // Com a página escondida nada se desenha, nem se pede.
+                    if (document.hidden) return;
+                    const aChegar = bairroAChegar(app);
+                    if (window.distanciaDoDetalhe >= alvo) {
+                        if (aChegar) return;
+                        clearInterval(crescer);
+                        crescer = null;
+                        mostrarQualidade();
+                        return;
+                    }
+                    if (aChegar && performance.now() - desde < PACIENCIA) return;
+                    porDistancia(Math.min(alvo, window.distanciaDoDetalhe * 1.35));
+                    desde = performance.now();
+                }, 500);
             }
+            mostrarQualidade();
+        }
+
+        /**
+         * Até onde vai o pormenor fino.
+         *
+         * A câmara reescreve-o a cada imagem, e vai buscá-lo a
+         * `distanciaDoDetalhe`. Mas põe-se também aqui: com um menu aberto a
+         * câmara está parada (ver `deixarAndarOMapa`, em comando.mjs), e a
+         * distância nunca chegava ao motor — escolhia-se o Alto no menu e nada
+         * acontecia enquanto ele lá estivesse.
+         *
+         * @param {number} distancia - A distância.
+         */
+        function porDistancia(distancia) {
+            window.distanciaDoDetalhe = distancia;
+            const splatEl = document.querySelector('pc-entity[name="gsplat-scene"]');
+            const manchas = splatEl && splatEl.entity && splatEl.entity.gsplat;
+            if (manchas) manchas.lodBaseDistance = distancia;
+        }
+
+        /** Diz se o motor ainda está à espera de bocados do bairro. */
+        function bairroAChegar(app) {
+            try {
+                for (const dados of app.renderer.gsplatDirector.camerasMap.values()) {
+                    for (const camada of dados.layersMap.values()) {
+                        const mundo = camada.gsplatManager && camada.gsplatManager.world;
+                        if (mundo && mundo.pendingLoadCount > 0) return true;
+                    }
+                }
+            } catch (e) { /* o motor guarda-o de outra maneira: não se sabe */ }
+            return false;
         }
 
         // A escolha automática do modo, e o afinador da densidade do Baixo.
@@ -6572,24 +6641,11 @@
             afinadorDaDensidade = { recomecar() { densidade = criarDensidade(); window.afinadorDeFluidez = densidade; } };
             window.afinadorDeFluidez = densidade;
 
-            // O bairro ainda está a chegar?
-            const aChegar = () => {
-                try {
-                    for (const dados of app.renderer.gsplatDirector.camerasMap.values()) {
-                        for (const camada of dados.layersMap.values()) {
-                            const mundo = camada.gsplatManager && camada.gsplatManager.world;
-                            if (mundo && mundo.pendingLoadCount > 0) return true;
-                        }
-                    }
-                } catch (e) { /* o motor guarda-o de outra maneira: não se sabe */ }
-                return false;
-            };
-
             escolhaDoModo = criarEscolhaDeModo({
                 modos: qualidade.MODOS,
                 partida: modo,
                 parado,
-                ocupado: aChegar,
+                ocupado: () => bairroAChegar(app),
                 postoDeParte: (m) => qualidade.postoDeParte(m),
                 // No Baixo só se sobe com a imagem inteira, e fora dos
                 // aparelhos que ficam sempre nele.
@@ -7051,6 +7107,12 @@
         qualityInputs.forEach(input => {
             input.addEventListener('change', (e) => {
                 setQuality(e.target.value);
+            });
+            // Com a escolha automática, carregar no modo que ela já tem posto
+            // não é uma mudança para o navegador, mas é uma escolha: fica-se
+            // com ele.
+            input.addEventListener('click', (e) => {
+                if (automatica && e.target.value === modo) setQuality(modo);
             });
         });
         document.getElementById('qualidade-automatica').addEventListener('change', (e) => {

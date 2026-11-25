@@ -59,6 +59,7 @@
 
             'def.qualidade': 'Qualidade Gráfica',
             'def.auto': 'Escolha automática',
+            'def.aChegar': 'O detalhe do Alto está a chegar: aparece aos poucos, do mais perto para o mais longe. Da primeira vez pode demorar uns minutos.',
             'def.alto': 'Alto (Muito Detalhe)',
             'def.medio': 'Médio (Equilibrado)',
             'def.baixo': 'Baixo (Mais Performance)',
@@ -520,6 +521,7 @@
 
             'def.qualidade': 'Graphics Quality',
             'def.auto': 'Choose automatically',
+            'def.aChegar': 'The High detail is arriving: it appears little by little, nearest first. The first time it can take a few minutes.',
             'def.alto': 'High (Lots of Detail)',
             'def.medio': 'Medium (Balanced)',
             'def.baixo': 'Low (Best Performance)',
@@ -970,6 +972,7 @@
 
             'def.qualidade': 'Calidad Gráfica',
             'def.auto': 'Elección automática',
+            'def.aChegar': 'El detalle del Alto está llegando: aparece poco a poco, de lo más cercano a lo más lejano. La primera vez puede tardar unos minutos.',
             'def.alto': 'Alto (Mucho Detalle)',
             'def.medio': 'Medio (Equilibrado)',
             'def.baixo': 'Bajo (Más Rendimiento)',
@@ -1420,6 +1423,7 @@
 
             'def.qualidade': 'Kualidadi di imajen',
             'def.auto': 'Skodje automátiku',
+            'def.aChegar': 'Detalhi di Altu sta ta txiga: ta parse poku poku, di más pertu pa más lonji. Purmeru bes pode dura uns minutu.',
             'def.alto': 'Altu (Txeu detalhi)',
             'def.medio': 'Médiu (Ekilibradu)',
             'def.baixo': 'Baxu (Más rapidez)',

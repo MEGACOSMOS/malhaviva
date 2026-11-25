@@ -115,6 +115,14 @@ const estado = async () => JSON.parse(await avaliar(`(() => {
     });
 })()`));
 const carregar = (id) => avaliar(`document.getElementById('${id}').click(); 1`);
+// Um clique a sério, com o rato, no sítio do ecrã onde a coisa está.
+const clicar = async (seletor) => {
+    const c = JSON.parse(await avaliar(`(() => { const r = document.querySelector('${seletor}').getBoundingClientRect(); return JSON.stringify({ x: r.left + r.width / 2, y: r.top + r.height / 2 }); })()`));
+    await enviar('Input.dispatchMouseEvent', { type: 'mouseMoved', x: c.x, y: c.y });
+    await enviar('Input.dispatchMouseEvent', { type: 'mousePressed', x: c.x, y: c.y, button: 'left', clickCount: 1 });
+    await enviar('Input.dispatchMouseEvent', { type: 'mouseReleased', x: c.x, y: c.y, button: 'left', clickCount: 1 });
+    await dormir(400);
+};
 const por = (x, y, z, fx, fy, fz) => avaliar(`(async () => { const pc = await import('playcanvas'); const c = document.querySelector('pc-app').app.root.findByName('camera').script.cameraControls; c._initialY = 1e9; c.recenter(new pc.Vec3(${x},${y},${z}), new pc.Vec3(${fx},${fy},${fz})); return 1; })()`);
 async function foto(nome) {
     if (!fotos) return;
@@ -167,6 +175,31 @@ await dormir(2000);
 verificar('ligar a escolha automática no Baixo: volta ao Médio', await esperar(aberto, 60), null);
 e = await estado();
 verificar('... e o menu diz que é o site que escolhe', e.modo === 'med' && e.automatica && e.misto, e);
+
+// --- À mão, com o menu aberto e a câmara parada ------------------------
+await abrir('localStorage.setItem("quality", "med")');
+await dormir(2000);
+antes = cargas;
+e = await estado();
+const finosNoMedio = e.finos;
+await clicar('#definicoes-btn');
+await clicar('#radio-high');
+await dormir(1000);
+e = await estado();
+verificar('escolher o Alto no menu: fica logo assinalado, sem recarregar', cargas === antes && e.modo === 'high' && e.marcado === 'high' && !e.automatica && e.guardada === 'high', e);
+verificar('... e diz que o detalhe está a chegar', await avaliar(`!document.getElementById('qualidade-a-chegar').hidden && document.getElementById('qualidade-a-chegar').getBoundingClientRect().height > 10`), null);
+await foto('menu-a-chegar');
+verificar('... e o detalhe chega com o menu aberto e a câmara parada', await esperar(`(() => { for (const m of window.lodFoco.mapasMistos) { let n = 0; m.nodeInfos.forEach((i) => { if (i.currentLod === 0) n++; }); return n > ${finosNoMedio} + 500; } return false; })()`, 240), await estado());
+verificar('... e no fim deixa de o dizer', await esperar(`document.getElementById('qualidade-a-chegar').hidden`, 240), await estado());
+await clicar('#radio-med');
+await dormir(4000);
+e = await estado();
+verificar('voltar ao Médio com o menu aberto: o detalhe encolhe', e.modo === 'med' && e.finos < finosNoMedio + 100, e);
+await abrir('localStorage.removeItem("quality"); localStorage.removeItem("qualidade-medida")');
+await clicar('#definicoes-btn');
+await clicar('#radio-med');
+e = await estado();
+verificar('com a escolha automática, carregar no modo já assinalado fica com ele', !e.automatica && e.guardada === 'med' && e.modo === 'med', e);
 
 // --- Desce com peso -------------------------------------------------------
 await abrir('localStorage.removeItem("quality"); localStorage.removeItem("qualidade-medida")');
