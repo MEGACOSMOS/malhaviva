@@ -178,6 +178,8 @@ await foto('menu');
 verificar('a visita seguinte abre logo no Alto', await abrir() && (await estado()).modo === 'high', await estado());
 e = await estado();
 verificar('... e o resto do bairro chega por trás', await inteiro(), e);
+// O motor só reavalia de dez em dez imagens, e a distância acabou de mudar.
+await dormir(2000);
 e = await estado();
 verificar('... até estar tudo carregado', e.aChegar === 0 && e.porAcertar === 0 && e.distancia === 300 && e.finos > 400, e);
 
@@ -201,6 +203,8 @@ verificar('... e sai quando o bairro está pronto', await esperar(ecraFora, 240)
 e = await estado();
 verificar('quando sai, o que se vê está pronto', e.modo === 'high' && e.distancia >= 150 && e.porAcertar === 0, e);
 verificar('... e o resto chega por trás', await inteiro(), await estado());
+// O motor só reavalia de dez em dez imagens, e a distância acabou de mudar.
+await dormir(2000);
 e = await estado();
 verificar('... até estar tudo disponível: nada a chegar, tudo no nível certo', e.modo === 'high' && e.distancia === 300 && e.aChegar === 0 && e.porAcertar === 0 && e.finos > finosNoMedio + 250 && cargas === antes, e);
 verificar('... todos os pedaços, do bairro inteiro', e.ficheiros.split('/')[0] === e.ficheiros.split('/')[1], e.ficheiros);
@@ -269,6 +273,8 @@ verificar('do Baixo para o Alto: abre de novo', await esperar(aberto, 240), null
 e = await estado();
 verificar('... já no Alto', e.modo === 'high' && e.distancia >= 150, e);
 verificar('... e o resto chega por trás', await inteiro(), await estado());
+// O motor só reavalia de dez em dez imagens, e a distância acabou de mudar.
+await dormir(2000);
 e = await estado();
 verificar('... até estar tudo carregado', e.modo === 'high' && e.misto && e.aChegar === 0 && e.porAcertar === 0 && e.distancia === 300 && !e.automatica, e);
 

@@ -50,7 +50,7 @@ const ALARGAMENTO = 0.25;
 // Quanto demora uma zona a passar de manchas a malha, ou de malha a
 // manchas: as manchas desvanecem-se por cima da malha, ou aparecem aos
 // poucos por cima dela. Em milissegundos.
-const TEMPO_DE_DESVANECER = 1000;
+const TEMPO_DE_DESVANECER = 500;
 
 // Na faixa de passagem, cada mancha mede-se com a câmara de agora e com a de
 // há pouco, até `TEMPO_DE_DESVANECER` atrás, guardada tantas vezes quantas
@@ -1001,7 +1001,7 @@ fn modifySplatColor(center: vec3f, color: ptr<function, vec4f>) {
 /**
  * Bairro misto: o que as manchas precisam de saber da câmara, a cada
  * imagem, para a faixa de passagem (ver `ensinarAGrelhaAsManchas`): onde
- * esteve e para onde olhou no último segundo, quanto pesa cada um desses
+ * esteve e para onde olhou no último meio segundo, quanto pesa cada um desses
  * momentos, e a forma do balão e a largura da faixa — as mesmas do
  * lod-foco.mjs.
  *
@@ -1009,7 +1009,7 @@ fn modifySplatColor(center: vec3f, color: ptr<function, vec4f>) {
  * câmara de agora entra aos poucos, do peso zero ao inteiro, enquanto o
  * momento mais antigo sai, do inteiro ao zero; quando ela fica inteira é
  * guardada, e começa outra. Assim, por mais brusco que seja o movimento, o
- * peso de cada nível muda sempre a direito ao longo de um segundo. Com a
+ * peso de cada nível muda sempre a direito ao longo de meio segundo. Com a
  * câmara parada os momentos são todos iguais e juntam-se num só, que é o que
  * se paga a desenhar.
  *
@@ -1174,7 +1174,7 @@ export function ligarBairroEmMalha(app, opcoes = {}) {
         });
         if (materialDasManchas) {
             darAGrelha(materialDasManchas);
-            // A câmara do último segundo, para a faixa de passagem entre o
+            // A câmara do último meio segundo, para a faixa de passagem entre o
             // fino e o do meio: os valores mudam no sítio a cada imagem.
             const olhar = acompanharOOlhar(app, bairro);
             materialDasManchas.setParameter('uBairroOlhos[0]', olhar.olhos);
