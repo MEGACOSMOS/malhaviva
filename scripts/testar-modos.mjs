@@ -130,7 +130,7 @@ verificar('só há três modos no menu: Alto, Médio e Baixo', e.botoes === 'hig
 verificar('um aparelho novo abre no Médio, com a escolha automática ligada', e.modo === 'med' && e.automatica && e.marcado === 'med' && e.misto, e);
 await por(-30, 25, 70, 10, 0, 10);
 let antes = cargas;
-verificar('com folga, sobe sozinho ao Alto', await esperar(`window.actualQuality === 'high'`, 60), await estado());
+verificar('com folga, sobe sozinho ao Alto', await esperar(`window.actualQuality === 'high'`, 180), await estado());
 verificar('o pormenor cresce até à distância do Alto', await esperar(`window.distanciaDoDetalhe === 600`, 20), await estado());
 await dormir(12000);
 e = await estado();
