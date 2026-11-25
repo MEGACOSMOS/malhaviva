@@ -163,11 +163,11 @@ let antes = cargas;
 await avaliar(`window.__ecra = 0; new MutationObserver(() => { if (${ecraPosto}) window.__ecra++; }).observe(document.getElementById('loading-overlay'), { attributes: true, attributeFilter: ['class'] }); 1`);
 verificar('com folga, sobe sozinho ao Alto', await esperar(`window.actualQuality === 'high'`, 240), await estado());
 e = await estado();
-verificar('... só depois de cá estar tudo', e.aChegar === 0 && e.ficheiros.split('/')[0] === e.ficheiros.split('/')[1] && e.distancia === 600, e);
+verificar('... só depois de cá estar tudo', e.aChegar === 0 && e.ficheiros.split('/')[0] === e.ficheiros.split('/')[1] && e.distancia === 300, e);
 await dormir(5000);
 e = await estado();
 verificar('... sem recarregar e sem ecrã de espera, e o menu acompanha', cargas === antes && e.marcado === 'high' && e.automatica && await avaliar('window.__ecra === 0'), e);
-verificar('no Alto há muito mais pedaços finos', e.finos > 700 && e.porAcertar === 0, e);
+verificar('no Alto há muito mais pedaços finos', e.finos > 400 && e.porAcertar === 0, e);
 verificar('o Alto fica guardado para a visita seguinte', e.medida && e.medida.modo === 'high' && e.guardada === null, e);
 await foto('alto');
 await clicar('#definicoes-btn');
@@ -175,7 +175,7 @@ await dormir(800);
 await foto('menu');
 verificar('a visita seguinte abre logo no Alto', await abrir() && (await estado()).modo === 'high', await estado());
 e = await estado();
-verificar('... e quando o ecrã de espera sai está tudo carregado', e.aChegar === 0 && e.porAcertar === 0 && e.distancia === 600 && e.finos > 700, e);
+verificar('... e quando o ecrã de espera sai está tudo carregado', e.aChegar === 0 && e.porAcertar === 0 && e.distancia === 300 && e.finos > 400, e);
 
 // --- Do Médio para o Alto, à mão, com o rato e a câmara parada -----------
 await abrir(limpo + '; localStorage.setItem("quality", "med")');
@@ -195,7 +195,7 @@ await dormir(900);
 await foto('ecra-do-alto');
 verificar('... e sai quando o bairro está pronto', await esperar(ecraFora, 240), await estado());
 e = await estado();
-verificar('quando sai está tudo disponível: nada a chegar, tudo no nível certo', e.modo === 'high' && e.distancia === 600 && e.aChegar === 0 && e.porAcertar === 0 && e.finos > finosNoMedio + 500 && cargas === antes, e);
+verificar('quando sai está tudo disponível: nada a chegar, tudo no nível certo', e.modo === 'high' && e.distancia === 300 && e.aChegar === 0 && e.porAcertar === 0 && e.finos > finosNoMedio + 250 && cargas === antes, e);
 verificar('... todos os pedaços, do bairro inteiro', e.ficheiros.split('/')[0] === e.ficheiros.split('/')[1], e.ficheiros);
 verificar('... e a escolha fica guardada', e.guardada === 'high' && e.marcado === 'high', e);
 verificar('... no mesmo sítio onde se estava', await avaliar(`document.querySelector('pc-app').app.root.findByName('camera').getPosition().toString()`) === lugar, lugar);
@@ -260,7 +260,7 @@ await carregar('radio-high');
 await dormir(2000);
 verificar('do Baixo para o Alto: abre de novo', await esperar(aberto, 240), null);
 e = await estado();
-verificar('... já no Alto, com tudo carregado', e.modo === 'high' && e.misto && e.aChegar === 0 && e.porAcertar === 0 && e.distancia === 600 && !e.automatica, e);
+verificar('... já no Alto, com tudo carregado', e.modo === 'high' && e.misto && e.aChegar === 0 && e.porAcertar === 0 && e.distancia === 300 && !e.automatica, e);
 
 // --- Desce com peso -------------------------------------------------------
 await abrir(limpo);

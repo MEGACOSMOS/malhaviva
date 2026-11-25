@@ -551,14 +551,14 @@ function avaliarNiveis(instancia, cameraNode, maxLod, lodBaseDistance, lodMultip
             // o do meio para os que têm o fino, e o fino para os que têm o
             // do meio. Fora do ecrã, ou a sair para a malha, não há.
             let segundo = -1;
-            if (!fora[nodeIndex] && !nodeInfo.aSair) {
+            if (!definicoes.semSegundo && !fora[nodeIndex] && !nodeInfo.aSair) {
                 const querFino = noBalao[nodeIndex] < limiteFino;
                 const querMeio = noBalaoLonge[nodeIndex] > lodBaseDistance * (1 - faixa) &&
                     nivelDaBola[nodeIndex] < aneis;
                 if (optimalLodIndex === 0 && querMeio) segundo = 1;
                 else if (optimalLodIndex === 1 && querFino) segundo = 0;
             }
-            segundo = segurarOSegundo(nodeInfo, segundo, optimalLodIndex, agora, definicoes);
+            if (!definicoes.semSegundo) segundo = segurarOSegundo(nodeInfo, segundo, optimalLodIndex, agora, definicoes);
             nodeInfo.segundoNivel = segundo;
         }
         nodeInfo.optimalLod = optimalLodIndex;
@@ -818,6 +818,9 @@ export function ligarLodNoCentroDaVista(app, opcoes = {}) {
         // Bairro misto: nenhum pedaço se desenha em manchas, fica só a malha
         // (o modo Baixo, numa página que abriu com manchas).
         soMalha: opcoes.soMalha ?? false,
+        // Bairro misto: cada pedaço tem um nível só, sem o segundo na faixa de
+        // passagem (o Alto, onde a fronteira fica longe e a poupança conta).
+        semSegundo: opcoes.semSegundo ?? false,
         faixa: opcoes.faixa ?? FAIXA_DE_PASSAGEM,
         tempoSemVoltarAtras: opcoes.tempoSemVoltarAtras ?? TEMPO_SEM_VOLTAR_ATRAS,
         // Bairro misto: os mapas onde há pedaços à espera de um prazo, e

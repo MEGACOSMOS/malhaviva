@@ -6181,7 +6181,7 @@
     <script type="module">
         import { whenReady } from '@playcanvas/web-components';
         import { Vec3 } from 'playcanvas';
-        import { ligarLodNoCentroDaVista } from './lod-foco.mjs?v=13';
+        import { ligarLodNoCentroDaVista } from './lod-foco.mjs?v=14';
         import { medirACargaDoBairro } from './carga-do-bairro.mjs?v=3';
         import { criarAfinadorDeFluidez, construirEscada } from './fluidez.mjs?v=2';
         import { criarEscolhaDeModo } from './escolha-de-qualidade.mjs?v=4';
@@ -6402,9 +6402,12 @@
 
         // Até onde vai o pormenor fino em cada modo (para os lados menos, para
         // a frente o dobro, ver lod-foco.mjs), e quantas vezes mais longe vai o
-        // do meio, até onde começa a malha. No Alto chega quase ao horizonte.
-        const DISTANCIA_DO_DETALHE = { high: 600, med: 100 };
+        // do meio, até onde começa a malha. No Alto esteve em 600: com metade
+        // vê-se quase o mesmo, e são bem menos manchas.
+        const DISTANCIA_DO_DETALHE = { high: 300, med: 100 };
         const VEZES_DO_MEIO = 3;
+        // A faixa de passagem do Médio (a mesma do lod-foco.mjs).
+        const FAIXA_DO_MEDIO = 0.2;
 
         let modo = window.actualQuality;
         let automatica = !emPoupanca && !qualidade.escolhida();
@@ -6526,6 +6529,13 @@
                 return;
             }
 
+            // No Alto a fronteira entre o fino e o do meio fica longe: sem os dois
+            // níveis sobrepostos nela, são menos manchas.
+            if (foco) {
+                foco.semSegundo = novo === 'high';
+                foco.faixa = novo === 'high' ? 0.02 : FAIXA_DO_MEDIO;
+                foco.reavaliarEm = 1;
+            }
             const splatEl = document.querySelector('pc-entity[name="gsplat-scene"]');
             if (splatEl && splatEl.entity && splatEl.entity.gsplat) {
                 splatEl.entity.gsplat.lodMultiplier = VEZES_DO_MEIO;
