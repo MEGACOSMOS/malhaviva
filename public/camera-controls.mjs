@@ -134,7 +134,8 @@ const entreMeiaVolta = (graus) => {
 // as direções até lá e a partilha (ver `marcarAoPremir`).
 //
 // Com os dedos: um dedo arrasta; dois dedos aproximam e afastam (a pinça),
-// rodam (a rodar um à volta do outro) e arrastam, tudo ao mesmo tempo; dois
+// rodam (a rodar um à volta do outro; largados em andamento, o bairro ainda
+// roda um pouco) e arrastam, tudo ao mesmo tempo; dois
 // dedos a subir ou a descer juntos inclinam (ver `DoisDedos`); e contam
 // também os dedos pousados em cima dos marcadores; dois toques aproximam; dois
 // dedos a tocar ao mesmo tempo afastam; dois toques com o segundo a ficar
@@ -273,6 +274,18 @@ const DOIS_DEDOS_MINIMO = 5;
 // (milissegundos), é o mesmo gesto a acabar: o dedo que ficou não atira o
 // bairro com balanço.
 const LARGAR_DOIS_DEDOS = 160;
+// O balanço do rodar, como no Google Maps: largados os dedos em andamento, o
+// bairro ainda roda um pouco, à volta do mesmo sítio, e vai parando. A
+// velocidade a que os dedos iam mede-se no último bocado da volta
+// (milissegundos); abaixo de GIRO_MINIMO (graus por segundo) não há balanço
+// — foi só a mão a levantar-se —, e acima de GIRO_MAXIMO não se sai mais
+// depressa. Perde a força em GIRO_TEMPO (segundos, a constante de tempo) e
+// pára em GIRO_PARADO.
+const GIRO_MEDIDO_EM = 80;
+const GIRO_MINIMO = 45;
+const GIRO_MAXIMO = 280;
+const GIRO_TEMPO = 0.16;
+const GIRO_PARADO = 3;
 
 // Os marcadores que se vêem por cima do bairro — os testemunhos, as
 // paragens, e os da navegação. Um dedo que lhes pousa em cima também é um
@@ -476,6 +489,23 @@ class DoisDedos {
     _mudar(modo, t) {
         this.modo = modo;
         this.mudanca = this._como(t);
+    }
+
+    /**
+     * A que velocidade os dedos rodam um à volta do outro, neste instante.
+     *
+     * @param {number} agora - O instante, em milissegundos.
+     * @returns {number} Em graus por segundo.
+     */
+    velocidadeDoGiro(agora) {
+        const recente = this.recente;
+        const fim = recente[recente.length - 1];
+        let i = recente.length - 1;
+        while (i > 0 && agora - recente[i].t < GIRO_MEDIDO_EM) {
+            i--;
+        }
+        const segundos = (fim.t - recente[i].t) / 1000;
+        return segundos > 0.02 ? (fim.giro - recente[i].giro) / segundos : 0;
     }
 
     /**
@@ -770,8 +800,11 @@ class CameraControls extends Script {
         ultGiro: 0,
         rodado: 0,
         porRodar: 0,
-        // Quando um gesto de dois dedos ficou só com um.
+        // Quando um gesto de dois dedos ficou só com um, e se o bairro ficou
+        // a rodar sozinho (o dedo que resta está, quase de certeza, também a
+        // levantar-se).
         t0Resto: 0,
+        aSoltar: false,
         // Até quando um clique num marcador é o fim de um gesto que começou
         // em cima dele, e não um clique.
         semCliqueAte: 0,
@@ -832,6 +865,15 @@ class CameraControls extends Script {
      * @private
      */
     _balanco = null;
+
+    /**
+     * O balanço depois de largar os dois dedos a rodar: a velocidade, em
+     * graus por segundo, e o sítio à volta do qual se roda — ou nada.
+     *
+     * @type {{velocidade: number, pivo: Vec3}|null}
+     * @private
+     */
+    _balancoDoGiro = null;
 
     /**
      * A velocidade a que as teclas (e o stick do comando) rodam e
@@ -1471,6 +1513,7 @@ class CameraControls extends Script {
 
             // Pegar no bairro pára o que estava a andar sozinho.
             this._balanco = null;
+            this._balancoDoGiro = null;
             this._zoomAnimado = null;
             this._giroAnimado = null;
 
@@ -1609,9 +1652,14 @@ class CameraControls extends Script {
                 g.ultimoToque = null;
                 const resta = g.ponteiros.values().next().value;
                 if (resta) {
+                    // Os dedos vinham a rodar: o bairro ainda roda um pouco.
+                    if (!desistiu) {
+                        this._largarARodar(agora);
+                    }
                     // Fica um dedo: continua a arrastar com ele.
                     this._comecarAMover(resta, true);
                     g.t0Resto = agora;
+                    g.aSoltar = !!this._balancoDoGiro;
                 } else {
                     this._acabarGesto(false);
                 }
@@ -1843,6 +1891,7 @@ class CameraControls extends Script {
         g.principal = ponteiro.id;
         g.arrastou = restoDeDois;
         g.restoDeDois = restoDeDois;
+        g.aSoltar = false;
         g.rasto.length = 0;
         // Parado aqui o bastante, marca o sítio (ver `_vigiarPremir`). O
         // dedo que fica de um gesto de dois já não, nem o que pousou num
@@ -1990,6 +2039,7 @@ class CameraControls extends Script {
         g.ultimoClique = null;
         g.ultimoToque = null;
         this._balanco = null;
+        this._balancoDoGiro = null;
         this._zoomAnimado = null;
         this._giroAnimado = null;
         this._giroDasTeclas.set(0, 0);
@@ -2729,6 +2779,19 @@ class CameraControls extends Script {
             if (!p) {
                 return;
             }
+            if (g.aSoltar) {
+                // O segundo dedo costuma levantar-se um nada depois do
+                // primeiro: até lá é o mesmo gesto a acabar, e não arrasta o
+                // bairro que está a rodar sozinho. Se afinal fica, é ele que
+                // manda: o bairro pára de rodar, e vai com ele a partir de
+                // onde está.
+                if (this._balancoDoGiro && performance.now() - g.t0Resto < LARGAR_DOIS_DEDOS) {
+                    return;
+                }
+                this._balancoDoGiro = null;
+                g.aSoltar = false;
+                this._agarrar(p.x, p.y, g.ancora.y, false);
+            }
             if (!g.arrastou) {
                 // Num marcador, o dedo que ainda pode ser um toque não arrasta.
                 const limiar = p.tipo === 'mouse' ? ARRASTO_MINIMO_RATO :
@@ -2950,6 +3013,53 @@ class CameraControls extends Script {
         this._rodarEInclinar(passo, 0);
         if (Math.abs(this._giroAnimado) < 1e-4) {
             this._giroAnimado = null;
+        }
+    }
+
+    /**
+     * Largou-se um de dois dedos. Se vinham a rodar, e ainda em andamento, o
+     * bairro continua a rodar para o mesmo lado, à volta do que estava entre
+     * eles, e vai parando (ver `_aplicarBalancoDoGiro`).
+     *
+     * @param {number} agora - O instante, em milissegundos.
+     * @private
+     */
+    _largarARodar(agora) {
+        const g = this._gestos;
+        const dois = g.dois;
+        if (!dois || dois.modo !== 'mapa' || !dois.aRodar) {
+            return;
+        }
+        const velocidade = math.clamp(dois.velocidadeDoGiro(agora), -GIRO_MAXIMO, GIRO_MAXIMO);
+        if (Math.abs(velocidade) >= GIRO_MINIMO) {
+            this._balancoDoGiro = { velocidade, pivo: g.ancora.clone() };
+        }
+    }
+
+    /**
+     * O balanço depois de largar os dois dedos a rodar: o bairro continua a
+     * rodar à volta do mesmo sítio e vai parando.
+     *
+     * @param {number} dt - O tempo desta imagem, em segundos.
+     * @private
+     */
+    _aplicarBalancoDoGiro(dt) {
+        const b = this._balancoDoGiro;
+        if (!b) {
+            return;
+        }
+        // Uma viagem, ou a volta até ao norte, é que manda na câmara.
+        if (this._viagem || this._giroAnimado !== null) {
+            this._balancoDoGiro = null;
+            return;
+        }
+        // Quanto se anda nesta imagem, a abrandar: a conta é a exacta, e dá o
+        // mesmo com muitas imagens por segundo ou com poucas.
+        const fica = Math.exp(-dt / GIRO_TEMPO);
+        this._rodarAVoltaDe(b.pivo, b.velocidade * GIRO_TEMPO * (1 - fica));
+        b.velocidade *= fica;
+        if (Math.abs(b.velocidade) < GIRO_PARADO) {
+            this._balancoDoGiro = null;
         }
     }
 
@@ -3318,9 +3428,11 @@ class CameraControls extends Script {
         //    acaba o gesto em que vinha).
         this._vigiarPremir();
         this._aplicarGestos();
-        // 2. O zoom e a volta a deslizar, e o balanço de um arrasto largado.
+        // 2. O zoom e a volta a deslizar, e o balanço de um arrasto ou de uma
+        //    volta largados.
         this._aplicarZoomAnimado(dt);
         this._aplicarGiro(dt);
+        this._aplicarBalancoDoGiro(dt);
         if (!g.modo) {
             this._aplicarBalanco(dt);
         }
@@ -3507,8 +3619,11 @@ class CameraControls extends Script {
                 const encolher = parede / distancia;
                 pos.x = cupula.centroX + dx * encolher;
                 pos.z = cupula.centroZ + dz * encolher;
-                // O balanço morre contra a parede.
+                // O balanço morre contra a parede — o do rodar, a abrandar.
                 this._balanco = null;
+                if (this._balancoDoGiro) {
+                    this._balancoDoGiro.velocidade *= Math.exp(-dt / 0.06);
+                }
             } else if (distancia > parede - EDGE_EPS) {
                 isAtBoundary = true;
             }

@@ -3,7 +3,8 @@
  * MARCADORES_DO_BAIRRO, em public/camera-controls.mjs), num Chrome à parte,
  * com perfil limpo, à vista, a fazer de telemóvel: rodar com os dois dedos,
  * com um deles parado, depressa, devagar, a começar por subir sem querer,
- * depois de uma pinça; a pinça e o arrastar que não rodam; inclinar; e os
+ * depois de uma pinça; o balanço, quando se larga em andamento; a pinça e o
+ * arrastar que não rodam; inclinar; e os
  * dedos em cima dos marcadores e das miniaturas — que mexem no bairro, sem
  * deixar de abrir com um toque.
  *
@@ -139,6 +140,7 @@ const abertura = async () => {
     await dormir(1800);
 };
 
+// (Num 'touchEnd', os pontos são os que se levantam; sem nenhum, todos.)
 const toque = (type, pontos) => enviar('Input.dispatchTouchEvent', { type, touchPoints: pontos.map((p, i) => ({ x: p[0], y: p[1], id: p[2] || i + 1, radiusX: 5, radiusY: 5, force: 1 })) });
 const G = Math.PI / 180;
 const suave = (k) => { k = Math.min(1, Math.max(0, k)); return k < 0.5 ? 2 * k * k : 1 - 2 * (1 - k) * (1 - k); };
@@ -148,10 +150,10 @@ const suave = (k) => { k = Math.min(1, Math.max(0, k)); return k < 0.5 ? 2 * k *
  *
  * @param {(k: number) => number[][]} onde - Os dois dedos, de zero a um.
  * @param {number} duracao - Em milissegundos.
- * @param {object} [como] - Quanto esperar entre os dois pousarem, e se se
- * demora antes de largar.
+ * @param {object} [como] - Quanto esperar entre os dois pousarem, se se
+ * demora antes de largar, e como se larga.
  */
-async function gesto(onde, duracao, { entre = 30, demora = 120, atraso = 0 } = {}) {
+async function gesto(onde, duracao, { entre = 30, demora = 120, atraso = 0, largar = null } = {}) {
     const [a, b] = onde(0);
     await toque('touchStart', [[a[0], a[1], 1]]);
     await dormir(entre);
@@ -166,13 +168,14 @@ async function gesto(onde, duracao, { entre = 30, demora = 120, atraso = 0 } = {
         await dormir(8);
     }
     await dormir(demora);
-    await toque('touchEnd', []);
+    if (largar) await largar(onde);
+    else await toque('touchEnd', []);
     await dormir(500);
 }
 // Dois dedos a rodar: `apoio` é onde está o eixo (0: o primeiro dedo parado,
 // 0,5: no meio dos dois, 1: o segundo parado).
-const aRodar = ({ x = L / 2, y = 480, d = 170, de = 0, graus = 30, apoio = 0.5, sobe = 0 } = {}) => (k) => {
-    const a = (de + graus * suave(k)) * G, e0 = de * G;
+const aRodar = ({ x = L / 2, y = 480, d = 170, de = 0, graus = 30, apoio = 0.5, sobe = 0, igual = false } = {}) => (k) => {
+    const a = (de + graus * (igual ? k : suave(k))) * G, e0 = de * G;
     const s = -sobe * Math.min(1, k * 3);
     const ex = x + (apoio - 0.5) * d * Math.cos(e0), ey = y + (apoio - 0.5) * d * Math.sin(e0) + s;
     return [[ex - apoio * d * Math.cos(a), ey - apoio * d * Math.sin(a)], [ex + (1 - apoio) * d * Math.cos(a), ey + (1 - apoio) * d * Math.sin(a)]];
@@ -186,7 +189,7 @@ for (const [nome, opcoes, duracao, como] of [
     ['o outro dedo parado, 25º', { apoio: 1, graus: 25, x: 200 }, 450],
     ['uma volta pequena, 15º', { graus: 15 }, 400],
     ['devagar, 30º em dois segundos', { graus: 30 }, 2000],
-    ['depressa, 40º em 130 ms, largada em andamento', { graus: 40 }, 130, { demora: 0 }],
+    ['depressa, 40º em 130 ms', { graus: 40 }, 130, { demora: 200 }],
     ['dedos juntos (70 pontos), 35º', { d: 70, graus: 35 }, 450],
     ['a começar por subir 16 pontos, 30º', { graus: 30, sobe: 16 }, 500],
     ['a começar por descer 16 pontos, −30º', { graus: -30, sobe: -16 }, 500],
@@ -213,6 +216,95 @@ let onde = await proj(entreOsDedos);
 prova('rodar: o sítio entre os dedos fica entre os dedos', Math.hypot(onde[0] - 196, onde[1] - 450) < 8, `a ${Math.hypot(onde[0] - 196, onde[1] - 450).toFixed(1)} pontos`);
 onde = await proj(debaixoDoDedo);
 prova('rodar: o sítio debaixo do dedo fica debaixo do dedo', Math.hypot(onde[0] - fim[0][0], onde[1] - fim[0][1]) < 16, `a ${Math.hypot(onde[0] - fim[0][0], onde[1] - fim[0][1]).toFixed(1)} pontos`);
+
+// ── 1b. O balanço: largados em andamento, o bairro ainda roda um pouco
+// À mesma velocidade do princípio ao fim, para se largar em andamento.
+const emAndamento = { x: 196, y: 450, d: 160, igual: true };
+for (const [nome, graus, duracao, largar] of [
+    ['os dois dedos ao mesmo tempo', 40, 300, null],
+    ['para o outro lado', -40, 300, null],
+    ['um dedo um nada depois do outro', 40, 300, async (onde) => {
+        const [a, b] = onde(1);
+        await toque('touchEnd', [[a[0], a[1], 1]]);
+        for (let i = 1; i <= 4; i++) { await toque('touchMove', [[b[0] - 4 * i, b[1] + 8 * i, 2]]); await dormir(12); }
+        await toque('touchEnd', []);
+    }]
+]) {
+    await vista(-85);
+    const pivo = await ponto(196, 450);
+    const antes = await pose();
+    const rumos = [];
+    await gesto(aRodar({ ...emAndamento, graus }), duracao, { demora: 0, largar: async (onde) => {
+        const largou = (await pose()).rumo;
+        if (largar) await largar(onde);
+        else await toque('touchEnd', []);
+        for (let i = 0; i < 40; i++) { rumos.push((await pose()).rumo - largou); await dormir(20); }
+    } });
+    await dormir(600);
+    const depois = await pose();
+    const ainda = (depois.rumo - antes.rumo - graus) * Math.sign(graus);
+    const recuou = rumos.some((r, i) => i && (r - rumos[i - 1]) * Math.sign(graus) < -0.2);
+    prova(`balanço: largado em andamento, ${nome} (133º por segundo): ainda roda um pouco, e pára`,
+        ainda > 8 && ainda < 35 && !recuou,
+        `mais ${ainda.toFixed(1)}º`);
+    const fica = await proj(pivo);
+    prova('… e o sítio que estava entre os dedos não sai do lugar', Math.hypot(fica[0] - 196, fica[1] - 450) < 10, `a ${Math.hypot(fica[0] - 196, fica[1] - 450).toFixed(1)} pontos`);
+    const p = await pose();
+    await dormir(500);
+    const q = await pose();
+    prova('… e fica parado', Math.abs(q.rumo - p.rumo) < 0.05 && Math.hypot(q.x - p.x, q.z - p.z) < 0.01);
+}
+await vista(-85);
+let r0 = await pose();
+await gesto(aRodar({ ...emAndamento, graus: 40 }), 300, { demora: 250 });
+await dormir(500);
+let r1 = await pose();
+prova('balanço: parado antes de largar, não roda mais', Math.abs(r1.rumo - r0.rumo - 40) < 1.5, `rodou ${(r1.rumo - r0.rumo).toFixed(1)}º de 40º`);
+await vista(-85);
+r0 = await pose();
+await gesto(aRodar({ ...emAndamento, graus: 12 }), 600, { demora: 0 });
+await dormir(500);
+r1 = await pose();
+prova('balanço: devagar (20º por segundo), não roda mais', Math.abs(r1.rumo - r0.rumo - 12) < 1.5, `rodou ${(r1.rumo - r0.rumo).toFixed(1)}º de 12º`);
+await vista(-85);
+let parouEm = 0;
+await gesto(aRodar({ ...emAndamento, graus: 60 }), 260, { demora: 0, largar: async () => {
+    await toque('touchEnd', []);
+    await dormir(60);
+    await toque('touchStart', [[300, 600]]);
+    await dormir(30);
+    parouEm = (await pose()).rumo;
+    await dormir(400);
+    await toque('touchEnd', []);
+} });
+r1 = await pose();
+prova('balanço: pousar um dedo pára-o', Math.abs(r1.rumo - parouEm) < 0.5, `mexeu ${(r1.rumo - parouEm).toFixed(1)}º depois de pousar`);
+await vista(-85);
+let saltoMaior = 0;
+let andouCom = 0;
+let sobrou = 0;
+await gesto(aRodar({ ...emAndamento, graus: 40 }), 300, { demora: 0, largar: async (onde) => {
+    // Levanta um, e o outro fica a arrastar.
+    const [a, b] = onde(1);
+    await toque('touchEnd', [[a[0], a[1], 1]]);
+    let ultimo = await pose();
+    const inicio = performance.now();
+    let meio = null;
+    while (performance.now() - inicio < 900) {
+        const k = (performance.now() - inicio) / 900;
+        await toque('touchMove', [[b[0] - 60 * k, b[1] + 90 * k, 2]]);
+        await dormir(10);
+        const p = await pose();
+        saltoMaior = Math.max(saltoMaior, Math.hypot(p.x - ultimo.x, p.z - ultimo.z));
+        if (!meio && performance.now() - inicio > 260) meio = p;
+        ultimo = p;
+    }
+    sobrou = Math.abs(ultimo.rumo - meio.rumo);
+    andouCom = Math.hypot(ultimo.x - meio.x, ultimo.z - meio.z);
+    await toque('touchEnd', []);
+} });
+prova('balanço: quem fica com um dedo a arrastar pára a volta e arrasta, sem saltos', sobrou < 0.5 && andouCom > 3 && saltoMaior < 4,
+    `rodou mais ${sobrou.toFixed(1)}º; andou ${andouCom.toFixed(1)} m; maior passo ${saltoMaior.toFixed(1)} m`);
 
 // ── 2. Depois de uma pinça, sem levantar os dedos
 await vista();
