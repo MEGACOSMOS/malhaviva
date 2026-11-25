@@ -6406,8 +6406,6 @@
         // vê-se quase o mesmo, e são bem menos manchas.
         const DISTANCIA_DO_DETALHE = { high: 300, med: 100 };
         const VEZES_DO_MEIO = 3;
-        // A faixa de passagem do Médio (a mesma do lod-foco.mjs).
-        const FAIXA_DO_MEDIO = 0.2;
 
         let modo = window.actualQuality;
         let automatica = !emPoupanca && !qualidade.escolhida();
@@ -6529,11 +6527,11 @@
                 return;
             }
 
-            // No Alto a fronteira entre o fino e o do meio fica longe: sem os dois
-            // níveis sobrepostos nela, são menos manchas.
+            // Sem os dois níveis sobrepostos na fronteira entre o fino e o do
+            // meio: são menos manchas. Cada zona continua a desvanecer ao trocar.
             if (foco) {
-                foco.semSegundo = novo === 'high';
-                foco.faixa = novo === 'high' ? 0.02 : FAIXA_DO_MEDIO;
+                foco.semSegundo = true;
+                foco.faixa = 0.02;
                 foco.reavaliarEm = 1;
             }
             const splatEl = document.querySelector('pc-entity[name="gsplat-scene"]');
