@@ -1,9 +1,14 @@
 /**
- * Afinador de fluidez do modo Automático.
+ * Afinador de fluidez.
  *
  * Olha para o tempo que cada imagem demora a ser desenhada e, quando o
  * bairro anda aos solavancos, tira-lhe pormenor até voltar a correr bem; se
  * há folga de sobra, devolve-o aos poucos.
+ *
+ * Era o motor do antigo modo Automático. Hoje afina só o modo Baixo, o dos
+ * telemóveis, e só na densidade da imagem (`soDensidade`): a malha não tem
+ * outro pormenor para tirar. Quem passa de um modo de qualidade para outro é
+ * o `escolha-de-qualidade.mjs`.
  *
  * A primeira versão apontava a 30 imagens por segundo e corrigia à volta
  * dessa média, e era justamente por isso que andava tantas vezes abaixo
@@ -115,11 +120,20 @@ const TAMANHO_DO_DIARIO = 40;
  * @param {boolean} [opcoes.comSubida] - Se há degraus acima da partida.
  * @param {number} [opcoes.tetoDoDetalhe] - O maior pormenor, como múltiplo
  *   do de partida.
+ * @param {boolean} [opcoes.soDensidade] - Se os degraus mexem só na densidade.
  * @returns {{degraus: object[], partida: number}} A escada e o índice da
  *   partida.
  */
 export function construirEscada(opcoes) {
-    const { comSubida = false, tetoDoDetalhe = 2.6 } = opcoes || {};
+    const { comSubida = false, tetoDoDetalhe = 2.6, soDensidade = false } = opcoes || {};
+
+    if (soDensidade) {
+        const densidades = [0.55, 0.65, 0.75, 0.85, 0.92, 1];
+        return {
+            degraus: densidades.map((densidade) => ({ detalhe: 1, densidade })),
+            partida: densidades.length - 1
+        };
+    }
 
     // [pormenor, densidade], ambos como múltiplos do valor de partida.
     const poupanca = [

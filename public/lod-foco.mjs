@@ -75,7 +75,7 @@ const PESO_FORA_DO_ECRA = 0.1;
 // fracção da distância, para trocar de nível.
 const HISTERESE = 0.08;
 
-// No bairro misto (nível Médio), a folga da fronteira entre níveis.
+// No bairro misto (níveis Médio e Alto), a folga da fronteira entre níveis.
 const HISTERESE_DO_MISTO = 0.15;
 
 // No bairro misto, a largura da faixa de passagem entre o detalhe fino e o
@@ -457,12 +457,13 @@ function avaliarNiveis(instancia, cameraNode, maxLod, lodBaseDistance, lodMultip
     // níveis a cada reavaliação. É a mesma conta que decide o custo e
     // que decide o nível final, para a conta bater certo.
     const nivelDoPedaco = (nodeIndex, encolhimento) => {
+        if (aneis && definicoes.soMalha) return -1;
         if (maxLod === 0) return 0;
         const balao = noBalao[nodeIndex] * encolhimento;
         const nivelBola = nivelDaBola[nodeIndex];
         let nivel = balao < limiteFino && rangeMin === 0 ? 0 : (nivelBola > 0 ? nivelBola : 1);
 
-        // No bairro misto (nível Médio) o degrau de fora do ecrã só se dá
+        // No bairro misto (níveis Médio e Alto) o degrau de fora do ecrã só se dá
         // entre anéis de manchas: levar um pedaço do último anel de manchas
         // para a malha por estar fora do ecrã fazia, ao virar a cara, o
         // bairro passar de malha a manchas à frente de quem olha.
@@ -814,6 +815,9 @@ export function ligarLodNoCentroDaVista(app, opcoes = {}) {
         intervaloEntreRotacoes: opcoes.intervaloEntreRotacoes ?? INTERVALO_ENTRE_ROTACOES,
         conterNoAntigo: opcoes.conterNoAntigo ?? true,
         aneisDeManchas: opcoes.aneisDeManchas ?? 0,
+        // Bairro misto: nenhum pedaço se desenha em manchas, fica só a malha
+        // (o modo Baixo, numa página que abriu com manchas).
+        soMalha: opcoes.soMalha ?? false,
         faixa: opcoes.faixa ?? FAIXA_DE_PASSAGEM,
         tempoSemVoltarAtras: opcoes.tempoSemVoltarAtras ?? TEMPO_SEM_VOLTAR_ATRAS,
         // Bairro misto: os mapas onde há pedaços à espera de um prazo, e

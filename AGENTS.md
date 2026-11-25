@@ -118,33 +118,35 @@ desenham, e o guarda só conta o tempo em que a página está à vista.
 
 ---
 
-## Mexer no afinador do modo Automático? Prova-o duas vezes
+## Mexer nos modos de qualidade, ou na escolha automática? Prova-os
 
-O modo Automático tira pormenor ao bairro quando as imagens por segundo
-caem, e devolve-o quando há folga (`public/fluidez.mjs`, ligado em
-`afinarPelaFluidez()` no `index.html`). Uma versão anterior apontava ao 30 e
-corrigia à volta dele — passava metade do tempo do lado de lá —, e o
-resultado era ver o contador de FPS abaixo de 30 muitas vezes. Um afinador
-que mexe mal não dá erro nenhum: só deixa o site pior, em silêncio. Por
-isso, antes de dar por acabada qualquer alteração a esse ficheiro:
+Há três modos — Alto, Médio e Baixo — e, se quem visita não escolher nenhum,
+o site escolhe sozinho conforme a fluidez (`public/escolha-de-qualidade.mjs`,
+ligada em `medirAFluidez()` no `index.html`; o que se guarda de uma visita
+para outra está em `window.qualidade`, no princípio da mesma página). No
+Baixo, o modo dos telemóveis, a densidade da imagem afina-se também
+(`public/fluidez.mjs`). Uma escolha que escolhe mal não dá erro nenhum: só
+deixa o site pior, em silêncio — aos solavancos, ou a saltar entre dois
+modos. Por isso, antes de dar por acabada qualquer alteração a isto:
 
 ```
-bun scripts/testar-fluidez.mjs
+bun scripts/testar-escolha.mjs     # a escolha do modo, sem placa gráfica
+bun scripts/testar-fluidez.mjs     # o afinador da densidade, idem
+bun scripts/testar-modos.mjs       # os três modos, num Chrome a sério
 ```
 
-Simula ecrãs e bairros de vários pesos (sem placa gráfica) e compara com a
-versão antiga; todas as linhas têm de dizer `ok`. E depois, com o site a
-correr, no computador a sério:
+Todas as linhas dos três têm de dizer `ok`. E, para saber como o bairro se
+comporta de facto, com o seu vaivém de vistas leves e pesadas:
 
 ```
 bun scripts/medir-fluidez.mjs
 ```
 
 Abre um Chrome à parte, leva a câmara por um percurso sempre igual e conta
-quantos segundos ficaram abaixo de 30 imagens (com `--aparelho=medio`,
-`--aparelho=telemovel` e `--carga=45` testam-se os outros níveis). A
-simulação apanha erros de lógica; só o Chrome a sério diz se o bairro,
-com o seu vaivém de vistas leves e pesadas, se comporta.
+quantos segundos ficaram abaixo de 30 imagens, e em que modo se esteve (com
+`--qualidade=high`, `--aparelho=telemovel` e `--carga=45` testam-se os outros
+casos). A simulação apanha erros de lógica; só o Chrome a sério diz se o
+bairro se comporta.
 
 ---
 

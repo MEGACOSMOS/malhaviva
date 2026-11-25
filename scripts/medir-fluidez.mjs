@@ -5,21 +5,22 @@
  * separador à vista, que é o que faz o navegador desenhar), espera pelo
  * bairro e leva a câmara por um percurso sempre igual — pontos de vista
  * perto do chão e por cima, a andar e a rodar —, enquanto regista o tempo
- * de cada imagem e o degrau em que o modo Automático está. No fim conta
- * quantos segundos ficaram abaixo das 30 imagens.
+ * de cada imagem, o modo em que a escolha automática está e, no Baixo, o
+ * degrau da densidade. No fim conta quantos segundos ficaram abaixo das 30
+ * imagens.
  *
- * Serve para comparar duas versões do afinador de fluidez no mesmo
- * computador: corre-se antes e depois da alteração.
+ * Serve para comparar duas versões no mesmo computador: corre-se antes e
+ * depois da alteração.
  *
  *   bun scripts/medir-fluidez.mjs                         # localhost:8000, 110 s
  *   bun scripts/medir-fluidez.mjs https://malhaviva.pt    # o site publicado
  *   bun scripts/medir-fluidez.mjs --segundos=60           # percurso mais curto
- *   bun scripts/medir-fluidez.mjs --qualidade=high        # fixa o nível (sem Automático)
- *   bun scripts/medir-fluidez.mjs --aparelho=medio        # finge um computador de 4 núcleos (nível Médio)
- *   bun scripts/medir-fluidez.mjs --aparelho=telemovel    # finge um telemóvel (nível Baixo)
+ *   bun scripts/medir-fluidez.mjs --qualidade=high        # fixa o modo (sem escolha automática)
+ *   bun scripts/medir-fluidez.mjs --aparelho=medio        # finge um computador de 4 núcleos
+ *   bun scripts/medir-fluidez.mjs --aparelho=telemovel    # finge um telemóvel (modo Baixo)
  *   bun scripts/medir-fluidez.mjs --carga=45              # junta um peso artificial, que de início custa 45 ms
- *                                                         # por imagem e encolhe com o pormenor, o tecto de manchas e
- *                                                         # a densidade (prova que os botões do afinador funcionam)
+ *                                                         # por imagem e encolhe com o pormenor, a densidade e o modo
+ *                                                         # Baixo (prova que a escolha desce e que a descida alivia)
  *
  * Se o Chrome não for encontrado, diz-se onde está com CHROME=caminho.
  */
@@ -61,7 +62,7 @@ const porta = 9300 + Math.floor(Math.random() * 500);
 const perfil = mkdtempSync(join(tmpdir(), 'malhaviva-fluidez-'));
 const processo = spawn(chrome, [
     `--remote-debugging-port=${porta}`, `--user-data-dir=${perfil}`,
-    '--no-first-run', '--no-default-browser-check', '--window-size=1280,800', '--window-position=40,40',
+    ...(process.env.SEM_JANELA ? ['--headless=new', '--use-angle=d3d11', '--ignore-gpu-blocklist'] : []), '--no-first-run', '--no-default-browser-check', '--window-size=1280,800', '--window-position=40,40',
     '--disable-renderer-backgrounding', '--disable-backgrounding-occluded-windows',
     '--disable-background-timer-throttling', '--disable-features=CalculateNativeWinOcclusion',
     'about:blank',
@@ -95,7 +96,7 @@ const avaliar = async (expressao, esperar = false) => {
 };
 await enviar('Page.enable'); await enviar('Runtime.enable');
 
-// Os outros níveis do modo Automático decidem-se pelo aparelho: finge-se um.
+// Há escolhas que dependem do aparelho: finge-se um.
 if (APARELHO === 'medio') {
     await enviar('Emulation.setHardwareConcurrencyOverride', { hardwareConcurrency: 4 });
 } else if (APARELHO === 'telemovel') {
@@ -104,7 +105,7 @@ if (APARELHO === 'medio') {
     await enviar('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 5 });
 }
 
-console.log(`A medir ${origem} (${QUALIDADE === 'auto' ? 'Automático' : 'nível ' + QUALIDADE}, aparelho: ${APARELHO}), ${SEGUNDOS} s de percurso, num Chrome à parte\n`);
+console.log(`A medir ${origem} (${QUALIDADE === 'auto' ? 'escolha automática' : 'modo ' + QUALIDADE}, aparelho: ${APARELHO}), ${SEGUNDOS} s de percurso, num Chrome à parte\n`);
 
 // Prepara a memória do site e abre o bairro.
 await enviar('Page.navigate', { url: origem + '/creditos' });
@@ -139,14 +140,13 @@ await avaliar(`(() => {
         ultimo = t;
     })(performance.now());
     setInterval(() => {
-        const gs = app.scene.gsplat;
         const d = window.afinadorDeFluidez ? window.afinadorDeFluidez.diagnostico : null;
         f.seg.push({
             s: Math.round((performance.now() - f.t0) / 1000),
             dist: Math.round((window.distanciaDoDetalhe || 0) * 10) / 10,
             dens: Math.round(app.graphicsDevice.maxPixelRatio * 100) / 100,
-            orc: gs.splatBudget,
-            idx: d ? d.indice : null,
+            modo: window.actualQuality,
+            idx: d && window.actualQuality === 'low' ? d.indice : null,
             lentas: d ? d.parteLenta : null
         });
     }, 1000);
@@ -156,10 +156,9 @@ await avaliar(`(() => {
 if (CARGA) {
     await avaliar(`(() => {
         const app = document.querySelector('pc-app').app;
-        const gs = app.scene.gsplat;
-        const dist0 = window.distanciaDoDetalhe, orc0 = gs.splatBudget, dens0 = app.graphicsDevice.maxPixelRatio;
+        const dist0 = window.distanciaDoDetalhe || 100, dens0 = app.graphicsDevice.maxPixelRatio;
         app.on('update', () => {
-            const manchas = orc0 > 0 ? Math.pow(gs.splatBudget / orc0, 0.8) : Math.pow(window.distanciaDoDetalhe / dist0, 2.5);
+            const manchas = window.actualQuality === 'low' ? 0.15 : Math.pow((window.distanciaDoDetalhe || dist0) / dist0, 1.2);
             const pontos = Math.pow(app.graphicsDevice.maxPixelRatio / dens0, 2);
             const ms = ${CARGA} * (0.15 + 0.85 * manchas * (0.5 + 0.5 * pontos));
             const fim = performance.now() + ms;
@@ -167,7 +166,7 @@ if (CARGA) {
         });
         return 1;
     })()`);
-    console.log(`Carga artificial: ${CARGA} ms por imagem no degrau de partida.`);
+    console.log(`Carga artificial: ${CARGA} ms por imagem no modo de partida.`);
 }
 
 const percurso = `(async () => {
@@ -199,6 +198,7 @@ await dormir(500);
 
 const dados = JSON.parse(await avaliar('JSON.stringify(window.__f)'));
 const diag = await avaliar('window.afinadorDeFluidez ? JSON.stringify(window.afinadorDeFluidez.diagnostico) : null');
+const escolha = await avaliar('window.escolhaDeQualidade ? JSON.stringify(window.escolhaDeQualidade.diagnostico) : null');
 
 // --- Contas -----------------------------------------------------------
 const porSegundo = [];
@@ -213,15 +213,14 @@ const todas = dados.dts.map((x) => x[1]).filter((x) => x < 1000);
 const lentas = todas.filter((x) => x > 35).length;
 const parte = (limite) => (util.filter((x) => x < limite).length / util.length * 100).toFixed(0) + '%';
 
-console.log('\nLinha do tempo (a cada 5 s):  fps médio / pior segundo   distância do detalhe · densidade · degrau');
+console.log('\nLinha do tempo (a cada 5 s):  fps médio / pior segundo   modo · distância do detalhe · densidade · degrau da densidade');
 for (let s = 0; s < util.length; s += 5) {
     const fatia = util.slice(s, s + 5);
     const media = fatia.reduce((a, b) => a + b, 0) / fatia.length;
     const estado = dados.seg.find((x) => x.s === s + 1) || {};
     console.log(
         `  ${String(s).padStart(3)} s   ${media.toFixed(0).padStart(3)} / ${String(Math.min(...fatia)).padStart(3)}     ` +
-        `${String(estado.dist).padStart(6)} m · ${estado.dens} · ${estado.idx === null || estado.idx === undefined ? '-' : estado.idx}` +
-        (estado.orc ? ` · tecto ${Math.round(estado.orc / 1000)}k` : '')
+        `${String(estado.modo).padEnd(4)} · ${String(estado.dist).padStart(6)} m · ${estado.dens} · ${estado.idx === null || estado.idx === undefined ? '-' : estado.idx}`
     );
 }
 
@@ -230,9 +229,16 @@ console.log(`  segundos abaixo de 30 imagens: ${parte(30)}   abaixo de 25: ${par
 console.log(`  imagens por segundo — média ${(util.reduce((a, b) => a + b, 0) / util.length).toFixed(0)}, ` +
     `pior 5% dos segundos ${ordenados[Math.floor(ordenados.length * 0.05)]}, pior ${ordenados[0]}`);
 console.log(`  imagens lentas (mais de 35 ms): ${(lentas / todas.length * 100).toFixed(1)}%`);
+if (escolha) {
+    const d = JSON.parse(escolha);
+    console.log(`  modos mudados: ${d.diario.length}; modo final ${d.modo}`);
+    for (const m of d.diario) {
+        console.log(`    ${((m.instante - dados.t0) / 1000).toFixed(1).padStart(6)} s  ${m.de} -> ${m.para}  ${m.motivo}`);
+    }
+}
 if (diag) {
     const d = JSON.parse(diag);
-    console.log(`  degraus mudados: ${d.diario.length}; degrau final ${d.indice} de ${d.degraus - 1}`);
+    console.log(`  degraus da densidade mudados: ${d.diario.length}; degrau final ${d.indice} de ${d.degraus - 1}`);
     const zero = dados.t0;
     for (const m of d.diario) {
         console.log(`    ${((m.instante - zero) / 1000).toFixed(1).padStart(6)} s  ${m.de} -> ${m.para}  ${m.motivo}`);
