@@ -386,6 +386,14 @@ AnnotationController.prototype.initialize = function() {
             display: flex;
             flex-direction: column;
             align-items: center;
+            /* Um dedo pousado num marcador também mexe no bairro (ver
+               "Os marcadores", em camera-controls.mjs): o navegador não fica
+               com ele para aproximar a página, nem escolhe o texto do nome
+               quando ele se demora. */
+            touch-action: none;
+            -webkit-user-select: none;
+            user-select: none;
+            -webkit-touch-callout: none;
         }
         .annotation-marker:hover .marker-dot, .annotation-marker.force-hover .marker-dot,
         .annotation-marker:focus-visible .marker-dot,

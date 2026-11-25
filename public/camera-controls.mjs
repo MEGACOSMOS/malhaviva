@@ -135,7 +135,8 @@ const entreMeiaVolta = (graus) => {
 //
 // Com os dedos: um dedo arrasta; dois dedos aproximam e afastam (a pinça),
 // rodam (a rodar um à volta do outro) e arrastam, tudo ao mesmo tempo; dois
-// dedos a subir ou a descer juntos inclinam; dois toques aproximam; dois
+// dedos a subir ou a descer juntos inclinam (ver `DoisDedos`); e contam
+// também os dedos pousados em cima dos marcadores; dois toques aproximam; dois
 // dedos a tocar ao mesmo tempo afastam; dois toques com o segundo a ficar
 // e a arrastar aproximam (para baixo) e afastam (para cima); e um dedo
 // parado no mesmo sítio, sem largar, marca-o.
@@ -221,9 +222,62 @@ const INCLINAR_COM_O_RATO = 0.3;
 const INCLINAR_COM_OS_DEDOS = 0.35;
 const RODAR_COM_AS_TECLAS = 70;
 const INCLINAR_COM_AS_TECLAS = 40;
-// Dois dedos só começam a rodar o bairro depois de rodarem isto um à volta
-// do outro (graus): uma pinça nunca é perfeitamente direita.
-const RODAR_COM_OS_DEDOS_A_PARTIR_DE = 15;
+
+// Dois dedos a rodar um à volta do outro (ver `DoisDedos`). Uma pinça nunca
+// é perfeitamente direita, e dois dedos a arrastar também se torcem um
+// nada: por isso o bairro só começa a rodar quando os dedos já rodaram
+// RODAR_A_PARTIR_DE (graus) e cada um andou RODAR_ARCO_MINIMO (pontos de
+// ecrã) à volta do outro — e, até RODAR_DE_CERTEZA, só se isso for o que
+// eles mais estão a fazer. Dali para cima já não há dúvida.
+const RODAR_A_PARTIR_DE = 5;
+const RODAR_ARCO_MINIMO = 5;
+const RODAR_DE_CERTEZA = 18;
+// Quanto pesa, na dúvida, o que os dedos abriram ou fecharam, e o que
+// andaram juntos: isto pouco, porque quem roda com um dedo parado leva o
+// meio dos dois atrás; mas muito quando andaram juntos para cima ou para
+// baixo, que é como se inclina.
+const RODAR_PESO_DA_PINCA = 1.4;
+const RODAR_PESO_DO_PASSEIO = 0.35;
+const RODAR_PESO_DO_PASSEIO_AO_ALTO = 0.8;
+// Também conta o que fizeram há pouco (milissegundos), e não só desde que
+// pousaram: quem acabou uma pinça e começa a rodar não tem de desfazer, a
+// rodar, tudo o que a pinça andou.
+const RODAR_JANELA = 220;
+const RODAR_JANELA_A_PARTIR_DE = 6;
+// Já a inclinar, é preciso mais para se dar a volta ao gesto: aos dedos que
+// começaram a subir juntos sem querer, e afinal rodam. Os que continuam a
+// subir pesam mais, na dúvida, do que os que já vão para outro lado: esses,
+// inclinar é que não é.
+const RODAR_A_INCLINAR_A_PARTIR_DE = 8;
+const RODAR_A_INCLINAR_ARCO = 8;
+const RODAR_A_INCLINAR_PESO = 0.4;
+const RODAR_A_INCLINAR_PESO_AO_ALTO = 0.8;
+// O bocado que os dedos rodaram antes de o bairro começar a rodar dá-se-lhe
+// de volta aos poucos, enquanto rodam para o mesmo lado: por cada grau, mais
+// isto. Ao fim de uns instantes o bairro está outra vez colado aos dedos.
+const RODAR_RECUPERAR = 0.5;
+// Só depois de o bairro rodar isto (graus) é que se diz que se rodou (ver
+// `_avisarGesto`): uns graus podem ser sem querer.
+const RODAR_AVISAR = 10;
+// Inclinar: os dois dedos lado a lado, a subir ou a descer juntos. Decide-se
+// assim que andaram INCLINAR_A_PARTIR_DE (pontos de ecrã) e o resto — o que
+// rodaram, o que abriram — é pouco ao pé disso; na dúvida espera-se até
+// INCLINAR_O_MAIS_TARDAR, e aí já se aceita mais resto.
+const INCLINAR_A_PARTIR_DE = 9;
+const INCLINAR_RESTO = 0.3;
+const INCLINAR_O_MAIS_TARDAR = 20;
+const INCLINAR_RESTO_TARDE = 0.5;
+// Daqui para cima (pontos de ecrã) há gesto, seja ele qual for.
+const DOIS_DEDOS_MINIMO = 5;
+// Um gesto que se largou dedo a dedo, com menos disto entre um e outro
+// (milissegundos), é o mesmo gesto a acabar: o dedo que ficou não atira o
+// bairro com balanço.
+const LARGAR_DOIS_DEDOS = 160;
+
+// Os marcadores que se vêem por cima do bairro — os testemunhos, as
+// paragens, e os da navegação. Um dedo que lhes pousa em cima também é um
+// dedo no bairro (ver `_escutarGestos`).
+const MARCADORES_DO_BAIRRO = '.annotation-marker, #percurso-3d [role="button"]';
 
 // Quanto a câmara pode olhar para baixo (a pique) e quanto pode ir para o
 // horizonte, em graus. Como no Google Maps, não se olha para o céu.
@@ -304,6 +358,205 @@ const andarAteAoLimite = (passo, falta, zona) => {
     }
     return andado;
 };
+
+/**
+ * O que dois dedos estão a fazer: a mexer no mapa (pinça, arrastar e rodar,
+ * tudo ao mesmo tempo) ou a inclinar — e, a mexer no mapa, se já o rodam.
+ *
+ * A cada imagem diz-se-lhe onde estão os dedos (`seguir`). O que eles
+ * fizeram mede-se em três coisas, todas em pontos de ecrã que cada dedo
+ * andou, para se poderem comparar: o arco (a rodar um à volta do outro), a
+ * pinça (a afastarem-se ou a juntarem-se) e o passeio (a andarem juntos).
+ *
+ * Rodar não precisa de ser a única coisa que os dedos fazem, mas enquanto
+ * rodaram pouco tem de ser a que mais fazem (ver RODAR_A_PARTIR_DE). E não
+ * há decisão que prenda o gesto até ao fim: quem começou por inclinar e
+ * afinal roda, roda; quem começou por arrastar e afinal inclina, inclina.
+ */
+class DoisDedos {
+    /**
+     * Pousaram os dois dedos.
+     *
+     * @param {object} a - Um dedo (x, y: na tela).
+     * @param {object} b - O outro.
+     * @param {number} agora - O instante, em milissegundos.
+     */
+    constructor(a, b, agora) {
+        // 'mapa', 'inclinar', ou nada, enquanto não se sabe.
+        this.modo = null;
+        // Se os dedos já rodam o bairro, e a partir de que volta.
+        this.aRodar = false;
+        this.partida = 0;
+        // Quanto já rodaram um à volta do outro, em graus, sem dar o salto
+        // da volta inteira; e como estão agora.
+        this.giro = 0;
+        this.rumo = Math.atan2(b.y - a.y, b.x - a.x) * math.RAD_TO_DEG;
+        this.distancia = Math.max(1, Math.hypot(b.x - a.x, b.y - a.y));
+        this.x = (a.x + b.x) / 2;
+        this.y = (a.y + b.y) / 2;
+        // Pousaram lado a lado, e não um por cima do outro.
+        this.ladoALado = Math.abs(b.y - a.y) < Math.abs(b.x - a.x);
+        // Como estavam ao pousar, ao mudar de modo, e há pouco.
+        this.inicio = this._como(agora);
+        this.mudanca = this.inicio;
+        this.recente = [this.inicio];
+    }
+
+    /**
+     * @param {number} t - O instante.
+     * @returns {object} Como estão os dedos.
+     * @private
+     */
+    _como(t) {
+        return { t, giro: this.giro, distancia: this.distancia, x: this.x, y: this.y };
+    }
+
+    /**
+     * O que os dedos fizeram desde um instante.
+     *
+     * @param {object} antes - Como estavam.
+     * @returns {object} Os graus que rodaram, e o arco, a pinça e o passeio.
+     * @private
+     */
+    _desde(antes) {
+        const graus = this.giro - antes.giro;
+        const dx = this.x - antes.x;
+        const dy = this.y - antes.y;
+        return {
+            graus,
+            arco: Math.abs(graus) * math.DEG_TO_RAD * (this.distancia + antes.distancia) / 4,
+            pinca: Math.abs(this.distancia - antes.distancia) / 2,
+            passeio: Math.hypot(dx, dy),
+            aoAlto: Math.abs(dy) > 1.7 * Math.abs(dx)
+        };
+    }
+
+    /**
+     * Se o que os dedos fizeram é rodar.
+     *
+     * @param {object} m - O que fizeram (ver `_desde`).
+     * @param {number} minimo - A partir de quantos graus.
+     * @returns {boolean} Se é.
+     * @private
+     */
+    _roda(m, minimo) {
+        const graus = Math.abs(m.graus);
+        if (graus < minimo || m.arco < RODAR_ARCO_MINIMO) {
+            return false;
+        }
+        const duvida = math.clamp((RODAR_DE_CERTEZA - graus) / (RODAR_DE_CERTEZA - minimo), 0, 1);
+        const peso = this.ladoALado && m.aoAlto ? RODAR_PESO_DO_PASSEIO_AO_ALTO : RODAR_PESO_DO_PASSEIO;
+        return m.arco >= duvida * (RODAR_PESO_DA_PINCA * m.pinca + peso * m.passeio);
+    }
+
+    /**
+     * Os dedos passam a rodar o bairro. O que já rodaram até à imagem
+     * anterior (e nunca menos do que o mínimo) ficou por fazer, e volta aos
+     * poucos (ver RODAR_RECUPERAR); o resto roda já — senão, num telemóvel
+     * que desenha devagar, uma volta depressa perdia-se quase toda.
+     *
+     * @param {object} antes - Desde quando se contou.
+     * @param {number} giroAnterior - Quanto tinham rodado na imagem anterior.
+     * @param {number} minimo - A partir de quantos graus se contou.
+     * @private
+     */
+    _comecarARodar(antes, giroAnterior, minimo) {
+        const lado = Math.sign(this.giro - antes.giro) || 1;
+        const gasto = math.clamp((giroAnterior - antes.giro) * lado, minimo, Math.abs(this.giro - antes.giro));
+        this.aRodar = true;
+        this.partida = antes.giro + lado * gasto;
+        this.porDar = lado * gasto;
+    }
+
+    /**
+     * @param {string} modo - 'mapa' ou 'inclinar'.
+     * @param {number} t - O instante.
+     * @private
+     */
+    _mudar(modo, t) {
+        this.modo = modo;
+        this.mudanca = this._como(t);
+    }
+
+    /**
+     * Onde estão os dedos nesta imagem, e o que passa a ser o gesto.
+     *
+     * @param {object} a - Um dedo.
+     * @param {object} b - O outro.
+     * @param {number} t - O instante, em milissegundos.
+     */
+    seguir(a, b, t) {
+        const giroAnterior = this.giro;
+        const rumo = Math.atan2(b.y - a.y, b.x - a.x) * math.RAD_TO_DEG;
+        this.giro += entreMeiaVolta(rumo - this.rumo);
+        this.rumo = rumo;
+        this.distancia = Math.max(1, Math.hypot(b.x - a.x, b.y - a.y));
+        this.x = (a.x + b.x) / 2;
+        this.y = (a.y + b.y) / 2;
+
+        const recente = this.recente;
+        recente.push(this._como(t));
+        while (recente.length > 2 && t - recente[1].t >= RODAR_JANELA) {
+            recente.shift();
+        }
+        const desdeHaPouco = this._desde(recente[0]);
+
+        if (this.modo === 'inclinar') {
+            // A inclinar, e afinal a rodar (ou a abrir e fechar a pinça).
+            for (const antes of [this.mudanca, recente[0]]) {
+                const m = this._desde(antes);
+                if (Math.abs(m.graus) >= RODAR_A_INCLINAR_A_PARTIR_DE && m.arco >= RODAR_A_INCLINAR_ARCO &&
+                        m.arco >= m.pinca && m.arco >= m.passeio *
+                        (m.aoAlto ? RODAR_A_INCLINAR_PESO_AO_ALTO : RODAR_A_INCLINAR_PESO)) {
+                    this._mudar('mapa', t);
+                    this._comecarARodar(antes, giroAnterior, RODAR_A_INCLINAR_A_PARTIR_DE);
+                    return;
+                }
+                if (m.pinca >= 24 && m.pinca >= 1.5 * m.passeio) {
+                    this._mudar('mapa', t);
+                    return;
+                }
+            }
+            return;
+        }
+
+        if (!this.aRodar) {
+            const desdeOInicio = this._desde(this.inicio);
+            if (this._roda(desdeOInicio, RODAR_A_PARTIR_DE)) {
+                this._comecarARodar(this.inicio, giroAnterior, RODAR_A_PARTIR_DE);
+            } else if (this._roda(desdeHaPouco, RODAR_JANELA_A_PARTIR_DE)) {
+                this._comecarARodar(recente[0], giroAnterior, RODAR_JANELA_A_PARTIR_DE);
+            }
+            if (this.aRodar) {
+                this._mudar('mapa', t);
+                return;
+            }
+
+            // Inclinar: lado a lado, a subir ou a descer juntos. Também quem
+            // já arrastava o mapa passa a inclinar, se afinal os dois dedos
+            // vão a direito para cima ou para baixo.
+            const { arco, pinca, passeio, aoAlto } = desdeOInicio;
+            const resto = Math.max(arco, pinca);
+            const podeInclinar = this.ladoALado && aoAlto;
+            const inclina = podeInclinar && (
+                (passeio >= INCLINAR_A_PARTIR_DE && resto <= INCLINAR_RESTO * passeio) ||
+                (passeio >= INCLINAR_O_MAIS_TARDAR && resto <= INCLINAR_RESTO_TARDE * passeio));
+            if (inclina && (!this.modo || pinca < 10)) {
+                this._mudar('inclinar', t);
+                return;
+            }
+            if (this.modo) {
+                return;
+            }
+            // Ainda não se sabe o que é: espera-se mais um pouco — e mais
+            // ainda se pode vir a ser inclinar.
+            const espera = podeInclinar && pinca <= passeio ? INCLINAR_O_MAIS_TARDAR + 8 : DOIS_DEDOS_MINIMO;
+            if (Math.max(arco, pinca, passeio) >= espera) {
+                this._mudar('mapa', t);
+            }
+        }
+    }
+}
 
 /**
  * Provides orbit, fly and pan camera controls, driven by mouse, touch and gamepad input. Movement
@@ -505,18 +758,23 @@ class CameraControls extends Script {
         ultY: 0,
         somaX: 0,
         somaY: 0,
-        // Dois dedos: como estavam ao pousar e no instante anterior, o que
-        // o gesto é ('mapa' ou 'inclinar', decidido nos primeiros pontos), e
-        // quanto já rodaram um à volta do outro.
+        // Dois dedos: o que estão a fazer (ver `DoisDedos`), como estavam ao
+        // pousar e no instante anterior, até que volta o bairro já rodou com
+        // eles, quanto rodou ao todo, e quanto tem por recuperar.
+        dois: null,
         t0Dois: 0,
         dist0: 0,
-        decidido: null,
         ultMeioX: 0,
         ultMeioY: 0,
         ultDist: 0,
-        ultAngulo: 0,
-        giroAcumulado: 0,
-        aRodar: false,
+        ultGiro: 0,
+        rodado: 0,
+        porRodar: 0,
+        // Quando um gesto de dois dedos ficou só com um.
+        t0Resto: 0,
+        // Até quando um clique num marcador é o fim de um gesto que começou
+        // em cima dele, e não um clique.
+        semCliqueAte: 0,
         // O último clique e o último toque, para se saber se o seguinte
         // faz um duplo.
         ultimoClique: null,
@@ -1179,11 +1437,18 @@ class CameraControls extends Script {
         // enquanto o agarra.
         tela.style.cursor = 'grab';
 
-        const aoPousar = (e) => {
+        const aoPousar = (e, marcador = false) => {
             if (!this._podeMexer()) {
                 return;
             }
             const rato = e.pointerType === 'mouse';
+            // Pousou o primeiro dedo: não há mais nenhum no ecrã. O que ainda
+            // estivesse anotado era de um dedo que se levantou sem que se
+            // soubesse, e este ia fazer par com ele.
+            if (!rato && e.isPrimary && g.ponteiros.size) {
+                g.ponteiros.clear();
+                this._acabarGesto(false);
+            }
             // Um rato de cada vez; dedos, contam os dois primeiros.
             if (rato ? g.ponteiros.size > 0 : g.ponteiros.size >= 2) {
                 return;
@@ -1194,11 +1459,15 @@ class CameraControls extends Script {
             }
             const [x, y] = naTela(e);
             const agora = performance.now();
-            const ponteiro = { id: e.pointerId, tipo: e.pointerType, x, y, x0: x, y0: y, t0: agora };
+            const ponteiro = { id: e.pointerId, tipo: e.pointerType, x, y, x0: x, y0: y, t0: agora, marcador };
             g.ponteiros.set(e.pointerId, ponteiro);
-            try {
-                tela.setPointerCapture(e.pointerId);
-            } catch (erro) { /* segue sem: os gestos só contam em cima da tela */ }
+            // O dedo que pousou num marcador continua dele: se for só um
+            // toque, é ele que abre.
+            if (!marcador) {
+                try {
+                    tela.setPointerCapture(e.pointerId);
+                } catch (erro) { /* segue sem: os gestos só contam em cima da tela */ }
+            }
 
             // Pegar no bairro pára o que estava a andar sozinho.
             this._balanco = null;
@@ -1222,13 +1491,15 @@ class CameraControls extends Script {
                 return;
             }
             const antes = g.ultimoToque;
-            if (antes && agora - antes.t < DUPLO_INTERVALO &&
+            if (antes && !marcador && agora - antes.t < DUPLO_INTERVALO &&
                     Math.hypot(x - antes.x, y - antes.y) < DUPLO_DISTANCIA) {
                 this._comecarSegundoToque(ponteiro);
             } else {
                 this._comecarAMover(ponteiro);
             }
         };
+
+        const aoPousarNaTela = e => aoPousar(e);
 
         const aoMexer = (e) => {
             const ponteiro = g.ponteiros.get(e.pointerId);
@@ -1264,10 +1535,20 @@ class CameraControls extends Script {
             if (!ponteiro) {
                 return;
             }
+            // O que os dois dedos andaram desde a última imagem ainda conta:
+            // numa volta depressa, com o telemóvel a desenhar devagar, era um
+            // bom bocado dela.
+            if (g.modo === 'dois') {
+                this._aplicarGestos();
+            }
             if (!desistiu) {
                 const [x, y] = naTela(e);
                 ponteiro.x = x;
                 ponteiro.y = y;
+            }
+            // O dedo que começou num marcador e mexeu no bairro não o abre.
+            if (ponteiro.marcador && (g.arrastou || g.modo === 'dois' || g.restoDeDois)) {
+                g.semCliqueAte = performance.now() + 400;
             }
             g.ponteiros.delete(e.pointerId);
             try {
@@ -1322,7 +1603,7 @@ class CameraControls extends Script {
             }
             if (g.modo === 'dois') {
                 // Os dois a tocar e a largar sem mexer: afastar.
-                if (!desistiu && !g.decidido && agora - g.t0Dois <= TOQUE_DE_DOIS_DEDOS) {
+                if (!desistiu && !g.dois.modo && agora - g.t0Dois <= TOQUE_DE_DOIS_DEDOS) {
                     this._toqueDeDoisDedos();
                 }
                 g.ultimoToque = null;
@@ -1330,6 +1611,7 @@ class CameraControls extends Script {
                 if (resta) {
                     // Fica um dedo: continua a arrastar com ele.
                     this._comecarAMover(resta, true);
+                    g.t0Resto = agora;
                 } else {
                     this._acabarGesto(false);
                 }
@@ -1349,8 +1631,8 @@ class CameraControls extends Script {
                 return;
             }
             const toque = !desistiu && !g.restoDeDois && !g.arrastou && depressa &&
-                mexida <= CLIQUE_MEXIDA_DEDO;
-            this._acabarGesto(!desistiu);
+                !ponteiro.marcador && mexida <= CLIQUE_MEXIDA_DEDO;
+            this._acabarGesto(!desistiu && !(g.restoDeDois && agora - g.t0Resto < LARGAR_DOIS_DEDOS));
             g.ultimoToque = toque ? { t: agora, x: ponteiro.x, y: ponteiro.y } : null;
         };
         const aoLevantar = e => aoLargar(e, false);
@@ -1406,7 +1688,45 @@ class CameraControls extends Script {
         // Quem sai da janela a meio de um gesto não o larga cá dentro.
         const aoSairDaJanela = () => this._largarTudo();
 
-        tela.addEventListener('pointerdown', aoPousar);
+        // Os marcadores estão por cima do bairro, e um dedo que pousava num
+        // deles não chegava cá: o gesto ficava coxo. Com uma miniatura
+        // debaixo de um dos dois dedos, o bairro não rodava, nem se
+        // aproximava, nem andava. Como no Google Maps, onde os marcadores
+        // são do mapa, esse dedo conta como os outros — e se for só um
+        // toque, abre o marcador na mesma. (O rato não: com ele, o marcador
+        // é para carregar.)
+        const aoPousarNumMarcador = (e) => {
+            g.semCliqueAte = 0;
+            if (e.pointerType === 'mouse' || !(e.target instanceof Element) ||
+                    !e.target.closest(MARCADORES_DO_BAIRRO)) {
+                return;
+            }
+            aoPousar(e, true);
+        };
+        const seVemDeUmMarcador = ouvir => (e) => {
+            const ponteiro = g.ponteiros.get(e.pointerId);
+            if (ponteiro && ponteiro.marcador) {
+                ouvir(e);
+            }
+        };
+        const aoMexerDeUmMarcador = seVemDeUmMarcador(aoMexer);
+        const aoLevantarDeUmMarcador = seVemDeUmMarcador(aoLevantar);
+        const aoPerderDeUmMarcador = seVemDeUmMarcador(aoPerder);
+        const aoClicar = (e) => {
+            if (performance.now() > g.semCliqueAte || !(e.target instanceof Element) ||
+                    !e.target.closest(MARCADORES_DO_BAIRRO)) {
+                return;
+            }
+            e.preventDefault();
+            e.stopImmediatePropagation();
+        };
+
+        window.addEventListener('pointerdown', aoPousarNumMarcador);
+        window.addEventListener('pointermove', aoMexerDeUmMarcador);
+        window.addEventListener('pointerup', aoLevantarDeUmMarcador);
+        window.addEventListener('pointercancel', aoPerderDeUmMarcador);
+        window.addEventListener('click', aoClicar, true);
+        tela.addEventListener('pointerdown', aoPousarNaTela);
         tela.addEventListener('pointermove', aoMexer);
         tela.addEventListener('pointerup', aoLevantar);
         tela.addEventListener('pointercancel', aoPerder);
@@ -1416,7 +1736,12 @@ class CameraControls extends Script {
         window.addEventListener('blur', aoSairDaJanela);
 
         this._largarGestos = () => {
-            tela.removeEventListener('pointerdown', aoPousar);
+            window.removeEventListener('pointerdown', aoPousarNumMarcador);
+            window.removeEventListener('pointermove', aoMexerDeUmMarcador);
+            window.removeEventListener('pointerup', aoLevantarDeUmMarcador);
+            window.removeEventListener('pointercancel', aoPerderDeUmMarcador);
+            window.removeEventListener('click', aoClicar, true);
+            tela.removeEventListener('pointerdown', aoPousarNaTela);
             tela.removeEventListener('pointermove', aoMexer);
             tela.removeEventListener('pointerup', aoLevantar);
             tela.removeEventListener('pointercancel', aoPerder);
@@ -1520,8 +1845,9 @@ class CameraControls extends Script {
         g.restoDeDois = restoDeDois;
         g.rasto.length = 0;
         // Parado aqui o bastante, marca o sítio (ver `_vigiarPremir`). O
-        // dedo que fica de um gesto de dois já não.
-        g.premir = !restoDeDois;
+        // dedo que fica de um gesto de dois já não, nem o que pousou num
+        // marcador: esse é um sítio com nome.
+        g.premir = !restoDeDois && !ponteiro.marcador;
         g.premirAvisado = false;
         if (restoDeDois) {
             // Agarra o chão debaixo do dedo que ficou, à altura do que os
@@ -1578,18 +1904,16 @@ class CameraControls extends Script {
         a.y0 = a.y;
         b.x0 = b.x;
         b.y0 = b.y;
-        const meioX = (a.x + b.x) / 2;
-        const meioY = (a.y + b.y) / 2;
-        g.dist0 = Math.max(1, Math.hypot(b.x - a.x, b.y - a.y));
+        g.dois = new DoisDedos(a, b, g.t0Dois);
+        g.dist0 = g.dois.distancia;
         g.ultDist = g.dist0;
-        g.ultAngulo = Math.atan2(b.y - a.y, b.x - a.x);
-        g.ultMeioX = meioX;
-        g.ultMeioY = meioY;
-        g.decidido = null;
-        g.giroAcumulado = 0;
-        g.aRodar = false;
+        g.ultMeioX = g.dois.x;
+        g.ultMeioY = g.dois.y;
+        g.ultGiro = 0;
+        g.rodado = 0;
+        g.porRodar = 0;
         g.ultimoToque = null;
-        this._agarrar(meioX, meioY, null, true);
+        this._agarrar(g.dois.x, g.dois.y, null, true);
         this._pedirAlturaDoPivo();
     }
 
@@ -2406,7 +2730,9 @@ class CameraControls extends Script {
                 return;
             }
             if (!g.arrastou) {
-                const limiar = p.tipo === 'mouse' ? ARRASTO_MINIMO_RATO : ARRASTO_MINIMO_DEDO;
+                // Num marcador, o dedo que ainda pode ser um toque não arrasta.
+                const limiar = p.tipo === 'mouse' ? ARRASTO_MINIMO_RATO :
+                    p.marcador ? CLIQUE_MEXIDA_DEDO : ARRASTO_MINIMO_DEDO;
                 if (Math.hypot(p.x - p.x0, p.y - p.y0) < limiar) {
                     return;
                 }
@@ -2487,44 +2813,27 @@ class CameraControls extends Script {
             if (!a || !b) {
                 return;
             }
-            const meioX = (a.x + b.x) / 2;
-            const meioY = (a.y + b.y) / 2;
-            const distancia = Math.max(1, Math.hypot(b.x - a.x, b.y - a.y));
-            const angulo = Math.atan2(b.y - a.y, b.x - a.x);
+            const dois = g.dois;
+            const antes = dois.modo;
+            dois.seguir(a, b, performance.now());
+            const { x: meioX, y: meioY, distancia } = dois;
 
-            if (!g.decidido) {
-                const ax = a.x - a.x0;
-                const ay = a.y - a.y0;
-                const bx = b.x - b.x0;
-                const by = b.y - b.y0;
-                const ma = Math.hypot(ax, ay);
-                const mb = Math.hypot(bx, by);
-                if (Math.max(ma, mb) < 8 && Math.abs(distancia - g.dist0) < 8) {
-                    // Ainda não se sabe o que é: espera-se mais um pouco.
-                    g.ultMeioX = meioX;
-                    g.ultMeioY = meioY;
-                    g.ultDist = distancia;
-                    g.ultAngulo = angulo;
-                    return;
-                }
-                // Inclinar: os dois dedos lado a lado, a subir ou a descer
-                // juntos, sem se afastarem um do outro.
-                const aoAlto = (vx, vy) => Math.abs(vy) > 1.5 * Math.abs(vx);
-                const ladoALado = Math.abs(b.y0 - a.y0) < Math.abs(b.x0 - a.x0);
-                const juntos = ay * by > 0;
-                const pinca = Math.abs(distancia - g.dist0) / g.dist0;
-                g.decidido = (ma > 4 && mb > 4 && aoAlto(ax, ay) && aoAlto(bx, by) &&
-                    juntos && ladoALado && pinca < 0.15) ? 'inclinar' : 'mapa';
+            if (dois.modo !== antes && antes) {
+                // O gesto deu a volta (ver `DoisDedos`): agarra-se o que está
+                // agora entre os dedos, à altura do que se agarrava, para o
+                // bairro não saltar.
+                this._agarrar(meioX, meioY, g.ancora.y, false);
+                g.ultDist = distancia;
             }
 
-            if (g.decidido === 'inclinar') {
+            if (dois.modo === 'inclinar') {
                 const dy = meioY - g.ultMeioY;
                 if (dy) {
                     this._rodarEInclinar(0, -dy * INCLINAR_COM_OS_DEDOS);
                     g.pegou = true;
                     this._avisarGesto('inclinar');
                 }
-            } else {
+            } else if (dois.modo === 'mapa') {
                 // A pinça: o sítio entre os dedos fica onde está, e o resto
                 // aproxima-se ou afasta-se dele.
                 const fator = g.ultDist / distancia;
@@ -2536,20 +2845,9 @@ class CameraControls extends Script {
                     }
                 }
                 // Rodar: os dedos a rodar um à volta do outro rodam o
-                // bairro com eles, depois de passarem do limiar.
-                let volta = angulo - g.ultAngulo;
-                while (volta > Math.PI) volta -= 2 * Math.PI;
-                while (volta < -Math.PI) volta += 2 * Math.PI;
-                const graus = volta * math.RAD_TO_DEG;
-                if (!g.aRodar) {
-                    g.giroAcumulado += graus;
-                    if (Math.abs(g.giroAcumulado) >= RODAR_COM_OS_DEDOS_A_PARTIR_DE) {
-                        g.aRodar = true;
-                    }
-                } else if (graus) {
-                    this._rodarAVoltaDe(g.ancora, graus);
-                    g.pegou = true;
-                    this._avisarGesto('rodar');
+                // bairro com eles.
+                if (dois.aRodar) {
+                    this._rodarComOsDedos();
                 }
                 // E o sítio agarrado vai com o meio dos dedos.
                 const pos = this._pose.position;
@@ -2566,7 +2864,41 @@ class CameraControls extends Script {
             g.ultMeioX = meioX;
             g.ultMeioY = meioY;
             g.ultDist = distancia;
-            g.ultAngulo = angulo;
+        }
+    }
+
+    /**
+     * Roda o bairro o que os dois dedos rodaram desde a imagem anterior, à
+     * volta do sítio que eles agarram. O bocado que rodaram antes de o
+     * gesto se conhecer (ver `DoisDedos`) vai sendo dado de volta enquanto
+     * rodam para o mesmo lado, até o bairro ficar outra vez colado a eles.
+     *
+     * @private
+     */
+    _rodarComOsDedos() {
+        const g = this._gestos;
+        const dois = g.dois;
+        if (dois.porDar) {
+            // Acabaram de começar a rodar.
+            g.ultGiro = dois.partida;
+            g.porRodar = dois.porDar;
+            dois.porDar = 0;
+        }
+        const graus = dois.giro - g.ultGiro;
+        if (!graus) {
+            return;
+        }
+        g.ultGiro = dois.giro;
+        let mais = 0;
+        if (graus * g.porRodar > 0) {
+            mais = Math.sign(graus) * Math.min(Math.abs(g.porRodar), Math.abs(graus) * RODAR_RECUPERAR);
+            g.porRodar -= mais;
+        }
+        this._rodarAVoltaDe(g.ancora, graus + mais);
+        g.pegou = true;
+        g.rodado += graus + mais;
+        if (Math.abs(g.rodado) >= RODAR_AVISAR) {
+            this._avisarGesto('rodar');
         }
     }
 
