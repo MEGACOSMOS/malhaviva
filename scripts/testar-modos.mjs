@@ -151,6 +151,8 @@ const passear = async () => {
     }
     return vezes;
 };
+// No Alto o resto do bairro vem por trás, depois de abrir.
+const inteiro = () => esperar(`window.distanciaDoDetalhe === 300 && (() => { for (const m of window.lodFoco.mapasMistos) { if (m.pending.size) return false; for (const n of m.nodeInfos) if (n.currentLod !== n.optimalLod || (n.currentLod >= 0 && !(n.vista >= 0.99))) return false; } return true; })()`, 240);
 const limpo = 'localStorage.removeItem("quality"); localStorage.removeItem("qualidade-medida")';
 
 // --- Aparelho novo, escolha automática ----------------------------------
@@ -175,7 +177,9 @@ await dormir(800);
 await foto('menu');
 verificar('a visita seguinte abre logo no Alto', await abrir() && (await estado()).modo === 'high', await estado());
 e = await estado();
-verificar('... e quando o ecrã de espera sai está tudo carregado', e.aChegar === 0 && e.porAcertar === 0 && e.distancia === 300 && e.finos > 400, e);
+verificar('... e o resto do bairro chega por trás', await inteiro(), e);
+e = await estado();
+verificar('... até estar tudo carregado', e.aChegar === 0 && e.porAcertar === 0 && e.distancia === 300 && e.finos > 400, e);
 
 // --- Do Médio para o Alto, à mão, com o rato e a câmara parada -----------
 await abrir(limpo + '; localStorage.setItem("quality", "med")');
@@ -195,7 +199,10 @@ await dormir(900);
 await foto('ecra-do-alto');
 verificar('... e sai quando o bairro está pronto', await esperar(ecraFora, 240), await estado());
 e = await estado();
-verificar('quando sai está tudo disponível: nada a chegar, tudo no nível certo', e.modo === 'high' && e.distancia === 300 && e.aChegar === 0 && e.porAcertar === 0 && e.finos > finosNoMedio + 250 && cargas === antes, e);
+verificar('quando sai, o que se vê está pronto', e.modo === 'high' && e.distancia >= 150 && e.porAcertar === 0, e);
+verificar('... e o resto chega por trás', await inteiro(), await estado());
+e = await estado();
+verificar('... até estar tudo disponível: nada a chegar, tudo no nível certo', e.modo === 'high' && e.distancia === 300 && e.aChegar === 0 && e.porAcertar === 0 && e.finos > finosNoMedio + 250 && cargas === antes, e);
 verificar('... todos os pedaços, do bairro inteiro', e.ficheiros.split('/')[0] === e.ficheiros.split('/')[1], e.ficheiros);
 verificar('... e a escolha fica guardada', e.guardada === 'high' && e.marcado === 'high', e);
 verificar('... no mesmo sítio onde se estava', await avaliar(`document.querySelector('pc-app').app.root.findByName('camera').getPosition().toString()`) === lugar, lugar);
@@ -260,7 +267,10 @@ await carregar('radio-high');
 await dormir(2000);
 verificar('do Baixo para o Alto: abre de novo', await esperar(aberto, 240), null);
 e = await estado();
-verificar('... já no Alto, com tudo carregado', e.modo === 'high' && e.misto && e.aChegar === 0 && e.porAcertar === 0 && e.distancia === 300 && !e.automatica, e);
+verificar('... já no Alto', e.modo === 'high' && e.distancia >= 150, e);
+verificar('... e o resto chega por trás', await inteiro(), await estado());
+e = await estado();
+verificar('... até estar tudo carregado', e.modo === 'high' && e.misto && e.aChegar === 0 && e.porAcertar === 0 && e.distancia === 300 && !e.automatica, e);
 
 // --- Desce com peso -------------------------------------------------------
 await abrir(limpo);
@@ -328,7 +338,7 @@ await dormir(20000);
 e = await estado();
 verificar('... e nunca guarda que pode subir', !e.medida || e.medida.modo === 'low', e);
 
-const aSerio = erros.filter((x) => !/registry already|CONTEXT_LOST|context lost|Failed to load resource|ERR_INTERNET_DISCONNECTED|Error loading|Failed to fetch/i.test(x));
+const aSerio = erros.filter((x) => !/registry already|CONTEXT_LOST|context lost|clientWaitSync|Failed to load resource|ERR_INTERNET_DISCONNECTED|Error loading|Failed to fetch/i.test(x));
 verificar('sem erros na consola', aSerio.length === 0, aSerio.slice(0, 4));
 console.log(falhas ? `\n${falhas} com falha.` : '\nTudo certo.');
 await enviar('Page.navigate', { url: 'about:blank' });

@@ -324,5 +324,20 @@ export function medirACargaDoBairro(app) {
         return tudo;
     }
 
-    return { medir, medirBytes, recomecar, trazerTudo };
+    /**
+     * Quantos pedaços o motor traz ao mesmo tempo. De origem são dois; com um
+     * ecrã de espera por cima podem ser mais, e aproveita-se a ligação toda.
+     *
+     * @param {number} n - Quantos.
+     */
+    function aoMesmoTempo(n) {
+        for (const mapa of mapasEmUso(app)) {
+            const quemTraz = mapa.octree && mapa.octree.assetLoader;
+            if (!quemTraz || !(quemTraz.maxConcurrentLoads > 0) || quemTraz.maxConcurrentLoads === n) continue;
+            quemTraz.maxConcurrentLoads = n;
+            if (typeof quemTraz._processQueue === 'function') quemTraz._processQueue();
+        }
+    }
+
+    return { medir, medirBytes, recomecar, trazerTudo, aoMesmoTempo };
 }

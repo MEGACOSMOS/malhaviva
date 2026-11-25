@@ -35,8 +35,15 @@
 /splat/*
   Cache-Control: public, max-age=86400, stale-while-revalidate=604800
 
+# O bairro em manchas: cada pedaço guarda-se um ano sem voltar a perguntar.
+# Por isso, se o bairro mudar, os pedaços novos têm de ir para uma pasta com
+# outro nome; o índice, que diz quais são, confirma-se sempre.
 /splat_perf/*
-  Cache-Control: public, max-age=86400, stale-while-revalidate=604800
+  Cache-Control: public, max-age=31536000, immutable
+
+/splat_perf/lod-meta.json
+  ! Cache-Control
+  Cache-Control: no-cache
 
 # O bairro em malha (ver bairro-malha.mjs). As peças vivem numa pasta com a
 # versão no nome e nunca mudam; o índice, que diz qual é a versão, confirma-se

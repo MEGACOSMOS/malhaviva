@@ -6182,7 +6182,7 @@
         import { whenReady } from '@playcanvas/web-components';
         import { Vec3 } from 'playcanvas';
         import { ligarLodNoCentroDaVista } from './lod-foco.mjs?v=14';
-        import { medirACargaDoBairro } from './carga-do-bairro.mjs?v=3';
+        import { medirACargaDoBairro } from './carga-do-bairro.mjs?v=4';
         import { criarAfinadorDeFluidez, construirEscada } from './fluidez.mjs?v=2';
         import { criarEscolhaDeModo } from './escolha-de-qualidade.mjs?v=4';
         import { criarModoVR } from './vr.mjs?v=16';
@@ -6406,6 +6406,10 @@
         // vê-se quase o mesmo, e são bem menos manchas.
         const DISTANCIA_DO_DETALHE = { high: 300, med: 100 };
         const VEZES_DO_MEIO = 3;
+        // Com que distância se abre o Alto, enquanto o resto do bairro não chega.
+        const ABERTURA_DO_ALTO = 150;
+        const distanciaDoModo = (m) => (m === 'high' && !(tudo && tudo.pronto())
+            ? ABERTURA_DO_ALTO : DISTANCIA_DO_DETALHE[m]);
 
         let modo = window.actualQuality;
         let automatica = !emPoupanca && !qualidade.escolhida();
@@ -6428,8 +6432,6 @@
         // inteiro, quando foi pedido para o Alto (`trazerTudo`).
         let cargaDasManchas = null;
         let tudo = null;
-        // O que o ecrã de espera está a contar, quando se passa ao Alto.
-        let cargaDoAlto = null;
 
         function showUI() {
             overlay.classList.add('hidden');
@@ -6459,6 +6461,7 @@
 
                 // O pormenor do modo em que se abre, e a fluidez.
                 aplicarModo(modo);
+                trazerOResto();
                 medirAFluidez(app);
             } catch(e) {
                 console.warn("Performance setup error:", e);
@@ -6468,9 +6471,8 @@
         /**
          * Quantos pontos se pintam por cada ponto do ecrã, em cada modo.
          *
-         * No Alto, até dois: num ecrã de grão fino, dois pontos por ponto
-         * dão nitidez a mais que se vê; acima disso é quatro vezes a tinta
-         * para nada. O limite acompanha o tamanho do ecrã, como faz o
+         * No Alto, até um e meio: num ecrã de grão fino dá nitidez que se vê;
+         * com dois é quase o dobro da tinta para pouco mais. O limite acompanha o tamanho do ecrã, como faz o
          * visualizador do SuperSplat. No Médio, um. No Baixo a malha pinta cada
          * ponto uma vez só, e aguenta mais pontos do que as manchas, com um
          * tecto para o trabalho não crescer com o tamanho do ecrã (a mesma
@@ -6480,7 +6482,7 @@
             const dpr = window.devicePixelRatio || 1;
             if (m === 'high') {
                 const menorLado = Math.min(screen.width, screen.height) || 1080;
-                return Math.min(2160 / menorLado, dpr, 2);
+                return Math.min(2160 / menorLado, dpr, 1.5);
             }
             if (m === 'med') return 1;
             const pontosDoEcra = Math.max(1, window.innerWidth * window.innerHeight);
@@ -6538,7 +6540,7 @@
             if (splatEl && splatEl.entity && splatEl.entity.gsplat) {
                 splatEl.entity.gsplat.lodMultiplier = VEZES_DO_MEIO;
             }
-            porDistancia(DISTANCIA_DO_DETALHE[novo]);
+            porDistancia(distanciaDoModo(novo));
         }
 
         /**
@@ -6557,11 +6559,10 @@
         /**
          * Espera que o bairro esteja todo num modo, e se veja nele.
          *
-         * Para o Alto traz tudo de uma vez, e só depois põe a distância dele:
-         * cada zona encontra logo o que precisa, e quando a espera acaba não
-         * falta vir nada. Se a ligação ficar muda (nada chega durante um
+         * Espera-se pelo que se vê dali; no Alto, o resto do bairro vem por trás,
+         * depois, até cá estar todo. Se a ligação ficar muda (nada chega durante um
          * bocado, à vista), desiste-se de esperar: o que falta há-de chegar
-         * por trás. Para o Médio não há nada a trazer, é só o bairro assentar.
+         * por trás.
          *
          * @param {object} app - A aplicação 3D.
          * @param {string} alvo - O modo.
@@ -6569,8 +6570,7 @@
          */
         function esperarPeloModo(app, alvo) {
             const SILENCIO = 25000;     // sem chegar nada, desiste-se
-            const ASSENTAR = 10000;     // com tudo cá, para se ver tudo
-            const conta = alvo === 'high' ? trazerOBairroInteiro(true) : null;
+            const ASSENTAR = 6000;      // com tudo cá, para se ver tudo
             return new Promise((resolve) => {
                 let maior = -1;
                 let silencio = 0;
@@ -6580,6 +6580,8 @@
                 let assentar = 0;
                 const acabar = () => {
                     app.off('frameend', ver);
+                    if (cargaDasManchas) cargaDasManchas.aoMesmoTempo(2);
+                    if (uiShown) trazerOResto();
                     resolve();
                 };
                 const ver = () => {
@@ -6592,26 +6594,44 @@
                         return;
                     }
                     if (!posto) {
-                        const fraccao = conta ? conta.medir() : 1;
-                        if (fraccao !== null && fraccao > maior) {
-                            maior = fraccao;
-                            silencio = 0;
-                        } else {
-                            silencio += passou;
-                        }
-                        if (conta && !conta.pronto() && silencio < SILENCIO) return;
                         posto = true;
                         aplicarModo(alvo);
-                        return;
                     }
+                    if (cargaDasManchas) cargaDasManchas.aoMesmoTempo(6);
                     // O motor só reavalia de dez em dez imagens: dá-se-lhe tempo
                     // antes de perguntar se já está.
-                    assentar += passou;
                     if (++imagens < 40) return;
+                    const bytes = cargaDasManchas && cargaDasManchas.medirBytes();
+                    const veio = bytes ? bytes.veio : 0;
+                    if (veio > maior) {
+                        maior = veio;
+                        silencio = 0;
+                    } else {
+                        silencio += passou;
+                    }
+                    if (bairroAChegar(app) && silencio < SILENCIO) return;
+                    assentar += passou;
                     if (bairroAssente(app) || assentar >= ASSENTAR) acabar();
                 };
                 app.on('frameend', ver);
             });
+        }
+
+        /**
+         * No Alto, com o bairro já à vista, traz o resto dele por trás; quando
+         * cá está tudo, a distância passa à do modo, e cada zona desvanece.
+         */
+        let resto = null;
+        function trazerOResto() {
+            clearInterval(resto);
+            if (modo !== 'high' || paginaDeMalha) return;
+            const conta = trazerOBairroInteiro(false);
+            if (!conta) return;
+            resto = setInterval(() => {
+                if (modo === 'high' && conta === tudo && !conta.pronto()) return;
+                clearInterval(resto);
+                if (modo === 'high' && conta === tudo) porDistancia(DISTANCIA_DO_DETALHE.high);
+            }, 500);
         }
 
         // Se se está a mudar de modo, com o ecrã de espera posto.
@@ -6638,13 +6658,11 @@
             mostrarQualidade();
             esperarPeloModo(app, alvo).then(() => {
                 aMudar = false;
-                cargaDoAlto = null;
                 if (window.placaGrafica && window.placaGrafica.desistida) return;
                 if (window.barraDeCarga) window.barraDeCarga.peloMenos(1);
                 overlay.style.transition = '';
                 overlay.classList.add('hidden');
             });
-            cargaDoAlto = alvo === 'high' ? tudo : null;
         }
 
         /**
@@ -7467,13 +7485,11 @@
             window.bairroMalha.primeira.then(() => {
                 if (window.arranque) window.arranque.marcar('bairro');
             });
-            // Abre-se com o pormenor do Médio. No Alto, o bairro inteiro vem logo
-            // atrás, ainda com o ecrã de espera posto, e só então se abre (ver
-            // `esperarPeloModo`).
-            if (!paginaDeMalha) window.distanciaDoDetalhe = DISTANCIA_DO_DETALHE.med;
+            // Cada modo abre com o seu pormenor; no Alto, o resto do bairro vem
+            // por trás (ver `esperarPeloModo`).
+            if (!paginaDeMalha) window.distanciaDoDetalhe = distanciaDoModo(modo);
             cargaDasManchas = window.bairroEmMalha ? null : medirACargaDoBairro(app);
             if (modo === 'high' && !paginaDeMalha) {
-                trazerOBairroInteiro(true);
                 aMudar = true;
             }
             let soAsManchas = false;
@@ -7505,14 +7521,19 @@
                 if (aVista && !ecraDeEsperaAVista) cargaDoBairro.recomecar();
                 ecraDeEsperaAVista = aVista;
                 if (!aVista || !window.barraDeCarga) return;
-                const fraccao = cargaDoAlto ? cargaDoAlto.medir() : cargaDoBairro.medir();
+                const fraccao = cargaDoBairro.medir();
                 if (fraccao !== null) window.barraDeCarga.peloMenos(fraccao);
             });
 
             // Sem tecto de manchas, dito de propósito: com ele, o motor estava
             // sempre a apertar e a alargar os anéis de detalhe para caber na
             // conta, e as zonas à beira de um anel acendiam e apagavam.
-            if (app.scene && app.scene.gsplat) app.scene.gsplat.splatBudget = 0;
+            if (app.scene && app.scene.gsplat) {
+                app.scene.gsplat.splatBudget = 0;
+                // Manchas com menos de três pontos de tamanho no ecrã são pó
+                // (de origem eram dois): não se desenham.
+                app.scene.gsplat.minPixelSize = 3;
+            }
 
             // --- Quantos pontos se desenham por cada ponto do ecrã ---
             //
