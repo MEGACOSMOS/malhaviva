@@ -2,8 +2,9 @@
  * Prova dos modos de qualidade (Baixo, Médio, Alto) e da escolha automática,
  * num Chrome à parte com a placa gráfica a sério.
  *
- * Confere que cada modo abre como deve; que do Médio para o Alto há um ecrã de
- * espera, e que quando ele sai está tudo carregado, ande-se por onde se andar;
+ * Confere que cada modo abre como deve; que entre o Médio e o Alto, nos dois
+ * sentidos, há o ecrã de espera da abertura, e que quando ele sai está tudo
+ * carregado, ande-se por onde se andar;
  * que a escolha automática sobe com folga e desce com um peso artificial, sem
  * interromper ninguém; que mal se escolhe à mão o site deixa de escolher; que o
  * que se mediu fica para a visita seguinte; que as escolhas antigas (`auto` e
@@ -137,7 +138,8 @@ const pesar = (ms) => avaliar(`(() => { window.__peso = ${ms}; if (!window.__pes
 
 const ecraPosto = `!document.getElementById('loading-overlay').classList.contains('hidden')`;
 const ecraFora = `document.getElementById('loading-overlay').classList.contains('hidden')`;
-const ficarAVista = `(() => { const b = document.getElementById('carga-ficar'); return !b.hidden && b.getBoundingClientRect().height > 10; })()`;
+// O ecrã de espera tal como na abertura do site: o logótipo, sem o quadrado.
+const ecraDaAbertura = `(() => { const o = document.getElementById('loading-overlay'); const alto = (s) => o.querySelector(s).getBoundingClientRect().height; return !o.classList.contains('hidden') && o.dataset.momento === 'abertura' && alto('.loading-logotipo') > 10 && alto('.loading-square') === 0 && getComputedStyle(o).opacity === '1' && o.querySelector('.loading-text').textContent === window.Idiomas.t('carga.modelo') && !o.querySelector('button'); })()`;
 const rede = (mbit) => enviar('Network.emulateNetworkConditions', { offline: mbit === 0, latency: mbit === null ? 0 : 30, downloadThroughput: mbit ? mbit * 125000 : -1, uploadThroughput: mbit ? 1e6 : -1 });
 await enviar('Network.enable');
 // Passeia pelo bairro e diz quantas vezes alguma coisa teve de vir da rede.
@@ -182,11 +184,13 @@ antes = cargas;
 e = await estado();
 const finosNoMedio = e.finos;
 verificar('aberto no Médio, escolhido à mão', e.modo === 'med' && !e.automatica && e.distancia === 100, e);
+await por(-30, 25, 70, 10, 0, 10);
+await dormir(3000);
 await clicar('#definicoes-btn');
+const lugar = await avaliar(`document.querySelector('pc-app').app.root.findByName('camera').getPosition().toString()`);
 await clicar('#radio-high');
 await dormir(300);
-verificar('escolher o Alto põe o ecrã de espera, e fecha o menu', await avaliar(`${ecraPosto} && !document.getElementById('definicoes-menu').classList.contains('open')`), null);
-verificar('... que diz que é o Alto, e deixa ficar no Médio', await avaliar(`document.querySelector('#loading-overlay .loading-text').textContent.includes('Alto') && ${ficarAVista}`), null);
+verificar('escolher o Alto põe o ecrã de espera da abertura, e fecha o menu', await avaliar(`${ecraDaAbertura} && !document.getElementById('definicoes-menu').classList.contains('open')`), await avaliar(`document.getElementById('loading-overlay').outerHTML.slice(0, 200)`));
 await dormir(900);
 await foto('ecra-do-alto');
 verificar('... e sai quando o bairro está pronto', await esperar(ecraFora, 240), await estado());
@@ -194,36 +198,34 @@ e = await estado();
 verificar('quando sai está tudo disponível: nada a chegar, tudo no nível certo', e.modo === 'high' && e.distancia === 600 && e.aChegar === 0 && e.porAcertar === 0 && e.finos > finosNoMedio + 500 && cargas === antes, e);
 verificar('... todos os pedaços, do bairro inteiro', e.ficheiros.split('/')[0] === e.ficheiros.split('/')[1], e.ficheiros);
 verificar('... e a escolha fica guardada', e.guardada === 'high' && e.marcado === 'high', e);
+verificar('... no mesmo sítio onde se estava', await avaliar(`document.querySelector('pc-app').app.root.findByName('camera').getPosition().toString()`) === lugar, lugar);
+await dormir(1200);
 verificar('passear pelo bairro no Alto não traz mais nada', await passear() === 0, await estado());
 await clicar('#definicoes-btn');
 await clicar('#radio-med');
 await dormir(300);
-verificar('do Alto para o Médio não há espera', await avaliar(ecraFora), null);
-await dormir(4000);
+verificar('do Alto para o Médio, o mesmo ecrã de espera', await avaliar(ecraDaAbertura), null);
+await foto('ecra-do-medio');
+verificar('... que sai com o bairro assente', await esperar(ecraFora, 30), await estado());
 e = await estado();
-verificar('... e o detalhe encolhe', e.modo === 'med' && e.distancia === 100 && e.marcado === 'med', e);
+verificar('... no Médio, com o detalhe encolhido', e.modo === 'med' && e.distancia === 100 && e.marcado === 'med' && e.porAcertar === 0 && e.aChegar === 0 && cargas === antes, e);
+await dormir(1200);
 verificar('passear no Médio também já não traz mais nada', await passear() === 0, await estado());
+await clicar('#definicoes-btn');
 await clicar('#radio-high');
 await dormir(300);
-verificar('voltar ao Alto, com tudo cá, não tem espera', await avaliar(ecraFora) && (await estado()).modo === 'high', await estado());
+verificar('voltar ao Alto, com tudo cá, tem o mesmo ecrã', await avaliar(ecraDaAbertura), null);
+verificar('... por pouco tempo', await esperar(ecraFora, 15) && (await estado()).modo === 'high', await estado());
 
-// --- Ficar no Médio, e uma ligação que se cala ----------------------------
+// --- Uma ligação lenta, e uma que se cala ------------------------------------
 await rede(12);
 await abrir('localStorage.setItem("quality", "med")');
 await enviar('Network.setCacheDisabled', { cacheDisabled: true });
 await clicar('#definicoes-btn');
 await clicar('#radio-high');
 await dormir(5000);
-const luz = await avaliar(ecraPosto);
-verificar('com a ligação lenta, o ecrã de espera fica', luz === true, luz);
+verificar('com a ligação lenta, o ecrã de espera fica', await avaliar(ecraDaAbertura), null);
 await foto('ecra-do-alto-a-meio');
-await clicar('#carga-ficar');
-await dormir(2500);
-e = await estado();
-verificar('"Ficar no Médio" sai da espera, e fica no Médio à mão', await avaliar(ecraFora) && e.modo === 'med' && e.guardada === 'med' && e.marcado === 'med' && e.distancia === 100, e);
-await clicar('#definicoes-btn');
-await clicar('#radio-high');
-await dormir(4000);
 await rede(0);
 verificar('se a ligação se calar, desiste de esperar', await esperar(ecraFora, 60), await estado());
 await rede(null);

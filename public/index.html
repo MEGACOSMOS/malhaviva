@@ -154,7 +154,7 @@
 
     <!-- As línguas do site. Fica antes de tudo o resto para o texto
          nascer já na língua certa, sem piscar em português primeiro. -->
-    <script src="/idiomas.js?v=68"></script>
+    <script src="/idiomas.js?v=69"></script>
     <script src="/contar.js?v=1"></script>
     <script src="/legendas.js?v=4"></script>
 
@@ -332,10 +332,6 @@
            sozinho (ver o guião do ecrã de espera). */
         #loading-overlay[data-momento="abertura"] .loading-square,
         #loading-overlay[data-momento="regresso"] .loading-logotipo {
-            display: none;
-        }
-
-        #carga-ficar[hidden] {
             display: none;
         }
 
@@ -2316,7 +2312,7 @@
         }
 
         /* O botão é uma tecla, como as do rodapé: só o traço e a letra. */
-        #recenter-btn, #ecra-iphone-ok, #carga-ficar {
+        #recenter-btn, #ecra-iphone-ok {
             background: transparent;
             color: var(--color-text);
             border: 2.5px solid rgba(255, 255, 255, 0.25);
@@ -2331,11 +2327,11 @@
             transition: background 0.15s ease, border-color 0.15s ease, transform 0.1s;
         }
 
-        #recenter-btn:hover, #ecra-iphone-ok:hover, #carga-ficar:hover {
+        #recenter-btn:hover, #ecra-iphone-ok:hover {
             background: rgba(255, 255, 255, 0.1);
             border-color: rgba(255, 255, 255, 0.45);
         }
-        #recenter-btn:active, #ecra-iphone-ok:active, #carga-ficar:active {
+        #recenter-btn:active, #ecra-iphone-ok:active {
             transform: scale(0.97);
         }
 
@@ -3384,11 +3380,7 @@
                 <div class="loading-logotipo" id="loading-logotipo" role="img" aria-label="Malha Viva" data-i18n-aria="site.nome"></div>
                 <div class="loading-square" id="loading-square" aria-hidden="true"></div>
             </div>
-            <div class="loading-text" data-i18n="carga.modelo" role="status">A carregar modelo 3D…</div>
-            <!-- Só aparece enquanto se carrega o modo Alto, que é grande (ver
-                 `mostrarACargaDoAlto`): numa ligação lenta ninguém fica preso
-                 à espera dele. -->
-            <button type="button" id="carga-ficar" data-i18n="carga.ficar" hidden>Ficar no Médio</button>
+            <div class="loading-text" data-i18n="carga.modelo">A carregar modelo 3D…</div>
         </div>
     </div>
 
@@ -3401,8 +3393,8 @@
     /**
      * O que o ecrã de espera do bairro mostra enquanto espera.
      *
-     * Ao abrir o site, o logótipo, sozinho, a acender-se da esquerda para
-     * a direita. Das outras vezes que o ecrã de espera aparece — quando se
+     * Ao abrir o site, e ao mudar de modo de qualidade, o logótipo, sozinho,
+     * a acender-se da esquerda para a direita. Das outras vezes que o ecrã de espera aparece — quando se
      * fecha uma janela grande e o bairro é reposto, ou a placa gráfica
      * recomeça —, o quadrado de espera do site, sozinho, o mesmo das
      * janelas 360º: o rasto anda sozinho, e por baixo dele sobe uma luz.
@@ -3427,6 +3419,9 @@
         let fraccao = 0;
         let aEsperar = false;
         let jaAbriu = false;
+        // Posto a verdadeiro antes de mostrar o ecrã de espera, ele mostra-se
+        // como na abertura do site.
+        const barra = { comoNaAbertura: false };
 
         const desenhar = () => {
             quadrado.luz(fraccao);
@@ -3435,10 +3430,13 @@
 
         const comecar = () => {
             aEsperar = true;
-            // A primeira espera é a da abertura; as seguintes são regressos.
+            // A primeira espera é a da abertura; as seguintes são regressos,
+            // a não ser que se peça a da abertura (ao mudar de modo de
+            // qualidade, ver `mudarDeModo`).
             // (O momento vai num atributo à parte, e não numa classe, para
             // não acordar quem está à escuta das classes, aqui em baixo.)
-            overlay.dataset.momento = jaAbriu ? 'regresso' : 'abertura';
+            overlay.dataset.momento = jaAbriu && !barra.comoNaAbertura ? 'regresso' : 'abertura';
+            barra.comoNaAbertura = false;
             jaAbriu = true;
             quadrado.recomecar();
             if (logotipo) logotipo.recomecar();
@@ -3453,7 +3451,8 @@
         // o contrário.
         const acabar = () => { aEsperar = false; fraccao = 1; quadrado.luz(1); quadrado.pronto(); };
 
-        window.barraDeCarga = { comecar, peloMenos, acabar };
+        Object.assign(barra, { comecar, peloMenos, acabar });
+        window.barraDeCarga = barra;
         comecar();
 
         // O mesmo ecrã de espera volta a aparecer quando se fecha um vídeo
@@ -6428,7 +6427,7 @@
         // inteiro, quando foi pedido para o Alto (`trazerTudo`).
         let cargaDasManchas = null;
         let tudo = null;
-        // O que o ecrã de espera está a contar, quando é o do modo Alto.
+        // O que o ecrã de espera está a contar, quando se passa ao Alto.
         let cargaDoAlto = null;
 
         function showUI() {
@@ -6493,7 +6492,7 @@
          *
          * Entre o Alto e o Médio só muda até onde vai o pormenor, e cada zona
          * passa de um nível ao outro a desvanecer. Para o Alto, o bairro
-         * inteiro já cá tem de estar (ver `passarAoAlto`).
+         * inteiro já cá tem de estar (ver `esperarPeloModo`).
          * No Baixo, numa página que abriu com manchas, elas desvanecem-se todas
          * para a malha e a memória delas é largada.
          *
@@ -6547,36 +6546,23 @@
             return tudo;
         }
 
-        /** Mostra que o ecrã de espera está a carregar o Alto, e deixa sair. */
-        function mostrarACargaDoAlto(sim) {
-            const letreiro = overlay.querySelector('.loading-text');
-            const ficar = document.getElementById('carga-ficar');
-            if (letreiro) {
-                letreiro.textContent = sim
-                    ? (window.Idiomas && window.Idiomas.t('carga.alto')) || 'A carregar o modo Alto…'
-                    : (window.Idiomas && window.Idiomas.t('carga.modelo')) || 'A carregar modelo 3D…';
-            }
-            if (ficar) ficar.hidden = !sim;
-        }
-
         /**
-         * Espera que o bairro inteiro cá esteja e se veja no Alto.
+         * Espera que o bairro esteja todo num modo, e se veja nele.
          *
-         * Traz tudo de uma vez, e só depois põe a distância do Alto: cada zona
-         * encontra logo o que precisa, e quando a espera acaba não falta vir
-         * nada. Se a ligação ficar muda (nada chega durante um bocado, à
-         * vista), desiste-se de esperar: o que falta há-de chegar por trás.
+         * Para o Alto traz tudo de uma vez, e só depois põe a distância dele:
+         * cada zona encontra logo o que precisa, e quando a espera acaba não
+         * falta vir nada. Se a ligação ficar muda (nada chega durante um
+         * bocado, à vista), desiste-se de esperar: o que falta há-de chegar
+         * por trás. Para o Médio não há nada a trazer, é só o bairro assentar.
          *
          * @param {object} app - A aplicação 3D.
-         * @param {{cancelada: boolean}} espera - Posta a `cancelada` por quem
-         *     carrega em "Ficar no Médio".
-         * @returns {Promise<boolean>} Se se chegou ao Alto.
+         * @param {string} alvo - O modo.
+         * @returns {Promise<void>} Cumpre-se quando o bairro lá está.
          */
-        function esperarPeloAlto(app, espera) {
+        function esperarPeloModo(app, alvo) {
             const SILENCIO = 25000;     // sem chegar nada, desiste-se
             const ASSENTAR = 10000;     // com tudo cá, para se ver tudo
-            const conta = trazerOBairroInteiro(true);
-            if (!conta) return Promise.resolve(false);
+            const conta = alvo === 'high' ? trazerOBairroInteiro(true) : null;
             return new Promise((resolve) => {
                 let maior = -1;
                 let silencio = 0;
@@ -6584,90 +6570,74 @@
                 let posto = false;
                 let imagens = 0;
                 let assentar = 0;
-                const acabar = (chegou) => {
+                const acabar = () => {
                     app.off('frameend', ver);
-                    resolve(chegou);
+                    resolve();
                 };
                 const ver = () => {
                     const agora = performance.now();
                     // Com a página escondida não se desenha, e o tempo não conta.
                     const passou = Math.min(agora - antes, 500);
                     antes = agora;
-                    if (espera.cancelada || (window.placaGrafica && window.placaGrafica.desistida)) {
-                        acabar(false);
+                    if (window.placaGrafica && window.placaGrafica.desistida) {
+                        acabar();
                         return;
                     }
                     if (!posto) {
-                        const fraccao = conta.medir();
+                        const fraccao = conta ? conta.medir() : 1;
                         if (fraccao !== null && fraccao > maior) {
                             maior = fraccao;
                             silencio = 0;
                         } else {
                             silencio += passou;
                         }
-                        if (!conta.pronto() && silencio < SILENCIO) return;
+                        if (conta && !conta.pronto() && silencio < SILENCIO) return;
                         posto = true;
-                        aplicarModo('high');
+                        aplicarModo(alvo);
                         return;
                     }
                     // O motor só reavalia de dez em dez imagens: dá-se-lhe tempo
                     // antes de perguntar se já está.
                     assentar += passou;
                     if (++imagens < 40) return;
-                    if (bairroAssente(app) || assentar >= ASSENTAR) acabar(true);
+                    if (bairroAssente(app) || assentar >= ASSENTAR) acabar();
                 };
                 app.on('frameend', ver);
             });
         }
 
-        // A passagem para o Alto que está a decorrer, com ecrã de espera.
-        let passagem = null;
+        // Se se está a mudar de modo, com o ecrã de espera posto.
+        let aMudar = false;
 
         /**
-         * Passa do Médio (ou do Baixo, sem recarregar) ao Alto, com o ecrã de
-         * espera por cima até o bairro estar todo cá.
+         * Muda entre o Alto e o Médio com o ecrã de espera por cima — o mesmo
+         * de quando se abre o site, e de quando se passa ao Baixo ou dele —, até
+         * o bairro estar todo no modo novo. A página não se recarrega: fica-se
+         * no sítio onde se estava.
          *
          * @param {object} app - A aplicação 3D.
+         * @param {string} alvo - O modo.
          */
-        function passarAoAlto(app) {
-            // Já cá está tudo: muda-se sem esperar.
-            if (tudo && tudo.pronto()) {
-                aplicarModo('high');
-                return;
-            }
-            const espera = passagem = { cancelada: false };
+        function mudarDeModo(app, alvo) {
+            aMudar = true;
             const menu = document.getElementById('definicoes-menu');
             if (menu) menu.classList.remove('open');
-            mostrarACargaDoAlto(true);
+            if (window.barraDeCarga) window.barraDeCarga.comoNaAbertura = true;
+            // De uma vez, sem desvanecer, como quando a página se recarrega.
+            overlay.style.transition = 'none';
             overlay.classList.remove('hidden');
-            esperarPeloAlto(app, espera).then((chegou) => {
-                if (passagem !== espera) return;
-                passagem = null;
+            modo = alvo;
+            mostrarQualidade();
+            esperarPeloModo(app, alvo).then(() => {
+                aMudar = false;
                 cargaDoAlto = null;
                 if (window.placaGrafica && window.placaGrafica.desistida) return;
-                if (chegou && window.barraDeCarga) window.barraDeCarga.peloMenos(1);
-                if (!chegou) ficarNoMedio();
+                if (window.barraDeCarga) window.barraDeCarga.peloMenos(1);
+                overlay.style.transition = '';
                 overlay.classList.add('hidden');
-                setTimeout(() => { if (!passagem) mostrarACargaDoAlto(false); }, 800);
             });
-            cargaDoAlto = tudo;
+            cargaDoAlto = alvo === 'high' ? tudo : null;
         }
-
-        /** Desiste do Alto que estava a carregar. */
-        function ficarNoMedio() {
-            if (tudo) tudo.soltar();
-            tudo = null;
-            if (qualidade.escolhida()) qualidade.escolher('med');
-            else qualidade.guardarMedido('med');
-            if (escolhaDoModo) escolhaDoModo.por('med');
-            aplicarModo('med');
-        }
-        document.getElementById('carga-ficar').addEventListener('click', () => {
-            if (passagem) passagem.cancelada = true;
-        });
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape' && passagem) passagem.cancelada = true;
-        });
 
         /**
          * Diz se o bairro está tal como o modo o quer: nada a chegar, cada zona
@@ -6767,7 +6737,7 @@
                 modos: qualidade.MODOS,
                 partida: modo,
                 parado,
-                ocupado: () => bairroAChegar(app) || !!passagem || (!!tudo && !tudo.pronto()),
+                ocupado: () => bairroAChegar(app) || aMudar || (!!tudo && !tudo.pronto()),
                 // Para o Alto, o bairro inteiro vem primeiro, devagar e por
                 // trás: quem anda a passear não é interrompido por um ecrã de
                 // espera que não pediu. Quando cá está tudo, muda-se de uma vez.
@@ -6820,8 +6790,8 @@
          * não couber no aparelho, a descida recomeça do princípio.
          *
          * Só se recarrega a página quando o bairro é outro: para o Baixo, do
-         * Baixo, e para sair da poupança. Para o Alto há um ecrã de espera (ver
-         * `passarAoAlto`); para o Médio, vindo do Alto, já cá está tudo.
+         * Baixo, e para sair da poupança. Entre o Alto e o Médio há o mesmo ecrã
+         * de espera, sem recarregar (ver `mudarDeModo`).
          *
          * @param {string} escolhido - O modo escolhido.
          */
@@ -6841,16 +6811,13 @@
             if (escolhaDoModo) escolhaDoModo.por(escolhido);
             const pcApp = document.querySelector('pc-app');
             const app = pcApp && pcApp.app;
-            if (escolhido === 'high' && modo !== 'high' && app) {
-                passarAoAlto(app);
-                return;
-            }
             // O Alto que o site estava a trazer por trás já não é preciso.
             if (eraAutomatica && escolhido !== 'high' && modo !== 'high' && tudo && !tudo.pronto()) {
                 tudo.soltar();
                 tudo = null;
             }
-            aplicarModo(escolhido);
+            if (escolhido !== modo && app) mudarDeModo(app, escolhido);
+            else aplicarModo(escolhido);
         }
 
         // O ecrã inteiro.
@@ -7494,13 +7461,12 @@
             });
             // Abre-se com o pormenor do Médio. No Alto, o bairro inteiro vem logo
             // atrás, ainda com o ecrã de espera posto, e só então se abre (ver
-            // `esperarPeloAlto`).
+            // `esperarPeloModo`).
             if (!paginaDeMalha) window.distanciaDoDetalhe = DISTANCIA_DO_DETALHE.med;
             cargaDasManchas = window.bairroEmMalha ? null : medirACargaDoBairro(app);
             if (modo === 'high' && !paginaDeMalha) {
                 trazerOBairroInteiro(true);
-                mostrarACargaDoAlto(true);
-                passagem = { cancelada: false };
+                aMudar = true;
             }
             let soAsManchas = false;
             const cargaDoBairro = window.bairroEmMalha
@@ -7963,17 +7929,12 @@
 
             // O ecrã de espera só sai quando o bairro estiver mesmo lá — e
             // aí, com tudo chegado, o logótipo está inteiro.
-            const abrirNoAlto = passagem;
-            const oAlto = abrirNoAlto
-                ? esperarPeloAlto(app, abrirNoAlto).then((chegou) => {
-                    passagem = null;
-                    if (!chegou && !(window.placaGrafica && window.placaGrafica.desistida)) ficarNoMedio();
-                })
+            const oAlto = aMudar
+                ? esperarPeloModo(app, 'high').then(() => { aMudar = false; })
                 : Promise.resolve();
             oAlto.then(() => esperarPeloBairro(app, cargaDasManchas)).then(() => {
                 if (window.barraDeCarga) window.barraDeCarga.peloMenos(1);
                 showUIOnce();
-                setTimeout(() => { if (!passagem) mostrarACargaDoAlto(false); }, 800);
             });
         });
 
@@ -8003,9 +7964,8 @@
                         return;
                     }
                     // A carregar o Alto inteiro, o limite é o dele: desiste se a
-                    // ligação ficar muda (ver `esperarPeloAlto`), e quem não quer
-                    // esperar tem onde carregar.
-                    if (passagem) {
+                    // ligação ficar muda (ver `esperarPeloModo`).
+                    if (aMudar) {
                         parar();
                         andar();
                         return;

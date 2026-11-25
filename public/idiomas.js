@@ -119,8 +119,6 @@
 
             'carga.modelo': 'A carregar modelo 3D…',
             'carga.restaurar': 'A restaurar ambiente 3D…',
-            'carga.alto': 'A carregar o modo Alto…',
-            'carga.ficar': 'Ficar no Médio',
             'gpu.aTentar': 'O aparelho ficou sem memória gráfica. A tentar de novo com menos detalhe…',
             'gpu.desistiu': 'Este aparelho não consegue mostrar o bairro em 3D.',
             'gpu.botao': 'Tentar de novo',
@@ -581,8 +579,6 @@
 
             'carga.modelo': 'Loading 3D model…',
             'carga.restaurar': 'Restoring 3D environment…',
-            'carga.alto': 'Loading High mode…',
-            'carga.ficar': 'Stay on Medium',
             'gpu.aTentar': 'The device ran out of graphics memory. Trying again with less detail…',
             'gpu.desistiu': 'This device cannot display the neighbourhood in 3D.',
             'gpu.botao': 'Try again',
@@ -1032,8 +1028,6 @@
 
             'carga.modelo': 'Cargando modelo 3D…',
             'carga.restaurar': 'Restaurando entorno 3D…',
-            'carga.alto': 'Cargando el modo Alto…',
-            'carga.ficar': 'Quedarse en Medio',
             'gpu.aTentar': 'El dispositivo se quedó sin memoria gráfica. Intentando de nuevo con menos detalle…',
             'gpu.desistiu': 'Este dispositivo no puede mostrar el barrio en 3D.',
             'gpu.botao': 'Intentar de nuevo',
@@ -1483,8 +1477,6 @@
 
             'carga.modelo': 'Ta karega modelu 3D…',
             'carga.restaurar': 'Ta restaura anbienti 3D…',
-            'carga.alto': 'Ta karega modu Altu…',
-            'carga.ficar': 'Fika na Médiu',
             'gpu.aTentar': 'Aparelhu fika sen memória gráfika. Ta tenta di novu ku ménus detalhi…',
             'gpu.desistiu': 'Es aparelhu ka konsigi mostra bairu na 3D.',
             'gpu.botao': 'Tenta di novu',
