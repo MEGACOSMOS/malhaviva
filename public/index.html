@@ -199,14 +199,25 @@
     <script type="importmap">
         {
             "imports": {
-                "playcanvas": "/motor/playcanvas-2.21.4.mjs",
-                "@playcanvas/web-components": "/motor/pwc-0.15.0.mjs"
+                "playcanvas": "/motor/playcanvas-2.21.4.min.mjs",
+                "@playcanvas/web-components": "/motor/pwc-0.15.0.min.mjs"
             }
         }
     </script>
-    <!-- Descarrega o motor e os componentes em paralelo (evita fila de espera) -->
-    <link rel="modulepreload" href="/motor/playcanvas-2.21.4.mjs">
-    <link rel="modulepreload" href="/motor/pwc-0.15.0.mjs">
+    <!-- Descarrega o motor e os componentes em paralelo (evita fila de espera).
+         São as versões comprimidas, as mesmas que o motor publica: o código é
+         igual, mas escrito sem espaços nem nomes compridos — menos a
+         descarregar, e menos para o navegador ler antes de arrancar. -->
+    <link rel="modulepreload" href="/motor/playcanvas-2.21.4.min.mjs">
+    <link rel="modulepreload" href="/motor/pwc-0.15.0.min.mjs">
+    <!-- Os descodificadores da malha (a geometria vem em Draco, as texturas em
+         KTX2) só eram pedidos quando a primeira peça da malha chegava, e aí
+         ficavam na fila atrás dos megas do bairro: a malha já cá estava e
+         ainda não se podia desenhar. Pedem-se já, com prioridade. -->
+    <link rel="preload" href="/motor/draco-2.21.4/draco.wasm.wasm" as="fetch" crossorigin fetchpriority="high">
+    <link rel="preload" href="/motor/draco-2.21.4/draco.wasm.js" as="fetch" crossorigin fetchpriority="high">
+    <link rel="preload" href="/motor/basis-2.21.4/basis.wasm.wasm" as="fetch" crossorigin fetchpriority="high">
+    <link rel="preload" href="/motor/basis-2.21.4/basis.wasm.js" as="fetch" crossorigin fetchpriority="high">
     <script type="module">import '@playcanvas/web-components';</script>
 
     <style>
