@@ -2,7 +2,9 @@
  * Prova dos modos de qualidade (Baixo, Médio, Alto) e da escolha automática,
  * num Chrome à parte com a placa gráfica a sério.
  *
- * Confere que cada modo abre como deve; que entre o Médio e o Alto, nos dois
+ * Confere que cada modo abre como deve (a distância do pormenor afina-se pela
+ * fluidez, por isso só se confere que não fica abaixo do mínimo de cada modo:
+ * 200 m no Alto, 80 m no Médio); que entre o Médio e o Alto, nos dois
  * sentidos, há o ecrã de espera da abertura, e que quando ele sai está tudo
  * carregado, ande-se por onde se andar;
  * que a escolha automática sobe com folga e desce com um peso artificial, sem
@@ -152,8 +154,14 @@ const passear = async () => {
     return vezes;
 };
 // No Alto o resto do bairro vem por trás, depois de abrir.
-const inteiro = () => esperar(`window.distanciaDoDetalhe === 300 && (() => { for (const m of window.lodFoco.mapasMistos) { if (m.pending.size) return false; for (const n of m.nodeInfos) if (n.currentLod !== n.optimalLod || (n.currentLod >= 0 && !(n.vista >= 0.99))) return false; } return true; })()`, 240);
+const inteiro = () => esperar(`window.distanciaDoDetalhe >= 200 && (() => { for (const m of window.lodFoco.mapasMistos) { if (m.pending.size) return false; for (const n of m.nodeInfos) if (n.currentLod !== n.optimalLod || (n.currentLod >= 0 && !(n.vista >= 0.99))) return false; } return true; })()`, 240);
 const limpo = 'localStorage.removeItem("quality"); localStorage.removeItem("qualidade-medida")';
+// Alguém a mexer na câmara, devagar: com a câmara parada o bairro deixa de se
+// desenhar (desenho-quando-preciso.mjs), e a escolha automática só mede imagens
+// desenhadas.
+const mexer = (sim) => avaliar(sim
+    ? `(async () => { if (window.__mexer) return 1; const pc = await import('playcanvas'); const c = document.querySelector('pc-app').app.root.findByName('camera').script.cameraControls; let t = 0; window.__mexer = setInterval(() => { t += 0.05; c.recenter(new pc.Vec3(-30 + 0.4 * Math.sin(t), 25, 70), new pc.Vec3(10, 0, 10)); }, 40); return 1; })()`
+    : `(() => { clearInterval(window.__mexer); window.__mexer = null; return 1; })()`);
 
 // --- Aparelho novo, escolha automática ----------------------------------
 verificar('abre num aparelho novo', await abrir(limpo));
@@ -163,9 +171,11 @@ verificar('um aparelho novo abre no Médio, escolhido pelo site', e.modo === 'me
 await por(-30, 25, 70, 10, 0, 10);
 let antes = cargas;
 await avaliar(`window.__ecra = 0; new MutationObserver(() => { if (${ecraPosto}) window.__ecra++; }).observe(document.getElementById('loading-overlay'), { attributes: true, attributeFilter: ['class'] }); 1`);
+await mexer(true);
 verificar('com folga, sobe sozinho ao Alto', await esperar(`window.actualQuality === 'high'`, 240), await estado());
+await mexer(false);
 e = await estado();
-verificar('... só depois de cá estar tudo', e.aChegar === 0 && e.ficheiros.split('/')[0] === e.ficheiros.split('/')[1] && e.distancia === 300, e);
+verificar('... só depois de cá estar tudo', e.aChegar === 0 && e.ficheiros.split('/')[0] === e.ficheiros.split('/')[1] && e.distancia >= 200, e);
 await dormir(5000);
 e = await estado();
 verificar('... sem recarregar e sem ecrã de espera, e o menu acompanha', cargas === antes && e.marcado === 'high' && e.automatica && await avaliar('window.__ecra === 0'), e);
@@ -181,7 +191,7 @@ verificar('... e o resto do bairro chega por trás', await inteiro(), e);
 // O motor só reavalia de dez em dez imagens, e a distância acabou de mudar.
 await dormir(2000);
 e = await estado();
-verificar('... até estar tudo carregado', e.aChegar === 0 && e.porAcertar === 0 && e.distancia === 300 && e.finos > 400, e);
+verificar('... até estar tudo carregado', e.aChegar === 0 && e.porAcertar === 0 && e.distancia >= 200 && e.finos > 400, e);
 
 // --- Do Médio para o Alto, à mão, com o rato e a câmara parada -----------
 await abrir(limpo + '; localStorage.setItem("quality", "med")');
@@ -189,7 +199,7 @@ await dormir(2000);
 antes = cargas;
 e = await estado();
 const finosNoMedio = e.finos;
-verificar('aberto no Médio, escolhido à mão', e.modo === 'med' && !e.automatica && e.distancia === 100, e);
+verificar('aberto no Médio, escolhido à mão', e.modo === 'med' && !e.automatica && e.distancia >= 80, e);
 await por(-30, 25, 70, 10, 0, 10);
 await dormir(3000);
 await clicar('#definicoes-btn');
@@ -206,7 +216,7 @@ verificar('... e o resto chega por trás', await inteiro(), await estado());
 // O motor só reavalia de dez em dez imagens, e a distância acabou de mudar.
 await dormir(2000);
 e = await estado();
-verificar('... até estar tudo disponível: nada a chegar, tudo no nível certo', e.modo === 'high' && e.distancia === 300 && e.aChegar === 0 && e.porAcertar === 0 && e.finos > finosNoMedio + 250 && cargas === antes, e);
+verificar('... até estar tudo disponível: nada a chegar, tudo no nível certo', e.modo === 'high' && e.distancia >= 200 && e.aChegar === 0 && e.porAcertar === 0 && e.finos > finosNoMedio + 250 && cargas === antes, e);
 verificar('... todos os pedaços, do bairro inteiro', e.ficheiros.split('/')[0] === e.ficheiros.split('/')[1], e.ficheiros);
 verificar('... e a escolha fica guardada', e.guardada === 'high' && e.marcado === 'high', e);
 verificar('... no mesmo sítio onde se estava', await avaliar(`document.querySelector('pc-app').app.root.findByName('camera').getPosition().toString()`) === lugar, lugar);
@@ -219,7 +229,7 @@ verificar('do Alto para o Médio, o mesmo ecrã de espera', await avaliar(ecraDa
 await foto('ecra-do-medio');
 verificar('... que sai com o bairro assente', await esperar(ecraFora, 30), await estado());
 e = await estado();
-verificar('... no Médio, com o detalhe encolhido', e.modo === 'med' && e.distancia === 100 && e.marcado === 'med' && e.porAcertar === 0 && e.aChegar === 0 && cargas === antes, e);
+verificar('... no Médio, com o detalhe encolhido', e.modo === 'med' && e.distancia >= 80 && e.marcado === 'med' && e.porAcertar === 0 && e.aChegar === 0 && cargas === antes, e);
 await dormir(1200);
 verificar('passear no Médio também já não traz mais nada', await passear() === 0, await estado());
 await clicar('#definicoes-btn');
@@ -251,7 +261,7 @@ verificar('carregar no modo que o site já tem posto também é escolher', !e.au
 await por(-30, 25, 70, 10, 0, 10);
 await dormir(25000);
 e = await estado();
-verificar('depois de escolher à mão, com folga não sobe', e.modo === 'med' && e.distancia === 100, e);
+verificar('depois de escolher à mão, com folga não sobe', e.modo === 'med' && e.distancia >= 80, e);
 await foto('medio');
 await pesar(120);
 await dormir(20000);
@@ -276,16 +286,18 @@ verificar('... e o resto chega por trás', await inteiro(), await estado());
 // O motor só reavalia de dez em dez imagens, e a distância acabou de mudar.
 await dormir(2000);
 e = await estado();
-verificar('... até estar tudo carregado', e.modo === 'high' && e.misto && e.aChegar === 0 && e.porAcertar === 0 && e.distancia === 300 && !e.automatica, e);
+verificar('... até estar tudo carregado', e.modo === 'high' && e.misto && e.aChegar === 0 && e.porAcertar === 0 && e.distancia >= 200 && !e.automatica, e);
 
 // --- Desce com peso -------------------------------------------------------
 await abrir(limpo);
 await por(-30, 25, 70, 10, 0, 10);
 await dormir(6000);
 antes = cargas;
+await mexer(true);
 await pesar(70);
 verificar('sem escolha à mão, com um peso de 70 ms por imagem desce ao Baixo', await esperar(`window.actualQuality === 'low'`, 30), await estado());
 await pesar(0);
+await mexer(false);
 await dormir(6000);
 e = await estado();
 verificar('desce sem recarregar, e todas as manchas passam a malha', cargas === antes && e.finos === 0 && e.meios === 0 && e.marcado === 'low' && e.automatica, e);

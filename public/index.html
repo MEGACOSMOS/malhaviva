@@ -6195,7 +6195,8 @@
         import { ligarLodNoCentroDaVista } from './lod-foco.mjs?v=15';
         import { medirACargaDoBairro } from './carga-do-bairro.mjs?v=4';
         import { criarAfinadorDeFluidez, construirEscada } from './fluidez.mjs?v=2';
-        import { criarEscolhaDeModo } from './escolha-de-qualidade.mjs?v=4';
+        import { criarEscolhaDeModo } from './escolha-de-qualidade.mjs?v=5';
+        import { criarAfinadorDaDistancia } from './distancia-pela-fluidez.mjs?v=1';
         import { criarModoVR } from './vr.mjs?v=16';
         import { ligarCeu } from './ceu.mjs?v=16';
         import { ligarEdificios } from './edificios.mjs?v=6';
@@ -6417,12 +6418,20 @@
         // a frente o dobro, ver lod-foco.mjs), e quantas vezes mais longe vai o
         // do meio, até onde começa a malha. No Alto esteve em 600: com metade
         // vê-se quase o mesmo, e são bem menos manchas.
+        // É com estas que cada modo começa; a partir daí a distância afina-se
+        // pela fluidez (ver distancia-pela-fluidez.mjs), sem descer abaixo do
+        // mínimo de cada modo e sem máximo.
         const DISTANCIA_DO_DETALHE = { high: 300, med: 100 };
+        const DISTANCIA_MINIMA = { high: 200, med: 80 };
         const VEZES_DO_MEIO = 3;
         // Com que distância se abre o Alto, enquanto o resto do bairro não chega.
         const ABERTURA_DO_ALTO = 150;
-        const distanciaDoModo = (m) => (m === 'high' && !(tudo && tudo.pronto())
-            ? ABERTURA_DO_ALTO : DISTANCIA_DO_DETALHE[m]);
+        // A distância afinada pela fluidez (criada em `medirAFluidez`).
+        let afinadorDaDistancia = null;
+        const distanciaDoModo = (m) => {
+            if (m === 'high' && !(tudo && tudo.pronto())) return ABERTURA_DO_ALTO;
+            return afinadorDaDistancia ? afinadorDaDistancia.distancia : DISTANCIA_DO_DETALHE[m];
+        };
 
         let modo = window.actualQuality;
         let automatica = !emPoupanca && !qualidade.escolhida();
@@ -6553,6 +6562,11 @@
             if (splatEl && splatEl.entity && splatEl.entity.gsplat) {
                 splatEl.entity.gsplat.lodMultiplier = VEZES_DO_MEIO;
             }
+            // Outro modo, outro mínimo: a distância recomeça na dele.
+            if (afinadorDaDistancia && afinadorDaDistancia.modo !== novo) {
+                afinadorDaDistancia.modo = novo;
+                afinadorDaDistancia.por(DISTANCIA_MINIMA[novo], DISTANCIA_DO_DETALHE[novo]);
+            }
             porDistancia(distanciaDoModo(novo));
         }
 
@@ -6649,7 +6663,7 @@
             resto = setInterval(() => {
                 if (modo === 'high' && conta === tudo && !conta.pronto()) return;
                 clearInterval(resto);
-                if (modo === 'high' && conta === tudo) porDistancia(DISTANCIA_DO_DETALHE.high);
+                if (modo === 'high' && conta === tudo) porDistancia(distanciaDoModo('high'));
             }, 500);
         }
 
@@ -6779,10 +6793,53 @@
             afinadorDaDensidade = { recomecar() { densidade = criarDensidade(); window.afinadorDeFluidez = densidade; } };
             window.afinadorDeFluidez = densidade;
 
+            // No Alto e no Médio, a distância do pormenor afina-se pela fluidez:
+            // 30 imagens por segundo, sem descer do mínimo de cada modo, e sem
+            // máximo (ver distancia-pela-fluidez.mjs). Com a escolha automática
+            // ou à mão, tanto faz.
+            if (!paginaDeMalha) {
+                afinadorDaDistancia = criarAfinadorDaDistancia({
+                    minimo: DISTANCIA_MINIMA[modo === 'high' ? 'high' : 'med'],
+                    partida: DISTANCIA_DO_DETALHE[modo === 'high' ? 'high' : 'med'],
+                    parado,
+                    // O Alto só se afina com o bairro inteiro cá (até lá abre
+                    // com ABERTURA_DO_ALTO); o resto, com o bairro assente.
+                    ocupado: () => bairroAChegar(app) || aMudar ||
+                        (modo === 'high' && !(tudo && tudo.pronto())),
+                    custo: () => {
+                        try {
+                            for (const d of app.renderer.gsplatDirector.camerasMap.values()) {
+                                for (const c of d.layersMap.values()) {
+                                    const w = c.gsplatManager && c.gsplatManager.world;
+                                    const st = w && w._octreeInstances && w._octreeInstances.size && w.getState(w.currentVersion);
+                                    if (st) return st.totalActiveSplats;
+                                }
+                            }
+                        } catch (e) { /* o motor guarda-o de outra maneira */ }
+                        return 0;
+                    },
+                    aplicar: (d) => {
+                        if (modo === 'low') return;
+                        porDistancia(distanciaDoModo(modo));
+                    }
+                });
+                afinadorDaDistancia.modo = modo;
+                window.afinadorDaDistancia = afinadorDaDistancia;
+            }
+
             escolhaDoModo = criarEscolhaDeModo({
                 modos: qualidade.MODOS,
                 partida: modo,
                 parado,
+                // No Alto e no Médio quem cede primeiro é a distância: só se
+                // desce de modo com ela já no mínimo.
+                podeDescer: () => modo === 'low' || !afinadorDaDistancia || afinadorDaDistancia.noMinimo,
+                // Do Médio sobe-se ao Alto quando a distância do Médio já chegou
+                // à do Alto, sem imagens lentas: a fluidez está toda a ser usada
+                // a afinar a distância, e as imagens por segundo nunca sobram.
+                temFolga: (fps, m) => (modo === 'med' && afinadorDaDistancia
+                    ? m.lentas === 0 && fps >= 30 && afinadorDaDistancia.distancia >= DISTANCIA_DO_DETALHE.high
+                    : m.lentas === 0 && fps >= 52),
                 ocupado: () => bairroAChegar(app) || aMudar || (!!tudo && !tudo.pronto()),
                 // Para o Alto, o bairro inteiro vem primeiro, devagar e por
                 // trás: quem anda a passear não é interrompido por um ecrã de
@@ -6818,6 +6875,7 @@
                 requestAnimationFrame(contar);
                 if (automatica) escolhaDoModo.quadro(agora);
                 if (modo === 'low') densidade.quadro(agora);
+                else if (afinadorDaDistancia && !aMudar) afinadorDaDistancia.quadro(agora);
             };
             setTimeout(() => requestAnimationFrame(contar), ARRANQUE);
         }

@@ -91,6 +91,13 @@ const TAMANHO_DO_DIARIO = 40;
  * @param {function(): boolean} [opcoes.ocupado] - Diz se o bairro ainda está a
  *     chegar.
  * @param {function(): boolean} [opcoes.parado] - Diz se não se deve medir.
+ * @param {function(): boolean} [opcoes.podeDescer] - Diz se agora se pode descer
+ *     de modo (no Alto e no Médio, só com a distância do pormenor já no mínimo:
+ *     até lá é ela que encolhe, ver distancia-pela-fluidez.mjs). Insuportável
+ *     desce sempre.
+ * @param {function(number, object): boolean} [opcoes.temFolga] - Diz se uma
+ *     medição (as imagens por segundo, e a medição) mostra folga para subir; de
+ *     origem, nenhuma imagem lenta e pelo menos FPS_DE_FOLGA.
  * @returns {object} `quadro(agora)`, a chamar a cada imagem; `por(modo)`, para
  *     dizer que o modo mudou por outra via; e `diagnostico`.
  */
@@ -100,6 +107,8 @@ export function criarEscolhaDeModo(opcoes) {
     const ocupado = opcoes.ocupado || (() => false);
     const podeSubir = opcoes.podeSubir || (() => true);
     const pronto = opcoes.pronto || (() => true);
+    const podeDescer = opcoes.podeDescer || (() => true);
+    const temFolga = opcoes.temFolga || ((fps, m) => m.lentas === 0 && fps >= FPS_DE_FOLGA);
     const postoDeParte = opcoes.postoDeParte || (() => false);
     const aoCair = opcoes.aoCair || (() => {});
 
@@ -178,17 +187,19 @@ export function criarEscolhaDeModo(opcoes) {
 
         // A assentar, ou com o bairro a chegar, as imagens não são ainda as do
         // modo: só conta um aperto grande que não passe.
-        if (aperta(A_CHEGAR)) return descer(agora, 1, 'a chegar');
+        if (podeDescer() && aperta(A_CHEGAR)) return descer(agora, 1, 'a chegar');
         if (medicao.estado > 0) {
             calmaDesde = 0;
             return;
         }
 
-        if (aperta(URGENTE)) return descer(agora, 1, 'urgente');
-        if (aperta(GRAVE)) return descer(agora, 1, 'grave');
-        if (aperta(LEVE)) return descer(agora, 1, 'leve');
+        if (podeDescer()) {
+            if (aperta(URGENTE)) return descer(agora, 1, 'urgente');
+            if (aperta(GRAVE)) return descer(agora, 1, 'grave');
+            if (aperta(LEVE)) return descer(agora, 1, 'leve');
+        }
 
-        if (medicao.lentas > 0 || ultimoFps < FPS_DE_FOLGA) {
+        if (!temFolga(ultimoFps, medicao)) {
             calmaDesde = 0;
             return;
         }
