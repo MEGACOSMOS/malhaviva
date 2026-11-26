@@ -6066,7 +6066,7 @@
     <pc-app id="main-app" antialias="false" max-pixel-ratio="1" loading-bar="false" backend="webgl2">
 
         <!-- Assets -->
-        <pc-asset id="splat-scene" src="splat_perf/lod-meta.json" type="gsplat"></pc-asset>
+        <pc-asset id="splat-scene" src="splat_v2/lod-meta.json" type="gsplat"></pc-asset>
         <pc-asset id="camera-controls-script" src="./camera-controls.mjs?v=63" type="script"></pc-asset>
         <pc-asset id="camera-coords-script" src="./coords.mjs?v=7" type="script"></pc-asset>
         <pc-asset id="annotations-script" src="./annotations.mjs?v=126" type="script"></pc-asset>
@@ -6159,7 +6159,7 @@
             // contorno do mapa, onde a câmara pode andar.
             if (nivel === 'low') {
                 window.bairroEmMalha = true;
-                window.indiceDoMapa = 'splat_perf/lod-meta.json';
+                window.indiceDoMapa = 'splat_v2/lod-meta.json';
                 var manchas = document.querySelector('pc-entity[name="gsplat-scene"] pc-gsplat');
                 if (manchas) manchas.remove();
                 var ficheiroDasManchas = document.getElementById('splat-scene');

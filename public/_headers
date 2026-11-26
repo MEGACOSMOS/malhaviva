@@ -38,6 +38,16 @@
 # O bairro em manchas: cada pedaço guarda-se um ano sem voltar a perguntar.
 # Por isso, se o bairro mudar, os pedaços novos têm de ir para uma pasta com
 # outro nome; o índice, que diz quais são, confirma-se sempre.
+# A splat_v2 é a de agora (o fino sem as manchas que nunca se veem, e o nível
+# do meio treinado); a splat_perf é a de antes, que fica para quem ainda tiver
+# o site aberto de antes da troca.
+/splat_v2/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/splat_v2/lod-meta.json
+  ! Cache-Control
+  Cache-Control: no-cache
+
 /splat_perf/*
   Cache-Control: public, max-age=31536000, immutable
 
