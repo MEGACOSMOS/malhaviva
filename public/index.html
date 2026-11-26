@@ -6202,6 +6202,7 @@
         import { ligarBairroEmMalha } from './bairro-malha.mjs?v=22';
         import { ligarComando } from './comando.mjs?v=13';
         import { ligarOrdemAsFatias } from './ordem-as-fatias.mjs?v=1';
+        import { ligarDesenhoQuandoPreciso } from './desenho-quando-preciso.mjs?v=1';
 
         // O código do site chegou e está a correr: o primeiro sinal de vida
         // para a rede de segurança do arranque (ver `arranque`).
@@ -6755,6 +6756,7 @@
             const dispositivo = app && app.graphicsDevice;
             if (!dispositivo || emPoupanca) return;
             const parado = () => document.hidden ||
+                (window.desenho && window.desenho.emPausa()) ||
                 (app.xr && app.xr.active) ||
                 document.body.classList.contains('em-cartao') ||
                 (window.placaGrafica && window.placaGrafica.desistida);
@@ -7994,6 +7996,24 @@
             // fatias, e não de uma vez (ver ordem-as-fatias.mjs): era o que
             // fazia o bairro andar aos solavancos ao mexer a câmara.
             if (window.bairroMisto) window.ordemAsFatias = ligarOrdemAsFatias(app);
+
+            // O bairro só se desenha quando há o que mudar no ecrã (ver
+            // desenho-quando-preciso.mjs): parado, e debaixo dos vídeos e das
+            // 360°, a placa descansa. Tudo o que faz o bairro mudar sozinho
+            // conta aqui para ele continuar a ser desenhado.
+            window.desenho = ligarDesenhoQuandoPreciso(app, {
+                ocupado: () => {
+                    const espera = document.getElementById('loading-overlay');
+                    if (espera && !espera.classList.contains('hidden')) return true;
+                    if (aMudar || bairroAChegar(app)) return true;
+                    const corpo = document.body.classList;
+                    if (corpo.contains('a-navegar') || corpo.contains('com-local')) return true;
+                    if (window.lodFoco && window.lodFoco.reavaliarEm) return true;
+                    const malha = window.bairroMalha && window.bairroMalha.medir ? window.bairroMalha.medir() : 1;
+                    if (malha !== null && malha < 1) return true;
+                    return !bairroAssente(app);
+                }
+            });
 
             // O ecrã de espera só sai quando o bairro estiver mesmo lá — e
             // aí, com tudo chegado, o logótipo está inteiro.
