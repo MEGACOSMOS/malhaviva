@@ -24,7 +24,7 @@
 
     // Muda quando as legendas forem refeitas, para os navegadores não
     // ficarem com as antigas guardadas.
-    var VERSAO = 1;
+    var VERSAO = 2;
 
     var CHAVE = 'legendas';
     // As línguas em que há legendas. O Kriolu (kea) é o de Santiago, em

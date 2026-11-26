@@ -27,7 +27,7 @@ este esta esse essa aquele aquela muito muita mais tão até sobre entre é são
 this these those is are was were be very more so not no'''.split()),
     'es': set('''el la los las un una unos unas de del al a en con por para y o pero que si como su sus mi mis tu tus
 nuestro nuestra nuestros nuestras este esta ese esa lo le les se me te nos os muy más es son'''.split()),
-    'kea': set('''un di na pa ku sen i o ma ki si sima nha bu si nos ses kel kes es ta sta ka é nu N e
+    'kea': set('''un di na pa ku sen i o ô ma ki si sima nha bu si nos ses kel kes es ta sta ka é nu N e
 txeu más ti riba entri'''.split()),
 }
 
@@ -37,7 +37,7 @@ INICIOS = {
     'pt': set('para e que porque mas ou se quando como com sem de do da em no na por pelo pela onde nem até'.split()),
     'en': set('and but or because so that to for with without when if where who which of in on at by from'.split()),
     'es': set('y pero o porque que para con sin cuando como si de del en por donde ni hasta'.split()),
-    'kea': set('i ma o pamodi ki pa ku sen ora si sima di na undi nen ti'.split()),
+    'kea': set('i ma o ô pamodi ki pa ku sen ora si sima di na undi nen ti'.split()),
 }
 
 
