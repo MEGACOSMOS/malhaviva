@@ -56,6 +56,11 @@ const ALARGAMENTO = 0.25;
 // poucos por cima dela. Em milissegundos.
 const TEMPO_DE_DESVANECER = 500;
 
+// Na troca entre o fino e o do meio, o nível que sai fica inteiro até o que
+// entra estar inteiro, e depois sai tantas vezes mais depressa: os dois só se
+// sobrepõem dois terços de segundo, e a zona nunca fica meio transparente.
+const SAIR_DEPOIS_DO_OUTRO = 3;
+
 // Na faixa de passagem, cada mancha mede-se com a câmara de agora e com a de
 // há pouco, até `TEMPO_DE_DESVANECER` atrás, guardada tantas vezes quantas
 // aqui se diz (ver `acompanharOOlhar`).
@@ -1018,17 +1023,17 @@ function vigiarAsManchas(app, aoMudar, aoAcharMapa, zonasDaMalha = null) {
                             : espera >= ESPERA_MAXIMA_AO_ENTRAR / 4;
                         if (seVe) v = Math.min(1, v + passo);
                     } else {
-                        // Se o outro nível é o que fica, desce ao mesmo tempo
-                        // que ele aparece, e nunca abaixo do que lhe falta para
-                        // estar inteiro: os dois juntos tapam sempre a zona, e
-                        // só ficam sobrepostos o tempo de uma passagem, em vez
-                        // de duas. Se o outro ainda não começou a aparecer,
-                        // espera por ele.
+                        // Se o outro nível é o que fica, este fica inteiro
+                        // até o outro estar inteiro, e só então sai, mais
+                        // depressa (`SAIR_DEPOIS_DO_OUTRO`). Descer os dois ao
+                        // mesmo tempo deixava-os, a meio, ambos meio
+                        // transparentes: via-se a malha por baixo, e a zona
+                        // clareava ou escurecia enquanto trocava.
                         const outro = 1 - nivel;
                         const outroPreciso = !info.aSair && (principal === outro || segundo === outro);
-                        const vOutro = outro ? v1[i] : v0[i];
+                        const outroInteiro = (outro ? v1[i] : v0[i]) >= 0.999;
                         if (!outroPreciso) v = Math.max(0, v - passo);
-                        else if (vOutro > 0) v = Math.max(0, Math.max(v - passo, 1 - vOutro));
+                        else if (outroInteiro) v = Math.max(0, v - passo * SAIR_DEPOIS_DO_OUTRO);
                         if (v <= 0 && niveis) {
                             // Desceu de todo: larga-se, na vez do motor.
                             if (guardado) {
