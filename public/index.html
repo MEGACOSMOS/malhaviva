@@ -7530,9 +7530,25 @@
             // conta, e as zonas à beira de um anel acendiam e apagavam.
             if (app.scene && app.scene.gsplat) {
                 app.scene.gsplat.splatBudget = 0;
-                // Manchas com menos de três pontos de tamanho no ecrã são pó
-                // (de origem eram dois): não se desenham.
-                app.scene.gsplat.minPixelSize = 3;
+                if (window.bairroMisto) {
+                    // No Alto e no Médio, o anti-serrilhado: uma mancha mais
+                    // pequena do que um ponto do ecrã fica mais transparente,
+                    // em vez de ficar do tamanho do ponto e com a cor toda —
+                    // é isso que dava grão ao bairro visto de longe. Medido
+                    // contra o bairro inteiro com três vezes mais pontos, fica
+                    // bem mais perto dele, e não custa nada à placa. Com ele,
+                    // o pó pode voltar a ser só o de menos de dois pontos; e a
+                    // orla de cada mancha mais fraca do que 4/255 (a de origem
+                    // é 1/255) não se pinta, que não se vê e custa pintar.
+                    app.scene.gsplat.antiAlias = true;
+                    app.scene.gsplat.minPixelSize = 2;
+                    app.scene.gsplat.alphaClipForward = 4 / 255;
+                } else {
+                    // No Baixo as manchas são só as árvores da malha: as de
+                    // menos de três pontos de tamanho no ecrã são pó (de
+                    // origem eram dois), e não se desenham.
+                    app.scene.gsplat.minPixelSize = 3;
+                }
             }
 
             // --- Quantos pontos se desenham por cada ponto do ecrã ---
