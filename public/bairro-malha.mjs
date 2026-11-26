@@ -32,7 +32,9 @@ import {
     Asset, CULLFACE_NONE, Entity, Layer, WasmModule, Texture, Vec3,
     PIXELFORMAT_RGBA8, PIXELFORMAT_RG8, PIXELFORMAT_R32U, PIXELFORMAT_RG32U,
     FILTER_LINEAR, FILTER_NEAREST, ADDRESS_CLAMP_TO_EDGE,
-    SHADERLANGUAGE_GLSL, SHADERLANGUAGE_WGSL
+    SHADERLANGUAGE_GLSL, SHADERLANGUAGE_WGSL,
+    Mesh, MeshInstance, IndexBuffer, BoundingBox, Picker,
+    PRIMITIVE_TRIANGLES, BUFFER_STATIC, INDEXFORMAT_UINT32
 } from 'playcanvas';
 
 const PASTA = 'malha/';
@@ -64,6 +66,212 @@ const PASSOS_DO_RASTO = 8;
 // `oQueSeDesenha`); se o motor não o disser, ao fim deste tempo, em
 // milissegundos.
 const ESPERA_MAXIMA_AO_ENTRAR = 1500;
+
+// Bairro misto: a malha é cortada em zonas deste lado, em metros, e cada uma
+// só se desenha quando há nela algum sítio onde as manchas não a tapam (ver
+// `criarZonasDaMalha`). Mais pequenas apagavam-se mais vezes, mas eram mais
+// coisas para a placa desenhar uma a uma.
+const LADO_DA_ZONA = 40;
+
+// O que uma zona alarga para lá dos seus triângulos, em metros, ao ver se está
+// tapada: a grelha é lida esbatida entre quadrados vizinhos.
+const FOLGA_DA_ZONA = 1.5;
+
+// O azul da grelha (de 0 a 255) a partir do qual a malha não se pinta em ponto
+// nenhum: o programa dela apaga-a acima de 0,99 (ver `ensinarAGrelha`).
+const AZUL_QUE_TAPA = 253;
+
+/**
+ * Bairro misto: quais zonas da malha se desenham.
+ *
+ * Onde as manchas estão inteiras a malha já não se pintava (ver
+ * `ensinarAGrelha`), mas a placa tinha na mesma de passar por ela, ponto a
+ * ponto, e por baixo de tudo: no Alto isso custava uns 12 % de cada imagem
+ * sem se ver nada. Agora cada zona sabe quantos quadrados da grelha que lhe
+ * tocam ainda não estão tapados, e só se desenha com algum. A conta segue a
+ * grelha quadrado a quadrado, no mesmo instante em que ela muda: uma zona onde
+ * as manchas começam a desvanecer acende-se nessa mesma imagem, e as
+ * transições ficam como eram.
+ *
+ * @returns {object} `juntar(zonas)`, `grelhaNova(grelha|null)`,
+ *     `celula(q, tapada)`, `aplicar()` e `todasAVista(sim)`.
+ */
+function criarZonasDaMalha() {
+    const zonas = [];
+    let grelha = null;
+    // Para cada quadrado da grelha, as zonas a que ele toca (ver `mapear`).
+    let inicio = null;
+    let lista = null;
+    let todas = false;
+
+    function mapear() {
+        inicio = null;
+        lista = null;
+        if (!grelha || !zonas.length) return;
+        const { colunas, linhas, dados, parametros } = grelha;
+        const ox = parametros[0], oz = parametros[1];
+        const quadrado = (v, o, n) => Math.max(0, Math.min(n - 1, Math.floor((v - o) / CELULA)));
+        const total = colunas * linhas;
+        const conta = new Uint32Array(total + 1);
+        for (const z of zonas) {
+            z.c0 = quadrado(z.x0, ox, colunas); z.c1 = quadrado(z.x1, ox, colunas);
+            z.j0 = quadrado(z.z0, oz, linhas); z.j1 = quadrado(z.z1, oz, linhas);
+            for (let j = z.j0; j <= z.j1; j++) {
+                for (let c = z.c0; c <= z.c1; c++) conta[j * colunas + c + 1]++;
+            }
+        }
+        for (let q = 0; q < total; q++) conta[q + 1] += conta[q];
+        const cheio = conta.slice(0, total);
+        lista = new Uint32Array(conta[total]);
+        zonas.forEach((z, k) => {
+            z.descobertos = 0;
+            for (let j = z.j0; j <= z.j1; j++) {
+                for (let c = z.c0; c <= z.c1; c++) {
+                    const q = j * colunas + c;
+                    lista[cheio[q]++] = k;
+                    if (dados[q * 4 + 2] < AZUL_QUE_TAPA) z.descobertos++;
+                }
+            }
+        });
+        inicio = conta;
+    }
+
+    return {
+        juntar(novas) {
+            for (const z of novas) zonas.push(z);
+            mapear();
+        },
+        grelhaNova(nova) {
+            grelha = nova;
+            mapear();
+        },
+        // Um quadrado da grelha ficou tapado (ou deixou de estar).
+        celula(q, tapada) {
+            if (!inicio) return;
+            const d = tapada ? -1 : 1;
+            for (let k = inicio[q]; k < inicio[q + 1]; k++) zonas[lista[k]].descobertos += d;
+        },
+        aplicar() {
+            for (const z of zonas) {
+                const ver = todas || !inicio || z.descobertos > 0;
+                if (z.mi.visible !== ver) z.mi.visible = ver;
+            }
+        },
+        // O leitor de sítios (onde se carregou) lê a malha toda, como antes.
+        todasAVista(sim) {
+            todas = sim;
+            this.aplicar();
+        },
+        // Para as provas: as zonas e a grelha que elas seguem.
+        diagnostico() {
+            return { zonas, grelha };
+        }
+    };
+}
+
+/**
+ * Corta as peças da malha em zonas de `LADO_DA_ZONA` metros de lado.
+ *
+ * Cada triângulo vai para a zona onde fica o meio dele. As zonas de uma peça
+ * partilham a geometria dela e uma lista só, arrumada zona a zona; cada uma é
+ * uma fatia dessa lista, com a caixa dos seus triângulos (a placa também não
+ * desenha as que ficam fora do ecrã).
+ *
+ * @param {object} dispositivo - A placa gráfica.
+ * @param {MeshInstance[]} pecas - As peças, como vêm do ficheiro.
+ * @returns {{mi: MeshInstance, x0: number, x1: number, z0: number, z1: number, descobertos: number}[]}
+ *     As zonas, com a caixa de cada uma vista de cima, em coordenadas da cena.
+ */
+function dividirEmZonas(dispositivo, pecas) {
+    const zonas = [];
+    const v = new Vec3();
+    for (const mi of pecas) {
+        const mesh = mi.mesh;
+        const ib = mesh && mesh.indexBuffer && mesh.indexBuffer[0];
+        const prim = mesh && mesh.primitive && mesh.primitive[0];
+        const posicoes = [];
+        if (ib && ib.storage && prim && prim.type === PRIMITIVE_TRIANGLES && prim.indexed) mesh.getPositions(posicoes);
+        if (!posicoes.length) {
+            // Uma peça que não se deixa ler fica inteira, sempre à vista.
+            zonas.push({ mi, x0: -1e9, x1: 1e9, z0: -1e9, z1: 1e9, descobertos: 1 });
+            continue;
+        }
+        const W = mi.node.getWorldTransform();
+        const nv = posicoes.length / 3;
+        const wx = new Float32Array(nv), wz = new Float32Array(nv);
+        for (let i = 0; i < nv; i++) {
+            v.set(posicoes[i * 3], posicoes[i * 3 + 1], posicoes[i * 3 + 2]);
+            W.transformPoint(v, v);
+            wx[i] = v.x;
+            wz[i] = v.z;
+        }
+        const Tipo = ib.format === INDEXFORMAT_UINT32 ? Uint32Array : Uint16Array;
+        const todos = new Tipo(ib.storage);
+        const indices = todos.subarray(prim.base, prim.base + prim.count);
+        const triangulos = Math.floor(indices.length / 3);
+        // A zona de cada triângulo.
+        let minX = Infinity, minZ = Infinity, maxX = -Infinity, maxZ = -Infinity;
+        for (let i = 0; i < nv; i++) {
+            if (wx[i] < minX) minX = wx[i]; if (wx[i] > maxX) maxX = wx[i];
+            if (wz[i] < minZ) minZ = wz[i]; if (wz[i] > maxZ) maxZ = wz[i];
+        }
+        const kx0 = Math.floor(minX / LADO_DA_ZONA), kz0 = Math.floor(minZ / LADO_DA_ZONA);
+        const nkx = Math.floor(maxX / LADO_DA_ZONA) - kx0 + 1;
+        const nkz = Math.floor(maxZ / LADO_DA_ZONA) - kz0 + 1;
+        const deQual = new Uint32Array(triangulos);
+        const conta = new Uint32Array(nkx * nkz + 1);
+        for (let t = 0; t < triangulos; t++) {
+            const a = indices[t * 3], b = indices[t * 3 + 1], c = indices[t * 3 + 2];
+            const kx = Math.floor((wx[a] + wx[b] + wx[c]) / 3 / LADO_DA_ZONA) - kx0;
+            const kz = Math.floor((wz[a] + wz[b] + wz[c]) / 3 / LADO_DA_ZONA) - kz0;
+            const k = Math.min(nkz - 1, Math.max(0, kz)) * nkx + Math.min(nkx - 1, Math.max(0, kx));
+            deQual[t] = k;
+            conta[k + 1]++;
+        }
+        for (let k = 0; k < nkx * nkz; k++) conta[k + 1] += conta[k];
+        const arrumados = new Tipo(triangulos * 3);
+        const cheio = conta.slice(0, nkx * nkz);
+        for (let t = 0; t < triangulos; t++) {
+            const o = cheio[deQual[t]]++ * 3;
+            arrumados[o] = indices[t * 3];
+            arrumados[o + 1] = indices[t * 3 + 1];
+            arrumados[o + 2] = indices[t * 3 + 2];
+        }
+        const lista = new IndexBuffer(dispositivo, ib.format, arrumados.length, BUFFER_STATIC, arrumados.buffer);
+        for (let k = 0; k < nkx * nkz; k++) {
+            const de = conta[k], ate = conta[k + 1];
+            if (ate === de) continue;
+            let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity;
+            const lmin = [Infinity, Infinity, Infinity], lmax = [-Infinity, -Infinity, -Infinity];
+            for (let i = de * 3; i < ate * 3; i++) {
+                const p = arrumados[i];
+                if (wx[p] < x0) x0 = wx[p]; if (wx[p] > x1) x1 = wx[p];
+                if (wz[p] < z0) z0 = wz[p]; if (wz[p] > z1) z1 = wz[p];
+                for (let e = 0; e < 3; e++) {
+                    const s = posicoes[p * 3 + e];
+                    if (s < lmin[e]) lmin[e] = s; if (s > lmax[e]) lmax[e] = s;
+                }
+            }
+            const parte = new Mesh(dispositivo);
+            parte.vertexBuffer = mesh.vertexBuffer;
+            parte.indexBuffer[0] = lista;
+            parte.primitive[0] = { type: PRIMITIVE_TRIANGLES, base: de * 3, baseVertex: 0, count: (ate - de) * 3, indexed: true };
+            parte.aabb = new BoundingBox(
+                new Vec3((lmin[0] + lmax[0]) / 2, (lmin[1] + lmax[1]) / 2, (lmin[2] + lmax[2]) / 2),
+                new Vec3((lmax[0] - lmin[0]) / 2, (lmax[1] - lmin[1]) / 2, (lmax[2] - lmin[2]) / 2)
+            );
+            const zona = new MeshInstance(parte, mi.material, mi.node);
+            zonas.push({
+                mi: zona,
+                x0: x0 - FOLGA_DA_ZONA, x1: x1 + FOLGA_DA_ZONA, z0: z0 - FOLGA_DA_ZONA, z1: z1 + FOLGA_DA_ZONA,
+                descobertos: 1
+            });
+        }
+        // A peça inteira sai de cena, mas a geometria fica: é das zonas.
+        mesh.incRefCount();
+    }
+    return zonas;
+}
 
 /**
  * A camada da malha, logo a seguir à cúpula do céu.
@@ -418,9 +626,11 @@ function dizerONivelNaCopia(mundo, octree) {
  *     (`{textura, parametros}`) quando ela passa a ser outra.
  * @param {function(object, object): void} aoAcharMapa - Chamada com o mapa
  *     e o gestor quando o mapa aparece (ou passa a ser outro).
+ * @param {object|null} [zonasDaMalha] - As zonas da malha (ver
+ *     `criarZonasDaMalha`), que seguem a grelha quadrado a quadrado.
  * @returns {{textura: Texture, parametros: Float32Array}} A grelha de agora.
  */
-function vigiarAsManchas(app, aoMudar, aoAcharMapa) {
+function vigiarAsManchas(app, aoMudar, aoAcharMapa, zonasDaMalha = null) {
     const camara = app.root.findByName('camera');
     const dispositivo = app.graphicsDevice;
 
@@ -591,7 +801,11 @@ function vigiarAsManchas(app, aoMudar, aoAcharMapa) {
         const o = q * 4;
         dados[o] = Math.round(255 * Math.min(m0, menor));
         dados[o + 1] = Math.round(255 * Math.min(m1, menor));
-        dados[o + 2] = Math.round(255 * Math.min(mT, menor));
+        const azul = Math.round(255 * Math.min(mT, menor));
+        if (zonasDaMalha && (dados[o + 2] >= AZUL_QUE_TAPA) !== (azul >= AZUL_QUE_TAPA)) {
+            zonasDaMalha.celula(q, azul >= AZUL_QUE_TAPA);
+        }
+        dados[o + 2] = azul;
         dadosMenor[q * 2] = Math.round(255 * n0);
         dadosMenor[q * 2 + 1] = Math.round(255 * n1);
     }
@@ -652,6 +866,7 @@ function vigiarAsManchas(app, aoMudar, aoAcharMapa) {
             } else {
                 atual = semGrelha();
             }
+            if (zonasDaMalha) zonasDaMalha.grelhaNova(grelha);
             aoMudar(atual);
         }
 
@@ -660,7 +875,10 @@ function vigiarAsManchas(app, aoMudar, aoAcharMapa) {
         // salta o desvanecer de uma vez ao voltar.
         const passo = Math.min(agora - antes, 100) / TEMPO_DE_DESVANECER;
         antes = agora;
-        if (!grelha) return;
+        if (!grelha) {
+            if (zonasDaMalha) zonasDaMalha.aplicar();
+            return;
+        }
 
         // Dois níveis numa zona só quando cada um pode ter o seu lugar (ver
         // `separarLugares`); até lá, e num motor que não o deixe, cada zona
@@ -772,6 +990,9 @@ function vigiarAsManchas(app, aoMudar, aoAcharMapa) {
             }
         }
         if (mudou) enviarGrelha();
+        // As zonas da malha que se desenham nesta imagem: a grelha acabou de
+        // ser refeita, e é ela que a malha vai ler.
+        if (zonasDaMalha) zonasDaMalha.aplicar();
         // Um pedaço que acabou de se desvanecer já pode trocar de nível: o
         // motor reavalia sem esperar que a câmara se mexa.
         if (reavaliar && 'needsLodUpdate' in instancia) instancia.needsLodUpdate = true;
@@ -1146,6 +1367,22 @@ export function ligarBairroEmMalha(app, opcoes = {}) {
     const materiaisMistos = new Set();
     const materialDasManchas = misto && app.scene.gsplat && app.scene.gsplat.material;
     let grelhaDasManchas = null;
+    // Bairro misto: a malha em zonas, e só as que se veem se desenham.
+    const zonasDaMalha = misto ? criarZonasDaMalha() : null;
+    if (zonasDaMalha) {
+        // O leitor de sítios (o que diz onde se carregou, ver as câmaras)
+        // desenha o bairro à parte, de uma vez, no momento em que é chamado: lê a
+        // malha toda, como sempre leu.
+        const prepararDeOrigem = Picker.prototype.prepare;
+        Picker.prototype.prepare = function (...args) {
+            zonasDaMalha.todasAVista(true);
+            try {
+                return prepararDeOrigem.apply(this, args);
+            } finally {
+                zonasDaMalha.todasAVista(false);
+            }
+        };
+    }
     const darAGrelha = (alvo) => {
         alvo.setParameter('uBairroMisto', grelhaDasManchas.textura);
         alvo.setParameter('uBairroMenor', grelhaDasManchas.texturaMenor);
@@ -1171,7 +1408,7 @@ export function ligarBairroEmMalha(app, opcoes = {}) {
             // As manchas do bairro levam a marca do nível de onde vêm: só
             // agora, que a cópia já sabe dizer-lho (ver `dizerONivelNaCopia`).
             if (bairro && bairro.gsplat) marcarAsManchas(bairro.gsplat, null);
-        });
+        }, zonasDaMalha);
         if (materialDasManchas) {
             darAGrelha(materialDasManchas);
             // A câmara do último meio segundo, para a faixa de passagem entre o
@@ -1259,6 +1496,17 @@ export function ligarBairroEmMalha(app, opcoes = {}) {
                 entidade.findComponents('render').forEach((render) => { render.layers = [camada.id]; });
                 afinarMateriais(entidade);
                 raiz.addChild(entidade);
+                // Bairro misto: a peça em zonas, cada uma desenhada só onde se vê
+                // (ver `criarZonasDaMalha`). Já pendurada, para as contas da
+                // posição serem as do sítio onde fica.
+                if (zonasDaMalha) {
+                    entidade.findComponents('render').forEach((render) => {
+                        const zonas = dividirEmZonas(app.graphicsDevice, render.meshInstances.slice());
+                        render.meshInstances = zonas.map((z) => z.mi);
+                        zonasDaMalha.juntar(zonas);
+                    });
+                    zonasDaMalha.aplicar();
+                }
                 avisarPrimeira();
                 resolve();
             });
@@ -1321,5 +1569,5 @@ export function ligarBairroEmMalha(app, opcoes = {}) {
         return { veio: Math.min(veio, total), total };
     }
 
-    return { pronto, primeira, medir, medirBytes, raiz };
+    return { pronto, primeira, medir, medirBytes, raiz, zonas: zonasDaMalha };
 }
