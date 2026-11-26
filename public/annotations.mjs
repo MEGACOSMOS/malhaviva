@@ -4174,11 +4174,23 @@ AnnotationController.prototype.update = function(dt) {
             const distance = dir.length();
             const scale = escalaDoMarcador(distance);
 
-            // Use translate3d to stay on the GPU compositor layer (no layout/reflow)
-            el.style.transform = `translate3d(${screenPos.x}px, ${screenPos.y}px, 0) scale(${scale.toFixed(3)}) translate(-50%, ${-MARKER_DOT_HALF}px)`;
+            // Use translate3d to stay on the GPU compositor layer (no layout/reflow).
+            // Só se escreve quando muda: cada escrita obriga o navegador a
+            // refazer os estilos, e com a câmara parada nada muda.
+            const transformacao = `translate3d(${screenPos.x.toFixed(1)}px, ${screenPos.y.toFixed(1)}px, 0) scale(${scale.toFixed(3)}) translate(-50%, ${-MARKER_DOT_HALF}px)`;
+            if (ann._transformacao !== transformacao) {
+                el.style.transform = transformacao;
+                ann._transformacao = transformacao;
+            }
 
             // Set z-index based on distance so closer annotations appear on top
-            el.style.zIndex = Math.max(1, Math.round(10000 - distance * 10));
+            // (de meio em meio metro: mudar a ordem de empilhar a cada passo
+            // da câmara obrigava a pintar de novo).
+            const empilhar = Math.max(1, Math.round(10000 - distance * 2));
+            if (ann._empilhar !== empilhar) {
+                el.style.zIndex = empilhar;
+                ann._empilhar = empilhar;
+            }
 
             // Para onde é "para cima" no ecrã, ali: o caminho de um ponto um
             // pouco acima deste, no bairro. É por aí que sobe o poste da

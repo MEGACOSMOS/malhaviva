@@ -40,8 +40,10 @@ import {
 const PASTA = 'malha/';
 
 // Bairro misto: o lado de cada quadrado da grelha que diz quanto das
-// manchas está à vista em cada sítio, em metros.
-const CELULA = 1;
+// manchas está à vista em cada sítio, em metros. Com 1 metro, refazer a grelha
+// a cada imagem pesava no processador; com 2 são quatro vezes menos quadrados,
+// e as orlas das transições ficam esbatidas em dois metros em vez de um.
+const CELULA = 2;
 
 // Quanto cada pedaço de manchas alarga para lá da caixa dele na grelha, em
 // metros: entre dois pedaços vizinhos há às vezes uma frincha, e por ela via-se
@@ -75,7 +77,7 @@ const LADO_DA_ZONA = 40;
 
 // O que uma zona alarga para lá dos seus triângulos, em metros, ao ver se está
 // tapada: a grelha é lida esbatida entre quadrados vizinhos.
-const FOLGA_DA_ZONA = 1.5;
+const FOLGA_DA_ZONA = 1.5 * CELULA;
 
 // O azul da grelha (de 0 a 255) a partir do qual a malha não se pinta em ponto
 // nenhum: o programa dela apaga-a acima de 0,99 (ver `ensinarAGrelha`).
