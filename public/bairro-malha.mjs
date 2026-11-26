@@ -659,10 +659,14 @@ function vigiarAsManchas(app, aoMudar, aoAcharMapa, zonasDaMalha = null) {
     // Quanto se vê de cada pedaço, em cada nível: um ponto por pedaço, 64 por
     // linha. A grelha sozinha junta os pedaços vizinhos num quadrado só, e as
     // manchas de um que acabou de chegar, na orla, apareciam logo inteiras
-    // por o vizinho já lá estar.
+    // por o vizinho já lá estar. Os outros dois números dizem, para o fino e
+    // para o do meio, se o pedaço está parado e por dentro: inteiro, e com
+    // todos os quadrados à volta inteiros nesse nível e sem o outro. Aí as
+    // manchas dele não precisam da grelha para nada, e saltam a conta (ver
+    // `ensinarAGrelhaAsManchas` e `verPorDentro`).
     const criarPedacos = (n) => new Texture(dispositivo, {
         name: 'bairroPedacos', width: 64, height: Math.max(1, Math.ceil((n + 1) / 64)),
-        format: PIXELFORMAT_RG8, mipmaps: false,
+        format: PIXELFORMAT_RGBA8, mipmaps: false,
         minFilter: FILTER_NEAREST, magFilter: FILTER_NEAREST,
         addressU: ADDRESS_CLAMP_TO_EDGE, addressV: ADDRESS_CLAMP_TO_EDGE
     });
@@ -782,6 +786,7 @@ function vigiarAsManchas(app, aoMudar, aoAcharMapa, zonasDaMalha = null) {
     // chegam, mas nunca mais do que o menos à vista dos que lá estão de facto
     // (caixa justa).
     function refazerQuadrado(q) {
+        if (!quadradoMudou[q]) { quadradoMudou[q] = 1; quadradosMudados.push(q); }
         const { inicio, pedacos, dados, dadosMenor } = grelha;
         let m0 = 0, m1 = 0, mT = 0, menor = 1, n0 = 1, n1 = 1, algum = false;
         for (let k = inicio[q]; k < inicio[q + 1]; k++) {
@@ -808,6 +813,61 @@ function vigiarAsManchas(app, aoMudar, aoAcharMapa, zonasDaMalha = null) {
         dados[o + 2] = azul;
         dadosMenor[q * 2] = Math.round(255 * n0);
         dadosMenor[q * 2 + 1] = Math.round(255 * n1);
+    }
+
+    // Os quadrados refeitos nesta imagem, e os pedaços que é preciso ver de
+    // novo se estão parados e por dentro (ver `verPorDentro`).
+    let quadradoMudou = new Uint8Array(0);
+    const quadradosMudados = [];
+    let porVer = new Uint8Array(0);
+
+    /**
+     * Para cada pedaço tocado pelo que mudou nesta imagem, se está parado e
+     * por dentro em cada nível: o nível inteiro, e todos os quadrados da caixa
+     * dele (e um à volta, que a grelha lê-se esbatida) inteiros nesse nível e
+     * sem nada do outro. Fica escrito no 3.º e 4.º número do pedaço.
+     *
+     * @returns {boolean} Se alguma marca mudou.
+     */
+    function verPorDentro() {
+        if (!quadradosMudados.length || !grelha) return false;
+        const { colunas, linhas, inicio, pedacos, alargada, dados, dadosMenor } = grelha;
+        const lista = [];
+        for (const q of quadradosMudados) {
+            quadradoMudou[q] = 0;
+            const c = q % colunas, j = (q - c) / colunas;
+            for (let dj = -1; dj <= 1; dj++) {
+                for (let dc = -1; dc <= 1; dc++) {
+                    const jj = j + dj, cc = c + dc;
+                    if (jj < 0 || cc < 0 || jj >= linhas || cc >= colunas) continue;
+                    const qq = jj * colunas + cc;
+                    for (let k = inicio[qq]; k < inicio[qq + 1]; k++) {
+                        const i = pedacos[k] >> 1;
+                        if (!porVer[i]) { porVer[i] = 1; lista.push(i); }
+                    }
+                }
+            }
+        }
+        quadradosMudados.length = 0;
+        let mudouAlguma = false;
+        for (const i of lista) {
+            porVer[i] = 0;
+            const c0 = Math.max(0, alargada[i * 4] - 1), c1 = Math.min(colunas - 1, alargada[i * 4 + 1] + 1);
+            const j0 = Math.max(0, alargada[i * 4 + 2] - 1), j1 = Math.min(linhas - 1, alargada[i * 4 + 3] + 1);
+            for (let nivel = 0; nivel < 2; nivel++) {
+                let dentro = (nivel ? v1[i] : v0[i]) >= 1;
+                for (let jj = j0; jj <= j1 && dentro; jj++) {
+                    for (let cc = c0; cc <= c1; cc++) {
+                        const qq = jj * colunas + cc;
+                        if (dados[qq * 4 + nivel] !== 255 || dadosMenor[qq * 2 + (1 - nivel)] !== 0) { dentro = false; break; }
+                    }
+                }
+                const o = (i + 1) * 4 + 2 + nivel;
+                const valor = dentro ? 255 : 0;
+                if (pedacosVistos[o] !== valor) { pedacosVistos[o] = valor; mudouAlguma = true; }
+            }
+        }
+        return mudouAlguma;
     }
 
     function refazerQuadrados(i) {
@@ -858,7 +918,11 @@ function vigiarAsManchas(app, aoMudar, aoAcharMapa, zonasDaMalha = null) {
                 versaoVista = -1;
                 niveis = mexerNosNiveis(mapa);
                 grelha.texturaPedacos = criarPedacos(n);
-                pedacosVistos = new Uint8Array(64 * grelha.texturaPedacos.height * 2);
+                pedacosVistos = new Uint8Array(64 * grelha.texturaPedacos.height * 4);
+                porVer = new Uint8Array(n);
+                quadradosMudados.length = 0;
+                if (quadradoMudou.length !== grelha.colunas * grelha.linhas) quadradoMudou = new Uint8Array(grelha.colunas * grelha.linhas);
+                else quadradoMudou.fill(0);
                 dizerONivelNaCopia(mundo, mapa.octree);
                 enviarGrelha();
                 atual = { textura: grelha.textura, texturaMenor: grelha.texturaMenor, pedacos: grelha.texturaPedacos, parametros: grelha.parametros };
@@ -952,12 +1016,17 @@ function vigiarAsManchas(app, aoMudar, aoAcharMapa, zonasDaMalha = null) {
                             : espera >= ESPERA_MAXIMA_AO_ENTRAR / 4;
                         if (seVe) v = Math.min(1, v + passo);
                     } else {
-                        // Desce só quando o outro, se for preciso, já está
-                        // inteiro.
+                        // Se o outro nível é o que fica, desce ao mesmo tempo
+                        // que ele aparece, e nunca abaixo do que lhe falta para
+                        // estar inteiro: os dois juntos tapam sempre a zona, e
+                        // só ficam sobrepostos o tempo de uma passagem, em vez
+                        // de duas. Se o outro ainda não começou a aparecer,
+                        // espera por ele.
                         const outro = 1 - nivel;
                         const outroPreciso = !info.aSair && (principal === outro || segundo === outro);
-                        const outroInteiro = (outro ? v1[i] : v0[i]) >= 0.999;
-                        if (!outroPreciso || outroInteiro) v = Math.max(0, v - passo);
+                        const vOutro = outro ? v1[i] : v0[i];
+                        if (!outroPreciso) v = Math.max(0, v - passo);
+                        else if (vOutro > 0) v = Math.max(0, Math.max(v - passo, 1 - vOutro));
                         if (v <= 0 && niveis) {
                             // Desceu de todo: larga-se, na vez do motor.
                             if (guardado) {
@@ -983,12 +1052,13 @@ function vigiarAsManchas(app, aoMudar, aoAcharMapa, zonasDaMalha = null) {
                 g0[i] = v0[i];
                 g1[i] = v1[i];
                 gT[i] = vista;
-                pedacosVistos[(i + 1) * 2] = Math.round(255 * v0[i]);
-                pedacosVistos[(i + 1) * 2 + 1] = Math.round(255 * v1[i]);
+                pedacosVistos[(i + 1) * 4] = Math.round(255 * v0[i]);
+                pedacosVistos[(i + 1) * 4 + 1] = Math.round(255 * v1[i]);
                 refazerQuadrados(i);
                 mudou = true;
             }
         }
+        if (verPorDentro()) mudou = true;
         if (mudou) enviarGrelha();
         // As zonas da malha que se desenham nesta imagem: a grelha acabou de
         // ser refeita, e é ela que a malha vai ler.
@@ -1128,17 +1198,19 @@ void modifySplatCenter(inout vec3 center) {}
 void modifySplatRotationScale(vec3 originalCenter, vec3 modifiedCenter, inout vec4 rotation, inout vec3 scale) {}
 void modifySplatColor(vec3 center, inout vec4 color) {
     vec2 uv = (center.xz - uBairroMistoGrelha.xy) * uBairroMistoGrelha.zw;
-    vec4 f = textureLod(uBairroMisto, uv, 0.0);
-    vec2 menor = textureLod(uBairroMenor, uv, 0.0).rg;
     float marca = floor(color.b);
     color.b = clamp((color.b - marca - 0.02) / 0.96, 0.0, 1.0);
     if (marca > 1.5) {
-        color.a *= 1.0 - f.b;
+        color.a *= 1.0 - textureLod(uBairroMisto, uv, 0.0).b;
         return;
     }
     int pedaco = int(loadBairroPedaco().r);
-    vec2 meu = pedaco > 0 ? texelFetch(uBairroPedacos, ivec2(pedaco % 64, pedaco / 64), 0).rg : vec2(1.0);
-    f.rg = min(f.rg, meu);
+    vec4 meu4 = pedaco > 0 ? texelFetch(uBairroPedacos, ivec2(pedaco % 64, pedaco / 64), 0) : vec4(1.0, 1.0, 0.0, 0.0);
+    // Pedaço parado e por dentro, neste nível: a grelha dava 1, e nada muda.
+    if ((marca > 0.5 ? meu4.a : meu4.b) > 0.5) return;
+    vec4 f = textureLod(uBairroMisto, uv, 0.0);
+    vec2 menor = textureLod(uBairroMenor, uv, 0.0).rg;
+    f.rg = min(f.rg, meu4.rg);
     // Onde só há um nível, a faixa não conta: escusa-se a conta.
     float outro = marca > 0.5 ? menor.r : menor.g;
     float w0 = 1.0;
@@ -1179,19 +1251,20 @@ fn modifySplatCenter(center: ptr<function, vec3f>) {}
 fn modifySplatRotationScale(originalCenter: vec3f, modifiedCenter: vec3f, rotation: ptr<function, vec4f>, scale: ptr<function, vec3f>) {}
 fn modifySplatColor(center: vec3f, color: ptr<function, vec4f>) {
     let uv = (center.xz - uniform.uBairroMistoGrelha.xy) * uniform.uBairroMistoGrelha.zw;
-    var f = textureSampleLevel(uBairroMisto, uBairroMistoSampler, uv, 0.0);
-    let menor = textureSampleLevel(uBairroMenor, uBairroMenorSampler, uv, 0.0).rg;
     let marca = floor((*color).b);
     (*color).b = clamp(((*color).b - marca - 0.02) / 0.96, 0.0, 1.0);
     if (marca > 1.5) {
-        (*color).a = (*color).a * (1.0 - f.b);
+        (*color).a = (*color).a * (1.0 - textureSampleLevel(uBairroMisto, uBairroMistoSampler, uv, 0.0).b);
         return;
     }
     let pedaco = i32(loadBairroPedaco().r);
-    var meu = vec2f(1.0);
-    if (pedaco > 0) { meu = textureLoad(uBairroPedacos, vec2i(pedaco % 64, pedaco / 64), 0).rg; }
-    f.r = min(f.r, meu.r);
-    f.g = min(f.g, meu.g);
+    var meu4 = vec4f(1.0, 1.0, 0.0, 0.0);
+    if (pedaco > 0) { meu4 = textureLoad(uBairroPedacos, vec2i(pedaco % 64, pedaco / 64), 0); }
+    if (select(meu4.b, meu4.a, marca > 0.5) > 0.5) { return; }
+    var f = textureSampleLevel(uBairroMisto, uBairroMistoSampler, uv, 0.0);
+    let menor = textureSampleLevel(uBairroMenor, uBairroMenorSampler, uv, 0.0).rg;
+    f.r = min(f.r, meu4.r);
+    f.g = min(f.g, meu4.g);
     let outro = select(menor.g, menor.r, marca > 0.5);
     var w0: f32 = 1.0;
     var w1: f32 = 1.0;

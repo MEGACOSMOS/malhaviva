@@ -6199,7 +6199,7 @@
         import { criarModoVR } from './vr.mjs?v=16';
         import { ligarCeu } from './ceu.mjs?v=16';
         import { ligarEdificios } from './edificios.mjs?v=6';
-        import { ligarBairroEmMalha } from './bairro-malha.mjs?v=20';
+        import { ligarBairroEmMalha } from './bairro-malha.mjs?v=21';
         import { ligarComando } from './comando.mjs?v=13';
         import { ligarOrdemAsFatias } from './ordem-as-fatias.mjs?v=1';
 
@@ -6583,7 +6583,9 @@
         function esperarPeloModo(app, alvo) {
             const SILENCIO = 25000;     // sem chegar nada, desiste-se
             const ASSENTAR = 6000;      // com tudo cá, para se ver tudo
+            const QUIETO = 600;         // tanto tempo assente, para sair
             return new Promise((resolve) => {
+                let quieto = 0;
                 let maior = -1;
                 let silencio = 0;
                 let antes = performance.now();
@@ -6623,7 +6625,11 @@
                     }
                     if (bairroAChegar(app) && silencio < SILENCIO) return;
                     assentar += passou;
-                    if (bairroAssente(app) || assentar >= ASSENTAR) acabar();
+                    // Assente durante QUIETO seguidos: o motor ainda acerta
+                    // uma ou outra zona logo a seguir à última transição, e
+                    // num instante só parecia pronto antes disso.
+                    quieto = bairroAssente(app) ? quieto + passou : 0;
+                    if (quieto >= QUIETO || assentar >= ASSENTAR) acabar();
                 };
                 app.on('frameend', ver);
             });
