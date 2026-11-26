@@ -6201,6 +6201,7 @@
         import { ligarEdificios } from './edificios.mjs?v=6';
         import { ligarBairroEmMalha } from './bairro-malha.mjs?v=19';
         import { ligarComando } from './comando.mjs?v=13';
+        import { ligarOrdemAsFatias } from './ordem-as-fatias.mjs?v=1';
 
         // O código do site chegou e está a correr: o primeiro sinal de vida
         // para a rede de segurança do arranque (ver `arranque`).
@@ -7982,6 +7983,11 @@
                 conterNoAntigo: false,
                 aneisDeManchas: window.bairroMisto ? 2 : 0
             });
+
+            // No Alto e no Médio, a ordem das manchas vai para a placa às
+            // fatias, e não de uma vez (ver ordem-as-fatias.mjs): era o que
+            // fazia o bairro andar aos solavancos ao mexer a câmara.
+            if (window.bairroMisto) window.ordemAsFatias = ligarOrdemAsFatias(app);
 
             // O ecrã de espera só sai quando o bairro estiver mesmo lá — e
             // aí, com tudo chegado, o logótipo está inteiro.
