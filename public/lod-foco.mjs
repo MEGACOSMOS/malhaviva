@@ -354,10 +354,11 @@ function avaliarNiveis(instancia, cameraNode, maxLod, lodBaseDistance, lodMultip
             nivelDaBola: new Uint8Array(total),
             foraDoEcra: new Uint8Array(total),
             peso: new Float32Array(total),
-            noBalaoLonge: new Float32Array(total)
+            noBalaoLonge: new Float32Array(total),
+            atrasDaCamara: new Uint8Array(total)
         };
     }
-    const { noBalao, naBola, nivelDaBola, foraDoEcra: fora, peso, noBalaoLonge } = memoria;
+    const { noBalao, naBola, nivelDaBola, foraDoEcra: fora, peso, noBalaoLonge, atrasDaCamara: deTras } = memoria;
 
     // Bairro misto: a faixa de passagem vai de (1 - faixa) a (1 + faixa)
     // vezes a distância do fino. O fino chega até ao fim dela.
@@ -423,6 +424,7 @@ function avaliarNiveis(instancia, cameraNode, maxLod, lodBaseDistance, lodMultip
         // tamanho dele: um quarteirão largo entra na conta pela ponta que
         // aparece no ecrã.
         let estaFora = 0;
+        let estaAtras = 0;
         let pesoDoPedaco = 1;
         const cx = (minX + maxX) * 0.5 - px;
         const cy = (minY + maxY) * 0.5 - py;
@@ -436,8 +438,11 @@ function avaliarNiveis(instancia, cameraNode, maxLod, lodBaseDistance, lodMultip
             const desvio = Math.acos(cosseno) - Math.asin(raio / dc);
             if (desvio > meioCone) pesoDoPedaco = pesoFora;
             if (desvio > foraDoEcra) estaFora = 1;
+            // Atrás da câmara: o pedaço todo do lado de trás dela.
+            if (desvio > Math.PI / 2) estaAtras = 1;
         }
         fora[nodeIndex] = estaFora;
+        deTras[nodeIndex] = estaAtras;
         peso[nodeIndex] = pesoDoPedaco;
 
         if (conterNoAntigo && maxLod >= 1) {
@@ -458,6 +463,9 @@ function avaliarNiveis(instancia, cameraNode, maxLod, lodBaseDistance, lodMultip
     // que decide o nível final, para a conta bater certo.
     const nivelDoPedaco = (nodeIndex, encolhimento) => {
         if (aneis && definicoes.soMalha) return -1;
+        // No bairro misto, atrás da câmara não fica nada: nem manchas (aqui),
+        // nem malha (a zona dela fora da vista não é desenhada pela placa).
+        if (aneis && definicoes.nadaAtras && deTras[nodeIndex]) return -1;
         if (maxLod === 0) return 0;
         const balao = noBalao[nodeIndex] * encolhimento;
         const nivelBola = nivelDaBola[nodeIndex];
@@ -546,6 +554,7 @@ function avaliarNiveis(instancia, cameraNode, maxLod, lodBaseDistance, lodMultip
         const nodeInfo = nodeInfos[nodeIndex];
         let optimalLodIndex = nivelDoPedaco(nodeIndex, encolhimento);
         if (aneis) {
+            nodeInfo.atrasDaCamara = definicoes.nadaAtras && deTras[nodeIndex] === 1;
             optimalLodIndex = segurarNaPassagem(nodeInfo, optimalLodIndex, agora, definicoes);
             // O segundo nível, para os pedaços que tocam a faixa de passagem:
             // o do meio para os que têm o fino, e o fino para os que têm o
@@ -600,7 +609,10 @@ function segurarNaPassagem(nodeInfo, nivel, agora, definicoes) {
     const anterior = nodeInfo.optimalLod;
     const tempo = definicoes.tempoSemVoltarAtras;
 
-    if (nivel !== anterior && nivel === nodeInfo.nivelDeOndeVeio &&
+    // Um pedaço que saiu por ter ficado atrás da câmara volta logo que deixa
+    // de lá estar: ao virar a cara, o que entra na vista não espera.
+    const voltaDeTras = nodeInfo.foiParaTras && !nodeInfo.atrasDaCamara;
+    if (nivel !== anterior && nivel === nodeInfo.nivelDeOndeVeio && !voltaDeTras &&
         agora - (nodeInfo.mudouDeNivelEm || 0) < tempo) {
         nivel = anterior;
         // Quando o prazo acabar, reavalia-se, mesmo com a câmara parada:
@@ -622,6 +634,7 @@ function segurarNaPassagem(nodeInfo, nivel, agora, definicoes) {
     if (nivel !== anterior) {
         nodeInfo.nivelDeOndeVeio = anterior;
         nodeInfo.mudouDeNivelEm = agora;
+        nodeInfo.foiParaTras = nivel < 0 && !!nodeInfo.atrasDaCamara;
     }
     return nivel;
 }
@@ -821,6 +834,8 @@ export function ligarLodNoCentroDaVista(app, opcoes = {}) {
         // Bairro misto: cada pedaço tem um nível só, sem o segundo na faixa de
         // passagem (o Alto, onde a fronteira fica longe e a poupança conta).
         semSegundo: opcoes.semSegundo ?? false,
+        // Bairro misto: o que fica todo atrás da câmara não se desenha.
+        nadaAtras: opcoes.nadaAtras ?? true,
         faixa: opcoes.faixa ?? FAIXA_DE_PASSAGEM,
         tempoSemVoltarAtras: opcoes.tempoSemVoltarAtras ?? TEMPO_SEM_VOLTAR_ATRAS,
         // Bairro misto: os mapas onde há pedaços à espera de um prazo, e
