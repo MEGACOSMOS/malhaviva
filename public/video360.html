@@ -10,7 +10,7 @@
     <title>360 Video Player</title>
     <script src="/idiomas.js?v=65"></script>
     <script src="/contar.js?v=1"></script>
-    <script src="/legendas.js?v=4"></script>
+    <script src="/legendas.js?v=5"></script>
     <script src="/quadrado-de-espera.js?v=4"></script>
     <!-- O aviso de "está a demorar" e a tecla de tentar de novo, os
          mesmos em todo o site. -->
@@ -1277,8 +1277,8 @@
     </div>
 
     <script type="module">
-        import { fontesDeVideo, previaDe, olharInicialDe, ABERTURA_INICIAL, eOriginal, e360 } from './videos.mjs?v=9';
-        import { criarGestorDeQualidade, limiteDeTexturaDoAparelho } from './qualidade-video.mjs?v=10';
+        import { fontesDeVideo, previaDe, olharInicialDe, ABERTURA_INICIAL, eOriginal, e360 } from './videos.mjs?v=10';
+        import { criarGestorDeQualidade, limiteDeTexturaDoAparelho } from './qualidade-video.mjs?v=11';
         import { temCaminhoDaCara, olharDaCara } from './olhar-das-rotas.mjs?v=1';
 
         const urlParams = new URLSearchParams(window.location.search);
@@ -1808,13 +1808,20 @@
             uiLayer.classList.add('paused');
         });
 
+        // Durante uma troca de qualidade (ver qualidade-video.mjs) o filme
+        // passa um instante pelo zero enquanto abre a versão nova: o tempo e
+        // a barra ficam como estavam, em vez de piscar "0:00".
+        const aTrocarDeVersao = () => !!video.dataset.trocaDeVersao;
+
         video.addEventListener('timeupdate', () => {
+            if (aTrocarDeVersao()) return;
             const percent = (video.currentTime / video.duration) * 100;
             progressFilled.style.width = `${percent}%`;
             timeDisplay.innerText = `${formatTime(video.currentTime)} / ${formatTime(video.duration)}`;
         });
 
         video.addEventListener('loadedmetadata', () => {
+            if (aTrocarDeVersao()) return;
             timeDisplay.innerText = `${formatTime(video.currentTime)} / ${formatTime(video.duration)}`;
         });
 
@@ -2491,8 +2498,17 @@
         };
 
         // ---- À espera de mais imagem ----
-        video.addEventListener('waiting', () => espera.classList.add('a-esperar'));
-        video.addEventListener('stalled', () => espera.classList.add('a-esperar'));
+        // Numa troca de qualidade a esfera fica parada um instante, de
+        // propósito, enquanto a versão nova abre: não é espera que se mostre
+        // — a não ser que a versão nova ainda não tenha imagem quando a troca
+        // dá a vez.
+        video.addEventListener('waiting', () => { if (!aTrocarDeVersao()) espera.classList.add('a-esperar'); });
+        video.addEventListener('stalled', () => { if (!aTrocarDeVersao()) espera.classList.add('a-esperar'); });
+        video.addEventListener('trocadeversao', (e) => {
+            if (e.detail && e.detail.fase === 'acabou' && !video.paused && video.readyState < 3) {
+                espera.classList.add('a-esperar');
+            }
+        });
         ['playing', 'canplay', 'pause', 'seeked'].forEach((quando) => {
             video.addEventListener(quando, () => espera.classList.remove('a-esperar'));
         });

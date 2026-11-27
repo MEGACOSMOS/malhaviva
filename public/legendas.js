@@ -186,6 +186,10 @@
 
     /** Escreve o bloco que corresponde ao instante do filme. */
     Leitor.prototype.acertar = function () {
+        // Durante uma troca de qualidade (ver qualidade-video.mjs) o filme
+        // passa um instante pelo princípio enquanto abre a versão nova: a
+        // legenda fica como estava, em vez de piscar.
+        if (this.video.dataset && this.video.dataset.trocaDeVersao) return;
         if (!this.blocos || !ligadas()) { this.escrever(null); return; }
         var agora = this.video.currentTime;
         var achado = null;
@@ -298,6 +302,20 @@
             return new Leitor(video, caixa, botao);
         },
         alternar: alternar,
-        ligadas: ligadas
+        ligadas: ligadas,
+
+        /**
+         * Quando se fala num vídeo: o princípio e o fim de cada legenda
+         * portuguesa. A escolha da qualidade usa-o para trocar de versão
+         * num silêncio (ver qualidade-video.mjs).
+         *
+         * @param {string} nome - O nome do vídeo.
+         * @returns {Promise<{inicio: number, fim: number}[]|null>}
+         */
+        falas: function (nome) {
+            return buscar(nome, 'pt').then(function (blocos) {
+                return blocos ? blocos.map(function (b) { return { inicio: b.inicio, fim: b.fim }; }) : null;
+            });
+        }
     };
 })();

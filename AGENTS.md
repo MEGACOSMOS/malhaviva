@@ -150,6 +150,45 @@ bairro se comporta.
 
 ---
 
+## Mexer na qualidade automática dos vídeos? Mede-a, antes e depois
+
+Os testemunhos e as rotas escolhem sozinhos a versão do vídeo (de 480p a
+1440p) conforme a ligação de quem vê (`public/qualidade-video.mjs`, com o
+índice de cada ficheiro lido por `public/indice-mp4.mjs`). Uma escolha que
+escolhe mal não dá erro nenhum: só deixa o vídeo a saltar de nitidez, com a
+imagem e o som a parar em cada troca, ou parado à espera de mais filme. E há
+duas coisas que enganam quem mexe nisto sem medir:
+
+- **O Chrome engana-se na reserva.** O que ele diz ter já descarregado
+  (`video.buffered`) é contado em bytes e passado a segundos como se o filme
+  pesasse o mesmo do princípio ao fim: numa rota chega a dizer 5 segundos
+  quando tem 17. Era isso que fazia o site descer de qualidade sem razão nas
+  rotas. A conta certa faz-se com o índice do ficheiro (`faixaActual` e
+  `reserva`, no gestor).
+- **O travão de rede do próprio Chrome não serve para provar isto**: uma
+  mudança de velocidade só vale para os pedidos seguintes, e o filme, que é
+  um pedido só, passa a ir à velocidade toda da ligação verdadeira.
+
+Antes de dar por acabada qualquer alteração a esses dois ficheiros, ou ao que
+os players fazem durante uma troca (o evento `trocadeversao` e o atributo
+`data-troca-de-versao`, que seguram o relógio, o quadrado de espera e as
+legendas), com o site a correr:
+
+```
+bun scripts/testar-qualidade-video.mjs                    # o código de agora (~20 min)
+bun scripts/testar-qualidade-video.mjs --versao=<commit>  # o mesmo, com o site desse commit
+```
+
+Abre dois Chromes à parte, sem som, que vão à nuvem por um cano que finge
+ligações de vários feitios (rápida, justa, a oscilar, instável, lenta, a cair
+de repente, e uma segunda visita), e conta, para um testemunho e para uma
+rota, as trocas por minuto, as paragens e o tempo de imagem parada em cada
+troca. Corre-se com o commit de antes e com o de agora e comparam-se caso a
+caso: nenhum caso pode ficar com mais paragens nem com mais imagem parada, e
+as trocas só podem subir onde a qualidade média também subiu.
+
+---
+
 ## Mexer em como o bairro arranca, ou em `src/index.ts`? Prova o pré-carregamento
 
 Quem escreve "malhaviva.pt" na barra do Chrome faz o Chrome adivinhar para

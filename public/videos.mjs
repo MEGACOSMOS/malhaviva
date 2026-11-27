@@ -73,12 +73,18 @@ export function alturaDe(nome, resolucao) {
 }
 
 // Quantos megabits por segundo é preciso conseguir descarregar para cada
-// versão correr sem parar. São valores medidos nos ficheiros verdadeiros,
-// arredondados para cima — as rotas pesam bastante mais porque a
-// imagem cobre tudo à volta.
+// versão correr sem parar — os das versões mais pesadas de cada tipo, que
+// são as feitas mais recentemente (a Luna, a Helena, a rota A). As rotas
+// pesam bastante mais porque a imagem cobre tudo à volta.
+//
+// Isto é só a primeira ideia, para a escolha do primeiro instante: logo a
+// seguir, o player pergunta à nuvem o tamanho de cada ficheiro e passa a
+// contar com o peso verdadeiro de cada um (ver `qualidade-video.mjs`). E
+// os ficheiros não pesam todos o mesmo: o 1440p da Dulce pesa 3,3 Mbps, o do
+// Edson 11,3.
 const DEBITOS = {
-    entrevista: { '480p': 0.3, '720p': 0.7, '1080p': 1.8, '1440p': 8, original: 48 },
-    rota360: { '480p': 0.9, '720p': 2.4, '1080p': 7, '1440p': 19, original: 46 }
+    entrevista: { '480p': 0.4, '720p': 0.85, '1080p': 1.95, '1440p': 8.2, original: 48 },
+    rota360: { '480p': 0.85, '720p': 2.3, '1080p': 6.6, '1440p': 18.9, original: 46 }
 };
 
 /**

@@ -1,6 +1,6 @@
 import * as pc from 'playcanvas';
-import { fontesDeVideo, previaDe, olharInicialDe, ABERTURA_INICIAL } from './videos.mjs?v=9';
-import { criarGestorDeQualidade } from './qualidade-video.mjs?v=10';
+import { fontesDeVideo, previaDe, olharInicialDe, ABERTURA_INICIAL } from './videos.mjs?v=10';
+import { criarGestorDeQualidade } from './qualidade-video.mjs?v=11';
 import { carregarPrevia360 } from './previa-360.mjs?v=2';
 import { FOTOGRAFIAS, enderecoDa, LARGURA_LEVE } from './timelapse.mjs?v=3';
 import { endireitar } from './endireitar.mjs?v=1';
@@ -3251,13 +3251,20 @@ AnnotationController.prototype.setupModal = function() {
         cliqueSozinho = setTimeout(togglePlay, 260);
     });
 
+    // Durante uma troca de qualidade (ver qualidade-video.mjs) o filme passa
+    // um instante pelo zero enquanto abre a versão nova: o tempo e a barra
+    // ficam como estavam, em vez de piscar "0:00".
+    const aTrocarDeVersao = () => !!this.videoPlayer.dataset.trocaDeVersao;
+
     this.videoPlayer.addEventListener('timeupdate', () => {
+        if (aTrocarDeVersao()) return;
         const percent = (this.videoPlayer.currentTime / this.videoPlayer.duration) * 100;
         progressFilled.style.width = `${percent}%`;
         timeDisplay.innerText = `${formatTime(this.videoPlayer.currentTime)} / ${formatTime(this.videoPlayer.duration)}`;
     });
 
     this.videoPlayer.addEventListener('loadedmetadata', () => {
+        if (aTrocarDeVersao()) return;
         timeDisplay.innerText = `${formatTime(this.videoPlayer.currentTime)} / ${formatTime(this.videoPlayer.duration)}`;
     });
 
@@ -3313,8 +3320,17 @@ AnnotationController.prototype.setupModal = function() {
     });
 
     // ---- À espera de mais imagem ----
-    this.videoPlayer.addEventListener('waiting', () => espera.classList.add('a-esperar'));
-    this.videoPlayer.addEventListener('stalled', () => espera.classList.add('a-esperar'));
+    // Numa troca de qualidade a imagem fica parada um instante, de
+    // propósito, por cima da versão nova a abrir: não é espera que se mostre.
+    this.videoPlayer.addEventListener('waiting', () => { if (!aTrocarDeVersao()) espera.classList.add('a-esperar'); });
+    this.videoPlayer.addEventListener('stalled', () => { if (!aTrocarDeVersao()) espera.classList.add('a-esperar'); });
+    // Se a versão nova ainda não tem imagem quando a troca dá a vez, aí
+    // sim é espera.
+    this.videoPlayer.addEventListener('trocadeversao', (e) => {
+        if (e.detail && e.detail.fase === 'acabou' && !this.videoPlayer.paused && this.videoPlayer.readyState < 3) {
+            espera.classList.add('a-esperar');
+        }
+    });
     ['playing', 'canplay', 'pause', 'seeked'].forEach((quando) => {
         this.videoPlayer.addEventListener(quando, () => espera.classList.remove('a-esperar'));
     });
